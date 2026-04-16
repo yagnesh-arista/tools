@@ -1,0 +1,246 @@
+"""
+Unit tests for pure functions in device_bridge.py.
+
+Run: cd ~/claude/projects/topoassist && pytest tests/ -v
+
+Only pure functions are tested here — functions that take data in and return
+data out with no network, filesystem, or GAS API dependencies.
+"""
+
+import device_bridge as db
+
+
+# ── _extract_session_diff ──────────────────────────────────────────────────────
+
+class TestExtractSessionDiff:
+    def test_empty_string(self):
+        assert db._extract_session_diff("") == ""
+
+    def test_no_diff_header(self):
+        output = "Arista#show session-config diffs\nArista#commit\n"
+        assert db._extract_session_diff(output) == ""
+
+    def test_basic_diff_stops_at_commit(self):
+        output = (
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "interface Ethernet1\n"
+            "+   description spine-link\n"
+            "Arista(config-s-topoas)#commit\n"
+        )
+        result = db._extract_session_diff(output)
+        assert result.startswith("--- system:/running-config")
+        assert "+   description spine-link" in result
+        assert "#commit" not in result
+
+    def test_stops_at_abort(self):
+        output = (
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "+   description foo\n"
+            "Arista(config-s-topoas)#abort\n"
+        )
+        result = db._extract_session_diff(output)
+        assert "+   description foo" in result
+        assert "#abort" not in result
+
+    def test_reversed_header_order(self):
+        # EOS may emit +++ before --- on some versions
+        output = (
+            "+++ session:/topoassist-session-config\n"
+            "--- system:/running-config\n"
+            "+   description foo\n"
+            "Arista#commit\n"
+        )
+        result = db._extract_session_diff(output)
+        assert result.startswith("+++ session:/topoassist-session-config")
+        assert "+   description foo" in result
+
+    def test_trailing_whitespace_stripped(self):
+        output = "--- system:/running-config   \n+   description foo   \nArista#commit\n"
+        result = db._extract_session_diff(output)
+        for line in result.split("\n"):
+            assert line == line.rstrip()
+
+    def test_empty_diff_no_changes(self):
+        # Diff header present but no change lines before commit
+        output = (
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "Arista(config-s-topoas)#commit\n"
+        )
+        result = db._extract_session_diff(output)
+        # Should capture the headers but nothing after commit
+        assert "running-config" in result
+        assert "#commit" not in result
+
+
+# ── _oc_lldp_to_eos ───────────────────────────────────────────────────────────
+
+class TestOcLldpToEos:
+    def _make_raw(self, iface_name, system_name, port_id, wrapper=True):
+        iface = {
+            "name": iface_name,
+            "neighbors": {"neighbor": [{"state": {
+                "system-name": system_name,
+                "port-id": port_id,
+            }}]},
+        }
+        inner = {"interfaces": {"interface": [iface]}}
+        return {"openconfig-lldp:lldp": inner} if wrapper else inner
+
+    def test_valid_response(self):
+        raw = self._make_raw("Ethernet1", "Spine1", "Ethernet3")
+        result = db._oc_lldp_to_eos(raw)
+        assert "Ethernet1" in result
+        nbr = result["Ethernet1"]["lldpNeighborInfo"][0]
+        assert nbr["systemName"] == "Spine1"
+        assert nbr["neighborInterfaceInfo"]["interfaceId_v2"] == "Ethernet3"
+
+    def test_no_wrapper_key(self):
+        # Some EOS versions omit the openconfig-lldp:lldp wrapper
+        raw = self._make_raw("Ethernet1", "Spine1", "Ethernet3", wrapper=False)
+        result = db._oc_lldp_to_eos(raw)
+        assert "Ethernet1" in result
+
+    def test_empty_interfaces(self):
+        raw = {"openconfig-lldp:lldp": {"interfaces": {"interface": []}}}
+        assert db._oc_lldp_to_eos(raw) == {}
+
+    def test_neighbor_missing_state(self):
+        raw = {"openconfig-lldp:lldp": {"interfaces": {"interface": [{
+            "name": "Ethernet1",
+            "neighbors": {"neighbor": [{}]},
+        }]}}}
+        result = db._oc_lldp_to_eos(raw)
+        nbr = result["Ethernet1"]["lldpNeighborInfo"][0]
+        assert nbr["systemName"] == ""
+        assert nbr["neighborInterfaceInfo"]["interfaceId_v2"] == ""
+
+    def test_interface_with_no_neighbors_skipped(self):
+        raw = {"openconfig-lldp:lldp": {"interfaces": {"interface": [{
+            "name": "Ethernet1",
+            "neighbors": {"neighbor": []},
+        }]}}}
+        assert db._oc_lldp_to_eos(raw) == {}
+
+
+# ── _oc_version ───────────────────────────────────────────────────────────────
+
+class TestOcVersion:
+    def _make_raw(self, components):
+        return {"openconfig-platform:components": {"component": components}}
+
+    def test_single_component_with_version(self):
+        raw = self._make_raw([{"state": {"software-version": "4.29.2F"}}])
+        assert db._oc_version(raw) == "4.29.2F"
+
+    def test_strips_build_suffix(self):
+        raw = self._make_raw([{"state": {"software-version": "4.29.2F (engineering build)"}}])
+        assert db._oc_version(raw) == "4.29.2F"
+
+    def test_first_non_empty_version_returned(self):
+        raw = self._make_raw([
+            {"state": {"software-version": ""}},
+            {"state": {"software-version": "4.28.1F"}},
+        ])
+        assert db._oc_version(raw) == "4.28.1F"
+
+    def test_no_components(self):
+        raw = self._make_raw([])
+        assert db._oc_version(raw) == ""
+
+    def test_no_software_version_key(self):
+        raw = self._make_raw([{"state": {"type": "CHASSIS"}}])
+        assert db._oc_version(raw) == ""
+
+
+# ── _oc_platform ──────────────────────────────────────────────────────────────
+
+class TestOcPlatform:
+    def _make_raw(self, components):
+        return {"openconfig-platform:components": {"component": components}}
+
+    def test_chassis_component(self):
+        raw = self._make_raw([{
+            "state": {"type": "openconfig-platform-types:CHASSIS", "description": "DCS-7050TX-64"},
+        }])
+        assert db._oc_platform(raw) == "7050TX-64"
+
+    def test_no_chassis_type(self):
+        raw = self._make_raw([{
+            "state": {"type": "openconfig-platform-types:LINECARD", "description": "DCS-7050TX-64"},
+        }])
+        assert db._oc_platform(raw) == ""
+
+    def test_no_components(self):
+        assert db._oc_platform(self._make_raw([])) == ""
+
+    def test_description_without_dcs_prefix(self):
+        raw = self._make_raw([{
+            "state": {"type": "CHASSIS", "description": "7050TX-64"},
+        }])
+        # lstrip("DCS-") is byte-by-byte — if no prefix just returns as-is
+        assert db._oc_platform(raw) == "7050TX-64"
+
+
+# ── _oc_iface_status ──────────────────────────────────────────────────────────
+
+class TestOcIfaceStatus:
+    def _make_raw(self, ifaces):
+        return {"openconfig-interfaces:interfaces": {"interface": ifaces}}
+
+    def test_up_maps_to_connected(self):
+        raw = self._make_raw([{"name": "Ethernet1", "state": {"oper-status": "UP"}}])
+        assert db._oc_iface_status(raw)["Ethernet1"]["linkStatus"] == "connected"
+
+    def test_down_maps_to_notconnect(self):
+        raw = self._make_raw([{"name": "Ethernet1", "state": {"oper-status": "DOWN"}}])
+        assert db._oc_iface_status(raw)["Ethernet1"]["linkStatus"] == "notconnect"
+
+    def test_lower_layer_down(self):
+        raw = self._make_raw([{"name": "Ethernet2", "state": {"oper-status": "LOWER_LAYER_DOWN"}}])
+        assert db._oc_iface_status(raw)["Ethernet2"]["linkStatus"] == "notconnect"
+
+    def test_dormant(self):
+        raw = self._make_raw([{"name": "Ethernet3", "state": {"oper-status": "DORMANT"}}])
+        assert db._oc_iface_status(raw)["Ethernet3"]["linkStatus"] == "notconnect"
+
+    def test_unknown_status_defaults_to_notconnect(self):
+        raw = self._make_raw([{"name": "Ethernet4", "state": {"oper-status": "TESTING"}}])
+        assert db._oc_iface_status(raw)["Ethernet4"]["linkStatus"] == "notconnect"
+
+    def test_multiple_interfaces(self):
+        raw = self._make_raw([
+            {"name": "Ethernet1", "state": {"oper-status": "UP"}},
+            {"name": "Ethernet2", "state": {"oper-status": "DOWN"}},
+        ])
+        result = db._oc_iface_status(raw)
+        assert result["Ethernet1"]["linkStatus"] == "connected"
+        assert result["Ethernet2"]["linkStatus"] == "notconnect"
+
+    def test_empty_interfaces(self):
+        assert db._oc_iface_status(self._make_raw([])) == {}
+
+
+# ── _gnmi_val ─────────────────────────────────────────────────────────────────
+
+class TestGnmiVal:
+    def test_valid_response(self):
+        response = {"notification": [{"update": [{"val": {"key": "value"}}]}]}
+        assert db._gnmi_val(response) == {"key": "value"}
+
+    def test_empty_dict(self):
+        assert db._gnmi_val({}) == {}
+
+    def test_missing_notification_key(self):
+        assert db._gnmi_val({"other": []}) == {}
+
+    def test_empty_notification_list(self):
+        assert db._gnmi_val({"notification": []}) == {}
+
+    def test_none_input(self):
+        assert db._gnmi_val(None) == {}
+
+    def test_empty_update_list(self):
+        assert db._gnmi_val({"notification": [{"update": []}]}) == {}

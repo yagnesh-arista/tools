@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-17 (Rule 7: replaced 4 Unicode × ✕ chars with SVG in Sidebar.html; synced canonicalizeInterface() Code.gs→Sidebar-js.html — chained replaces + regex filter; fixed device_bridge.py /health docstring version 2.6→2.7)
+  Last updated: 2026-04-17 (Rule 13: added test suite — tests/test_device_bridge.py (34 pytest cases, 6 pure functions) + Tests.gs (GAS harness, 4 pure functions, 34 cases); see TESTING section near end)
   Previous: 2026-04-17 (VERSION 2.6→2.7: SSH_USER and JUMP_HOST now env-var overridable in device_bridge.py; startup banner shows "Overrides:" hint; removed unused shlex from embedded template; Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-17 (lldp_bridge.py: JUMP_HOST restored to "bus-home" default, now overridable via LLDP_JUMP_HOST env var — export LLDP_JUMP_HOST="" to SSH directly without editing file. File: lldp_bridge.py)
   Previous: 2026-04-16 (Quality review fixes: (1) Code.gs getNetworkSettings/saveNetworkSettings: getUserProperties→getDocumentProperties — network settings are shared topology settings, must be per-sheet not per-user; (2) device_bridge.py: removed unused shlex import; (3) lldp_bridge.py: JUMP_HOST hardcoded "bus-home"→"" so fresh installs SSH directly; (4) Sidebar-js.html: 11 inline HTML escape chains replaced with existing escapeHtml() helper. Files: Code.gs, device_bridge.py, lldp_bridge.py, Sidebar-js.html)
@@ -2183,6 +2183,43 @@ User for per-user prefs). CacheService for topology caching.
 All dialogs use HtmlService.createTemplateFromFile with include() for CSS/JS."
 
 ---
+
+================================================================================
+TESTING
+================================================================================
+
+Two test suites cover the pure (non-GAS) logic:
+
+── Python (device_bridge.py) ──────────────────────────────────────────────────
+Run:  cd ~/claude/projects/topoassist && pytest tests/ -v
+File: tests/test_device_bridge.py (34 tests)
+
+Covered functions:
+  _extract_session_diff  — EOS SSH diff parsing (7 cases)
+  _oc_lldp_to_eos        — OpenConfig LLDP → EOS format (5 cases)
+  _oc_version            — extract EOS software version (5 cases)
+  _oc_platform           — extract platform/model (4 cases)
+  _oc_iface_status       — OC interface status → linkStatus (7 cases)
+  _gnmi_val              — extract val from pygnmi response (6 cases)
+
+pytest installed via: pip3 install pytest
+conftest.py adds project root to sys.path so device_bridge imports cleanly.
+
+── GAS (Code.gs) ──────────────────────────────────────────────────────────────
+Run:  Apps Script editor → select runAllTests → Run
+File: Tests.gs (34 tests)
+Output: SpreadsheetApp alert (summary) + Execution Log (full detail)
+
+Covered functions:
+  canonicalizeInterface  — interface name normalization (18 cases)
+  hasKey                 — case-insensitive Set lookup (6 cases)
+  normalizePo            — Port-Channel number extraction (8 cases)
+  isValidPort            — port string validation (8 cases)
+
+── What is NOT tested ─────────────────────────────────────────────────────────
+GAS-entangled functions (PropertiesService, SpreadsheetApp, UrlFetchApp) and
+network transport functions (_ssh_cmds, _eapi_cmds, etc.) are not unit-tested.
+They require integration testing against a live sheet or real devices.
 
 ================================================================================
 END OF INSTRUCTIONS
