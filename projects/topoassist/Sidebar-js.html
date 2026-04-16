@@ -2493,9 +2493,9 @@ function normalizeSpeed(s) {
 * - Accepts custom messages for system actions (Tech Save).
 */
 function fetchFullConfig(deviceName, callback, customSuccessMsg) {
-  // Non-EOS devices have no EOS config — skip silently (callback still fires so callers don't hang)
+  // Non-EOS devices have no EOS config — skip silently, no callback (calling callback causes
+  // infinite recursion: fetchFullConfig → refreshCallback → showTooltip → fetchFullConfig → ∞)
   if (allDevicesData[deviceName] && allDevicesData[deviceName].type === 'non-arista') {
-    if (callback) callback(null);
     return;
   }
   // 1. Check Cache
@@ -3018,7 +3018,8 @@ function showTooltip(e, portId, peerId) {
   };
 
   // --- 1. CONFIG FETCH LOGIC ---
-  if (!myData.details.configLoaded) {
+  const _isNonEos = d => allDevicesData[d] && allDevicesData[d].type === 'non-arista';
+  if (!myData.details.configLoaded && !_isNonEos(myData.device)) {
     if (configCache[myData.device]) {
       processDeviceConfig(myData.device, configCache[myData.device].data);
     } else {
@@ -3026,7 +3027,7 @@ function showTooltip(e, portId, peerId) {
     }
   }
 
-  if (peerData && !peerData.details.configLoaded) {
+  if (peerData && !peerData.details.configLoaded && !_isNonEos(peerData.device)) {
     if (configCache[peerData.device]) {
       processDeviceConfig(peerData.device, configCache[peerData.device].data);
     } else {
