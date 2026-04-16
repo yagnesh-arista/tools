@@ -136,5 +136,6 @@ E — Project Sync
 
 ─────────────────────────────────────
 Status: BLOCKED — 2 failures must be resolved before proceeding.
-        (or: CLEAN — ready to ship.)
+        Run /fix-and-commit to fix all failures and commit.
+        (or: CLEAN — run /fix-and-commit to commit.)
 ```

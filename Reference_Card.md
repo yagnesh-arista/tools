@@ -70,7 +70,7 @@ git push
 | When | Command |
 |---|---|
 | New project | `/new-project` — 7-question gate, `git init` runs first |
-| Before committing | `/review-global` |
+| Before committing | `/review-global` → `/fix-and-commit` |
 | New machine | `bash ~/claude/projects/settings/setup.sh` |
 
 ---
