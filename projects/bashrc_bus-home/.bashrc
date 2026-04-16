@@ -61,6 +61,7 @@ alias lrtha='ls -lrtha --color=auto'
 alias grep='grep --color=auto'
 alias ..='cd ..'
 alias ...='cd ../..'
+alias eod='cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || (git commit -m "EOD $(date +%Y-%m-%d)" && git push) && cd -'
 
 # 9. TimeZone & PATH
 export TZ=Asia/Kolkata

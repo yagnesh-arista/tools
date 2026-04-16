@@ -1,6 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check-order.md (/check-order command))
-Previous: 2026-04-16 (removed stale ble.sh reference from section 5 comment)
+Last updated: 2026-04-17 (Added eod alias for daily git commit+push)
+Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check-order.md (/check-order command))
 
 PROJECT OVERVIEW
 ================
@@ -35,7 +35,7 @@ CURRENT .bashrc SECTIONS
     IMPORTANT: must stay BEFORE section 6 (ble.sh) so ble.sh wraps the handler on load/reload
 6.  Up arrow bound to __fzf_history__ via bash readline bind -x (ble.sh removed — caused flickering)
 7.  Prevent Ctrl+D (ignoreeof, IGNOREEOF=10)
-8.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ...
+8.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ..., eod
 9.  TZ=Asia/Kolkata, PATH prepend ~/.local/bin, EDITOR/VISUAL=vim, CDPATH=.:~:~/claude/projects
 10. History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
     PROMPT_COMMAND appends history after each command (history -a only)
