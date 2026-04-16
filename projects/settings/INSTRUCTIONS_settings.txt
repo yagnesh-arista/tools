@@ -1,0 +1,74 @@
+INSTRUCTIONS — settings
+Last updated: 2026-04-17 (added hooks/ to backup; setup.sh now restores hooks/, rules/, commands/, CLAUDE.md)
+
+=== PROJECT OVERVIEW ===
+Backup and restore kit for ~/.claude/settings.json (Claude Code global config).
+Captures all hooks, permissions, and model settings so the entire Claude Code
+setup can be rebuilt on a new machine in under 5 minutes.
+
+=== FILE STRUCTURE ===
+settings/
+  settings.json.template  — copy of ~/.claude/settings.json with /home/yagnesh
+                            replaced by $HOME; safe to commit (no secrets)
+  setup.sh                — run once on a new machine to install the template
+  INSTRUCTIONS_settings.txt — this file
+  CLAUDE.md               — critical constraints summary
+
+=== WHAT IS BACKED UP ===
+All hooks in settings.json:
+
+PreToolUse / Write|Edit:
+  1. Pre-write content scan — flags debug statements, secrets, TODOs in code files
+     Skips .md .txt .json .yaml .yml .toml (doc/config files) to avoid false positives
+  2. TopoAssist constraint reminder — fires when editing any topoassist/ file
+  3. Non-git project backup — backs up file to .claude/backups/ before edit if no .git found;
+     also warns and gives git init command
+
+PreToolUse / Bash:
+  4. Commit guard — fires on any `git commit`; enforces /review checklist
+
+PostToolUse / Write|Edit:
+  5. INSTRUCTIONS sync reminder — fires after any project file edit; requires updating
+     INSTRUCTIONS_<project>.txt and bumping Last updated
+  6. tmux-studio auto-deploy — copies tmux_studio.py → ~/.tmux-studio/
+  7. tmux.conf auto-deploy — copies tmux.conf, themes/, scripts → ~/.tmux/
+  8. bashrc auto-deploy — copies .bashrc → ~/.bashrc
+
+=== WHAT IS NOT BACKED UP ===
+- ~/.ai-proxy-api-key (actual secret — obtain via Arista onboarding)
+- ~/.claude/history.jsonl, cache/, sessions/ (runtime data, not needed)
+
+=== WHAT IS BACKED UP ===
+- api-key-helper.sh        → ~/.claude/api-key-helper.sh
+- hooks/*.sh               → ~/.claude/hooks/ (commit-guard.sh)
+- rules/*.md               → ~/.claude/rules/ (ui, quality, security, testing)
+- commands/*.md            → ~/.claude/commands/ (new-project, review)
+- global-rules/CLAUDE.md   → ~/claude/CLAUDE.md (all 16+ global rules)
+
+=== RESTORE PROCEDURE (new machine) ===
+1. Clone projects repo: git clone https://github.com/yagnesh-arista/claude ~/claude/projects
+2. Run: bash ~/claude/projects/settings/setup.sh
+   Installs: settings.json, api-key-helper.sh, rules/, commands/, CLAUDE.md
+3. Ensure ~/.ai-proxy-api-key exists (from Arista onboarding)
+4. Set git identity:
+     git config --global user.name "Yagnesh Chauhan"
+     git config --global user.email "<your email>"
+5. Verify hooks loaded in Claude Code
+
+=== KEEP IN SYNC — after any change to: ===
+- ~/.claude/settings.json   → regenerate settings.json.template + commit
+- ~/.claude/rules/*.md      → copy to rules/ + commit
+- ~/.claude/commands/*.md   → copy to commands/ + commit
+- ~/claude/CLAUDE.md        → copy to global-rules/ + commit
+
+=== DESIGN CONSTRAINTS ===
+- template must never contain real secrets or API keys
+- $HOME must replace all absolute /home/yagnesh paths in the template
+- setup.sh must be idempotent — safe to run multiple times
+- After any change to ~/.claude/settings.json, regenerate the template:
+    sed "s|/home/yagnesh|\$HOME|g" ~/.claude/settings.json > settings.json.template
+  Then commit both files together.
+
+=== KEY INVARIANT ===
+settings.json.template must always be in sync with ~/.claude/settings.json.
+If they drift, the restore procedure will rebuild the wrong hooks.
