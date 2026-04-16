@@ -60,6 +60,16 @@
           },
           {
             "type": "command",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then result=$(cd $HOME/claude/projects/topoassist && python3 -m pytest tests/ -q 2>&1 | tail -3); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[PYTEST] $result\\\"}}\"; fi 2>/dev/null || true",
+            "statusMessage": "Running TopoAssist pytest..."
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -q '/topoassist/Code\\.gs'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[TESTS] If you added or changed a pure function in Code.gs, add cases to Tests.gs and run runAllTests() in the Apps Script editor.\\\"}}\"; fi 2>/dev/null || true",
+            "statusMessage": "Checking TopoAssist GAS test coverage..."
+          },
+          {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); SETTINGS_BACKUP=$HOME/claude/projects/settings; changed=0; case \"$f\" in $HOME/.claude/hooks/*.sh) mkdir -p \"$SETTINGS_BACKUP/hooks\"; cp \"$f\" \"$SETTINGS_BACKUP/hooks/\" && chmod +x \"$SETTINGS_BACKUP/hooks/$(basename $f)\" && changed=1 ;; $HOME/.claude/rules/*.md) mkdir -p \"$SETTINGS_BACKUP/rules\"; cp \"$f\" \"$SETTINGS_BACKUP/rules/\" && changed=1 ;; $HOME/.claude/commands/*.md) mkdir -p \"$SETTINGS_BACKUP/commands\"; cp \"$f\" \"$SETTINGS_BACKUP/commands/\" && changed=1 ;; $HOME/.claude/settings.json) sed \"s|$HOME|\\$HOME|g\" \"$f\" > \"$SETTINGS_BACKUP/settings.json.template\" && changed=1 ;; $HOME/claude/CLAUDE.md) mkdir -p \"$SETTINGS_BACKUP/global-rules\"; cp \"$f\" \"$SETTINGS_BACKUP/global-rules/CLAUDE.md\" && changed=1 ;; esac; if [ \"$changed\" -eq 1 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SETTINGS BACKUP] $(basename $f) auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude.\\\"}}\"; fi 2>/dev/null || true",
             "statusMessage": "Syncing to settings backup..."
           }

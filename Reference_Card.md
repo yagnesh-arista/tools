@@ -87,6 +87,8 @@ git push
 | Edit tmux-studio file | Auto-deploy to `~/.tmux-studio/` |
 | Edit tmux.conf file | Auto-deploy to `~/.tmux/` + reload tmux |
 | Edit `.bashrc` | Auto-deploy to `~/.bashrc` |
+| Edit `topoassist/device_bridge.py` | Auto-runs `pytest tests/ -v` and shows summary inline |
+| Edit `topoassist/Code.gs` | Reminds to update `Tests.gs` if pure functions changed |
 
 ---
 
