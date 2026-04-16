@@ -112,6 +112,16 @@ Run `/review` for a full structured report.
 - After any change to `~/.claude/settings.json`, `~/.claude/rules/`, `~/.claude/commands/`, or `~/claude/CLAUDE.md` — sync to `~/claude/projects/settings/` and commit.
 - Pre-commit auto-scan runs via hook (blocks on secrets/debug). Run `/review` for full check.
 
+## 18. Global Config Auto-Sync (settings backup)
+All global Claude Code config files auto-sync to `~/claude/projects/settings/` via PostToolUse hook whenever they are edited:
+- `~/.claude/hooks/*.sh` → `settings/hooks/`
+- `~/.claude/rules/*.md` → `settings/rules/`
+- `~/.claude/commands/*.md` → `settings/commands/`
+- `~/.claude/settings.json` → regenerated `settings/settings.json.template` (with $HOME)
+- `~/claude/CLAUDE.md` → `settings/global-rules/`
+
+After any such edit: commit and push `~/claude` to keep the machine rebuild kit up to date.
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
@@ -152,5 +162,6 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 15 | Ambiguity — ask before non-trivial tasks | `CLAUDE.md` | `CLAUDE.md` |
 | 16 | Claude Code anatomy reference | `CLAUDE.md` | `CLAUDE.md` |
 | 17 | Git workflow — every project must be a git repo | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
+| 18 | Global config auto-sync to settings backup | `hooks/` | `settings.json` (PostToolUse hook) |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.

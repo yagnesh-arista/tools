@@ -1,5 +1,5 @@
 INSTRUCTIONS — settings
-Last updated: 2026-04-17 (added hooks/ to backup; setup.sh now restores hooks/, rules/, commands/, CLAUDE.md)
+Last updated: 2026-04-17 (added auto-sync PostToolUse hook; all global config edits now self-propagate to backup)
 
 === PROJECT OVERVIEW ===
 Backup and restore kit for ~/.claude/settings.json (Claude Code global config).
@@ -33,6 +33,13 @@ PostToolUse / Write|Edit:
   6. tmux-studio auto-deploy — copies tmux_studio.py → ~/.tmux-studio/
   7. tmux.conf auto-deploy — copies tmux.conf, themes/, scripts → ~/.tmux/
   8. bashrc auto-deploy — copies .bashrc → ~/.bashrc
+  9. Global config auto-sync — fires when editing any of:
+       ~/.claude/hooks/*.sh      → settings/hooks/
+       ~/.claude/rules/*.md      → settings/rules/
+       ~/.claude/commands/*.md   → settings/commands/
+       ~/.claude/settings.json   → regenerate settings/settings.json.template
+       ~/claude/CLAUDE.md        → settings/global-rules/
+     Outputs reminder to commit and push ~/claude after sync.
 
 === WHAT IS NOT BACKED UP ===
 - ~/.ai-proxy-api-key (actual secret — obtain via Arista onboarding)
