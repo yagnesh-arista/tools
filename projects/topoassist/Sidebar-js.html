@@ -9092,7 +9092,7 @@ async function commitPushConfig() {
               `<span style="color:#10b981;font-weight:600;">Push successful, no config diff</span>`);
             if (btn) {
               btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
-              setTimeout(() => { btn.disabled = false; btn.innerHTML = origText; }, 3500);
+              setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
             }
             _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 2500);
             setTimeout(() => { const st = document.getElementById('status'); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } }, 5000);
