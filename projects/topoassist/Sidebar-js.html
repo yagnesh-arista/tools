@@ -4756,7 +4756,10 @@ function selectDevice(deviceId) {
   const pushDevBtn = document.getElementById('btnPushDevice');
   if (pushDevBtn) pushDevBtn.style.display = (devData && devData.type === 'non-arista') ? 'none' : '';
 
-  if (!devData || !devData.fullConfig) {
+  if (devData && devData.type === 'non-arista') {
+    currentDeviceConfig = "";
+    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config — Non-EOS`, "#64748b", false);
+  } else if (!devData || !devData.fullConfig) {
     currentDeviceConfig = "";
     setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config [${time}] - Fetching`, "#f59e0b", true);
     fetchFullConfig(deviceId);
@@ -4852,7 +4855,10 @@ function selectLine(id) {
     if (pbl) pbl.style.display = (allDevicesData[dev1] && allDevicesData[dev1].type === 'non-arista') ? 'none' : '';
     if (pbr) pbr.style.display = (allDevicesData[dev2] && allDevicesData[dev2].type === 'non-arista') ? 'none' : '';
 
-    if (isCfg1Ready) {
+    if (allDevicesData[dev1] && allDevicesData[dev1].type === 'non-arista') {
+      currentLeftConfig = "";
+      setSplitBtnState("splitLeft", `[${sheetId1}] ${dev1}:Config:${port1} — Non-EOS`, "#64748b", false);
+    } else if (isCfg1Ready) {
       currentLeftConfig = allNodesData[u]?.details?.config;
       setSplitBtnState("splitLeft", `[${sheetId1}] ${dev1}:Config:${port1} [${allDevicesData[dev1]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev1].fetchEpoch) : 'Cached'}]`, "#10b981", false);
       triggerButtonFlash("btnLeft");
@@ -4861,7 +4867,10 @@ function selectLine(id) {
       fetchFullConfig(dev1);
     }
 
-    if (isCfg2Ready) {
+    if (allDevicesData[dev2] && allDevicesData[dev2].type === 'non-arista') {
+      currentRightConfig = "";
+      setSplitBtnState("splitRight", `[${sheetId2}] ${dev2}:Config:${port2} — Non-EOS`, "#64748b", false);
+    } else if (isCfg2Ready) {
       currentRightConfig = allNodesData[v]?.details?.config;
       setSplitBtnState("splitRight", `[${sheetId2}] ${dev2}:Config:${port2} [${allDevicesData[dev2]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev2].fetchEpoch) : 'Cached'}]`, "#10b981", false);
       triggerButtonFlash("btnRight");
