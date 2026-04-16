@@ -1431,22 +1431,6 @@
     transition: top 0.3s ease-out;
   }
 
-  /* ── Fullscreen mode ───────────────────────────────────────────────────── */
-  body.fullscreen-mode .toolbar,
-  body.fullscreen-mode #minimizedBar { display: none !important; }
-
-  body.fullscreen-mode #viewport {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 9998;
-    transition: none;
-  }
-
-  body.fullscreen-mode #fullscreenExitBtn { display: flex !important; }
-
   #viewport:active {
     cursor: grabbing
   }

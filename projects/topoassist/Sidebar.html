@@ -33,9 +33,6 @@
       <div class="toolbar-row primary-row">
         <div class="ui-group">
           <button class="mono-btn btn-yellow" onclick="toggleMinimize()" title="Minimize">－</button>
-          <button class="mono-btn btn-green" id="fullscreenBtn" onclick="toggleFullscreen()" title="Fullscreen" style="user-select:none;-webkit-user-select:none;margin-left:4px;">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><path d="M1 3.5V1H3.5M6.5 1H9v2.5M9 6.5V9H6.5M3.5 9H1V6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
           <div class="divider-v"></div>
           <button id="manualRefreshBtn" class="icon-btn" onclick="fetchData(true)" title="Refresh Data">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -274,10 +271,6 @@
     </div>
 
     <div id="viewport">
-      <button id="fullscreenExitBtn" onclick="toggleFullscreen()" title="Exit Fullscreen (Esc)" style="display:none;position:absolute;top:8px;right:8px;z-index:9999;background:rgba(30,41,59,0.8);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;align-items:center;gap:5px;user-select:none;-webkit-user-select:none;backdrop-filter:blur(4px);">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><path d="M3.5 1H1v2.5M1 6.5V9h2.5M6.5 9H9V6.5M9 3.5V1H6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Exit Fullscreen
-      </button>
       <div id="canvas-surface">
         <canvas id="canvas-layer"></canvas>
         <div id="nodes-layer"></div>
