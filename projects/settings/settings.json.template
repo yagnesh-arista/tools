@@ -32,6 +32,16 @@
             "statusMessage": "Scanning staged diff before commit..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rollback-logger.sh",
+            "statusMessage": "Checking for revert/rollback to log..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
