@@ -925,15 +925,25 @@
   }
 
   .tech-stack-connector.root::before {
-    content: "◈";
-    color: #3b82f6;
-    font-size: 12px;
+    content: "";
+    display: block;
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    background: #3b82f6;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    flex-shrink: 0;
   }
 
   .tech-stack-connector.child::before {
-    content: "└";
-    color: #cbd5e1;
-    font-size: 13px;
+    content: "";
+    display: block;
+    width: 8px;
+    height: 12px;
+    min-width: 8px;
+    border-left: 1.5px solid #cbd5e1;
+    border-bottom: 1.5px solid #cbd5e1;
+    flex-shrink: 0;
   }
 
   .tech-tag {

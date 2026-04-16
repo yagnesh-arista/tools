@@ -347,7 +347,7 @@ function initApp() {
       restoreCameraForMode(currentViewMode);
 
       let st = document.getElementById("status");
-      if (st) st.innerText = "Topology restored from cache (\uD83D\uDE80 Checking for updates..)";
+      if (st) st.innerText = "Topology restored from cache (Checking for updates…)";
 
       // Background Fetch — auto-verify to confirm session cache == actual.
       // silent=true: topology already visible, keep "Topology restored from cache" in status.
@@ -8531,7 +8531,7 @@ function _autoRunLldp() {
   console.log('🔍 Auto-LLDP: triggered — running LLDP + device status check');
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
-  if (st)  { st.innerHTML = '🔍 Running LLDP check\u2026'; st.style.color = '#0369a1'; }
+  if (st)  { st.innerHTML = 'Running LLDP check\u2026'; st.style.color = '#0369a1'; }
   if (btn) { btn.classList.add('lldp-scanning'); }
   _lastLldpLinkSig = _getLinkSig(); // snapshot cabling — next config-only fetchData won't re-trigger
   const _done = () => { if (btn) btn.classList.remove('lldp-scanning'); };
@@ -8575,7 +8575,9 @@ function toggleLldpMinimize() {
   const modal  = document.getElementById('lldpModal');
   const isMin  = modal.classList.toggle('modal-minimized');
   const minBtn = document.getElementById('btnLldpMinimize');
-  if (minBtn) minBtn.textContent = isMin ? '□' : '−';
+  if (minBtn) minBtn.innerHTML = isMin
+    ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="1" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>'
+    : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
 }
 
 // Make the bridge modal draggable by its header.
@@ -9089,8 +9091,8 @@ async function commitPushConfig() {
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
               `<span style="color:#10b981;font-weight:600;">Push successful, no config diff</span>`);
             if (btn) {
-              btn.textContent = '✓ Verified';
-              setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
+              btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
+              setTimeout(() => { btn.disabled = false; btn.innerHTML = origText; }, 3500);
             }
             _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 2500);
             setTimeout(() => { const st = document.getElementById('status'); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } }, 5000);
@@ -11639,7 +11641,7 @@ function toggleDevVisPanelOpen() {
   if (isOpen) {
     panel.classList.remove('is-minimized');
     const minBtn = document.getElementById('devVisMinBtn');
-    if (minBtn) minBtn.textContent = '−';
+    if (minBtn) minBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
     populateDevVisPanel();
     initDevVisPanelDrag();
   }
@@ -11714,7 +11716,9 @@ function toggleDevVisMinimize(e) {
   const btn = document.getElementById('devVisMinBtn');
   if (!panel) return;
   const isMin = panel.classList.toggle('is-minimized');
-  if (btn) btn.textContent = isMin ? '+' : '−';
+  if (btn) btn.innerHTML = isMin
+    ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
 }
 
 function filterDevVisList() {
