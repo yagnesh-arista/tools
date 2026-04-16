@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-17 (Add fullscreen mode: green expand button next to yellow minimize in toolbar; toggles body.fullscreen-mode class; viewport goes fixed 0/0/100vw/100vh; Esc exits; exit button overlay in viewport corner; UserGuide updated)
+  Last updated: 2026-04-17 (Fix fullscreen: toggleFullscreen() now calls google.script.host.setWidth/setHeight(screen.availWidth/Height) to actually expand the GAS dialog; saves/restores prev dims in _fullscreenPrevDims; redrawLinks fires after 150ms settle)
   Previous: 2026-04-17 (SVG icon compliance: replaced all Unicode/emoji icons with CSS shapes or inline SVG — tech-stack connectors (◈→clip-path diamond, └→CSS L-shape), status text emojis removed, minimize/restore/expand buttons now use SVG, ✓ Verified button uses SVG checkmark)
   Previous: 2026-04-17 (Rule 13: added test suite — tests/test_device_bridge.py (34 pytest cases, 6 pure functions) + Tests.gs (GAS harness, 4 pure functions, 34 cases); see TESTING section near end)
   Previous: 2026-04-17 (VERSION 2.6→2.7: SSH_USER and JUMP_HOST now env-var overridable in device_bridge.py; startup banner shows "Overrides:" hint; removed unused shlex from embedded template; Files: device_bridge.py, Sidebar-js.html)
