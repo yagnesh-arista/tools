@@ -122,6 +122,15 @@ All global Claude Code config files auto-sync to `~/claude/projects/settings/` v
 
 After any such edit: commit and push `~/claude` to keep the machine rebuild kit up to date.
 
+## 19. Rollback Logging (mandatory for ALL reverts)
+Whenever any change is reverted or rolled back — **regardless of method** (git revert, file edit, backup restore, direct overwrite) — always append an entry to `~/claude/ROLLBACKS.md`:
+```
+## YYYY-MM-DD | <project> | <git hash or "non-git">
+**<what was reverted and why>**
+Files: <files affected>
+```
+The git hook (`rollback-logger.sh`) handles `git revert` automatically. For non-git rollbacks (editing a file back, restoring a backup), Claude must write the entry manually. Never skip this — the log exists so the same failed approach is not attempted again.
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
