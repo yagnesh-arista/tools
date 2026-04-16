@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-17 (Deleted lldp_bridge.py — obsolete; device_bridge.py already has /lldp and /devstatus endpoints)
+  Last updated: 2026-04-17 (Rule 7: replaced 4 Unicode × ✕ chars with SVG in Sidebar.html; synced canonicalizeInterface() Code.gs→Sidebar-js.html — chained replaces + regex filter; fixed device_bridge.py /health docstring version 2.6→2.7)
   Previous: 2026-04-17 (VERSION 2.6→2.7: SSH_USER and JUMP_HOST now env-var overridable in device_bridge.py; startup banner shows "Overrides:" hint; removed unused shlex from embedded template; Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-17 (lldp_bridge.py: JUMP_HOST restored to "bus-home" default, now overridable via LLDP_JUMP_HOST env var — export LLDP_JUMP_HOST="" to SSH directly without editing file. File: lldp_bridge.py)
   Previous: 2026-04-16 (Quality review fixes: (1) Code.gs getNetworkSettings/saveNetworkSettings: getUserProperties→getDocumentProperties — network settings are shared topology settings, must be per-sheet not per-user; (2) device_bridge.py: removed unused shlex import; (3) lldp_bridge.py: JUMP_HOST hardcoded "bus-home"→"" so fresh installs SSH directly; (4) Sidebar-js.html: 11 inline HTML escape chains replaced with existing escapeHtml() helper. Files: Code.gs, device_bridge.py, lldp_bridge.py, Sidebar-js.html)

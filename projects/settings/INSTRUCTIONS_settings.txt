@@ -67,6 +67,8 @@ PostToolUse / Write|Edit:
 - ~/.claude/rules/*.md      → copy to rules/ + commit
 - ~/.claude/commands/*.md   → copy to commands/ + commit
 - ~/claude/CLAUDE.md        → copy to global-rules/ + commit
+- Any rule or workflow change → update ~/claude/Reference_Card.md + commit
+  (hook now reminds automatically on every global config edit)
 
 === DESIGN CONSTRAINTS ===
 - template must never contain real secrets or API keys

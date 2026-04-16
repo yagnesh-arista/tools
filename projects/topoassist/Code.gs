@@ -2677,43 +2677,26 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
   }
 }
 
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-07
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-17
 function canonicalizeInterface(name) {
   if (!name) return "";
-  let s = String(name).trim();
 
-  // 1. Remove "interface" keyword if present
-  s = s.replace(/^(interface\s+|int\s+)/i, "");
+  let s = String(name).trim().replace(/^(interface\s+|int\s+)/i, "");
 
-  // 2. Strict Prefix Replacement (Case-Insensitive Input -> Title Case Output)
-  if (/^(ethernet|eth|et)\d/i.test(s)) {
-    return s.replace(/^(ethernet|eth|et)/i, "Et");
-  }
-  if (/^(port-?channel|po)\d/i.test(s)) {
-    // Handles 'port-channel', 'portchannel', 'po'
-    return s.replace(/^(port-?channel|po)/i, "Po");
-  }
-  if (/^(vlan|vl)\d/i.test(s)) {
-    return s.replace(/^(vlan|vl)/i, "Vl");
-  }
-  if (/^(loopback|lo)\d/i.test(s)) {
-    return s.replace(/^(loopback|lo)/i, "Lo");
-  }
-  if (/^(management|mgmt|ma)\d/i.test(s)) {
-    return s.replace(/^(management|mgmt|ma)/i, "Ma");
-  }
-  if (/^(vxlan|vx)\d/i.test(s)) {
-    return s.replace(/^(vxlan|vx)/i, "Vx");
-  }
-  if (/^(tunnel|tu)\d/i.test(s)) {
-    return s.replace(/^(tunnel|tu)/i, "Tu");
-  }
+  s = s.replace(/^ethernet/i, "Et")
+    .replace(/^eth/i, "Et")
+    .replace(/^port-channel/i, "Po")
+    .replace(/^portchannel/i, "Po")
+    .replace(/^vlan/i, "Vl")
+    .replace(/^vxlan/i, "Vx")
+    .replace(/^loopback/i, "Lo")
+    .replace(/^(management|mgmt|ma)/i, "Ma")
+    .replace(/^tunnel/i, "Tu");
 
-  // 3. Fallback: Capitalize first letter (e.g., "Fabric" -> "Fabric")
-  if (s.length > 0) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-  return s;
+  // Matches Et1, Et1/1, Et1.10, Twe1, Hu1, Te1, Gi1, Fa1, etc.
+  let match = s.match(/^((?:Twe|Hu|Te|Gi|Fa|Et|Po|Vx|Vl|Lo|Ma|Tu)\d+[\d\/.]*)/i);
+
+  return match ? match[1] : s;
 }
 
 function getColumnIndices(headers, devName) {
