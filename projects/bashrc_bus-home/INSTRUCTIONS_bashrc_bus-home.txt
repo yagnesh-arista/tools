@@ -1,0 +1,54 @@
+INSTRUCTIONS — bashrc_bus-home project
+Last updated: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check-order.md (/check-order command))
+Previous: 2026-04-16 (removed stale ble.sh reference from section 5 comment)
+
+PROJECT OVERVIEW
+================
+Personal .bashrc configuration for the bus-home machine/environment.
+Source file lives at: ~/claude/projects/bashrc_bus-home/.bashrc
+Deploy target: ~/.bashrc (auto-deployed via PostToolUse hook on every edit)
+
+FILE STRUCTURE
+==============
+~/claude/projects/bashrc_bus-home/
+  .bashrc                         — The actual bashrc config (auto-deployed on edit)
+  INSTRUCTIONS_bashrc_bus-home.txt — This file (AI rebuild prompt)
+  CLAUDE.md                       — Auto-loaded constraints summary (source order, set -h, no ble.sh)
+  .claude/commands/
+    check-order.md                — /check-order: verify source order invariants (set -h, handler before bind, no ble.sh)
+
+AUTO-DEPLOY
+===========
+Any Write or Edit to .bashrc triggers: cp .bashrc ~/.bashrc
+No manual deploy needed. User must open a new shell or run `source ~/.bashrc`
+to see changes take effect in existing sessions.
+
+CURRENT .bashrc SECTIONS
+========================
+1.  Load System Defaults (/etc/bashrc 2>/dev/null) + set -h to re-enable hashing
+    /etc/bashrc disables hashing (set +h); re-enabling is required for NVM and other tools
+2.  Fix Tmux Resizing (shopt -s checkwinsize)
+3.  Standard Tab Completion (bash-completion)
+4.  FZF: source ~/.fzf.bash, FZF_TMUX_HEIGHT=20%, FZF_DEFAULT_OPTS (20% height, reverse, border),
+    FZF_CTRL_R_OPTS (--height 20%, no-sort, exact); up arrow = normal history (Ctrl+R for fzf)
+5.  Custom Functions — command_not_found_handle (@<device> SSHes to admin@<device>); mkcd()
+    IMPORTANT: must stay BEFORE section 6 (ble.sh) so ble.sh wraps the handler on load/reload
+6.  Up arrow bound to __fzf_history__ via bash readline bind -x (ble.sh removed — caused flickering)
+7.  Prevent Ctrl+D (ignoreeof, IGNOREEOF=10)
+8.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ...
+9.  TZ=Asia/Kolkata, PATH prepend ~/.local/bin, EDITOR/VISUAL=vim, CDPATH=.:~:~/claude/projects
+10. History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
+    PROMPT_COMMAND appends history after each command (history -a only)
+    NOTE: history -c/-r removed — caused ble.sh to print "loading history" on every prompt
+11. Prompt (PS1): green user@host, blue cwd, git branch via __git_ps1
+12. NVM setup
+
+INSTRUCTIONS FOR AI
+====================
+- Read this file before making any changes to the project.
+- After every change, update the relevant section(s) of this file and bump
+  the "Last updated" date at the top.
+- Keep the .bashrc well-organized with numbered section comments.
+- Do not add bloat — only include what the user explicitly asks for.
+- Source order matters in .bashrc — be careful with PATH and env var ordering.
+- command_not_found_handle MUST remain before the ble.sh source line (section 6). ble.sh wraps the pre-existing handler on load; if defined after, ble.sh's reload will overwrite it.

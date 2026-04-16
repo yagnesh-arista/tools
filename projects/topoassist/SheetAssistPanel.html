@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+    }
+    body {
+      font-family: "JetBrains Mono", monospace;
+      background: #ffffff;
+      color: #1e293b;
+      font-size: 11px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── HEADER ───────────────────────────────────────── */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .panel-title {
+      flex: 1;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+    .btn-min {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
+      font-weight: 700;
+      width: 26px;
+      height: 26px;
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .btn-min:hover { background: #cbd5e1; color: #0f172a; border-color: #64748b; }
+    .btn-min:disabled { opacity: 0.35; cursor: default; }
+
+    /* ─── GLOBAL SEARCH ────────────────────────────────── */
+    .search-row {
+      padding: 5px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .search-inp {
+      font-family: "JetBrains Mono", monospace;
+      width: 100%;
+      font-size: 10px;
+      padding: 4px 7px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #ffffff;
+      color: #1e293b;
+      outline: none;
+    }
+    .search-inp::placeholder { color: #94a3b8; }
+    .search-inp:focus { border-color: #64748b; }
+
+    /* ─── TWO-COLUMN BODY ──────────────────────────────── */
+    .panel-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+    .col-left {
+      width: 230px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #e2e8f0;
+    }
+    .col-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── SECTION HEADERS ──────────────────────────────── */
+    .col-header {
+      padding: 4px 10px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+    }
+
+    /* ─── LEFT: DEVICES ─────────────────────────────────── */
+    .action-row {
+      display: flex;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .btn-bulk {
+      font-family: "JetBrains Mono", monospace;
+      flex: 1;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 6px 4px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      letter-spacing: 0.3px;
+      transition: opacity 0.1s;
+    }
+    .btn-bulk:disabled { opacity: 0.4; cursor: default; }
+    .btn-show-all { background: #dcfce7; color: #15803d; border-right: 1px solid #e2e8f0; }
+    .btn-show-all:not(:disabled):hover { background: #bbf7d0; }
+    .btn-hide-all { background: #ffedd5; color: #c2410c; }
+    .btn-hide-all:not(:disabled):hover { background: #fed7aa; }
+
+    /* ─── SHARED: ITEM ROWS (devices + columns) ─────────── */
+    .device-list { overflow-y: auto; flex: 1; background: #ffffff; }
+
+    .device-item, .col-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.1s;
+      user-select: none;
+    }
+    .device-item { cursor: default; }
+    .col-item    { cursor: pointer; }
+    .device-item:hover { background: #f8fafc; }
+    .col-item:hover:not(.mandatory) { background: #f8fafc; }
+
+    /* Pulse animation shared by both sides */
+    @keyframes dvp-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    /* ── toggling states (shared) ── */
+    .device-item.is-toggling,
+    .col-item.is-toggling {
+      pointer-events: none;
+      animation: dvp-pulse 0.65s ease-in-out infinite;
+    }
+    .device-item.is-toggling:not(.is-hidden),
+    .col-item.is-toggling:not(.is-hidden) { background: rgba(22, 163, 74, 0.07); }
+    .device-item.is-toggling:not(.is-hidden) .eye-icon,
+    .col-item.is-toggling:not(.is-hidden) .eye-icon { color: #16a34a; }
+    .device-item.is-toggling:not(.is-hidden) .item-name,
+    .col-item.is-toggling:not(.is-hidden) .item-name { color: #15803d; text-decoration: none; }
+    .device-item.is-toggling.is-hidden,
+    .col-item.is-toggling.is-hidden { background: rgba(234, 88, 12, 0.06); }
+    .device-item.is-toggling.is-hidden .eye-icon,
+    .col-item.is-toggling.is-hidden .eye-icon { color: #ea580c; }
+    .device-item.is-toggling.is-hidden .item-name,
+    .col-item.is-toggling.is-hidden .item-name { color: #c2410c; text-decoration: none; }
+
+    /* ── eye icon (shared) ── */
+    .eye-icon {
+      flex-shrink: 0;
+      width: 13px;
+      height: 13px;
+      color: #16a34a;
+      transition: color 0.15s;
+    }
+    .device-item.is-hidden .eye-icon,
+    .col-item.is-hidden .eye-icon { color: #cbd5e1; }
+
+    /* ── item name label (shared) ── */
+    .item-name {
+      font-family: "JetBrains Mono", monospace;
+      flex: 1;
+      font-size: 10px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .device-item.is-hidden .item-name,
+    .col-item.is-hidden .item-name { color: #94a3b8; text-decoration: line-through; }
+
+    /* ── device-specific: clickable name + col-count ── */
+    .item-name.navigable { cursor: pointer; }
+    .item-name.navigable:hover { color: #2563eb; text-decoration: underline; }
+    .device-item.is-hidden .item-name.navigable:hover { color: #2563eb; text-decoration: underline; }
+    .col-count {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      color: #64748b;
+      background: #f1f5f9;
+      border-radius: 3px;
+      padding: 1px 4px;
+      flex-shrink: 0;
+    }
+    .device-item.is-hidden .col-count { opacity: 0.45; }
+    .device-item.is-toggling.is-hidden .col-count { opacity: 1; }
+
+    /* ── selection ── */
+    .sel-chk { flex-shrink: 0; width: 12px; height: 12px; cursor: pointer; accent-color: #3b82f6; }
+    .device-item.is-selected { background: #eff6ff; }
+    .device-item.is-selected:hover { background: #dbeafe; }
+
+    /* ── selection action row ── */
+    .sel-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .sel-all-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 8px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      cursor: pointer;
+      border-right: 1px solid #e2e8f0;
+      flex-shrink: 0;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .sel-all-wrap input { cursor: pointer; accent-color: #3b82f6; }
+    .btn-sel {
+      font-family: "JetBrains Mono", monospace;
+      flex: 1;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 5px 4px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      letter-spacing: 0.3px;
+      transition: opacity 0.1s;
+    }
+    .btn-sel:disabled { opacity: 0.35; cursor: default; }
+    .btn-show-sel { background: #dcfce7; color: #15803d; border-right: 1px solid #e2e8f0; }
+    .btn-show-sel:not(:disabled):hover { background: #bbf7d0; }
+    .btn-hide-sel { background: #ffedd5; color: #c2410c; }
+    .btn-hide-sel:not(:disabled):hover { background: #fed7aa; }
+
+    /* ── col-item mandatory (always visible) ── */
+    .col-item.mandatory { cursor: default; opacity: 0.55; }
+
+    /* ─── RIGHT: COLUMNS ─────────────────────────────────── */
+
+    /* 2-column grid for column items */
+    .col-items {
+      overflow-y: auto;
+      flex: 1;
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-content: start;
+    }
+    /* right border on odd items to act as column divider */
+    .col-item:nth-child(odd) { border-right: 1px solid #f1f5f9; }
+
+    /* ─── STATUS BAR ────────────────────────────────────── */
+    .status-bar {
+      font-family: "JetBrains Mono", monospace;
+      padding: 5px 10px;
+      font-size: 9px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      min-height: 24px;
+      background: #f8fafc;
+    }
+    .loading {
+      font-family: "JetBrains Mono", monospace;
+      color: #94a3b8;
+      padding: 20px 10px;
+      text-align: center;
+      font-size: 10px;
+      grid-column: 1 / -1;
+    }
+    /* ─── SERVER BUSY — lock interactive controls while call in flight ─── */
+    body.server-busy .ip-filter-item                              { pointer-events: none; opacity: 0.45; }
+    body.server-busy .device-item:not(.is-toggling) .eye-icon    { pointer-events: none; opacity: 0.4; }
+    body.server-busy .col-item:not(.mandatory):not(.is-toggling) { pointer-events: none; opacity: 0.5; }
+
+    /* ─── IP_TYPE FILTER SECTION ────────────────────────── */
+    .ip-section { border-bottom: 1px solid #e2e8f0; }
+    .ip-section-header {
+      padding: 3px 8px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .ip-section-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 2px 0;
+    }
+    .ip-filter-item { cursor: pointer; }
+    .ip-item-dummy  { pointer-events: none; visibility: hidden; }
+  </style>
+</head>
+<body>
+  <div class="panel-header">
+    <span class="panel-title">Sheet View</span>
+    <button class="btn-min" id="btnMin" onclick="toggleMinimize()" title="Minimize">−</button>
+  </div>
+
+  <div class="search-row" id="searchRow">
+    <input type="text" id="globalSearch" class="search-inp" placeholder="Search devices &amp; columns…" oninput="filterAll()">
+  </div>
+
+  <div class="ip-section" id="ipFilterSection">
+    <div class="ip-section-header">ip_type</div>
+    <div class="ip-section-list" id="ipFilterList"></div>
+  </div>
+
+  <div class="ip-section" id="intModeFilterSection">
+    <div class="ip-section-header">int_mode</div>
+    <div class="ip-section-list" id="intModeFilterList"></div>
+  </div>
+
+  <div class="ip-section" id="sviFilterSection">
+    <div class="ip-section-header">svi</div>
+    <div class="ip-section-list" id="sviFilterList"></div>
+  </div>
+
+  <div class="panel-body" id="panelBody">
+    <!-- LEFT: Device Visibility -->
+    <div class="col-left">
+      <div class="col-header">Devices</div>
+      <div class="sel-row">
+        <label class="sel-all-wrap">
+          <input type="checkbox" id="chkSelAll" onchange="selectAllVis(this.checked)">SEL ALL
+        </label>
+        <button class="btn-sel btn-show-sel" id="btnShowSel" onclick="showSelected()" disabled>SHOW</button>
+        <button class="btn-sel btn-hide-sel" id="btnHideSel" onclick="hideSelected()" disabled>HIDE</button>
+      </div>
+      <div class="device-list" id="devList">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Column Visibility -->
+    <div class="col-right">
+      <div class="col-header">Columns</div>
+      <div class="sel-row">
+        <label class="sel-all-wrap">
+          <input type="checkbox" id="chkColSelAll" onchange="selectAllCols(this.checked)">SEL ALL
+        </label>
+        <button class="btn-sel btn-show-sel" id="btnColShow" onclick="showSelectedCols()" disabled>SHOW</button>
+        <button class="btn-sel btn-hide-sel" id="btnColHide" onclick="hideSelectedCols()" disabled>HIDE</button>
+      </div>
+      <div class="col-items" id="colItems">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar"></div>
+
+  <script>
+    var devices    = [];
+    var schema     = [];
+    var visibleKeys = [];
+    var selectedDevices = new Set();
+
+    var EYE_OPEN   = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    var EYE_CLOSED = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+
+    /* ── INIT ──────────────────────────────────────────── */
+    function load() {
+
+      // Left: devices
+      google.script.run
+        .withSuccessHandler(function(list) { devices = list; renderDevices(); })
+        .withFailureHandler(function() {
+          document.getElementById('devList').innerHTML = '<div class="loading">Error loading devices.</div>';
+        })
+        .getSheetDeviceList();
+
+      // Right: schema → prefs
+      google.script.run
+        .withSuccessHandler(function(s) {
+          schema = s;
+          google.script.run
+            .withSuccessHandler(function(keys) {
+              visibleKeys = Array.isArray(keys) ? keys : schema.map(function(x) { return x.key; });
+              renderColItems();
+            })
+            .withFailureHandler(function() {
+              document.getElementById('colItems').innerHTML = '<div class="loading">Error loading prefs.</div>';
+            })
+            .getViewPreferences();
+        })
+        .withFailureHandler(function() {
+          document.getElementById('colItems').innerHTML = '<div class="loading">Error loading schema.</div>';
+        })
+        .getSchemaConfig();
+
+      // ip_type / int_mode / svi filters: restore saved state
+      google.script.run
+        .withSuccessHandler(function(f) { initIpFilter(f); })
+        .getSheetViewIpFilter();
+      google.script.run
+        .withSuccessHandler(function(f) { initIntModeFilter(f); })
+        .getSheetViewIntModeFilter();
+      google.script.run
+        .withSuccessHandler(function(f) { initSviFilter(f); })
+        .getSheetViewSviFilter();
+    }
+
+    /* ── DEVICE LIST ───────────────────────────────────── */
+    function renderDevices() {
+      var list = document.getElementById('devList');
+      if (!devices || !devices.length) {
+        list.innerHTML = '<div class="loading">No devices found.</div>';
+        return;
+      }
+      list.innerHTML = devices.map(function(d) {
+        var hidden = !d.isVisible;
+        var sel   = selectedDevices.has(d.name);
+        var safe  = d.name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var label = (d.hostname || d.name).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return '<div class="device-item' + (hidden ? ' is-hidden' : '') + (sel ? ' is-selected' : '') + '" data-name="' + safe + '" data-hostname="' + label + '">' +
+          '<input type="checkbox" class="sel-chk"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation();toggleDevSel(\'' + safe + '\')" title="Select">' +
+          '<svg class="eye-icon" onclick="toggle(\'' + safe + '\')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" title="' + (hidden ? 'Show' : 'Hide') + '">' + (hidden ? EYE_CLOSED : EYE_OPEN) + '</svg>' +
+          '<span class="item-name navigable" onclick="navigate(\'' + safe + '\')" title="Jump to column">' + label + '</span>' +
+          '<span class="col-count">' + d.colCount + '</span>' +
+          '</div>';
+      }).join('');
+      filterAll();
+    }
+
+    function filterAll() {
+      var q = (document.getElementById('globalSearch').value || '').toLowerCase().trim();
+      document.querySelectorAll('#devList .device-item').forEach(function(el) {
+        var name     = (el.getAttribute('data-name')     || '').toLowerCase();
+        var hostname = (el.getAttribute('data-hostname') || '').toLowerCase();
+        el.style.display = (!q || name.indexOf(q) !== -1 || hostname.indexOf(q) !== -1) ? '' : 'none';
+      });
+      document.querySelectorAll('.col-item').forEach(function(el) {
+        var label = (el.getAttribute('data-label') || '').toLowerCase();
+        el.style.display = (!q || label.indexOf(q) !== -1) ? '' : 'none';
+      });
+    }
+
+    function setServerBusy(on) {
+      serverBusy = on;
+      document.body.classList.toggle('server-busy', on);
+      document.getElementById('btnMin').disabled = on;
+      updateSelBtns();
+      updateColSelBtns();
+    }
+
+    function toggleDevSel(name) {
+      if (selectedDevices.has(name)) selectedDevices.delete(name);
+      else selectedDevices.add(name);
+      var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+      if (el) {
+        el.classList.toggle('is-selected', selectedDevices.has(name));
+        var chk = el.querySelector('.sel-chk');
+        if (chk) chk.checked = selectedDevices.has(name);
+      }
+      updateSelBtns();
+    }
+
+    function updateSelBtns() {
+      var n = selectedDevices.size;
+      var dis = n === 0 || serverBusy;
+      var showSel = document.getElementById('btnShowSel');
+      var hideSel = document.getElementById('btnHideSel');
+      if (showSel) { showSel.disabled = dis; showSel.textContent = n > 0 ? 'SHOW (' + n + ')' : 'SHOW'; }
+      if (hideSel) { hideSel.disabled = dis; hideSel.textContent = n > 0 ? 'HIDE (' + n + ')' : 'HIDE'; }
+      var visEls = Array.from(document.querySelectorAll('#devList .device-item'))
+        .filter(function(el) { return el.style.display !== 'none'; });
+      var allSel  = visEls.length > 0 && visEls.every(function(el) { return selectedDevices.has(el.getAttribute('data-name')); });
+      var someSel = visEls.some(function(el) { return selectedDevices.has(el.getAttribute('data-name')); });
+      var chk = document.getElementById('chkSelAll');
+      if (chk) { chk.checked = allSel; chk.indeterminate = someSel && !allSel; }
+    }
+
+    function selectAllVis(checked) {
+      Array.from(document.querySelectorAll('#devList .device-item'))
+        .filter(function(el) { return el.style.display !== 'none'; })
+        .forEach(function(el) {
+          var name = el.getAttribute('data-name');
+          if (checked) selectedDevices.add(name); else selectedDevices.delete(name);
+          el.classList.toggle('is-selected', checked);
+          var chk = el.querySelector('.sel-chk');
+          if (chk) chk.checked = checked;
+        });
+      updateSelBtns();
+    }
+
+    function hideSelected() {
+      if (serverBusy || !selectedDevices.size) return;
+      var names = Array.from(selectedDevices);
+      names.forEach(function(name) {
+        var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+        if (el) { el.classList.add('is-toggling', 'is-hidden'); var svg = el.querySelector('.eye-icon'); if (svg) svg.innerHTML = EYE_CLOSED; }
+      });
+      setStatus('Hiding ' + names.length + ' device(s)\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function(list) {
+          devices = list; selectedDevices.clear(); renderDevices(); setServerBusy(false); setStatus('');
+        })
+        .withFailureHandler(function(err) {
+          names.forEach(function(name) {
+            var d = devices.find(function(x) { return x.name === name; });
+            var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+            if (el && d) { el.classList.remove('is-toggling'); el.classList.toggle('is-hidden', !d.isVisible); var svg = el.querySelector('.eye-icon'); if (svg) svg.innerHTML = d.isVisible ? EYE_OPEN : EYE_CLOSED; }
+          });
+          setServerBusy(false); setStatus('Error: ' + (err.message || 'failed'));
+        })
+        .batchToggleSheetDevices(names, true);
+    }
+
+    function showSelected() {
+      if (serverBusy || !selectedDevices.size) return;
+      var names = Array.from(selectedDevices);
+      names.forEach(function(name) {
+        var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+        if (el) { el.classList.add('is-toggling'); el.classList.remove('is-hidden'); var svg = el.querySelector('.eye-icon'); if (svg) svg.innerHTML = EYE_OPEN; }
+      });
+      setStatus('Showing ' + names.length + ' device(s)\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function(list) {
+          devices = list; selectedDevices.clear(); renderDevices(); setServerBusy(false); setStatus('');
+        })
+        .withFailureHandler(function(err) {
+          names.forEach(function(name) {
+            var d = devices.find(function(x) { return x.name === name; });
+            var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+            if (el && d) { el.classList.remove('is-toggling'); el.classList.toggle('is-hidden', !d.isVisible); var svg = el.querySelector('.eye-icon'); if (svg) svg.innerHTML = d.isVisible ? EYE_OPEN : EYE_CLOSED; }
+          });
+          setServerBusy(false); setStatus('Error: ' + (err.message || 'failed'));
+        })
+        .batchToggleSheetDevices(names, false);
+    }
+
+    function applyBulkOptimistic(hide) {
+      document.querySelectorAll('#devList .device-item').forEach(function(el) {
+        el.classList.add('is-toggling');
+        el.classList.toggle('is-hidden', hide);
+        var svg = el.querySelector('.eye-icon');
+        if (svg) svg.innerHTML = hide ? EYE_CLOSED : EYE_OPEN;
+      });
+    }
+
+    function revertBulkOptimistic() {
+      devices.forEach(function(d) {
+        var safe = d.name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+        if (!el) return;
+        el.classList.remove('is-toggling');
+        var hidden = !d.isVisible;
+        el.classList.toggle('is-hidden', hidden);
+        var svg = el.querySelector('.eye-icon');
+        if (svg) svg.innerHTML = hidden ? EYE_CLOSED : EYE_OPEN;
+      });
+    }
+
+    function toggle(name) {
+      if (serverBusy) return;
+      var d = devices.find(function(x) { return x.name === name; });
+      if (!d) return;
+      var nowHidden = d.isVisible; // was visible → now hiding
+      var safe = name.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      var el = document.querySelector('.device-item[data-name="' + safe + '"]');
+      if (el) {
+        el.classList.add('is-toggling');
+        el.classList.toggle('is-hidden', nowHidden);
+        var svg = el.querySelector('.eye-icon');
+        if (svg) svg.innerHTML = nowHidden ? EYE_CLOSED : EYE_OPEN;
+      }
+      setStatus('Updating ' + name + '\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() {
+          d.isVisible = !nowHidden;
+          if (el) el.classList.remove('is-toggling');
+          setServerBusy(false);
+          setStatus('');
+        })
+        .withFailureHandler(function(err) {
+          if (el) {
+            el.classList.remove('is-toggling');
+            el.classList.toggle('is-hidden', !nowHidden);
+            var svg = el.querySelector('.eye-icon');
+            if (svg) svg.innerHTML = nowHidden ? EYE_OPEN : EYE_CLOSED;
+          }
+          d.isVisible = nowHidden;
+          setServerBusy(false);
+          setStatus('Error: ' + (err.message || 'failed'));
+        })
+        .toggleSheetDevice(name, nowHidden);
+    }
+
+    function navigate(name) {
+      setStatus('Jumping to ' + name + '\u2026');
+      google.script.run
+        .withSuccessHandler(function() { if (!serverBusy) setStatus(''); })
+        .withFailureHandler(function(err) { if (!serverBusy) setStatus('Error: ' + (err.message || 'failed')); })
+        .scrollToDeviceColumn(name);
+    }
+
+    /* ── COLUMN VIEW ───────────────────────────────────── */
+    var selectedCols = new Set();
+
+    function renderColItems() {
+      var container = document.getElementById('colItems');
+      container.innerHTML = '';
+      schema.forEach(function(item, idx) {
+        var mandatory = (idx === 0);
+        var visible   = visibleKeys.indexOf(item.key) !== -1;
+        var hidden    = !visible;
+        var isSel     = selectedCols.has(item.key);
+        var label     = (item.label || item.key).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var div = document.createElement('div');
+        div.className = 'col-item' + (hidden ? ' is-hidden' : '') + (mandatory ? ' mandatory' : '') + (isSel ? ' is-selected' : '');
+        div.setAttribute('data-key', item.key);
+        div.setAttribute('data-label', (item.label || item.key).toLowerCase());
+        if (mandatory) div.title = 'Required \u2014 always visible';
+        else div.onclick = function() { toggleColItem(item.key); };
+
+        div.innerHTML =
+          '<input type="checkbox" class="sel-chk"' + (isSel ? ' checked' : '') + (mandatory ? ' disabled' : '') + ' onclick="event.stopPropagation();toggleColSel(\'' + item.key.replace(/'/g,"\\'") + '\')">' +
+          '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+            (hidden ? EYE_CLOSED : EYE_OPEN) +
+          '</svg>' +
+          '<span class="item-name">' + label + '</span>';
+
+        container.appendChild(div);
+      });
+      filterAll();
+    }
+
+    function toggleColSel(key) {
+      if (selectedCols.has(key)) selectedCols.delete(key);
+      else selectedCols.add(key);
+      var el = document.querySelector('.col-item[data-key="' + key + '"]');
+      if (el) {
+        el.classList.toggle('is-selected', selectedCols.has(key));
+        var chk = el.querySelector('.sel-chk');
+        if (chk) chk.checked = selectedCols.has(key);
+      }
+      updateColSelBtns();
+    }
+
+    function updateColSelBtns() {
+      var n = selectedCols.size;
+      var dis = n === 0 || serverBusy;
+      var showBtn = document.getElementById('btnColShow');
+      var hideBtn = document.getElementById('btnColHide');
+      if (showBtn) { showBtn.disabled = dis; showBtn.textContent = n > 0 ? 'SHOW (' + n + ')' : 'SHOW'; }
+      if (hideBtn) { hideBtn.disabled = dis; hideBtn.textContent = n > 0 ? 'HIDE (' + n + ')' : 'HIDE'; }
+      var items = document.querySelectorAll('.col-item:not(.mandatory)');
+      var allSel  = items.length > 0 && Array.from(items).every(function(el) { return selectedCols.has(el.getAttribute('data-key')); });
+      var someSel = Array.from(items).some(function(el) { return selectedCols.has(el.getAttribute('data-key')); });
+      var chk = document.getElementById('chkColSelAll');
+      if (chk) { chk.checked = allSel; chk.indeterminate = someSel && !allSel; }
+    }
+
+    function selectAllCols(checked) {
+      document.querySelectorAll('.col-item:not(.mandatory)').forEach(function(el) {
+        var key = el.getAttribute('data-key');
+        if (checked) selectedCols.add(key); else selectedCols.delete(key);
+        el.classList.toggle('is-selected', checked);
+        var chk = el.querySelector('.sel-chk');
+        if (chk) chk.checked = checked;
+      });
+      updateColSelBtns();
+    }
+
+    function showSelectedCols() {
+      if (serverBusy || !selectedCols.size) return;
+      selectedCols.forEach(function(key) {
+        if (visibleKeys.indexOf(key) === -1) visibleKeys.push(key);
+      });
+      selectedCols.clear();
+      renderColItems();
+      _applyColView();
+    }
+
+    function hideSelectedCols() {
+      if (serverBusy || !selectedCols.size) return;
+      var mandatory = schema.length ? schema[0].key : null;
+      selectedCols.forEach(function(key) {
+        if (key === mandatory) return;
+        var idx = visibleKeys.indexOf(key);
+        if (idx !== -1) visibleKeys.splice(idx, 1);
+      });
+      selectedCols.clear();
+      renderColItems();
+      _applyColView();
+    }
+
+    function _applyColView() {
+      setStatus('Applying column view\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applyCustomView(visibleKeys);
+    }
+
+    function toggleColItem(key) {
+      if (serverBusy) return;
+      var idx = visibleKeys.indexOf(key);
+      var wasVisible = idx !== -1;
+      var el = document.querySelector('.col-item[data-key="' + key + '"]');
+
+      // Optimistic update
+      if (wasVisible) visibleKeys.splice(idx, 1);
+      else visibleKeys.push(key);
+
+      if (el) {
+        el.classList.add('is-toggling');
+        el.classList.toggle('is-hidden', wasVisible);
+        var svg = el.querySelector('.eye-icon');
+        if (svg) svg.innerHTML = wasVisible ? EYE_CLOSED : EYE_OPEN;
+      }
+      setStatus('Updating columns\u2026');
+      setServerBusy(true);
+
+      google.script.run
+        .withSuccessHandler(function() {
+          if (el) el.classList.remove('is-toggling');
+          setServerBusy(false);
+          setStatus('');
+        })
+        .withFailureHandler(function(err) {
+          // Revert
+          if (wasVisible) visibleKeys.push(key);
+          else visibleKeys.splice(visibleKeys.indexOf(key), 1);
+          if (el) {
+            el.classList.remove('is-toggling');
+            el.classList.toggle('is-hidden', !wasVisible);
+            var svg = el.querySelector('.eye-icon');
+            if (svg) svg.innerHTML = wasVisible ? EYE_OPEN : EYE_CLOSED;
+          }
+          setServerBusy(false);
+          setStatus('Error: ' + (err.message || 'failed'));
+        })
+        .applyCustomView(visibleKeys);
+    }
+
+    /* ── SHARED UTILS ──────────────────────────────────── */
+    function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+
+    var serverBusy  = false;
+    var isMinimized = false;
+    function toggleMinimize() {
+      isMinimized = !isMinimized;
+      var hide = isMinimized ? 'none' : '';
+      document.getElementById('searchRow').style.display = hide;
+      document.getElementById('ipFilterSection').style.display = hide;
+      document.getElementById('intModeFilterSection').style.display = hide;
+      document.getElementById('sviFilterSection').style.display = hide;
+      document.getElementById('panelBody').style.display = hide;
+      document.getElementById('statusBar').style.display = hide;
+      document.getElementById('btnMin').textContent = isMinimized ? '+' : '−';
+      google.script.host.setHeight(isMinimized ? 36 : 550);
+    }
+
+    /* ── IP_TYPE FILTER ────────────────────────────────── */
+    var activeIpFilters = [];
+    var IP_FILTER_ITEMS = [
+      { val: 'p2p',   label: 'p2p' },
+      { val: 'gw',    label: 'gw'  },
+      { val: 'blank', label: '—'   },
+      { val: null,    label: ''    }  // dummy — visual symmetry only
+    ];
+
+    function initIpFilter(savedFilters) {
+      activeIpFilters = Array.isArray(savedFilters) ? savedFilters : ['p2p','gw','blank'];
+      renderIpFilterList();
+    }
+
+    function renderIpFilterList() {
+      var list = document.getElementById('ipFilterList');
+      if (!list) return;
+      list.innerHTML = IP_FILTER_ITEMS.map(function(item) {
+        if (!item.val) {
+          return '<div class="device-item ip-item-dummy"></div>';
+        }
+        var isHidden = activeIpFilters.indexOf(item.val) === -1;
+        return '<div class="device-item ip-filter-item' + (isHidden ? ' is-hidden' : '') + '"' +
+               ' onclick="toggleIpFilter(\'' + item.val + '\')"' +
+               ' title="' + (isHidden ? 'Show' : 'Hide') + '">' +
+               '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+               ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+               (isHidden ? EYE_CLOSED : EYE_OPEN) +
+               '</svg>' +
+               '<span class="item-name">' + item.label + '</span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function toggleIpFilter(val) {
+      if (serverBusy) return;
+      var idx = activeIpFilters.indexOf(val);
+      if (idx !== -1) activeIpFilters.splice(idx, 1);
+      else activeIpFilters.push(val);
+      renderIpFilterList();
+      setStatus('Applying filter\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applySheetIpFilter(activeIpFilters);
+    }
+
+    /* ── INT_MODE FILTER ───────────────────────────────── */
+    var activeIntModeFilters = [];
+    var INT_MODE_FILTER_ITEMS = [
+      { val: 'l2-et-access',  label: 'l2ea' },
+      { val: 'l2-et-trunk',   label: 'l2et' },
+      { val: 'l2-po-access',  label: 'l2pa' },
+      { val: 'l2-po-trunk',   label: 'l2pt' },
+      { val: 'l3-et-int',     label: 'l3ei' },
+      { val: 'l3-et-sub-int', label: 'l3es' },
+      { val: 'l3-po-int',     label: 'l3pi' },
+      { val: 'l3-po-sub-int', label: 'l3ps' }
+    ];
+
+    function initIntModeFilter(savedFilters) {
+      var validVals = INT_MODE_FILTER_ITEMS.map(function(i) { return i.val; });
+      var valid = Array.isArray(savedFilters)
+        ? savedFilters.filter(function(v) { return validVals.indexOf(v) !== -1; })
+        : [];
+      activeIntModeFilters = valid.length > 0 ? valid : validVals.slice();
+      renderIntModeFilterList();
+    }
+
+    function renderIntModeFilterList() {
+      var list = document.getElementById('intModeFilterList');
+      if (!list) return;
+      list.innerHTML = INT_MODE_FILTER_ITEMS.map(function(item) {
+        var isHidden = activeIntModeFilters.indexOf(item.val) === -1;
+        return '<div class="device-item ip-filter-item' + (isHidden ? ' is-hidden' : '') + '"' +
+               ' onclick="toggleIntModeFilter(\'' + item.val + '\')"' +
+               ' title="' + item.val + '">' +
+               '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+               ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+               (isHidden ? EYE_CLOSED : EYE_OPEN) +
+               '</svg>' +
+               '<span class="item-name">' + item.label + '</span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function toggleIntModeFilter(val) {
+      if (serverBusy) return;
+      var idx = activeIntModeFilters.indexOf(val);
+      if (idx !== -1) activeIntModeFilters.splice(idx, 1);
+      else activeIntModeFilters.push(val);
+      renderIntModeFilterList();
+      setStatus('Applying filter\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applySheetIntModeFilter(activeIntModeFilters);
+    }
+
+    /* ── SVI FILTER ────────────────────────────────────── */
+    var activeSviFilters = [];
+    var SVI_FILTER_ITEMS = [
+      { val: 'yes',   label: 'yes' },
+      { val: 'blank', label: '\u2014' },
+      { val: null,    label: '' },
+      { val: null,    label: '' }
+    ];
+
+    function initSviFilter(savedFilters) {
+      activeSviFilters = Array.isArray(savedFilters) ? savedFilters : ['yes','blank'];
+      renderSviFilterList();
+    }
+
+    function renderSviFilterList() {
+      var list = document.getElementById('sviFilterList');
+      if (!list) return;
+      list.innerHTML = SVI_FILTER_ITEMS.map(function(item) {
+        if (!item.val) return '<div class="device-item ip-item-dummy"></div>';
+        var isHidden = activeSviFilters.indexOf(item.val) === -1;
+        return '<div class="device-item ip-filter-item' + (isHidden ? ' is-hidden' : '') + '"' +
+               ' onclick="toggleSviFilter(\'' + item.val + '\')"' +
+               ' title="' + (isHidden ? 'Show' : 'Hide') + '">' +
+               '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+               ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+               (isHidden ? EYE_CLOSED : EYE_OPEN) +
+               '</svg>' +
+               '<span class="item-name">' + item.label + '</span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function toggleSviFilter(val) {
+      if (serverBusy) return;
+      var idx = activeSviFilters.indexOf(val);
+      if (idx !== -1) activeSviFilters.splice(idx, 1);
+      else activeSviFilters.push(val);
+      renderSviFilterList();
+      setStatus('Applying filter\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applySheetSviFilter(activeSviFilters);
+    }
+
+    load();
+  </script>
+</body>
+</html>

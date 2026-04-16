@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+  <?!= include('Sidebar-css'); ?>
+</head>
+
+<body>
+
+  <!-- 1. LOADING -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <div id="loading-message">Loading Topology...</div>
+  </div>
+
+  <!-- 2. OVERLAY -->
+  <div id="editOverlay" onclick="closeAllModals()"></div>
+
+  <!-- 3. APP CONTAINER (Toolbar/Viewport) -->
+  <div id="app-topology">
+    <div id="minimizedBar" class="hidden">
+      <button class="mono-btn btn-green" onclick="toggleMinimize()" title="Restore Dashboard">＋</button>
+      <span class="drag-hint">⬆ Drag Title Bar to Move</span>
+    </div>
+
+    <!-- Toolbar Structure -->
+    <div class="toolbar" id="mainToolbar">
+      <div class="toolbar-row primary-row">
+        <div class="ui-group">
+          <button class="mono-btn btn-yellow" onclick="toggleMinimize()" title="Minimize">－</button>
+          <div class="divider-v"></div>
+          <button id="manualRefreshBtn" class="icon-btn" onclick="fetchData(true)" title="Refresh Data">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <span class="mono-label" title="Card Width">W:</span>
+          <input type="number" class="mono-input" id="cardWidthInp" value="<?= defaultWidth ?>" step="10" oninput="saveLayoutPreferences()" title="Card Width">
+          <span class="mono-label" title="Device Gap">G:</span>
+          <input type="number" class="mono-input" id="deviceGapInp" value="<?= defaultDevGap ?>" step="10" oninput="saveLayoutPreferences()" title="Device Gap">
+          <div class="divider-v"></div>
+          <span class="mono-label" title="Cable Offset">O:</span>
+          <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
+          <span class="mono-label" title="Cable Top Margin">T:</span>
+          <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+        </div>
+
+        <div class="ui-group center-group">
+          <div class="segmented-group">
+            <button class="icon-toggle sort-toggle active" id="btnSortSheet" onclick="changeSort('sheet')" title="Sheet Order">SHEET</button>
+            <button class="icon-toggle sort-toggle" id="btnSortMode" onclick="changeSort('mode')" title="Sort by Interface Mode">MODE</button>
+            <button class="icon-toggle sort-toggle" id="btnSortIp" onclick="changeSort('priority')" title="Sort by Category (P2P → GW → L2)">CAT</button>
+            <button class="icon-toggle sort-toggle" id="btnSortAlpha" onclick="changeSort('alpha')" title="Sort Alphabetically (Natural)">ALPHA</button>
+          </div>
+        </div>
+
+        <div class="ui-group right-group">
+          <!-- Edit group -->
+          <button class="icon-btn" id="editModeBtn" onclick="toggleEditMode()" title="Edit Interface">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <button class="icon-btn" id="groupRectBtn" onclick="toggleGroupRectMode()" title="Draw Group (Holistic View Only)" style="opacity:0.35;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="5 3"/><path d="M12 8v8M8 12h8"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <!-- Appearance group -->
+          <button class="icon-btn" id="boldTextBtn" onclick="toggleBoldText()" title="Toggle bold node labels" style="font-weight:900;">B</button>
+          <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch to dark mode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <!-- Modals group -->
+          <button class="icon-btn" onclick="openTechModal()" title="Enable Technology">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openIpConfigModal(this)" title="IP & VNI Config">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openGlobalCfgModal()" title="Global Configuration Template">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openVlanSummaryModal()" title="VLAN Summary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+          </button>
+          <button class="icon-btn" id="devVisPanelBtn" onclick="toggleDevVisPanelOpen()" title="Device Visibility Panel">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button id="btnBridgeToolbar" class="icon-btn" onclick="onBridgeIconClick()" title="Device Bridge (double-click to enable/disable auto-check)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <!-- Export group -->
+          <button class="icon-btn" onclick="downloadPNG(this)" title="Topology Snapshot">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openCablingModal()" title="Export Cabling">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openGenerateAllModal()" title="Generate All Configs">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <!-- Audit group (outlined box) -->
+          <div class="audit-group-box">
+            <button class="icon-btn" id="validateBtn" onclick="toggleValidationMode()" title="Audit Logic">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span id="auditBadge" class="audit-badge hidden"></span>
+            </button>
+            <button class="icon-btn" id="btnAuditOnly" onclick="toggleAuditOnlyView()" title="Show only devices with errors" style="display:none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </button>
+          </div>
+          <div class="divider-v"></div>
+          <!-- Help -->
+          <button class="icon-btn" onclick="openHelpModal()" title="Shortcuts">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          </button>
+          <!-- Collapse secondary toolbar -->
+          <button class="icon-btn" id="toolbarCollapseBtn" onclick="toggleToolbarCollapse()" title="Collapse secondary toolbar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Secondary Row -->
+      <div class="toolbar-row secondary-row">
+        <div class="ui-group left-group">
+          <div class="segmented-group">
+            <button class="icon-toggle" id="btnTopoSimple" onclick="setTopoMode('simple')" title="Holistic View"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button class="icon-toggle" id="btnTopoLinear" onclick="setTopoMode('linear')" title="Linear View"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></svg></button>
+            <button class="icon-toggle" id="btnTopoFlexible" onclick="setTopoMode('flexible')" title="Flexible View"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg></button>
+            <div style="width:1px;background:var(--border);margin:0 3px;align-self:stretch;pointer-events:none;"></div>
+            <button class="icon-toggle" id="btnToggleCards" onclick="toggleAllCards()" title="Collapse all cards"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+          </div>
+          <div class="divider-v"></div>
+          <div class="search-container">
+            <input type="text" class="mono-search" id="searchInp" placeholder="Filter or v10 to trace VLAN..." autocomplete="off">
+            <button id="searchClear" class="search-clear-btn" title="Clear search" style="display:none">×</button>
+            <div id="search-autocomplete" class="search-autocomplete-list hidden"></div>
+          </div>
+          <div class="chk-wrapper">
+            <input type="checkbox" id="strictSearch" onchange="debouncedFilterTopology()">
+            <label for="strictSearch" class="mono-text">Strict</label>
+          </div>
+        </div>
+        <div class="ui-group right-group">
+          <div id="status" class="mono-status">Ready</div>
+        </div>
+      </div>
+
+      <!-- Copy Group -->
+      <div class="toolbar-row copy-group-strip" id="copyGroup" style="display:none;">
+        <div class="split-btn" id="splitDevice" style="display:none;">
+          <span class="split-label" id="labelDevice"></span>
+          <div class="split-action-divider"></div>
+          <button class="split-action copy-action" id="btnDevice" onclick="copyDevice()" title="Copy configuration">Copy</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action view-action view-trigger" id="btnViewDevice" onclick="openConfigFromButton('device')" disabled title="View configuration">View</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action push-action" id="btnPushDevice" onclick="pushDeviceConfig(selectedDeviceId,'btnPushDevice')" title="Push config to device via Device Bridge">Push</button>
+        </div>
+        <div class="split-btn" id="splitLeft" style="display:none;">
+          <span class="split-label" id="labelLeft"></span>
+          <div class="split-action-divider"></div>
+          <button class="split-action copy-action" id="btnLeft" onclick="copyLeft()" title="Copy configuration">Copy</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action view-action view-trigger" id="btnViewLeft" onclick="openConfigFromButton('left')" disabled title="View configuration">View</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action push-action" id="btnPushLeft" onclick="pushLinkSide('left')" title="Push config to device via Device Bridge">Push</button>
+        </div>
+        <div class="split-btn" id="splitRight" style="display:none;">
+          <span class="split-label" id="labelRight"></span>
+          <div class="split-action-divider"></div>
+          <button class="split-action copy-action" id="btnRight" onclick="copyRight()" title="Copy configuration">Copy</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action view-action view-trigger" id="btnViewRight" onclick="openConfigFromButton('right')" disabled title="View configuration">View</button>
+          <div class="split-action-divider"></div>
+          <button class="split-action push-action" id="btnPushRight" onclick="pushLinkSide('right')" title="Push config to device via Device Bridge">Push</button>
+        </div>
+        <span id="selectionStatus"></span>
+      </div>
+    </div>
+
+    <div id="floatingLegend" class="topo-legend collapsed">
+      <div class="legend-header" onclick="toggleLegendDisplay()">
+        <span class="legend-title">Legends</span>
+        <span id="legendToggleIcon" class="legend-icon">▼</span>
+      </div>
+      <div id="legendContent" class="legend-content">
+
+        <div class="legend-group">
+          <div class="group-label">Roles</div>
+          <div class="legend-row">
+            <div class="l-item"><span class="dot" style="background:#1e293b; border-color:#1e293b"></span>Spine</div>
+            <div class="l-item"><span class="dot" style="background:#3b82f6; border-color:#3b82f6"></span>Leaf</div>
+            <div class="l-item"><span class="dot" style="background:#065f46; border-color:#065f46"></span>L2</div>
+            <div class="l-item"><span class="dot" style="background:#92400e; border-color:#92400e"></span>Non-EOS</div>
+          </div>
+        </div>
+
+        <div class="legend-divider"></div>
+
+        <div class="legend-group">
+          <div class="group-label">IP Type</div>
+          <div class="legend-row">
+            <div class="l-item"><span class="square p2p"></span>P2P</div>
+            <div class="l-item"><span class="square gw"></span>GW</div>
+            <div class="l-item"><span class="square l2"></span>N/A (L2 Port)</div>
+          </div>
+        </div>
+
+        <div class="legend-divider"></div>
+
+        <div class="legend-group">
+          <div class="group-label">Status</div>
+          <div class="legend-row">
+            <div class="l-item">
+              <span class="dot" style="background-color:#10b981; width:8px; height:8px; display:inline-block; border-radius:50%; border:1px solid #059669; margin-right:4px;"></span>
+              Connected
+            </div>
+            <div class="l-item">
+              <span class="dot" style="background-color:#ef4444; width:8px; height:8px; display:inline-block; border-radius:50%; border:1px solid #dc2626; margin-right:4px;"></span>
+              Disconnected
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Device Visibility Floating Panel -->
+    <div id="devVisPanel" class="dev-vis-panel">
+      <div class="dev-vis-header" id="devVisPanelHeader">
+        <span class="dev-vis-title">Topology View</span>
+        <button class="dev-vis-close-btn" id="devVisMinBtn" onclick="toggleDevVisMinimize(event)" title="Minimize">−</button>
+        <button class="dev-vis-close-btn" onclick="toggleDevVisPanelOpen()" title="Close panel"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="dev-vis-sel-row" id="devVisSelRow">
+        <label class="dev-vis-sel-all-wrap">
+          <input type="checkbox" id="devVisSelAllChk" onchange="selectAllDevVis(this.checked)">SEL ALL
+        </label>
+        <button class="dev-vis-bulk-btn dev-vis-show-sel" id="btnDevVisShowSel" onclick="showSelectedDevVis()" disabled>SHOW</button>
+        <button class="dev-vis-bulk-btn dev-vis-hide-sel" id="btnDevVisHideSel" onclick="hideSelectedDevVis()" disabled>HIDE</button>
+      </div>
+      <div class="dev-vis-ip-section" id="devVisIpSection">
+        <div class="dev-vis-ip-header">
+          <span class="dev-vis-ip-label">ip_type</span>
+        </div>
+        <div class="dev-vis-ip-list" id="devVisIpList"></div>
+      </div>
+      <div class="dev-vis-ip-section" id="devVisIntModeSection">
+        <div class="dev-vis-ip-header">
+          <span class="dev-vis-ip-label">int_mode</span>
+        </div>
+        <div class="dev-vis-ip-list" id="devVisIntModeList"></div>
+      </div>
+      <div class="dev-vis-ip-section" id="devVisSviSection">
+        <div class="dev-vis-ip-header">
+          <span class="dev-vis-ip-label">svi</span>
+        </div>
+        <div class="dev-vis-ip-list" id="devVisSviList"></div>
+      </div>
+      <div class="dev-vis-search-row" id="devVisSearchRow">
+        <input type="text" id="devVisSearch" class="dev-vis-search-inp" placeholder="Search devices…" oninput="filterDevVisList()" onclick="event.stopPropagation()">
+      </div>
+      <div class="dev-vis-list" id="devVisList"></div>
+    </div>
+
+    <div id="viewport">
+      <div id="canvas-surface">
+        <canvas id="canvas-layer"></canvas>
+        <div id="nodes-layer"></div>
+        <svg id="svg-layer"></svg>
+      </div>
+      <div id="vlan-legend"></div>
+    </div>
+    <div id="tooltip"></div>
+  </div>
+
+  <!-- 4. ALL MODALS (Paste them ALL here, OUTSIDE app-topology) -->
+
+  <!-- Tech Modal -->
+  <div id="techModal" class="modal-std" style="width: 400px;">
+    <div class="modal-header">
+      <div class="modal-header-title">Network Tech Stack</div>
+      <button onclick="closeTechModal()" class="btn-mono">Close</button>
+    </div>
+    <div style="padding: 20px 25px; display: flex; flex-direction: column; gap: 0;">
+      <!-- UNDERLAY SECTION -->
+      <div class="tech-section-label">UNDERLAY</div>
+      <div class="tech-stack-row">
+        <div class="tech-stack-connector root"></div>
+        <input type="checkbox" id="chkTechBgp" class="chk-input">
+        <label for="chkTechBgp" class="chk-label">BGP</label>
+        <span class="tech-tag">eBGP per link</span>
+      </div>
+      <div class="tech-stack-row">
+        <div class="tech-stack-connector root"></div>
+        <input type="checkbox" id="chkTechOspf" class="chk-input">
+        <label for="chkTechOspf" class="chk-label">OSPF</label>
+        <span class="tech-tag">area 0</span>
+      </div>
+      <!-- OVERLAY SECTION -->
+      <div class="tech-section-label" style="margin-top: 12px;">OVERLAY</div>
+      <div class="tech-stack-row" style="padding-left: 20px;">
+        <div class="tech-stack-connector child"></div>
+        <input type="checkbox" id="chkTechVxlan" class="chk-input">
+        <label for="chkTechVxlan" class="chk-label">VXLAN (VTEP)</label>
+        <span class="tech-tag">requires underlay</span>
+      </div>
+      <div class="tech-stack-row" style="padding-left: 40px;">
+        <div class="tech-stack-connector child"></div>
+        <input type="checkbox" id="chkTechEvpn" class="chk-input">
+        <label for="chkTechEvpn" class="chk-label">EVPN</label>
+        <span class="tech-tag">requires VXLAN</span>
+      </div>
+      <div style="font-size: 10px; color: #94a3b8; font-style: italic; margin-top: 18px; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+        * BGP and OSPF can both be enabled as underlay. VXLAN/EVPN require at least one underlay.
+      </div>
+    </div>
+    <div class="modal-actions right-align">
+      <button class="btn-success-mono" onclick="saveTechSettings()">Save & Close</button>
+    </div>
+  </div>
+
+  <!-- IP Config Modal -->
+  <div id="ipConfigModal" class="modal-std modal-medium">
+    <div class="modal-header">
+      <div class="modal-header-title">IP + VNI Configuration</div>
+      <button onclick="closeIpModal()" class="btn-mono">Close</button>
+    </div>
+    <div class="ip-modal-body">
+      <!-- IP Content Generated via JS or Static -->
+      <div class="ip-info-box">
+        <div class="info-title">Global IPv4 & IPv6 Strategy</div>
+        <div class="ip-legend-grid">
+          <span class="legend-label">P2P:</span><span class="legend-octet f-var">200</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">VLAN</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">VLAN</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">Device ID</span>
+          <span class="legend-label">GW:</span><span class="legend-octet f-var">100</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">VLAN</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">VLAN</span><span class="legend-sep">.</span><span class="legend-octet f-var">1</span>
+        </div>
+        <div class="ip-example">
+          <div class="ip-example-title">eg. VLAN <span class="f-dyn">1500</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">0</span></div>
+          <div class="ip-example-grid">
+            <span class="ip-example-key">P2P</span>
+            <span class="ip-example-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.id</span>
+            <span class="ip-example-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">0</span>::id</span>
+            <span class="ip-example-key">GW</span>
+            <span class="ip-example-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span></span>
+            <span class="ip-example-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">0</span>::<span class="f-var">1</span></span>
+            <span class="ip-example-key">VNI</span>
+            <span class="ip-example-val"><span class="f-var">10000</span> + <span class="f-dyn">1500</span> = <span style="color:#16a34a;font-weight:700">11500</span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+      <div class="section-header">Point-to-Point (Underlay/Routing)</div>
+      <div class="ip-section-rows">
+        <div class="ip-row"><span class="ip-label">IPv4</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24"></div>
+          </div>
+        </div>
+        <div class="ip-row"><span class="ip-label">IPv6</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_p2p_v6_first" placeholder="200"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Gateway (SVI/Overlay)</div>
+      <div class="ip-section-rows">
+        <div class="ip-row"><span class="ip-label">IPv4</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100"></div>
+            <div class="input-wrapper"><label>Last Octet (GW)</label><input type="text" id="ip_gw_v4_last" placeholder="1"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24"></div>
+          </div>
+        </div>
+        <div class="ip-row"><span class="ip-label">IPv6</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_gw_v6_first" placeholder="100"></div>
+            <div class="input-wrapper"><label>Last Hextet</label><input type="text" id="ip_gw_v6_last" placeholder="1"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">VXLAN VNI Mapping</div>
+      <div class="ip-row"><span class="ip-label">VNI Base</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base Offset</label><input type="text" id="ip_vni_base" placeholder="10000"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions right-align">
+      <button class="btn-danger-mono" onclick="resetIpConfig()">Reset Defaults</button>
+      <button class="btn-success-mono" onclick="saveIpConfig()">Save & Apply</button>
+    </div>
+  </div>
+
+  <!-- Global Config Modal -->
+  <div id="globalCfgModal" class="modal-std modal-medium">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title">Global Configuration Template</div>
+        <div class="modal-header-subtitle">Commands prepended to every Arista device config (NTP, logging, AAA, etc.)</div>
+      </div>
+      <button onclick="closeGlobalCfgModal()" class="btn-mono">Close</button>
+    </div>
+    <div style="padding: 12px 16px; flex: 1; display: flex; flex-direction: column; min-height: 0; background:#f8fafc;">
+      <textarea id="globalCfgTextarea" spellcheck="false"
+        style="flex:1; width:100%; min-height:260px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.6;
+               padding:10px 12px; border:1px solid #cbd5e1; border-radius:4px;
+               background:#ffffff; color:#1e293b; resize:none; outline:none;
+               box-sizing:border-box; user-select:text;"
+        onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'"></textarea>
+    </div>
+    <div class="modal-actions right-align">
+      <span id="globalCfgStatus" style="font-size:11px; color:var(--text-muted); margin-right:auto;"></span>
+      <button class="btn-mono" onclick="closeGlobalCfgModal()">Cancel</button>
+      <button class="btn-success-mono" id="btnSaveGlobalCfg" onclick="saveGlobalCfgFromSidebar()">Save & Apply</button>
+    </div>
+  </div>
+
+  <!-- Device Bridge Modal (floating, draggable) -->
+  <div id="lldpModal" class="modal-floating" style="width:480px;">
+    <div class="modal-header" id="lldpModalHeader">
+      <div>
+        <div class="modal-header-title">Device Bridge</div>
+        <div class="modal-header-subtitle">SSH bridge to lab devices — LLDP verification, device status & more</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="btnLldpMinimize" onclick="toggleLldpMinimize()" class="btn-mono" title="Minimize" style="padding:2px 8px;font-size:14px;line-height:1;">−</button>
+        <button onclick="closeLldpModal()" class="btn-mono">Close</button>
+      </div>
+    </div>
+    <div id="lldpModalBody" style="padding:14px 16px;overflow-y:auto;max-height:430px;">
+      <!-- Bridge status bar -->
+      <div class="lldp-bridge-bar">
+        <span class="lldp-field-label">Bridge</span>
+        <span class="lldp-dev-dot" id="lldpBridgeDot"></span>
+        <span id="lldpBridgeMsg" class="lldp-bridge-msg">Checking…</span>
+        <button class="lldp-recheck-btn" onclick="_checkBridgeHealth()">Recheck</button>
+      </div>
+      <div id="lldpBridgeCmd" class="lldp-bridge-cmd" style="display:none;">
+        Start the bridge on your machine:
+        <code class="lldp-cmd-code">python3 device_bridge.py</code>
+      </div>
+      <!-- Settings card: auto-check + audit -->
+      <div class="lldp-settings-card">
+        <label class="lldp-chk-label" title="When enabled: bridge health is checked automatically after each topology load. Double-click the toolbar icon to toggle.">
+          <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
+          Auto-check after topology loads
+        </label>
+        <div class="lldp-settings-sep"></div>
+        <div class="lldp-audit-header">
+          <span class="lldp-audit-section">LLDP Audit</span>
+          <span class="lldp-audit-always" title="LLDP mismatches are always flagged as errors in Audit mode — cannot be disabled">Mismatches always flagged</span>
+        </div>
+        <label class="lldp-chk-label" title="When on: ports with no LLDP neighbor show red and are flagged in Audit. Turn off for early-stage labs where dark ports are expected.">
+          <input type="checkbox" id="chkLldpAuditMissing" onchange="toggleLldpAuditMissing(this.checked)">
+          Flag missing neighbors
+        </label>
+      </div>
+      <div class="lldp-section-hdr" style="margin-top:10px;">Devices <span class="lldp-hint">IP defaults to device name via DNS — edit to override</span></div>
+      <div id="lldpDevTable"></div>
+      <div id="lldpRunStatus" class="lldp-run-status" style="display:none;"></div>
+      <div id="lldpResults" style="display:none;">
+        <div class="lldp-section-hdr" style="margin-top:12px;">Results <span id="lldpSummaryBadge" class="lldp-summary-badge"></span></div>
+        <div id="lldpResultList" class="lldp-result-list"></div>
+        <div id="lldpDiscovered" style="display:none;">
+          <div id="lldpDiscHdr" class="lldp-section-hdr" style="margin-top:10px;"></div>
+          <div id="lldpDiscoveredList" class="lldp-disc-list"></div>
+          <div class="lldp-disc-actions">
+            <button id="btnAddDiscovered" class="btn-mono" onclick="addSelectedDiscovered()">Add Selected</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions right-align">
+      <button class="btn-mono" onclick="closeLldpModal()">Close</button>
+      <button class="btn-mono" onclick="downloadBridgeScript()">Download Bridge</button>
+      <button class="btn-primary-mono" id="btnRunLldp" onclick="runLldpCheck()" disabled>Run Checks</button>
+    </div>
+  </div>
+
+  <!-- Push Confirm Modal -->
+  <div id="pushConfirmModal" class="modal-std" style="width:460px;display:none;z-index:2000;">
+    <div class="modal-header">
+      <div>
+        <div id="pushConfirmTitle" class="modal-header-title">Confirm Config Push</div>
+        <div class="modal-header-subtitle" id="pushConfirmSubtitle" style="font-family:'JetBrains Mono',monospace;"></div>
+      </div>
+      <button id="btnCancelPushHdr" onclick="cancelPushConfig()" class="btn-mono">Cancel</button>
+    </div>
+    <div id="pushConfirmBody" style="padding:14px 16px;overflow-y:auto;max-height:360px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div>
+    <div class="modal-actions right-align">
+      <button id="btnCancelPushFtr" class="btn-mono" onclick="cancelPushConfig()">Cancel</button>
+      <button class="btn-primary-mono" id="btnCommitPush" onclick="commitPushConfig()">Commit</button>
+    </div>
+  </div>
+
+  <!-- Cabling Modal -->
+  <div id="cablingModal" class="modal-std modal-body-padded">
+    <div class="modal-header">
+      <div class="modal-header-title">Export Cabling Report</div>
+      <button onclick="closeCablingModal()" class="btn-mono">Close</button>
+    </div>
+    <div style="padding: 20px;">
+      <div class="export-title">⬡ Topology Patching List</div>
+      <div class="export-desc">Flat list following sheet order. Best for auditing total connections.</div>
+      <button class="btn-primary-mono btn-block" onclick="downloadCablingReport('netlist')">Download Topology Patching</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+          <button class="btn-primary-mono" style="font-family:'JetBrains Mono',monospace;" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;text-align:center;">For Excel / Google Sheets</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+          <button class="btn-primary-mono" style="font-family:'JetBrains Mono',monospace;" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy Markdown</button>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;text-align:center;">For GitHub / Docs</span>
+        </div>
+      </div>
+
+      <div class="export-divider"></div>
+
+      <div class="export-title">◻ Device Patching List</div>
+      <div class="export-desc">Grouped by local device. Best for field engineers patching one rack at a time.</div>
+      <button class="btn-primary-mono btn-block" onclick="downloadCablingReport('device')">Download Device Patching</button>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal-std" style="width: 460px;">
+    <div class="modal-header" style="background: #334155; color: white;">
+      <div class="modal-header-title">⌨ Shortcuts</div>
+      <button onclick="closeHelpModal()" class="btn-mono">Close</button>
+    </div>
+    <div style="background: var(--bg-card); overflow-y: auto;">
+      <div class="shortcut-legend">
+
+        <div class="shortcut-section">
+          <div class="shortcut-section-label">Navigation</div>
+          <div class="legend-grid">
+            <div class="shortcut-row">
+              <div class="kbd-group"><kbd>/</kbd><span class="kbd-or">or</span><kbd>f</kbd></div>
+              <span>Global Search<span class="shortcut-ctx">Switches to config search when Config modal is open</span></span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>v</kbd>
+              <span>VLAN Trace<span class="shortcut-ctx">Focuses search with v prefix — type VLAN number to trace</span></span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>s</kbd>
+              <span>Toggle Strict Search</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shortcut-section">
+          <div class="shortcut-section-label">Search Examples</div>
+          <div class="legend-grid">
+            <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Filter by device name</span></div>
+            <div class="shortcut-row"><code class="search-ex">SPINE</code><span>Filter by role label</span></div>
+            <div class="shortcut-row"><code class="search-ex">l2-et-trunk</code><span>Filter by port mode</span></div>
+            <div class="shortcut-row"><code class="search-ex">vrf-mgmt</code><span>Filter by VRF</span></div>
+            <div class="shortcut-row"><code class="search-ex">v10</code><span>Trace VLAN 10</span></div>
+            <div class="shortcut-row"><code class="search-ex">v10,20</code><span>Trace multiple VLANs</span></div>
+            <div class="shortcut-row"><code class="search-ex">v10-20</code><span>Trace VLAN range</span></div>
+            <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded (auto-loads in background)</span></span></div>
+          </div>
+        </div>
+
+        <div class="shortcut-section">
+          <div class="shortcut-section-label">Reset & Clear</div>
+          <div class="legend-grid">
+            <div class="shortcut-row"><kbd>`</kbd><span>Reset view & clear all filters</span></div>
+            <div class="shortcut-row"><kbd>c</kbd><span>Clear traces & reset<span class="shortcut-ctx">Not active while typing in an input</span></span></div>
+            <div class="shortcut-row"><span class="search-ex">×</span><span>Clear search<span class="shortcut-ctx">Button appears inside search box when text is present</span></span></div>
+            <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
+            <div class="shortcut-row">
+              <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
+              <span>Hard refresh topology data</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shortcut-section">
+          <div class="shortcut-section-label">General</div>
+          <div class="legend-grid">
+            <div class="shortcut-row"><kbd>?</kbd><span>Open this shortcuts panel</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="help-footer-note">Most shortcuts are disabled while typing in an input — ` and Esc are always active.</div>
+    </div>
+  </div>
+
+  <!-- Edit Modal (Ports) -->
+  <div id="editModal" class="modal-std">
+    <div class="modal-header">
+      <div class="modal-header-title" id="modalTitle">Edit Interface</div>
+      <button class="btn-mono" onclick="closeEditModal()">Close</button>
+    </div>
+    <div id="modalContent" class="modal-body-scroll"></div>
+    <div class="modal-actions">
+      <button id="btnDelete" class="btn-danger-mono" style="margin-right:auto; display:none;" onclick="deletePort()">Delete</button>
+      <button class="btn-mono" onclick="closeEditModal()">Cancel</button>
+      <button id="btnSaveEdit" class="btn-success-mono" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+
+  <!-- Audit Modal -->
+  <div id="auditModal" class="modal-std modal-medium">
+    <div class="modal-header">
+      <div class="modal-header-title">Configuration Audit</div>
+      <button onclick="closeAuditModal()" class="btn-mono">Close</button>
+    </div>
+    <div id="auditContent" class="audit-body">
+      <div style="text-align:center; padding:30px; color:#94a3b8;">
+        <div style="display:inline-block; animation:spin 1s linear infinite; font-size:24px; margin-bottom:10px;">⏳
+        </div>
+        <div>Analyzing...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Rect Modal -->
+  <div id="groupRectModal" class="modal-std" style="width: 380px;">
+    <div class="modal-header">
+      <div class="modal-header-title">Group</div>
+    </div>
+    <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+
+      <input type="text" id="groupRectLabelInp" class="form-input" maxlength="16"
+             placeholder="e.g. Spine Tier, DC-A Leaf..."
+             style="font-family:'JetBrains Mono',monospace; font-size:12px; padding:8px 10px;"
+             onkeydown="if(event.key==='Enter') confirmGroupRect()">
+
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Color:</span>
+        <span class="grect-swatch selected" data-color="#3b82f620" style="background:#3b82f6;" onclick="selectGroupRectColor(this)"></span>
+        <span class="grect-swatch" data-color="#10b98120" style="background:#10b981;" onclick="selectGroupRectColor(this)"></span>
+        <span class="grect-swatch" data-color="#f59e0b20" style="background:#f59e0b;" onclick="selectGroupRectColor(this)"></span>
+        <span class="grect-swatch" data-color="#ef444420" style="background:#ef4444;" onclick="selectGroupRectColor(this)"></span>
+        <span class="grect-swatch" data-color="#8b5cf620" style="background:#8b5cf6;" onclick="selectGroupRectColor(this)"></span>
+      </div>
+
+      <div style="display:flex; align-items:flex-start; gap:14px;">
+        <span style="font-size:11px; color:var(--text-muted); white-space:nowrap; padding-top:8px;">Label:</span>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="grect-align-grid">
+            <div class="grect-align-cell active" data-pos="top-left"    onclick="selectGroupRectTextPos(this)" title="Top Left">    <span class="grect-align-dot tl"></span></div>
+            <div class="grect-align-cell"        data-pos="top-center"  onclick="selectGroupRectTextPos(this)" title="Top Center">  <span class="grect-align-dot tc"></span></div>
+            <div class="grect-align-cell"        data-pos="top-right"   onclick="selectGroupRectTextPos(this)" title="Top Right">   <span class="grect-align-dot tr"></span></div>
+            <div class="grect-align-cell"        data-pos="mid-left"    onclick="selectGroupRectTextPos(this)" title="Middle Left"> <span class="grect-align-dot ml"></span></div>
+            <div class="grect-align-cell"        data-pos="mid-center"  onclick="selectGroupRectTextPos(this)" title="Center">      <span class="grect-align-dot mc"></span></div>
+            <div class="grect-align-cell"        data-pos="mid-right"   onclick="selectGroupRectTextPos(this)" title="Middle Right"><span class="grect-align-dot mr"></span></div>
+            <div class="grect-align-cell"        data-pos="bot-left"    onclick="selectGroupRectTextPos(this)" title="Bottom Left"> <span class="grect-align-dot bl"></span></div>
+            <div class="grect-align-cell"        data-pos="bot-center"  onclick="selectGroupRectTextPos(this)" title="Bottom Center"><span class="grect-align-dot bc"></span></div>
+            <div class="grect-align-cell"        data-pos="bot-right"   onclick="selectGroupRectTextPos(this)" title="Bottom Right"><span class="grect-align-dot br"></span></div>
+          </div>
+          <div class="grect-align-cell grect-align-custom" data-pos="custom" onclick="selectGroupRectTextPos(this)" title="Custom — drag label freely on canvas">Custom ✥</div>
+          <div style="display:flex; gap:8px; margin-top:2px;">
+            <div class="grect-align-cell grect-align-custom" id="groupRectWrapOpt" onclick="toggleGroupRectWrapOpt()" title="Wrap text within box">↵ Wrap</div>
+            <div class="grect-align-cell grect-align-custom" id="groupRectBoldOpt" onclick="toggleGroupRectBoldOpt()" title="Bold label text">B Bold</div>
+            <div class="grect-align-cell grect-align-custom" id="groupRectVerticalOpt" onclick="toggleGroupRectVerticalOpt()" title="Vertical label text (avoids cable overlap)">↕ Vert</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button id="groupRectDeleteBtn" class="btn-danger-mono" onclick="deleteGroupRect()" style="display:none;">Delete</button>
+      <div style="display:flex; gap:8px; margin-left:auto;">
+        <button class="btn-mono" onclick="closeGroupRectModal()">Cancel</button>
+        <button class="btn-success-mono" onclick="confirmGroupRect()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Viewer -->
+  <div id="configModal" class="modal-std" style="width: 900px; max-width: 95vw;">
+    <div class="config-header-modern">
+      <div class="config-header-top">
+        <div class="config-title-group">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.7;flex-shrink:0;"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/></svg>
+          <span id="configModalTitle" class="mono-text">Config: ...</span>
+        </div>
+        <button class="btn-primary-mono btn-sm" onclick="closeConfigModal()">Close</button>
+      </div>
+      <div class="config-header-actions">
+        <div class="search-input-wrapper">
+          <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="configSearch" placeholder="Filter (e.g. 'router bgp', 'Eth1')..." autocomplete="off">
+          <button id="configSearchClear" class="btn-clear hidden" onclick="clearConfigSearch()">✕</button>
+        </div>
+        <span id="configMatchCount" class="match-badge hidden">0 matches</span>
+        <div class="divider-v" style="height: 18px; margin: 0 4px;"></div>
+        <button class="btn-mono btn-sm" id="btnCfgCopyInterface" onclick="copyInterfaceConfig()" title="Copy interface blocks only">Copy Interface</button>
+        <button class="btn-mono btn-sm" id="btnCfgCopyAll" onclick="copyAllConfig()" title="Copy full device config">Copy All</button>
+        <div class="divider-v" id="cfgPushDivider" style="height: 18px; margin: 0 4px; display:none;"></div>
+        <button class="btn-mono btn-sm" id="btnCfgPushIface" onclick="cfgModalPushInterface()" title="Push interface config(s) via Device Bridge" style="display:none;">Push Interface</button>
+        <button class="btn-mono btn-sm" id="btnCfgPushAll" onclick="cfgModalPushAll()" title="Push full config via Device Bridge" style="display:none;">Push All</button>
+      </div>
+    </div>
+    <pre id="configBody"></pre>
+    <div id="cfgPushStatus" class="cfg-push-status-bar" style="display:none;"></div>
+  </div>
+
+  <!-- Generate All Configs Modal -->
+  <div id="generateAllModal" class="modal-std" style="width:600px;max-width:95vw;">
+    <div class="modal-header">
+      <div class="modal-header-title">Generate All Configs</div>
+      <button onclick="closeGenerateAllModal()" class="btn-mono">Close</button>
+    </div>
+    <div id="generateAllBody" style="padding:20px;overflow-y:auto;max-height:55vh;background:var(--bg-card);">
+      <div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">
+        Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.
+      </div>
+    </div>
+    <div class="modal-actions right-align">
+      <button class="btn-mono" id="btnCopyAllConfigs" onclick="copyAllConfigs()" style="display:none;">Copy All</button>
+      <button class="btn-mono" id="btnPushAllConfigs" onclick="pushAllConfigs()">Push All</button>
+      <button class="btn-success-mono" id="btnRunGenerateAll" onclick="runGenerateAll()">Generate</button>
+    </div>
+  </div>
+
+  <!-- VLAN Summary Modal -->
+  <div id="vlanSummaryModal" class="modal-std" style="width:680px;max-width:96vw;">
+    <div class="modal-header">
+      <div class="modal-header-title">VLAN Summary</div>
+      <button onclick="closeVlanSummaryModal()" class="btn-mono">Close</button>
+    </div>
+    <div style="padding:12px 16px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);">
+      <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN ID or device…"
+        oninput="filterVlanSummary()"
+        style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-main);font-family:'JetBrains Mono',monospace;font-size:12px;">
+    </div>
+    <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;background:var(--bg-card);font-family:'JetBrains Mono',monospace;font-size:12px;">
+    </div>
+    <div class="modal-actions right-align">
+      <div id="vlanSummaryCount" style="color:var(--text-muted);font-size:11px;margin-right:auto;padding-left:4px;font-family:'JetBrains Mono',monospace;"></div>
+    </div>
+  </div>
+
+  <!-- Managers -->
+
+  <!-- Device Managers -->
+  <div id="reorderModal" class="modal-std modal-large">
+    <div class="reorder-header">
+      <span>Device Manager</span>
+      <button onclick="attemptCloseManager()" class="reorder-header-close" title="Close">✕</button>
+    </div>
+    <div class="reorder-toolbar">
+      <input type="text" id="newDeviceInput" placeholder="DNS Name (e.g. Leaf[1-4] or Spine1)" class="form-input flex-1">
+      <div class="chk-wrapper">
+        <input type="checkbox" id="chkNonArista">
+        <label for="chkNonArista" style="font-size:11px;">Non-EOS</label>
+      </div>
+      <button id="btnAddDevice" class="btn-primary-mono w-100" onclick="addDevicesToList()">Add</button>
+    </div>
+
+    <div class="reorder-list-header">
+      <div class="col-center" title="Drag Handle">⇅</div>
+      <div class="col-center" title="Visibility">👁️</div>
+      <div class="col-center" title="Topology Order">#</div>
+      <div class="col-center" title="Device Sheet ID">ID</div>
+      <div class="col-left">DNS Name / Hostname</div>
+      <div class="col-center" title="Edit DNS Name &amp; Hostname">✎</div>
+      <div class="col-center">Type</div>
+      <div class="col-center" title="Device Role — drives VXLAN/EVPN config generation (LEAF/SPINE/HARNESS)">Role</div>
+      <div class="col-center" title="Explicit MLAG peer — replaces topology heuristic; server enforces bidirectionality">MLAG</div>
+      <div class="col-center" title="Device Labels (cosmetic tags for topology display)">Tags</div>
+      <div class="col-center" title="Remove">🗑️</div>
+    </div>
+
+    <div id="reorderScrollContainer">
+      <ul id="reorderList"></ul>
+    </div>
+
+    <div id="emptyMsg" style="text-align:center; padding:30px; color:#94a3b8; display:none;">
+      No devices found. Add one above.
+    </div>
+
+    <div class="modal-actions right-align">
+      <button class="btn-mono" onclick="attemptCloseManager()">Close</button>
+      <button id="btnSaveOrder" class="btn-success-mono" onclick="saveDeviceChanges()">Save Changes</button>
+    </div>
+  </div>
+
+  <!-- Manage Column & Formatting Managers -->
+  <div id="schemaContainer" class="modal-std modal-large">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title">Manage Column & Formatting</div>
+        <div class="modal-header-subtitle">Define order and data types</div>
+      </div>
+      <button class="btn-mono" onclick="attemptCloseSchema()">Close</button>
+    </div>
+    <div id="schemaBody"></div>
+    <div class="schema-add-row">
+      <input type="text" id="newFieldKey" placeholder="Field key (e.g. rack_id)" class="form-input" style="flex: 3;">
+      <input type="text" id="newFieldLabel" placeholder="Display label" class="form-input" style="flex: 7;">
+      <button class="btn btn-primary btn-sm" onclick="addNewField()">Add</button>
+    </div>
+    <div class="modal-actions">
+      <div class="footer-group">
+        <button class="btn-std btn-danger ui-equal-size" onclick="resetSchemaToDefaults()">Reset Defaults</button>
+      </div>
+      <div class="footer-group">
+        <div class="chk-container ui-equal-size">
+          <input type="checkbox" id="chkApplyFormatting" checked class="chk-input">
+          <label for="chkApplyFormatting" class="chk-label" title="Applies connection colors, conditional formatting rules, MLAG borders, and speed/mode color coding to the sheet">Apply Formatting</label>
+        </div>
+        <button id="btnAudit" class="btn-std ui-equal-size" onclick="runSchemaAudit()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Check Sync
+        </button>
+        <button id="btnForceSync" class="btn-std ui-equal-size" onclick="triggerSyncOnly()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Force Sync
+        </button>
+      </div>
+      <div class="footer-group">
+        <button id="btnSaveSchema" class="btn-std btn-success ui-equal-size" onclick="saveSchemaChanges()">Save & Sync</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet Custom View Managers -->
+  <div id="viewCustomContainer" class="modal-std modal-large">
+    <div class="modal-header">
+      <div class="modal-header-title">Sheet Custom View Managers</div>
+      <button onclick="google.script.host.close()" class="btn-mono">Close</button>
+    </div>
+    <div class="view-toolbar">
+      <span class="view-label">Presets:</span>
+      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('cabling')">Cabling</button>
+      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('po')">Po</button>
+      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('mode')">Mode</button>
+      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('vlan')">VLAN</button>
+      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('xcvr')">Xcvr</button>
+      <span class="view-toolbar-sep"></span>
+      <button class="btn-mono view-preset-btn" onclick="toggleAllView(true)">All</button>
+      <button class="btn-mono view-preset-btn" onclick="toggleAllView(false)">None</button>
+    </div>
+    <div id="viewCustomBody"></div>
+    <div class="modal-actions right-align">
+      <button id="btnApplyView" class="btn-success-mono" onclick="submitCustomView()">Apply View</button>
+    </div>
+  </div>
+
+  <!-- Initialize Script -->
+  <script>
+    var START_MODE = "<?= initialMode ?>";
+  </script>
+
+  <?!= include('Sidebar-js'); ?>
+</body>
+
+</html>

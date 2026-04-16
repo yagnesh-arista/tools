@@ -1,0 +1,25 @@
+# Claude internal / machine-specific (lives in ~/.claude, not here)
+/.claude/
+
+# Claude internal memory (project-specific runtime data)
+projects/-home-yagnesh-claude/
+
+# Arista internal tooling (not for public repo)
+lclaude
+
+# Local overrides
+*.local.*
+settings.local.json
+CLAUDE.local.md
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/

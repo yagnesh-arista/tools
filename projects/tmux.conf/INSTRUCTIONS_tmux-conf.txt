@@ -1,0 +1,394 @@
+================================================================================
+  TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
+  Personal tmux configuration: bindings, themes, broadcast scripting
+  Last updated: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
+  Previous: 2026-04-14 (Refactored DoubleClick1Pane/TripleClick1Pane root bindings
+  to use external script tmux_click.sh. Root cause of "wrong location" intermittent
+  issue: separate tmux IPC calls in inline run-shell had ordering races. Fix: all
+  navigation (top-line \; cursor-down \; cursor-right \; select-word) batched into a
+  SINGLE `tmux send-keys` invocation inside tmux_click.sh. Script also adds sleep 0.02
+  after copy-mode to let mode settle before sending nav commands. Deploy to
+  ~/.tmux/tmux_click.sh (chmod +x). tmux.conf now calls:
+    run-shell "~/.tmux/tmux_click.sh word #{mouse_y} #{mouse_x}"  (DoubleClick)
+    run-shell "~/.tmux/tmux_click.sh line #{mouse_y}"             (TripleClick)
+  Previous: 2026-04-14 (Fixed DoubleClick1Pane and TripleClick1Pane root bindings.
+  Three approaches failed before the working solution:
+  1. `copy-mode -H`: invalid in tmux 3.2a — prints usage, aborts the chain entirely.
+  2. Plain `copy-mode \; send-keys -X select-word`: copy-mode enters at end-of-buffer
+     so select-word runs at the wrong position (wrong word or nothing visible).
+  3. `copy-mode -M \; send-keys -X select-word`: -M also prints usage error when called
+     inside an if-F branch chain — the pending mouse event is consumed before -M runs.
+     Alone, `copy-mode -M` enters copy mode and shows just the cursor (one letter) but
+     does NOT re-dispatch the DoubleClick to the copy-mode-vi key table.
+  Working fix: `run-shell` with separate `tmux` invocations. Each tmux call is
+  synchronous (client waits for server ack), so copy-mode is fully established before
+  send-keys runs. Uses `top-line` + `cursor-down #{mouse_y}` + `cursor-right #{mouse_x}`
+  to navigate to the exact click position, then `select-word`/`select-line`.
+  #{mouse_y} and #{mouse_x} are expanded to concrete numbers by tmux before the shell
+  runs. `test $MY -gt 0` guards against -N 0 (which tmux rejects). \$ escapes prevent
+  premature shell expansion inside the tmux bind string.)
+  Previous: 2026-04-13 (Removed `copy-mode -H` from DoubleClick1Pane and
+  TripleClick1Pane root bindings — `-H` flag (hide indicator) was added in tmux 3.4
+  and is not supported in tmux 3.2a (current version). Replaced with plain `copy-mode`.)
+  Previous: 2026-04-12 (Removed stale `unbind q` — q was not rebound to anything
+  else (Q is kill-session, uppercase prefix binding). Restoring q to its default
+  copy-mode quit behavior.
+  Previous: 2026-04-12 (Fixed double-click while scrolled up exiting copy mode:
+  copy-mode-vi MouseUp1Pane was doing send-keys -X cancel when no selection active —
+  this fired on the FIRST click of a double-click, exiting copy mode before the
+  second click. Root DoubleClick then saw pane_in_mode=0 and entered copy-mode at
+  bottom. Fixed by changing the no-selection case to a no-op (empty string). Trade-off:
+  single click no longer exits copy mode; use q or Escape to exit manually.
+  Previous: 2026-04-12 (Fixed double-click to copy when scrolled up: added
+  DoubleClick1Pane and TripleClick1Pane bindings to copy-mode-vi table. Root bindings
+  hit send-keys -M when pane_in_mode=1 (already scrolled up) but copy-mode-vi had no
+  handler — double-click did nothing. New copy-mode-vi bindings do select-word/select-line
+  + copy-pipe-and-cancel with 50ms delay, matching root table behavior.)
+  Previous: 2026-04-10 (iTerm2/trackpad double-click mustard flash fix: after a drag,
+  iTerm2 can emit DoubleClick1Pane or TripleClick1Pane which re-enters copy-mode -H.
+  The plugin default has run -d0.3 (300ms delay) making mustard visible briefly even after
+  drag is done. Fixed by overriding DoubleClick1Pane and TripleClick1Pane in Section 8
+  (post-plugin): same pane_in_mode guard kept (only enter copy-mode when not already in
+  mode), but delay reduced to run -d0.05 (50ms) to eliminate the visible flash.)
+  Previous: 2026-04-10 (Fixed mustard root cause: reloading config does NOT unbind
+  old bindings; old root MouseDragEnd1Pane (copy-mode \; ...) stayed in memory and
+  reset copy-mode state at drag-end, retriggering mustard. Fixed by explicitly binding
+  root MouseDragEnd1Pane to 'if pane_in_mode send-keys -X copy-selection-and-cancel'
+  — skips the copy-mode call entirely, avoids state reset. Also added root MouseDrag1Pane
+  + copy-mode -M to intercept drag at start for sky-only selection.)
+  Previous: 2026-04-09 (Initial project setup. Moved real config to
+  ~/.tmux/tmux.conf; ~/.tmux.conf is now a one-line stub sourcing it.
+  Added tmux_send_all.sh to project. Removed duplicate bkp files.
+  Moved tmux_send_active.sh and tmux_send_all.sh into ~/.tmux/; updated
+  run-shell paths in tmux.conf accordingly. Deleted tmux_send_all.sh
+  (legacy one-off EOS debug script, no longer needed).
+  Broadcast bindings rewritten as inline tmux run-shell commands; deleted
+  tmux_send_active.sh — no longer needed. New bindings use while IFS= read
+  loop + double-quoted %% so commands with pipes and single quotes work.
+  Fixed ##{}  escaping in list-panes -F format strings — #{} was being
+  expanded by tmux at bind time instead of by list-panes at run time.
+  Rewrote broadcast bindings to avoid -F format strings entirely: parse
+  default list-panes output with grep -oE '%[0-9]+' to extract pane IDs.
+  Grep '(active)' filters to active panes. No tmux format expansion issues.
+  Clipboard: set-clipboard on + terminal-features xterm*:clipboard enables OSC52
+  (Linux→Mac system clipboard over SSH via iTerm2, no xclip/X11 needed).
+  Mouse drag→release now auto-copies via MouseDragEnd1Pane copy-selection-and-cancel.
+  Bound in BOTH root and copy-mode-vi tables: root = drag starts outside copy mode
+  (mustard highlight), copy-mode-vi = drag starts inside copy mode (sky highlight).
+  Touchpad fix: MouseUp1Pane also bound — touchpad finger lift fires MouseUp instead
+  of MouseDragEnd when no drag movement is detected. Root uses if-F pane_in_mode
+  guard so plain clicks don't accidentally trigger copy.
+  y changed from pbcopy to copy-selection-and-cancel (same OSC52 path).
+  Rewrote broadcast as set-environment + external script (tmux_broadcast.sh).
+  Inline run-shell bindings are fundamentally broken for this use case:
+  \"%%\" does not produce shell-quoted strings — it produces literal " chars
+  in unquoted shell context, so $p and user commands are parsed incorrectly.
+  Fix: set-environment -g TMUX_BROADCAST_CMD "%%"  stores the command safely
+  in tmux's global env (tmux double-quotes handle | and ' as literals), then
+  the script reads it via show-environment | cut and sends to each pane.)
+================================================================================
+
+WHAT IS THIS FILE?
+  This file contains everything an AI needs to recreate the tmux configuration
+  from scratch. It is kept in sync with every code change made to the project.
+
+--------------------------------------------------------------------------------
+SECTION 1: PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+
+This project manages the personal tmux environment for a lab/network-ops
+workflow. The setup is optimized for:
+  - Managing many SSH sessions to Arista EOS devices (one device per window)
+  - Fast pane/window navigation without leaving the keyboard
+  - Broadcast commands to active panes across one or all sessions
+  - Light/dark theme toggle with persistent state
+
+--------------------------------------------------------------------------------
+SECTION 2: FILE STRUCTURE
+--------------------------------------------------------------------------------
+
+Project source: ~/claude/projects/tmux.conf/
+
+  tmux.conf              — Main tmux config. Deploy to ~/.tmux/tmux.conf
+  themes/light.conf      — Light theme. Deploy to ~/.tmux/themes/light.conf
+  themes/dark.conf       — Dark theme. Deploy to ~/.tmux/themes/dark.conf
+  tmux_broadcast.sh      — Broadcast script. Deploy to ~/.tmux/tmux_broadcast.sh
+  tmux_click.sh          — DoubleClick/TripleClick copy-mode script. Deploy to ~/.tmux/tmux_click.sh
+  INSTRUCTIONS_tmux-conf.txt  — This file.
+  CLAUDE.md              — Auto-loaded constraints summary (critical rules, deploy note).
+  .claude/commands/
+    deploy.md            — /deploy: show all 5 deploy commands + unbind reminder
+
+Stub file (not versioned — single line, never changes):
+  ~/.tmux.conf           — Contains only: source-file ~/.tmux/tmux.conf
+                           Tmux always loads ~/.tmux.conf on start; this stub
+                           redirects it to the real config in ~/.tmux/.
+
+Runtime files (not versioned, auto-generated):
+  ~/.tmux/themes/current_theme.conf  — State marker written by theme files
+                                       via run-shell. Contains "bg=white" or
+                                       "bg=dark". Read by the toggle binding.
+  ~/.tmux/plugins/                   — TPM-managed plugins (not versioned)
+
+Deploy commands:
+  cp ~/claude/projects/tmux.conf/tmux.conf ~/.tmux/tmux.conf
+  cp ~/claude/projects/tmux.conf/themes/light.conf ~/.tmux/themes/light.conf
+  cp ~/claude/projects/tmux.conf/themes/dark.conf ~/.tmux/themes/dark.conf
+  cp ~/claude/projects/tmux.conf/tmux_broadcast.sh ~/.tmux/tmux_broadcast.sh
+  chmod +x ~/.tmux/tmux_broadcast.sh
+  cp ~/claude/projects/tmux.conf/tmux_click.sh ~/.tmux/tmux_click.sh
+  chmod +x ~/.tmux/tmux_click.sh
+  # Stub (one-time setup, only if ~/.tmux.conf doesn't exist as stub):
+  echo 'source-file ~/.tmux/tmux.conf' > ~/.tmux.conf
+  # Reload inside tmux:
+  tmux source-file ~/.tmux.conf   # or: Prefix + Ctrl-b
+
+--------------------------------------------------------------------------------
+SECTION 3: KEY DESIGN DECISIONS
+--------------------------------------------------------------------------------
+
+1. PREFIX KEY: C-s (not C-b)
+   C-b conflicts with Vim. C-s was chosen as an unused key.
+   C-s is rebound to send-prefix (for nested tmux/ssh sessions).
+
+2. 1-BASED INDEXING
+   base-index 1, pane-base-index 1. Windows and panes start at 1 (not 0).
+   renumber-windows on keeps indices contiguous after deletes.
+
+3. ALLOW-RENAME vs AUTOMATIC-RENAME
+   allow-rename off: prevents programs (vim, ssh) from setting the window title.
+   automatic-rename on: tmux still renames windows based on the current command.
+   In practice, automatic-rename takes effect but user/program renames are blocked.
+
+4. THEME TOGGLE MECHANISM
+   ~/.tmux/themes/current_theme.conf is a runtime state file.
+   Each theme file writes its own marker to current_theme.conf via run-shell.
+   The toggle binding (Prefix + T) reads current_theme.conf with if-shell and
+   grep "bg=white" to decide which direction to toggle.
+   Default on load: light.conf (sourced in main config).
+
+5. CLIPBOARD (OSC52)
+   set-clipboard on: tmux sends OSC52 escape to outer terminal when copying.
+   terminal-features "xterm*:clipboard": tells tmux xterm-256color supports Ms
+   (clipboard) capability — required for set-clipboard to activate.
+   Result: copy-selection-and-cancel → tmux buffer + OSC52 → iTerm2 → Mac clipboard.
+   Works over SSH with no X11 or xclip. Requires iTerm2 "Allow clipboard access".
+   Mouse drag: single "sky" mode for all selections.
+   Root MouseDrag1Pane → `copy-mode -M`: intercepts drag at start, passes mouse event
+   into copy mode natively. tmux treats the entire drag as a copy-mode drag (sky).
+   `#{||:#{pane_in_mode},#{mouse_any_flag}}` guard: pass-through if already in copy
+   mode or pane handles mouse (e.g. vim); otherwise enter copy-mode -M.
+   Root MouseDragEnd1Pane → `if #{pane_in_mode} send-keys -X copy-selection-and-cancel`:
+   In tmux 3.2a, drag end may still fire in root table (drag context stays in root
+   even after copy-mode -M). Binding skips `copy-mode` call entirely — calling
+   `copy-mode` again resets copy-mode state and re-triggers mustard. `send-keys -X`
+   directly works because we are already in copy mode from copy-mode -M.
+   IMPORTANT: `source-file` does NOT unbind old bindings — it only sets new ones.
+   If a binding is removed from config and reload runs, the old binding stays in tmux
+   memory. Use explicit `bind` or `unbind` to clear stale bindings.
+   copy-mode-vi MouseDragEnd1Pane: also copy-selection-and-cancel (drag end in vi table).
+   Touchpad fix: MouseUp1Pane bound in both tables. On touchpad, finger lift
+   sometimes fires MouseUp instead of MouseDragEnd (no drag movement detected).
+   Root uses `if -F '#{pane_in_mode}'` guard — no-op on plain clicks, copies
+   only when pane is already in copy mode.
+   copy-mode-vi uses `if -F '#{selection_active}'` guard — copies if selection
+   exists, cancels (exits copy mode) if no selection active; prevents being stuck
+   in copy mode when touchpad fires MouseUp with no prior drag.
+   y: also copy-selection-and-cancel (keyboard trigger, same destination).
+   Enter: default copy-mode-vi binding (also copy-selection-and-cancel).
+
+6. RESIZE & TERMINAL STABILITY
+   default-terminal "xterm-256color" + terminal-override Tc for true color.
+   focus-events on: lets iTerm2/terminal pass resize signals.
+   aggressive-resize on: uses smallest attached client for dimensions.
+   checkwinsize (in .bashrc): forces shell to update LINES/COLS after each cmd.
+   'fix-tmux' alias: manual emergency resize (resize-window -x/-y).
+
+6. VIM-TMUX NAVIGATOR
+   Smart pane switching with Ctrl+h/j/k/l.
+   is_vim check: inspects ps output for vim/nvim in the active pane.
+   If vim is running: keypresses are passed through. Otherwise: tmux pane switch.
+
+7. BROADCAST ARCHITECTURE
+   Uses set-environment + external script (tmux_broadcast.sh). Inline run-shell
+   bindings are fundamentally broken for commands containing | or ':
+   - \"%%\" in a run-shell arg does not shell-quote the user command — at the
+     shell level, \" is a literal " character (not a quoting delimiter), so the
+     shell parses | as a pipe operator and ' as quoting, breaking the command.
+   - Same issue with pane IDs: \"$p\" produces the literal string "$p", not
+     the value of the shell variable p.
+   Solution:
+   a) Binding: set-environment -g TMUX_BROADCAST_CMD "%%"
+      tmux double-quotes store the user command verbatim (| and ' are literals).
+   b) Script: reads command via `tmux show-environment -g TMUX_BROADCAST_CMD`
+      and uses shell variable "$CMD" with proper double-quoting.
+   c) Pane list: `tmux list-panes -s/-a | grep '(active)' | grep -oE '%[0-9]+'`
+      avoids tmux format strings entirely — no format expansion issues.
+   Scope: e/C-e = current session, E/C-E = all sessions.
+   Limitation: commands containing literal double-quotes (") break the
+   set-environment binding. Not an issue for typical EOS CLI commands.
+
+8. SECTION 8: POST-PLUGIN OVERRIDES
+   Must appear AFTER 'run tpm' — this is critical.
+   Overrides mouse bindings so yank plugin and tmux defaults don't win.
+   (@yank_with_mouse off prevents yank from setting its own MouseDragEnd bindings.)
+   WARNING: `tmux source-file` does NOT unset old bindings — only adds/overrides.
+   If you remove a `bind` from the config and reload, the old binding stays in memory.
+   Always use an explicit `bind` (or `unbind`) to replace any binding you want gone.
+   MouseDrag1Pane (root): `copy-mode -M` — intercepts drag start, sky-only mode.
+   MouseDragEnd1Pane (root): `if #{pane_in_mode} send-keys -X copy-selection-and-cancel`
+     — handles drag end in root (tmux 3.2a routes drag-end to where drag started).
+     No `copy-mode` call — would reset state and retrigger mustard.
+   MouseDragEnd1Pane (copy-mode-vi): copy-selection-and-cancel on drag release.
+   MouseUp1Pane (root): no-op unless pane is already in copy mode (plain click guard).
+   MouseUp1Pane (copy-mode-vi): #{selection_active} guard — copy if selection exists,
+   no-op otherwise. Previously did send-keys -X cancel on no-selection, but this
+   fired on the first click of a double-click, exiting copy mode prematurely. Changed
+   to empty string (no-op) so double-click works while scrolled up. Use q or Escape
+   to exit copy mode manually when no selection is active.
+   DoubleClick1Pane (root): overrides plugin default. Same pane_in_mode guard; delay
+   reduced from 300ms to 50ms (run -d0.05) to suppress mustard flash that iTerm2
+   triggers post-drag. Selects word and copies via copy-pipe-and-cancel.
+   NOTE: root binding delegates to ~/.tmux/tmux_click.sh (NOT inline run-shell).
+   `-H` and `-M` both print usage errors in 3.2a when called inside an if-F branch chain.
+   Plain `copy-mode` enters at end-of-buffer so select-word hits the wrong position.
+   Separate tmux IPC calls in inline run-shell had ordering races causing "wrong location".
+   Fix: tmux_click.sh batches ALL navigation into a SINGLE `tmux send-keys` invocation:
+     tmux send-keys -X top-line \; send-keys -X -N $MY cursor-down \; send-keys -X -N $MX cursor-right \; send-keys -X select-word
+   Script also adds sleep 0.02 after copy-mode to let mode settle. #{mouse_y/x} are
+   expanded to numbers by tmux before the shell runs (no escaping needed in script).
+   TripleClick1Pane (root): same but select-line (no cursor-right needed for lines).
+   DoubleClick1Pane (copy-mode-vi): handles double-click when already in copy mode
+   (e.g. scrolled up). Root binding hits send-keys -M when pane_in_mode=1 but
+   copy-mode-vi had no handler so double-click did nothing. Now selects word + copies.
+   TripleClick1Pane (copy-mode-vi): same — selects line + copies when scrolled up.
+
+9. SSH INTEGRATION
+   Prefix + P: respawn current pane and SSH to the window name (admin@<window>).
+   Prefix + W: respawn ALL panes in current window and SSH to window name.
+   Prefix + S: send "ssh admin@<window_name>" to all active panes in current window
+               (no respawn — just types the command).
+   Prefix + T (theme) is unrelated; S vs T ordering is intentional.
+
+10. SAFETY CONFIRMATIONS
+    kill-pane (x), kill-window (X), kill-session (Q), respawn (P/W) all use
+    confirm-before to prevent accidental destruction.
+
+--------------------------------------------------------------------------------
+SECTION 4: BINDING REFERENCE
+--------------------------------------------------------------------------------
+
+PREFIX = Ctrl+s
+
+--- General ---
+  Prefix + Ctrl-b   Reload config (~/.tmux.conf)
+  Prefix + T        Toggle light/dark theme
+  Prefix + F        Super refresh (detach others, resize, refresh, fix layout)
+  Prefix + 0        Reset to tiled layout
+  Prefix + ^        Popup scratchpad (80%x80%, session: scratch)
+
+--- Window Navigation ---
+  M-C-Left/Right    Previous/next window (no prefix)
+  M-C-Up/Down       Last window (no prefix)
+  Prefix + l        Last window
+
+--- Window Management ---
+  Prefix + c        New window (keeps current path)
+  Prefix + r        Rename window
+  Prefix + R        Rename session
+  Prefix + <        Move window left
+  Prefix + >        Move window right
+  Prefix + X        Kill window (confirm)
+  Prefix + Q        Kill session (confirm)
+
+--- Pane Navigation ---
+  Ctrl+h/j/k/l      Smart pane switch (vim-aware, no prefix)
+  Prefix + Arrows   Standard pane switch
+
+--- Pane Management ---
+  Prefix + \        Split horizontal (keeps path)
+  Prefix + -        Split vertical (keeps path)
+  Prefix + H/J/K/L  Resize pane (repeatable)
+  Prefix + +        Zoom/unzoom pane
+  Prefix + x        Kill pane (confirm)
+  Prefix + O        Kill all other panes (confirm)
+  Prefix + p        Display pane numbers
+
+--- SSH / Respawn ---
+  Prefix + P        Respawn current pane + SSH to window name (confirm)
+  Prefix + W        Respawn ALL panes in window + SSH to window name (confirm)
+  Prefix + S        Send "ssh admin@<window_name>" to all active panes (no respawn)
+
+--- Broadcast ---
+  Prefix + e        Broadcast to active pane per window — current session
+  Prefix + E        Broadcast to active pane per window — ALL sessions
+  Prefix + C-e      Broadcast to ALL panes — current session
+  Prefix + C-E      Broadcast to ALL panes — ALL sessions
+  Prefix + C-p      Toggle pane synchronization
+
+--- Copy Mode ---
+  Prefix + [        Enter copy mode
+  v                 Begin selection (vi mode)
+  r                 Rectangle toggle
+  y                 Copy to clipboard (pbcopy)
+
+--- Detach ---
+  Prefix + d        Detach from session (confirm)
+  Prefix + D        Detach other clients (if >1 attached)
+
+--------------------------------------------------------------------------------
+SECTION 5: PLUGINS
+--------------------------------------------------------------------------------
+
+Managed by TPM (~/.tmux/plugins/tpm). Install: Prefix + I. Update: Prefix + U.
+
+  tmux-plugins/tpm              — Plugin manager
+  tmux-plugins/tmux-sensible    — Sensible defaults
+  tmux-plugins/tmux-yank        — System clipboard integration
+  tmux-plugins/tmux-resurrect   — Manual session save/restore
+  tmux-plugins/tmux-continuum   — Auto-save (continuum-restore: off)
+  tmux-plugins/tmux-online-status — Online/offline indicator in status bar
+
+Plugin config notes:
+  @yank_with_mouse off          — Prevents yank from overriding mouse release
+  @continuum-restore 'off'      — Auto-restore disabled (manual via resurrect)
+  @online_icon / @offline_icon  — Green/red dot in status bar right
+
+--------------------------------------------------------------------------------
+SECTION 6: STATUS BAR
+--------------------------------------------------------------------------------
+
+Layout: [session] | windows centered | sync-status online-status [hostname]
+
+  status-left:  '[#S] '  (session name in brackets)
+  status-right: SYNC-ON/sync-off indicator, online dot, [hostname]
+  window-status-separator: ' | '
+  status justified: centre (windows centered)
+
+--------------------------------------------------------------------------------
+SECTION 7: BROADCAST SCRIPT (tmux_broadcast.sh)
+--------------------------------------------------------------------------------
+
+Deploy to: ~/.tmux/tmux_broadcast.sh (chmod +x)
+
+Usage (called by tmux bindings — do not invoke directly):
+  tmux_broadcast.sh           # current session, active panes only
+  tmux_broadcast.sh -A        # all sessions, active panes only
+  tmux_broadcast.sh -a        # current session, all panes
+  tmux_broadcast.sh -aA       # all sessions, all panes
+
+Behavior:
+  - Reads the command to send from tmux global env: TMUX_BROADCAST_CMD
+    (set by the binding via `set-environment -g TMUX_BROADCAST_CMD "%%"`)
+  - Lists panes via `tmux list-panes -s/-a` (default output, no -F format str)
+  - Filters active panes with `grep '(active)'` (unless -a flag)
+  - Extracts pane IDs with `grep -oE '%[0-9]+'`
+  - Sends command to each pane via `tmux send-keys -t "$p" "$CMD" Enter`
+
+Why set-environment instead of passing command as script argument:
+  - Binding: `run-shell "script \"%%\""` — \" in run-shell is a literal "
+    at the shell level (not a quoting char), so the shell parses | as a pipe.
+  - set-environment with tmux double-quotes stores | and ' verbatim.
+  - tmux show-environment reads the value back without shell interpretation.
+
+================================================================================

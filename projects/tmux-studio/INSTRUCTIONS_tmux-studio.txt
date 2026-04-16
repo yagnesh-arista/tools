@@ -1,0 +1,452 @@
+================================================================================
+  TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
+  Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
+  Last updated: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check.md (/check command))
+  Previous: 2026-04-13 (User feedback: added "Reading tmux state..." before get_tmux_layout() in save; added "Reading current tmux state..." before get_tmux_layout() in restore — both were previously silent during the slow tmux command phase; file: tmux_studio.py)
+  Previous: 2026-04-11 (Renamed tmux_manager_studio.py -> tmux_studio.py and
+  all tmux_manager/Tmux Manager references updated to tmux_studio/Tmux Studio.
+  ask_confirmation() now loops until explicit 'y' or 'n' is entered — Enter or
+  any other key re-prompts instead of defaulting to False/n.
+  Previous: 2026-04-09 (Initial project setup; applied bug fixes: IndexError
+  guard for empty windows list, bare except -> except Exception/EOFError,
+  args.override mutation replaced with local do_override, allow_update silent
+  approval removed (now always prompts), dead code check_if_creation_needed
+  removed, duplicate index dedup in manage 'd' command, rotate_backups silent
+  failure now prints warning. Hook generalized to cover all projects.
+  Additional fixes: TMUX_SEP changed from "|||" to "\x1f" (ASCII unit separator)
+  to eliminate path/command collision risk; --ssh flag added to restore subparser
+  for non-interactive SSH enable; layout race condition fixed with 0.2s retry on
+  mismatch before printing warning; extra tmux sessions outside restore scope now
+  printed as [Info] before diff so user is aware of them.
+  Migration: all files moved from ~ to ~/.tmux-studio/; DEFAULT_JSON_FILENAME is
+  now "sessions.json"; STUDIO_DIR constant added; get_default_filepath() creates
+  ~/.tmux-studio/ on first use via os.makedirs(exist_ok=True).
+  Review fixes: list-panes split changed to maxsplit=9 to prevent ValueError on
+  unpack if separator appears in pane command; list-windows in
+  restore_sessions_and_windows updated to use TMUX_SEP (was hardcoded "|||");
+  stale command references in user-facing messages updated to "tmux-studio".)
+================================================================================
+
+WHAT IS THIS FILE?
+  This file contains everything an AI needs to recreate the Tmux Studio
+  project from scratch. It is kept in sync with every code change made to the
+  project.
+
+--------------------------------------------------------------------------------
+SECTION 1: PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+
+Tmux Studio is a single-file Python CLI tool (~815 lines) that saves
+and restores tmux session/window/pane layouts to/from a JSON file.
+
+Key behaviors:
+  - save   : Captures current tmux state -> JSON (merge or override)
+  - restore: Recreates windows/panes/layouts from JSON -> tmux
+  - manage : Interactive JSON editor (delete sessions, reorder sessions)
+
+It is designed for lab environments where SSH sessions to network devices
+(Arista EOS, etc.) are organized across named tmux windows. Each window is
+typically named after the device it SSHes into.
+
+--------------------------------------------------------------------------------
+SECTION 2: FILE STRUCTURE
+--------------------------------------------------------------------------------
+
+All files live in: ~/claude/projects/tmux-studio/
+
+  tmux_studio.py          — Single-file Python CLI. All logic lives here.
+                            Deployed to ~/.tmux-studio/tmux_studio.py for use.
+
+  INSTRUCTIONS_tmux-studio.txt — This file. AI rebuild prompt. Must be updated
+                            on every code change.
+  CLAUDE.md              — Auto-loaded constraints summary (TMUX_SEP, args.override, indices as strings).
+  .claude/commands/
+    check.md             — /check: verify deployed file sync, syntax check, smoke test
+
+Active deployment:
+  ~/.tmux-studio/tmux_studio.py          — The live script
+  ~/.tmux-studio/sessions.json           — Default data file (auto-created on first save)
+  ~/.tmux-studio/sessions.json.*.bak     — Rotating backups (max 10, all contained here)
+
+  Invoke via alias (add to ~/.bashrc or ~/.zshrc):
+    alias tmux-studio='python3 ~/.tmux-studio/tmux_studio.py'
+
+--------------------------------------------------------------------------------
+SECTION 3: CLI USAGE
+--------------------------------------------------------------------------------
+
+  tmux-studio save                  # Merge mode: keeps offline items
+  tmux-studio save -o               # Override: exact sync, deletes offline
+  tmux-studio save -f /path/to/file.json
+
+  tmux-studio restore               # Add missing; keep extras
+  tmux-studio restore -o            # Add missing; delete extras
+  tmux-studio restore --ssh         # Auto-SSH all panes (no prompt)
+  tmux-studio restore -o --ssh      # Delete extras + auto-SSH
+  tmux-studio restore -f /path/to/file.json
+
+  tmux-studio manage                # Interactive JSON session manager
+  tmux-studio manage -f /path/to/file.json
+
+  (where 'tmux-studio' = alias for 'python3 ~/.tmux-studio/tmux_studio.py')
+
+--------------------------------------------------------------------------------
+SECTION 4: CONFIGURATION CONSTANTS
+--------------------------------------------------------------------------------
+
+  DEFAULT_SSH_USER = "admin"
+    Default username for SSH connections. Used in: get_ssh_cmd(), SSH prompts.
+
+  DEFAULT_JSON_FILENAME = "sessions.json"
+    Filename for the default data file inside STUDIO_DIR.
+
+  STUDIO_DIR = ~/.tmux-studio
+    All runtime files live here: script, sessions.json, backups.
+    Created automatically by get_default_filepath() on first use.
+
+  CUSTOM_OVERRIDES: Dict[str, Dict[str, str]] = {}
+    Per-window SSH overrides. Key = window_name. Value = {"user": ..., "host": ...}.
+    If a window_name is in this dict, get_ssh_cmd() uses its user/host instead
+    of DEFAULT_SSH_USER@window_name.
+
+  TMUX_SEP = "\x1f"
+    ASCII Unit Separator used in ALL tmux format strings (list-panes and
+    list-windows). Chosen over "|||" to eliminate collision risk with paths/commands.
+    split() always uses maxsplit=9 (list-panes) or maxsplit=1 (list-windows)
+    so extra separators in the final field never cause unpack ValueError.
+
+  SSH_PROCESS_NAMES = ["ssh", "sshpass", "mosh-client"]
+    Process names checked in pane_current_command to detect active SSH.
+    Used in sync_panes_structurally() to avoid double-connecting a live SSH pane.
+
+  class Colors
+    ANSI color codes. GREEN, ORANGE, RED, DARK_RED, BLUE, CYAN, YELLOW, RESET.
+    Used in all print output and status strings. Never in input() prompts
+    (they cause display artifacts in some terminals).
+
+  STATUS_* constants
+    Pre-built colored strings used in compare_flat_swp() status reports.
+    Direction-aware: SAVE_* vs RESTORE_* variants for each state.
+    Categories: EXISTING (blue), ADDED (green), RENAMED (orange),
+    LAYOUT (yellow), MISSING_KEEP (orange), MISSING_DELETE (dark_red),
+    EXTRA_KEEP (orange), EXTRA_DELETE (dark_red).
+
+--------------------------------------------------------------------------------
+SECTION 5: DATA FORMAT (JSON)
+--------------------------------------------------------------------------------
+
+{
+  "sessions": [
+    {
+      "session_name": "my-session",
+      "windows": [
+        {
+          "window_index": "1",           <- STRING, primary match key
+          "window_name": "router-a",     <- display name; rename detected if changed
+          "window_layout": "abc1,220x50,0,0[220x50,0,0,3!]",  <- full tmux layout
+          "is_active": true,             <- whether this window is active in tmux
+          "is_zoomed": false,            <- zoom state; restored after layout apply
+          "panes": [
+            {
+              "pane_index": "0",         <- STRING, primary match key by order
+              "pane_current_path": "/home/yagnesh",
+              "pane_current_command": "ssh",
+              "is_active": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+  All indices stored as strings to prevent type mismatch during comparison.
+  normalize_loaded_data() ensures this on every JSON load.
+
+  window_layout checksum: first two comma-separated fields only (e.g. "abc1,220x50").
+  Pane IDs embedded in layout strings are ignored during comparison so that
+  pane ID churn between sessions doesn't trigger false layout-change reports.
+
+--------------------------------------------------------------------------------
+SECTION 6: KEY DESIGN DECISIONS
+--------------------------------------------------------------------------------
+
+1. STRICT STRUCTURE SYNC
+   Windows matched by index (not name). Panes matched by order (pane_index).
+   A rename is detected when index matches but name differs.
+
+2. SAFE SAVE (MERGE MODE, DEFAULT)
+   Without -o, save never deletes JSON entries for tmux items currently missing.
+   merge_current_into_saved() overlays live state onto saved state, preserving
+   offline items. Use -o to fully sync and discard offline items.
+
+3. DELETE ONLY WITH -o
+   All destructive operations require -o:
+     - compare_flat_swp(): stats['deleted'] only increments when overwrite=True
+     - restore block: all delete paths gated on local do_override
+     - sync_panes_structurally(): pane kill gated on is_strict = overwrite or new_session
+     - cleanup_extras(): only called when do_override is True
+   args.override is never mutated; a local do_override is used throughout restore.
+
+4. INTERACTIVE CONFIRMATIONS
+   Every change category (add, delete, layout, rename) requires explicit y/n.
+   In save: Prompt 1=adds, Prompt 2=deletes, Prompt 3=layout/renames (always asked).
+   In restore: Prompt 1=deletes (only if -o), Prompt 2=adds, Prompt 3=layout/renames.
+   Nothing is applied silently.
+
+5. AUTO-RECONNECT / SSH
+   Restore optionally auto-SSHes each pane via: tmux send-keys <target> "ssh user@host" Enter
+   get_ssh_cmd(window_name) returns "ssh DEFAULT_SSH_USER@window_name" unless
+   window_name is in CUSTOM_OVERRIDES.
+   SSH prompt is shown only when adding new sessions/windows (perform_add=True)
+   or when overriding a rename (do_override + renamed).
+   --ssh flag skips the prompt entirely and sets enable_ssh=True directly,
+   making restore scriptable (e.g., restore -o --ssh).
+   In sync_panes_structurally(), before sending SSH, pane_current_command is
+   checked against SSH_PROCESS_NAMES to avoid reconnecting an active session.
+
+6. LAYOUT RESILIENCE
+   Flow: resize-pane -Z (force unzoom) -> select-layout tiled -> select-layout <saved>.
+   After applying, the actual layout is read back and checksum-compared.
+   On mismatch: wait 0.2s, retry select-layout once, re-check. Only if still
+   mismatched after retry is the warning printed (terminal size differs from saved).
+   Zoom state restored last via resize-pane -Z (toggle).
+
+7. BACKUP ROTATION
+   On every save: timestamped .bak copy created before overwriting JSON.
+   Keeps last 10 backups (glob pattern: <filepath>.*.bak, sorted, trim oldest).
+   On copy failure: warning printed (not silent).
+
+8. SESSION SELECTION ON RESTORE
+   If JSON has >1 session: interactive numbered list, user picks (0=all).
+   Filters saved["sessions"] in place to selected only.
+   original_saved_sessions (full set before filtering) is passed to
+   cleanup_extras() so non-selected JSON sessions aren't killed during -o.
+   current["sessions"] is also filtered to only the selected session names
+   before compare_flat_swp() is called (so the diff is scoped to selection).
+
+9. MANAGE COMMAND
+   Loads JSON fresh on every loop iteration (so changes are reflected).
+   'd' command: deduplicated indices, confirms deletion list, writes + rotates backup.
+   'r' command: requires ALL session numbers exactly once (full reorder).
+   'q' or empty: quit.
+
+--------------------------------------------------------------------------------
+SECTION 7: FUNCTION REFERENCE (for full rebuild)
+--------------------------------------------------------------------------------
+
+--- JSON & BACKUP ---
+
+get_default_filepath() -> str
+  Creates STUDIO_DIR (~/.tmux-studio/) via os.makedirs(exist_ok=True).
+  Returns os.path.join(STUDIO_DIR, DEFAULT_JSON_FILENAME).
+
+normalize_loaded_data(data) -> data
+  Ensures window_index and pane_index are strings in all sessions/windows/panes.
+  Called immediately after json.load().
+
+load_saved_layout(filepath) -> {"sessions": [...]}
+  If file exists: json.load, validate {"sessions": ...} key present, normalize.
+  On JSONDecodeError: print FATAL error + hint, sys.exit(1).
+  If file missing: return {"sessions": []}.
+
+rotate_backups(filepath)
+  If file doesn't exist: return.
+  Copy file to <filepath>.<YYYYMMDD_HHMMSS>.bak via shutil.copy2().
+  On OSError: print Colors.YELLOW warning.
+  Glob <filepath>.*.bak, sort, delete oldest beyond 10.
+
+write_json_to_disk(data, filepath)
+  json.dumps(data, indent=2, sort_keys=True) -> write.
+  On OSError: print error, sys.exit(1).
+
+--- DATA LOOKUP ---
+
+get_layout_checksum(layout_str) -> str
+  Split layout_str by ",". Return "{parts[0]},{parts[1]}" (checksum + dimensions).
+  If <2 parts: return layout_str as-is. If empty: return "".
+
+build_detailed_lookup(layout) -> Dict[key, {path, layout, zoomed, window_name, full_key_with_name}]
+  Key format: "{session_name}|{window_index}|{pane_index}"
+  Iterates all sessions/windows/panes. Used in compare_flat_swp() for
+  per-pane content comparison (layout checksum, zoom state, window name).
+
+--- SAVE MERGE ---
+
+merge_current_into_saved(saved, current) -> merged_dict
+  Start with deep copy of saved (preserves offline items).
+  Build windows_map per session keyed by window_index.
+  Overlay current: for each current session/window, update or add to saved.
+    For existing windows: take current panes, append saved panes missing from current.
+    If offline panes were re-appended AND saved has a layout: use saved layout.
+  Rebuild windows list from map, sort windows by index, sort panes by index.
+  Clean up temporary windows_map key before returning.
+  Returns: {"sessions": [...]}.
+
+--- TMUX INTERFACE ---
+
+tmux_running() -> bool
+  subprocess.run(["tmux", "ls"], devnull). True if exit 0, False otherwise.
+
+get_tmux_layout() -> {"sessions": [...]}
+  NOTE: callers (save, restore) print a status line immediately before calling this
+  ("Reading tmux state..." / "Reading current tmux state...") since it runs multiple
+  tmux subprocesses and can take 0.5–2s depending on session count.
+  Runs: tmux list-panes -a -F <format with TMUX_SEP>
+  Format fields (10): session_name, window_index, window_name, window_layout,
+    window_active, window_flags, pane_index, pane_current_path, pane_active,
+    pane_current_command.
+  Builds sess_map: session -> windows dict -> panes list.
+  is_zoomed: "Z" in window_flags.
+  Active pane normalization: if multiple panes marked active, only first is kept.
+  Sorts windows by index, panes by index.
+  Sorts sessions alphabetically by session_name.
+  Returns layout dict.
+
+--- COMPARISON REPORTING ---
+
+flatten_layout_items(layout) -> Dict[key, {session, window, window_index, pane}]
+  Key format: "{session_name}|{window_index}|{pane_index}"
+  Flat map of all panes across all sessions/windows. Used to compute set
+  differences in compare_flat_swp().
+
+compare_flat_swp(saved, current, mode, overwrite) -> stats dict
+  Builds saved_items and curr_items via flatten_layout_items().
+  Builds saved_lookup and curr_lookup via build_detailed_lookup().
+  stats keys: added, deleted, renamed, changed, existing, missing, extras.
+  Iterates all_keys = sorted union of saved and current keys.
+  Prints session/window separators for readability.
+  For each key:
+    in both: check name match -> renamed? else check layout checksum/zoom -> changed?
+    in saved only:
+      save mode + overwrite -> SAVE_MISSING_DELETE (stats.deleted++)
+      save mode no overwrite -> SAVE_MISSING_KEEP (stats.missing++)
+      restore mode -> RESTORE_ADDED (stats.added++)
+    in current only:
+      save mode -> SAVE_ADDED (stats.added++)
+      restore mode + overwrite -> RESTORE_EXTRA_DELETE (stats.deleted++)
+      restore mode no overwrite -> RESTORE_EXTRA_KEEP (stats.extras++)
+  Returns stats.
+
+--- OPERATIONS: RESTORE ---
+
+restore_sessions_and_windows(saved_layout, overwrite, enable_ssh) -> new_sessions set
+  For each saved session:
+    If session not in tmux: guard empty windows list, create via new-session -d.
+      Move window to target index if tmux assigned different default index.
+      Print created session/window. If enable_ssh: send_ssh().
+    List current windows for session (index -> name map).
+    For each saved window:
+      If index not in tmux: new-window -d at target index. SSH if enabled.
+      Elif overwrite and name mismatch: move current to temp index (900+idx),
+        new-window at target index with correct name, kill temp.
+  Returns set of newly created session names.
+
+sync_panes_structurally(saved_layout, overwrite, new_sessions, enable_ssh)
+  For each saved session/window:
+    Get actual pane IDs via list-panes -F #{pane_id}.
+    If fewer panes than needed: split-window -d + select-layout tiled (after each split).
+      Re-fetch pane IDs after expansion.
+    is_strict = overwrite or (s_name in new_sessions)
+    If is_strict and too many panes: kill excess panes from the end.
+    If enable_ssh: for each pane, check pane_current_command against SSH_PROCESS_NAMES.
+      If not already SSH: send_ssh(pane_id, window_name).
+    Force unzoom: resize-pane -Z (this toggles; since we don't know zoom state,
+      it forces unzoom by trying to zoom a non-zoomed pane, which is a no-op risk).
+    If window_layout saved: select-layout tiled, then select-layout <saved_layout>.
+      Read back actual layout, checksum-compare, warn on mismatch.
+    If window is_zoomed: resize-pane -Z again to zoom.
+    select-pane -t last pane id (to leave focus somewhere predictable).
+
+cleanup_extras(saved_layout, protected_sessions=None)
+  Gets fresh current layout.
+  safe_sessions = saved session names UNION protected_sessions.
+  For each current session:
+    If not in safe_sessions: kill-session.
+    If in safe_sessions but not in saved (i.e. only in protected): skip window cleanup.
+    Else: for each window not in saved window indices: kill-window.
+
+--- HELPERS ---
+
+ask_confirmation(prompt) -> bool
+  Loops until user enters exactly 'y' or 'n' (case-insensitive).
+  Any other input (Enter, other keys) prints a re-prompt message and asks again.
+  Returns True for 'y', False for 'n'.
+  except (EOFError, KeyboardInterrupt): return False.
+
+get_ssh_cmd(window_name) -> str
+  If window_name in CUSTOM_OVERRIDES: "ssh {user}@{host}".
+  Else: "ssh {DEFAULT_SSH_USER}@{window_name}".
+
+send_ssh(target, window_name)
+  tmux send-keys -t <target> <ssh_cmd> C-m
+
+--- MAIN / ARGPARSE ---
+
+main()
+  Subcommands: save, restore, manage.
+  save/restore: -o/--override (store_true), -f/--file (default path).
+  manage: -f/--file only.
+  abs_path = os.path.abspath(args.file).
+  Outer try/except KeyboardInterrupt -> print cancelled, sys.exit(1).
+
+  SAVE FLOW:
+    Check tmux running. Get current layout. Load saved layout.
+    compare_flat_swp(saved, current, mode="save", overwrite=args.override).
+    Prompt 1 (adds): if stats['added'] > 0 -> ask -> allow_add.
+    Prompt 2 (deletes, -o only): if stats['deleted'] > 0 -> ask -> allow_delete.
+      If declined: args.override = False (prevents override-mode write).
+    Prompt 3 (changes):
+      If stats['changed'] or stats['renamed']:
+        If missing items AND no override: warn about merge, ask for changes-only confirm.
+        Else: always ask confirmation for layout/rename changes.
+    If any allowed: final_data = current (if override) else merge_current_into_saved().
+      rotate_backups(), write_json_to_disk(). Print mode (MERGE or OVERRIDE).
+    Else: print "No changes confirmed."
+
+  RESTORE FLOW:
+    Check file exists. Load saved layout.
+    If >1 session: prompt for session selection (0=all, comma indices).
+    Store original_saved_sessions (full set before filtering).
+    Filter current to only selected session names before compare.
+    compare_flat_swp(saved, current, mode="restore", overwrite=args.override).
+    do_override = args.override (local; never mutate args.override).
+    Conflict check: if not do_override and extras>0 and changed>0 -> exit with hint.
+    Prompt 1 (deletes, -o only): if do_override and deleted>0 -> ask.
+      If declined: do_override = False.
+    Prompt 2 (adds): if added>0 -> ask -> perform_add.
+    Prompt 3 (changes): if not (perform_add or do_override) and changed/renamed>0 -> ask.
+      If renamed and confirmed: do_override = True (needed to recreate window).
+    SSH: if args.ssh -> enable_ssh=True (no prompt). Else if perform_add or
+      (do_override and renamed>0) -> ask confirmation.
+    If nothing to do: print and exit(0).
+    restore_sessions_and_windows(saved, do_override, enable_ssh).
+    time.sleep(0.5).
+    sync_panes_structurally(saved, do_override, new_sessions, enable_ssh).
+    If do_override: cleanup_extras(saved, original_saved_sessions).
+    Print "Restore Complete."
+
+  MANAGE FLOW:
+    Check file exists. Loop:
+      Load saved layout fresh each iteration.
+      If no sessions: print warning, exit.
+      Print numbered session list. Print command menu (d/r/q).
+      Read choice.
+      'q' or empty: break.
+      'd <nums>': parse comma-separated ints, deduplicate via dict.fromkeys().
+        Validate all in range. Confirm deletion. Filter sessions. Backup + write.
+      'r <nums>': parse comma-separated ints.
+        Validate len == total sessions and set == full index set.
+        Reorder saved["sessions"] per given order. Backup + write.
+
+--------------------------------------------------------------------------------
+SECTION 8: KNOWN LIMITATIONS / FUTURE IMPROVEMENTS
+--------------------------------------------------------------------------------
+
+  - restore without -o: extra tmux sessions outside restore scope are shown
+    as [Info] before the diff but are not included in the diff table itself.
+    Extra windows within a restored session DO appear in the diff.
+  - resize-pane -Z for unzoom is a toggle, not an explicit unzoom command.
+    Works correctly when pane is zoomed; is a no-op when not zoomed.
+
+================================================================================

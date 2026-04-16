@@ -1,0 +1,5442 @@
+/**
+ * -------------------
+ * CONFIGURATION CONSTANTS
+ * -------------------
+ */
+// 1. Try to get saved name. 2. Default to "PortMapping"
+var SHEET_DATA = (() => {
+  const custom = PropertiesService.getScriptProperties().getProperty('TARGET_SHEET_NAME');
+  if (custom && custom !== "PortMapping") console.warn('[Config] Using custom sheet name:', custom);
+  return custom || "PortMapping";
+})();
+
+/**
+* -------------------
+* MENU & TRIGGERS
+* -------------------
+*/
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('TopoAssist')
+    // 1. Core Visualizer
+    .addItem('Show Topology', 'showTopologyWindow')
+    .addSeparator()
+    // 2. Sheet View Controls (Submenu)
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet View')
+      .addItem('Show All Columns/Devices', 'viewShowAll')
+      .addItem('Cabling Focused (Int Only)', 'viewIntOnly')
+      .addItem('Po Focused (Int + Po)', 'viewIntAndPo')
+      .addItem('Transceiver Focused (Int + Xcvr)', 'viewIntAndXcvr')
+      .addItem('Mode Focused (Int + Po + Mode)', 'viewIntAndMode')
+      .addItem('Vlan Focused (Int + Po + Vlan)', 'viewIntAndVlan')
+      .addSeparator()
+      .addItem('Custom View...', 'showSheetAssistPanel'))
+    .addSeparator()
+    // 3. Sheet Data & Schema Management (Submenu)
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet Manager')
+      .addItem('▤ Manage Column & Formatting', 'showDeviceDataUi')
+      .addItem('▣ Change Sheet Name', 'promptRenameSheet')
+      .addSeparator()
+      .addItem('▦ Create Sheet Checkpoint', 'createTopologySnapshot')
+      .addItem('▧ Restore Sheet Checkpoint', 'showRestoreWizard')
+      .addSeparator()
+      .addItem('▫ New Project — Reset All Data', 'showNewProjectDialog'))
+    .addSeparator()
+    // 4. Device & Config Management (Submenu)
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Topology Manager')
+      .addItem('▥ Device Manager', 'showDeviceManagerUi'))
+    .addSeparator()
+    // 5. Help
+    .addItem('User Guide', 'openUserGuide')
+    .addToUi();
+
+}
+
+// Installable onOpen handler — auto-opens Sheet View panel if a column filter is active.
+// Simple onOpen() cannot call showModelessDialog() (AuthMode.LIMITED); this runs with full auth.
+// Wired up by ensureOnOpenTrigger(), called from showTopologyWindow() / showSheetAssistPanel().
+function onOpenInstallable() {
+  try {
+    const prefs   = getViewPreferences();
+    const allKeys = getSchemaConfig().map(function(s) { return s.key; });
+    if (prefs.length < allKeys.length) {
+      showSheetAssistPanel();
+    }
+  } catch (e) {}
+}
+
+// Installs the onOpen installable trigger if not already present.
+function ensureOnOpenTrigger() {
+  const ss = SpreadsheetApp.getActive();
+  const already = ScriptApp.getProjectTriggers().some(function(t) {
+    return t.getHandlerFunction() === 'onOpenInstallable' &&
+           t.getTriggerSourceId() === ss.getId() &&
+           t.getEventType() === ScriptApp.EventType.ON_OPEN;
+  });
+  if (!already) {
+    ScriptApp.newTrigger('onOpenInstallable').forSpreadsheet(ss).onOpen().create();
+  }
+}
+
+/**
+ * UI Prompt to safely rename the working sheet and update global settings.
+ */
+function promptRenameSheet() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Get Current Name
+  const currentName = SHEET_DATA;
+
+  const result = ui.prompt(
+    'Change Sheet Name',
+    `Current Name: "${currentName}"\n\nEnter the new name for the data sheet:`,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (result.getSelectedButton() !== ui.Button.OK) return;
+
+  const newName = result.getResponseText().trim();
+  if (!newName) {
+    ui.alert("Name cannot be empty.");
+    return;
+  }
+  if (newName === currentName) return; // No change
+
+  // 2. Safety Checks
+  if (ss.getSheetByName(newName)) {
+    ui.alert(`✗ Error: A sheet named "${newName}" already exists.\nPlease choose a unique name.`);
+    return;
+  }
+
+  const actualSheet = ss.getSheetByName(currentName);
+  if (!actualSheet) {
+    // Edge case: Config thinks name is 'X', but sheet 'X' is missing.
+    // Ask user if they want to treat the NEW name as the target (and create it later).
+    const confirm = ui.alert(
+      "Sheet Not Found",
+      `The sheet "${currentName}" does not exist. Do you want to set "${newName}" as the new target anyway? (You will need to create it or run Device Manager)`,
+      ui.ButtonSet.YES_NO
+    );
+    if (confirm === ui.Button.YES) {
+      PropertiesService.getScriptProperties().setProperty('TARGET_SHEET_NAME', newName);
+      ui.alert(`✓ Settings Updated.\nThe tool will now look for "${newName}".`);
+    }
+    return;
+  }
+
+  // 3. Execute Rename
+  try {
+    actualSheet.setName(newName); // Rename the tab
+    PropertiesService.getScriptProperties().setProperty('TARGET_SHEET_NAME', newName); // Save setting
+
+    // Update global var for this execution context (though script usually restarts on new action)
+    SHEET_DATA = newName;
+
+    ui.alert(`✓ Success!\n\nSheet renamed from "${currentName}" to "${newName}".\nThe tool is updated.`);
+  } catch (e) {
+    ui.alert("Error renaming sheet: " + e.message);
+  }
+}
+
+/**
+* Helper function to include external HTML files (CSS/JS)
+*/
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+* -------------------
+* COLUMN VISIBILITY TOOLS
+* -------------------
+*/
+
+function viewShowAll() {
+  saveSheetViewHidden([]);
+  applyCustomView(getSchemaConfig().map(function(s) { return s.key; }));
+  refreshSheetRowVisibility();
+}
+
+function viewIntOnly() {
+  applyCustomView(['int']);
+  showSheetAssistPanel();
+}
+
+function viewIntAndPo() {
+  applyCustomView(['int', 'po']);
+  showSheetAssistPanel();
+}
+
+function viewIntAndMode() {
+  applyCustomView(['int', 'po', 'sp_mode']);
+  showSheetAssistPanel();
+}
+
+function viewIntAndVlan() {
+  applyCustomView(['int', 'po', 'n_vlan', 'vlan']);
+  showSheetAssistPanel();
+}
+
+function viewIntAndXcvr() {
+  applyCustomView(['int', 'xcvr']);
+  showSheetAssistPanel();
+}
+
+
+/**
+ * Called by the Sidebar to check if data has changed.
+ * Returns a simple timestamp string.
+ */
+function getDataVersion() {
+  return PropertiesService.getScriptProperties().getProperty('DATA_VERSION') || "0";
+}
+
+function showCustomViewUi() {
+  const template = HtmlService.createTemplateFromFile('Sidebar');
+  template.initialMode = 'view_custom';
+
+  // Pass settings (reusing existing helper to prevent errors, though not used here)
+  const settings = getUiSettings();
+  template.defaultWidth = settings.width;
+  template.defaultDevGap = settings.devGap;
+  template.defaultOffset = settings.offset;
+  template.defaultTop = settings.top;
+  template.defaultRefresh = settings.refresh;
+  template.defaultAuto = settings.auto;
+
+  const html = template.evaluate().setWidth(500).setHeight(600).setTitle('Sheet Custom View Managers');
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet Custom View Managers');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SHEET ASSISTANT PANEL
+// ─────────────────────────────────────────────────────────────────
+
+function showSheetAssistUi() {
+  const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
+    .setWidth(360)
+    .setHeight(580);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet Assistant');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SHEET DEVICE VISIBILITY PANEL
+// ─────────────────────────────────────────────────────────────────
+
+function showSheetAssistPanel() {
+  try { ensureOnChangeTrigger(); } catch (e) {}
+  try { ensureOnOpenTrigger();  } catch (e) {}
+  const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
+    .setWidth(490)
+    .setHeight(550);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
+}
+
+function getSheetDeviceList() {
+  const devices = getExistingDevices();
+  const sheetHidden = getSheetViewHidden();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return devices.map(function(d) {
+    return { name: d.name, isVisible: !sheetHidden.includes(d.name), colCount: 0, hostname: d.hostname || "" };
+  });
+  const lastCol = sheet.getLastColumn();
+  const headers = lastCol > 0 ? sheet.getRange(2, 1, 1, lastCol).getValues()[0] : [];
+  return devices.map(function(d) {
+    const colCount = headers.filter(function(h) { return String(h).endsWith('_' + d.name); }).length;
+    return { name: d.name, isVisible: !sheetHidden.includes(d.name), colCount: colCount, hostname: d.hostname || "" };
+  });
+}
+
+function toggleSheetDevice(deviceName, hidden) {
+  const hiddenList = getSheetViewHidden();
+  if (hidden) {
+    if (!hiddenList.includes(deviceName)) hiddenList.push(deviceName);
+  } else {
+    const idx = hiddenList.indexOf(deviceName);
+    if (idx > -1) hiddenList.splice(idx, 1);
+  }
+  saveSheetViewHidden(hiddenList);
+  // Full reset via applyCustomView — same path as column toggle — ensures device columns
+  // are shown/hidden respecting the current column type view (not stale mode strings).
+  applyCustomView(getViewPreferences());
+  refreshSheetRowVisibility();
+  return { success: true };
+}
+
+function showAllSheetDevices() {
+  saveSheetViewHidden([]);
+  applyCustomView(getViewPreferences());
+  refreshSheetRowVisibility();
+  return getSheetDeviceList();
+}
+
+function hideAllSheetDevices() {
+  const allNames = getExistingDevices().map(function(d) { return d.name; });
+  saveSheetViewHidden(allNames);
+  applyCustomView(getViewPreferences());
+  refreshSheetRowVisibility();
+  return getSheetDeviceList();
+}
+
+function batchToggleSheetDevices(names, hidden) {
+  let hiddenList = getSheetViewHidden();
+  names.forEach(function(name) {
+    if (hidden) {
+      if (!hiddenList.includes(name)) hiddenList.push(name);
+    } else {
+      const idx = hiddenList.indexOf(name);
+      if (idx > -1) hiddenList.splice(idx, 1);
+    }
+  });
+  saveSheetViewHidden(hiddenList);
+  applyCustomView(getViewPreferences());
+  refreshSheetRowVisibility();
+  return getSheetDeviceList();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SHEET ROW VISIBILITY (dummy column + row hide/show)
+// ─────────────────────────────────────────────────────────────────
+
+const DUMMY_VIS_HEADER = '_sys_';
+
+function ensureDummyColumn(sheet) {
+  // _sys_ column stays visible at all times — eliminates all "can't hide last column" errors.
+  // Device columns start at col 2+; setColumnVisibility already skips col 1.
+  const exists = sheet.getLastColumn() >= 1 && String(sheet.getRange(2, 1).getValue()) === DUMMY_VIS_HEADER;
+  if (!exists) {
+    sheet.insertColumnBefore(1);
+    const hdrCell = sheet.getRange(2, 1);
+    hdrCell.setValue(DUMMY_VIS_HEADER);
+    hdrCell.setNote('Managed by TopoAssist — do not edit.\nThis column tracks row visibility and is required for the hide/show feature to work correctly.');
+    sheet.getRange(1, 1).setValue('↕');
+    sheet.setColumnWidth(1, 36);
+  }
+  // Always apply gray styling so the column is visually marked as reserved
+  const numRows = Math.max(sheet.getLastRow(), 3);
+  sheet.getRange(1, 1, numRows, 1).setBackground('#e2e8f0');
+  return 1;
+}
+
+function refreshSheetRowVisibility() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 3) return;
+
+  // Ensure _sys_ is at col 1 FIRST — may insert a column, shifting others
+  const visColIdx = ensureDummyColumn(sheet);
+  const lastCol = sheet.getLastColumn(); // re-read after possible insert
+  if (lastCol < 2) return; // need at least _sys_ + one device column
+
+  const hiddenDevs = new Set(getSheetViewHidden());
+  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0]; // re-read after insert
+
+  // Build device → column index maps for int_, ip_type_, sp_mode_, svi_ (visible devices only)
+  // Single pass over headers.
+  const ipFilter      = getSheetViewIpFilter();      // [] = all shown
+  const intModeFilter = getSheetViewIntModeFilter();  // [] = all shown
+  const sviFilter     = getSheetViewSviFilter();      // [] = all shown
+  const devIntCol     = {}; // lowercased device name → int_ col index
+  const devIpTypeCol  = {}; // lowercased device name → ip_type_ col index
+  const devSpModeCol  = {}; // lowercased device name → sp_mode_ col index
+  const devSviCol     = {}; // lowercased device name → svi_ col index
+  const visIntCols    = [];
+  headers.forEach(function(h, i) {
+    if (i + 1 === visColIdx) return; // skip _sys_
+    const s = String(h);
+    if (s.startsWith('int_')) {
+      const dev = s.slice(4);
+      if (!hasKey(hiddenDevs, dev)) { devIntCol[dev.toLowerCase()] = i; visIntCols.push(i); }
+    } else if (s.startsWith('ip_type_')) {
+      const dev = s.slice(8);
+      if (!hasKey(hiddenDevs, dev)) devIpTypeCol[dev.toLowerCase()] = i;
+    } else if (s.startsWith('sp_mode_')) {
+      const dev = s.slice(8);
+      if (!hasKey(hiddenDevs, dev)) devSpModeCol[dev.toLowerCase()] = i;
+    } else if (s.startsWith('svi_')) {
+      const dev = s.slice(4);
+      if (!hasKey(hiddenDevs, dev)) devSviCol[dev.toLowerCase()] = i;
+    }
+  });
+
+  const dataRowCount = lastRow - 2;
+  const allData = sheet.getRange(3, 1, dataRowCount, lastCol).getValues(); // re-read after insert
+  const toShow = [], toHide = [];
+
+  allData.forEach((row, ri) => {
+    let active = visIntCols.length > 0 && visIntCols.some(ci => {
+      const v = row[ci];
+      return v !== null && v !== undefined && String(v).trim() !== '';
+    });
+    // AND: ip_type filter — only check ip_type_ for devices that are active on this row
+    // (i.e. have a non-blank int_ value). Devices not on this link have blank int_ and
+    // must NOT influence the filter — otherwise every row would pass via their blank ip_type_.
+    if (active && ipFilter.length > 0) {
+      active = Object.keys(devIntCol).some(function(dev) {
+        const intVal = String(row[devIntCol[dev]] || '').trim();
+        if (!intVal) return false;
+        const ipTypeCol = devIpTypeCol[dev];
+        if (ipTypeCol === undefined) return ipFilter.includes('blank');
+        const ipRaw = String(row[ipTypeCol] || '').toLowerCase().trim();
+        const ipVal = (ipRaw === 'p2p' || ipRaw === 'gw') ? ipRaw : 'blank';
+        return ipFilter.includes(ipVal);
+      });
+    }
+    // AND: int_mode filter — check sp_mode_ only for devices active on this row
+    if (active && intModeFilter.length > 0) {
+      active = Object.keys(devIntCol).some(function(dev) {
+        const intVal = String(row[devIntCol[dev]] || '').trim();
+        if (!intVal) return false;
+        const spModeCol = devSpModeCol[dev];
+        if (spModeCol === undefined) return true; // no sp_mode_ column → always passes
+        const sp = String(row[spModeCol] || '').toLowerCase().trim();
+        if (!sp) return true; // blank sp_mode_ always passes filter
+        return intModeFilter.includes(sp);
+      });
+    }
+    // AND: svi filter — check svi_ only for devices active on this row
+    if (active && sviFilter.length > 0) {
+      active = Object.keys(devIntCol).some(function(dev) {
+        const intVal = String(row[devIntCol[dev]] || '').trim();
+        if (!intVal) return false;
+        const sviCol = devSviCol[dev];
+        if (sviCol === undefined) return sviFilter.includes('blank');
+        const sviVal = String(row[sviCol] || '').toLowerCase().trim();
+        return sviFilter.includes(sviVal === 'yes' ? 'yes' : 'blank');
+      });
+    }
+    (active ? toShow : toHide).push(ri + 3);
+  });
+
+  _batchRowOp(sheet, toShow, false);
+  _batchRowOp(sheet, toHide, true);
+}
+
+function _batchRowOp(sheet, rowNums, hide) {
+  if (!rowNums.length) return;
+  rowNums.sort((a, b) => a - b);
+  let start = rowNums[0], count = 1;
+  for (let i = 1; i < rowNums.length; i++) {
+    if (rowNums[i] === rowNums[i - 1] + 1) {
+      count++;
+    } else {
+      hide ? sheet.hideRows(start, count) : sheet.showRows(start, count);
+      start = rowNums[i]; count = 1;
+    }
+  }
+  hide ? sheet.hideRows(start, count) : sheet.showRows(start, count);
+}
+
+/**
+* Global Network Feature Flags
+*/
+function getNetworkSettings() {
+  const props = PropertiesService.getDocumentProperties();
+  // Migrate legacy NET_BGP=true → underlay='bgp'
+  const stored = props.getProperty('NET_UNDERLAY');
+  const legacyBgp = props.getProperty('NET_BGP');
+  const underlay = stored || (legacyBgp === 'true' ? 'bgp' : 'none');
+  return {
+    underlay: underlay,          // 'bgp' | 'ospf' | 'none'
+    vxlan: props.getProperty('NET_VXLAN') || 'false',
+    evpn: props.getProperty('NET_EVPN') || 'false'
+  };
+}
+
+function saveNetworkSettings(settings) {
+  const props = PropertiesService.getDocumentProperties();
+  props.setProperties({
+    'NET_UNDERLAY': settings.underlay,
+    'NET_VXLAN': settings.vxlan,
+    'NET_EVPN': settings.evpn
+  });
+  return { success: true };
+}
+/**
+* -------------------
+* UI LAUNCHERS
+* -------------------
+*/
+function showTopologyWindow() {
+  try { ensureOnChangeTrigger(); } catch (e) {}
+  try { ensureOnOpenTrigger();  } catch (e) {}
+  const template = HtmlService.createTemplateFromFile('Sidebar');
+  template.initialMode = 'topology';
+  const settings = getUiSettings(); // Use the helper
+
+  template.defaultWidth = settings.width;
+  template.defaultDevGap = settings.devGap;
+  template.defaultOffset = settings.offset;
+  template.defaultTop = settings.top;
+  template.defaultRefresh = settings.refresh;
+  template.defaultAuto = settings.auto;
+
+  const html = template.evaluate().setWidth(1600).setHeight(900).setTitle('Live Network Topology v4.4');
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
+}
+
+function showDeviceManagerUi() {
+  const template = HtmlService.createTemplateFromFile('Sidebar');
+  template.initialMode = 'manager';
+  const settings = getUiSettings(); // Use the helper
+
+  template.defaultWidth = settings.width;
+  template.defaultDevGap = settings.devGap;
+  template.defaultOffset = settings.offset;
+  template.defaultTop = settings.top;
+  template.defaultRefresh = settings.refresh;
+  template.defaultAuto = settings.auto;
+
+  const html = template.evaluate().setWidth(800).setHeight(800).setTitle('Device Manager');
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Device Manager');
+}
+
+function showDeviceDataUi() {
+  const template = HtmlService.createTemplateFromFile('Sidebar');
+  template.initialMode = 'schema';
+
+  // Use the unified settings helper instead of hardcoded strings
+  const settings = getUiSettings();
+
+  template.defaultWidth = settings.width;
+  template.defaultDevGap = settings.devGap;
+  template.defaultOffset = settings.offset;
+  template.defaultTop = settings.top;
+  template.defaultRefresh = settings.refresh;
+  template.defaultAuto = settings.auto;
+
+  const html = template.evaluate()
+    .setWidth(700)
+    .setHeight(800)
+    .setTitle('Manage Column & Formatting');
+
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Manage Column & Formatting');
+}
+
+function openUserGuide() {
+  const htmlOutput = HtmlService.createHtmlOutputFromFile('UserGuide')
+    .setWidth(900)
+    .setHeight(850);
+
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'User Documentation');
+}
+
+/**
+* -------------------
+* SCHEMA STORAGE (ARRAY BASED FOR ORDERING)
+* -------------------
+*/
+// Defines the exact Default Order & Options
+const DEFAULT_SCHEMA_ARRAY = [
+  { key: 'int', label: 'Interface', options: [] },
+  { key: 'po', label: 'Port-Channel', options: [] },
+  { key: 'sp_mode', label: 'Mode', options: ['l2-et-access', 'l2-et-trunk', 'l2-po-access', 'l2-po-trunk', 'l3-et-int', 'l3-et-sub-int', 'l3-po-int', 'l3-po-sub-int'] },
+  { key: 'n_vlan', label: 'Native VLAN', options: [] },
+  { key: 'vlan', label: 'VLANs', options: [] },
+  { key: 'svi', label: 'SVI', options: ['yes'] },
+  { key: 'ip_type', label: 'IP Type', options: ['p2p', 'gw'] },
+  { key: 'vrf', label: 'VRF', options: [] },
+  { key: 'et_speed', label: 'Et Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
+  { key: 'xcvr_speed', label: 'Xcvr Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
+  { key: 'encoding', label: 'FEC', options: ['fire-code', 'reed-solomon'] },
+  { key: 'xcvr', label: 'Transceiver', options: [] },
+  { key: 'desc', label: 'Description', options: [] },
+  { key: 'sd', label: 'SD', options: [] },
+  { key: 'dp-pp-mp', label: 'DP-PP-MP', options: [] }
+];
+
+/**
+* [UPDATED] Robust Schema Getter
+*/
+function getSchemaConfig() {
+  try {
+    const props = PropertiesService.getDocumentProperties();
+    const json = props.getProperty('SCHEMA_CONFIG_ARRAY');
+    if (json && json.trim() !== "") {
+      try {
+        const parsed = JSON.parse(json);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) { console.warn("△ Schema JSON corrupted. Reverting to default schema.", e); }
+    }
+  } catch (e) { console.error("Error accessing document properties:", e); }
+  return DEFAULT_SCHEMA_ARRAY;
+}
+
+function saveSchemaConfig(newArray) {
+  PropertiesService.getDocumentProperties().setProperty('SCHEMA_CONFIG_ARRAY', JSON.stringify(newArray));
+  return { success: true };
+}
+
+function resetSchemaToDefaults() {
+  PropertiesService.getDocumentProperties().deleteProperty('SCHEMA_CONFIG_ARRAY');
+  return getSchemaConfig();
+}
+
+
+/**
+* -------------------
+* UPDATED HELPERS
+* -------------------
+*/
+function getAttributeSchema() {
+  const schemaArray = getSchemaConfig();
+  let keys = [];
+  let rules = {};
+
+  if (!schemaArray || !Array.isArray(schemaArray)) {
+    console.error("[SCHEMA] Failed to retrieve schemaArray. Using empty defaults.");
+    return { keys: [], rules: {} };
+  }
+
+  schemaArray.forEach(item => {
+    let key = item.key + '_';
+    keys.push(key);
+    if (item.options && item.options.length > 0) {
+      const cleanOptions = item.options.filter(opt => String(opt).trim() !== "");
+      if (cleanOptions.length > 0) {
+        rules[key] = SpreadsheetApp.newDataValidation()
+          .requireValueInList(cleanOptions)
+          .setAllowInvalid(true)
+          .build();
+      }
+    }
+  });
+  return { keys: keys, rules: rules };
+}
+
+function getDropdowns() { // Removed unused 'ss'
+  const schemaArray = getSchemaConfig();
+  const options = {};
+  schemaArray.forEach(item => {
+    if (item.options && item.options.length > 0) {
+      options[item.key] = item.options;
+    }
+  });
+  return options;
+}
+
+function getLegends() { // Removed unused 'ss'
+  const schemaArray = getSchemaConfig();
+  const legends = { gw: [], p2p: [], l2: [] };
+
+  const categorize = (list, type) => {
+    if (!list) return;
+    list.forEach(opt => {
+      let s = String(opt).toLowerCase();
+      if (type === 'ip_type') {
+        if (s.includes('gw')) legends.gw.push(opt);
+        if (s.includes('p2p') || s.includes('l3')) legends.p2p.push(opt);
+      }
+      if (type === 'sp_mode') {
+        if (s.includes('access') || s.includes('trunk') || s.includes('l2')) legends.l2.push(opt);
+      }
+    });
+  };
+
+  schemaArray.forEach(item => {
+    if (item.key === 'ip_type') categorize(item.options, 'ip_type');
+    if (item.key === 'sp_mode') categorize(item.options, 'sp_mode');
+  });
+  return legends;
+}
+
+/**
+* -------------------
+* SYNC LOGIC (Fixed: Formatting + Orphan Safety)
+* -------------------
+*/
+/**
+* Returns orphaned attribute keys (in sheet but not in schema) with a hasData flag.
+* Used by client to show a confirm() before sync — safer than server-side ui.alert()
+* which is invisible behind the sidebar loading overlay.
+* optionalTargetSchema: pass the schema array being applied (null = current saved schema).
+*/
+function getOrphanedColumnsInfo(optionalTargetSchema) {
+  const mappingSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DATA);
+  if (!mappingSheet) return [];
+
+  const schemaArray = optionalTargetSchema || getSchemaConfig();
+  const targetKeys = schemaArray.map(function(item) { return item.key + "_"; });
+  const currentKeys = getExistingAttributes(mappingSheet);
+  const orphanedKeys = currentKeys.filter(function(k) { return !targetKeys.includes(k); });
+  if (orphanedKeys.length === 0) return [];
+
+  const lastRow = mappingSheet.getLastRow();
+  const lastCol = mappingSheet.getLastColumn();
+  const row2 = mappingSheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  const dataValues = lastRow >= 3
+    ? mappingSheet.getRange(3, 1, lastRow - 2, lastCol).getValues()
+    : [];
+
+  return orphanedKeys.map(function(key) {
+    let hasData = false;
+    for (let c = 0; c < lastCol && !hasData; c++) {
+      if (String(row2[c]).startsWith(key)) {
+        for (let r = 0; r < dataValues.length && !hasData; r++) {
+          if (dataValues[r][c] !== '' && dataValues[r][c] !== null && dataValues[r][c] !== undefined) {
+            hasData = true;
+          }
+        }
+      }
+    }
+    return { key: key, hasData: hasData };
+  });
+}
+
+function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans) {
+  // deleteOrphans: undefined/null = prompt via ui.alert (menu/dialog context)
+  //                true  = delete orphaned columns
+  //                false = keep orphaned columns
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const mappingSheet = ss.getSheetByName(SHEET_DATA);
+
+  if (!mappingSheet) return;
+
+  safeCachePut(CacheService.getUserCache(), 'SYNC_STATUS', '🔍 Analyzing schema...', 60);
+
+  // 1. Get the Target Keys
+  const schemaArray = optionalForcedSchema || getSchemaConfig();
+  let targetKeys = schemaArray.map(item => item.key + "_");
+
+  // 2. Identify "Orphaned" Columns
+  let currentKeys = getExistingAttributes(mappingSheet);
+  const orphanedCols = currentKeys.filter(k => !targetKeys.includes(k));
+
+  if (orphanedCols.length > 0) {
+    let shouldDelete;
+    if (deleteOrphans === true) {
+      shouldDelete = true;
+    } else if (deleteOrphans === false) {
+      shouldDelete = false;
+    } else {
+      // Fallback: ui.alert for menu-triggered calls (not via google.script.run sidebar)
+      const msg = `Found ${orphanedCols.length} custom attribute(s) (e.g. ${orphanedCols[0]}) that are NOT in the Schema.\n\n` +
+        `Do you want to DELETE them?\n\n` +
+        `• YES = Delete columns\n` +
+        `• NO / CLOSE = Keep columns`;
+      const response = ui.alert('Sync Schema: Orphaned Columns', msg, ui.ButtonSet.YES_NO);
+      shouldDelete = (response === ui.Button.YES);
+    }
+
+    if (shouldDelete) {
+      ss.toast(`Deleting ${orphanedCols.length} columns...`, "Sync Info", 3);
+    } else {
+      targetKeys = [...targetKeys, ...orphanedCols];
+      ss.toast(`Preserving ${orphanedCols.length} custom columns.`, "Sync Info", 3);
+    }
+  }
+
+  // 3. Get Devices
+  const currentDevices = getExistingDevices();
+  if (currentDevices.length === 0) {
+    ui.alert("Schema Saved", "No devices found.", ui.ButtonSet.OK);
+    return;
+  }
+
+  // 4. Trigger Rebuild with Formatting Flag
+  // If applyFormatting is undefined (e.g. called from a script), default to true
+  if (applyFormatting === undefined) applyFormatting = true;
+
+  rebuildSheet(currentDevices, targetKeys, applyFormatting);
+}
+
+/**
+* -------------------
+* DEVICE MANAGER LOGIC (FIXED)
+* -------------------
+*/
+function saveDeviceConfiguration(finalDeviceList) {
+  if (!finalDeviceList || finalDeviceList.length === 0) return { error: "Device list cannot be empty." };
+
+  // Validate all device names at the boundary before touching the sheet
+  for (const dev of finalDeviceList) {
+    if (!dev.name || !/^[a-zA-Z0-9_\-]{1,64}$/.test(dev.name)) {
+      return { error: `Invalid device name: "${dev.name}". Use alphanumeric, hyphens, or underscores (max 64 chars).` };
+    }
+  }
+  try {
+    const currentList = getExistingDevices();
+    let isDifferent = (finalDeviceList.length !== currentList.length);
+
+    if (!isDifferent) {
+      isDifferent = finalDeviceList.some((newDev, index) => {
+        const oldDev = currentList[index];
+        return (newDev.name.toLowerCase() !== oldDev.name.toLowerCase() || newDev.type !== oldDev.type);
+      });
+    }
+
+    if (!isDifferent) return { success: true, noChanges: true };
+
+    // FIX: Always preserve orphans during device reorder
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const mappingSheet = ss.getSheetByName(SHEET_DATA);
+    const schemaArray = getSchemaConfig();
+    let targetKeys = schemaArray.map(item => item.key + "_");
+
+    if (mappingSheet) {
+      let currentKeys = getExistingAttributes(mappingSheet);
+      const orphanedCols = currentKeys.filter(k => !targetKeys.includes(k));
+
+      // During Device Reorder, we ALWAYS Keep orphans.
+      // We don't ask, because the user is focused on Devices, not Schema.
+      if (orphanedCols.length > 0) {
+        targetKeys = [...targetKeys, ...orphanedCols];
+      }
+    }
+
+    rebuildSheet(finalDeviceList, targetKeys);
+    return { success: true };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function auditSchemaVsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return { error: "Sheet not found" };
+
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2 || lastCol < 1) {
+    return { extra: [], missing: [], conflicts: [], error: "Sheet is empty." };
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[1].map(h => String(h).trim());
+
+  const devices = getExistingDevices();
+  const schema = getSchemaConfig();
+
+  // 1. Build Expected Headers List
+  let expectedHeaders = [];
+
+  devices.forEach(d => {
+    if (d.type === 'non-arista') {
+      expectedHeaders.push('int_' + d.name);
+    } else {
+      schema.forEach(s => { expectedHeaders.push(s.key + '_' + d.name); });
+    }
+  });
+
+  const actualHeaders = headers.filter(h => h !== "" && h !== DUMMY_VIS_HEADER);
+  const missing = expectedHeaders.filter(h => !actualHeaders.includes(h));
+  const extra = actualHeaders.filter(h => !expectedHeaders.includes(h));
+
+  // RETURN EMPTY CONFLICTS (Logic moved to Client-Side runValidation)
+  return {
+    extra: extra,
+    missing: missing,
+    conflicts: [], // <--- Force Empty
+    totalActual: actualHeaders.length,
+    totalExpected: expectedHeaders.length
+  };
+}
+
+function parseAndExpandDevices(inputStr) {
+  const rawItems = inputStr.split(',').map(s => s.trim()).filter(s => s !== "");
+  let expanded = [];
+  const MAX_ITEMS = 50;
+
+  for (const item of rawItems) {
+    if (expanded.length >= MAX_ITEMS) break;
+    const rangeMatch = item.match(/^(.*)\[(\d+)-(\d+)\](.*)$/);
+
+    if (rangeMatch) {
+      const prefix = rangeMatch[1];
+      const startStr = rangeMatch[2];
+      const endStr = rangeMatch[3];
+      let start = parseInt(startStr);
+      let end = parseInt(endStr);
+      const suffix = rangeMatch[4];
+
+      if (!isNaN(start) && !isNaN(end)) {
+        if (start > end) { [start, end] = [end, start]; }
+
+        if ((end - start) > 50) {
+          console.warn("Range too large: " + item);
+          continue;
+        }
+
+        const shouldPad = startStr.startsWith("0");
+        const padLen = startStr.length;
+
+        for (let i = start; i <= end; i++) {
+          let numPart = String(i);
+          if (shouldPad) numPart = numPart.padStart(padLen, "0");
+          expanded.push(prefix + numPart + suffix);
+        }
+      } else {
+        expanded.push(item);
+      }
+    } else {
+      expanded.push(item);
+    }
+  }
+  return [...new Set(expanded)];
+}
+
+/* ==================================================
+ REBUILD ENGINE (FIXED: MERGE ALWAYS, COLOR OPTIONAL, TEXT FORMATTING)
+ ================================================== */
+
+
+/**
+ * Rebuilds the PortMapping sheet from scratch using current device/schema config.
+ * Backs up existing data, writes new structure, restores values, applies formatting.
+ * @param {Array|null} forcedOrderList - Device order to use; null = detect from sheet
+ * @param {Array|null} forcedSchemaList - Schema attribute keys; null = use saved schema
+ * @param {boolean} applyFormatting - Whether to apply color formatting (default true)
+ * @throws {Error} If backup read fails or no devices are found
+ */
+function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let mappingSheet = ss.getSheetByName(SHEET_DATA);
+  if (!mappingSheet) mappingSheet = ss.insertSheet(SHEET_DATA);
+
+  const startTime = new Date().getTime();
+  if (applyFormatting === undefined) applyFormatting = true;
+
+  // --- STAGE 1: BACKUP & READ ---
+  let backupValues = null;
+  let backupFormulas = null;
+  const lastR = mappingSheet.getLastRow();
+  const lastC = mappingSheet.getLastColumn();
+
+  if (lastR > 0 && lastC > 0) {
+    const range = mappingSheet.getRange(1, 1, lastR, lastC);
+    backupValues = range.getValues();
+    backupFormulas = range.getFormulas();
+    if (!backupValues || backupValues.length === 0) {
+      throw new Error("Backup failed: Could not read sheet data before rebuild.");
+    }
+  }
+
+  SpreadsheetApp.flush();
+
+  const syncCache = CacheService.getUserCache();
+
+  try {
+    safeCachePut(syncCache, 'SYNC_STATUS', '📋 Phase 1/4: Reading sheet data...', 60);
+    ss.toast("Phase 1: Analyzing structure...", "Syncing", 1);
+    const schemaObj = getAttributeSchema();
+    const globalAttributes = forcedSchemaList ? forcedSchemaList : schemaObj.keys;
+
+    let memory = {};
+    let detectedDevicesList = [];
+
+    // READ DATA INTO MEMORY
+    if (backupValues && backupValues.length > 1 && backupValues[0].length > 0) {
+      const r1 = backupValues[0];
+      const r2 = backupValues[1];
+      let currentDev = null;
+      let registeredNonArista = getNonAristaList();
+
+      // Build hostname→devName reverse map so Row 1 can store hostnames
+      // without breaking backup keying (which must use short device names).
+      const hostnameToDevName = {};
+      const savedHostnames = getDeviceHostnames();
+      Object.entries(savedHostnames).forEach(([devName, hn]) => { hostnameToDevName[hn] = devName; });
+      if (forcedOrderList) {
+        forcedOrderList.forEach(d => { if (d.hostname && d.hostname.trim()) hostnameToDevName[d.hostname.trim()] = d.name; });
+      }
+
+      // Pre-build column counts per device (avoids O(n²) forEach inside the loop)
+      const deviceColCounts = {};
+      for (let c = 0; c < r2.length; c++) {
+        const h = String(r2[c]).trim();
+        if (!h) continue;
+        const lastUnderscore = h.lastIndexOf("_");
+        if (lastUnderscore !== -1) {
+          const dev = h.substring(lastUnderscore + 1);
+          deviceColCounts[dev] = (deviceColCounts[dev] || 0) + 1;
+        }
+      }
+
+      for (let c = 0; c < r1.length; c++) {
+        if (r1[c]) {
+          const r1Val = String(r1[c]).trim();
+          if (r1Val === "") continue;
+          // Normalize: if Row 1 stores a hostname, map back to the short device name
+          currentDev = hostnameToDevName[r1Val] || r1Val;
+          if (!detectedDevicesList.some(d => d.name === currentDev)) {
+            const colCount = deviceColCounts[currentDev] || 0;
+
+            let type = (registeredNonArista.includes(currentDev) || colCount === 1) ? 'non-arista' : 'full';
+            detectedDevicesList.push({ name: currentDev, type: type });
+          }
+        }
+        if (currentDev) {
+          if (!memory[currentDev]) memory[currentDev] = {};
+          let header = String(r2[c]).trim();
+          let attrKey = "";
+          schemaObj.keys.forEach(k => { if (header.startsWith(k)) attrKey = k; });
+          if (!attrKey && header.includes("_")) attrKey = header.substring(0, header.lastIndexOf("_") + 1);
+
+          if (attrKey) {
+            for (let rowIdx = 2; rowIdx < backupValues.length; rowIdx++) {
+              if (!memory[currentDev][rowIdx - 2]) memory[currentDev][rowIdx - 2] = {};
+              let val = backupValues[rowIdx][c];
+              memory[currentDev][rowIdx - 2][attrKey] = val;
+            }
+          }
+        }
+      }
+    }
+
+    const devicesToProcess = forcedOrderList || detectedDevicesList;
+    if (!devicesToProcess || devicesToProcess.length === 0) {
+      if (!forcedOrderList) throw new Error("No devices found. Aborting.");
+    }
+
+    // PREPARE NEW DATA STRUCTURE
+    let outRow1 = [], outRow2 = [], bodyData = [];
+    let validationQueue = [];
+    let currentColumnCursor = 1;
+
+    let maxDataRows = 0;
+    Object.values(memory).forEach(rows => {
+      let len = Object.keys(rows).length;
+      if (len > maxDataRows) maxDataRows = len;
+    });
+
+    devicesToProcess.forEach((devObj, i) => {
+      const devName = devObj.name;
+      const isNonArista = devObj.type === 'non-arista';
+      const suffix = devName;
+
+      const devAttributes = isNonArista ? ['int_'] : globalAttributes;
+
+      outRow1.push(devObj.hostname || devName);
+      for (let k = 1; k < devAttributes.length; k++) outRow1.push("");
+
+      devAttributes.forEach((attr, aIdx) => {
+        outRow2.push(attr + suffix);
+        if (!isNonArista && schemaObj.rules && schemaObj.rules[attr]) {
+          validationQueue.push({ col: currentColumnCursor + aIdx, rule: schemaObj.rules[attr] });
+        }
+      });
+      currentColumnCursor += devAttributes.length;
+    });
+
+    for (let r = 0; r < maxDataRows; r++) {
+      let row = [];
+      devicesToProcess.forEach(devObj => {
+        const isNonArista = devObj.type === 'non-arista';
+
+        const attrs = isNonArista ? ['int_'] : globalAttributes;
+        attrs.forEach(attr => {
+          let val = (memory[devObj.name] && memory[devObj.name][r]) ? memory[devObj.name][r][attr] : "";
+          row.push(val || "");
+        });
+      });
+      bodyData.push(row);
+    }
+
+    // --- SAFETY CHECK: DATA INTEGRITY (FIXED) ---
+    // 1. Headers must always exist (Row 1 = Device Names, Row 2 = Attributes)
+    if (!outRow1 || outRow1.length === 0 || !outRow2 || outRow2.length === 0) {
+      throw new Error("Internal Error: Generated headers are empty. Aborting.");
+    }
+
+    // 2. Data Loss Protection
+    // We only block if the sheet HAD data rows (backup > 2) but the new version has ZERO.
+    // This allows creating the first device columns on a blank sheet.
+    if (backupValues && backupValues.length > 2 && (!bodyData || bodyData.length === 0)) {
+      console.error("rebuildSheet: Safety Block Triggered. Source had rows, New has 0.");
+      throw new Error("Internal Error: Generated data is empty. Operation cancelled to protect your data.");
+    }
+
+    // --- STAGE 2: COMMIT DATA (ALWAYS RUNS) ---
+    safeCachePut(syncCache, 'SYNC_STATUS', '✏️ Phase 2/4: Writing to sheet...', 60);
+    if (mappingSheet.getFilter()) mappingSheet.getFilter().remove();
+    mappingSheet.setFrozenRows(2);
+
+    const finalColCount = outRow1.length;
+    const finalRowCount = Math.max(bodyData.length + 5, 5);
+
+    let currentMaxC = mappingSheet.getMaxColumns();
+    if (currentMaxC < finalColCount) mappingSheet.insertColumnsAfter(currentMaxC, finalColCount - currentMaxC);
+
+    let currentMaxR = mappingSheet.getMaxRows();
+    if (currentMaxR < finalRowCount) mappingSheet.insertRowsAfter(currentMaxR, finalRowCount - currentMaxR);
+
+    // Clear Old Data & Formats (clearNote prevents ghost note on shifted columns after _sys_ re-insert)
+    mappingSheet.getRange(1, 1, mappingSheet.getMaxRows(), mappingSheet.getMaxColumns())
+      .clearContent()
+      .clearFormat()
+      .clearNote()
+      .setDataValidation(null)
+      .setBackground(null);
+
+    // Write Headers Immediately
+    mappingSheet.getRange(1, 1, 1, outRow1.length).setValues([outRow1]);
+    mappingSheet.getRange(2, 1, 1, outRow2.length).setValues([outRow2]);
+
+    if (bodyData.length > 0) {
+      const dataRange = mappingSheet.getRange(3, 1, bodyData.length, bodyData[0].length);
+      dataRange.setNumberFormat("@");
+      dataRange.setValues(bodyData);
+    }
+
+    // --- STAGE 3: VALIDATION (ALWAYS RUNS) ---
+    const dataRowSpan = finalRowCount - 2;
+    if (dataRowSpan > 0) {
+      validationQueue.forEach(v => {
+        try { mappingSheet.getRange(3, v.col, dataRowSpan, 1).setDataValidation(v.rule); } catch (e) { console.warn(`setDataValidation failed at col ${v.col}:`, e.message); }
+      });
+    }
+
+    // --- STAGE 4: STRUCTURAL FORMATTING (ALWAYS RUNS) ---
+    safeCachePut(syncCache, 'SYNC_STATUS', '🎨 Phase 3/4: Applying formatting...', 60);
+    ss.toast("Applying structure...", "Formatting", 1);
+
+    mappingSheet.getRange(1, 1, finalRowCount, finalColCount)
+      .setFontFamily("Consolas").setFontSize(10).setVerticalAlignment("top").setHorizontalAlignment("center");
+
+    mappingSheet.getRange(1, 1, 2, finalColCount)
+      .setFontWeight("bold").setBorder(true, true, true, true, true, true);
+
+    let colorCursor = 0;
+    let row1Colors = [];
+
+    devicesToProcess.forEach((devObj, i) => {
+      const isNonArista = devObj.type === 'non-arista';
+      const devAttributes = isNonArista ? ['int_'] : globalAttributes;
+
+      if (devAttributes.length > 1) {
+        try { mappingSheet.getRange(1, colorCursor + 1, 1, devAttributes.length).merge(); } catch (e) { console.warn(`merge failed at col ${colorCursor + 1}:`, e.message); }
+      }
+
+      let hue = (200 + (i * 137.5)) % 360;
+      let color = applyFormatting ? hslToHex(hue, 85, 88) : "#ffffff";
+
+      for (let k = 0; k < devAttributes.length; k++) row1Colors.push(color);
+      colorCursor += devAttributes.length;
+    });
+
+    SpreadsheetApp.flush();
+    // Adaptive column widths — derived from row 2 header length (Consolas 10px ≈ 7px/char + 16px padding)
+    outRow2.forEach((hdr, idx) => {
+      const width = Math.max(80, Math.ceil(hdr.length * 7) + 16);
+      mappingSheet.setColumnWidth(idx + 1, width);
+    });
+
+    // --- STAGE 5: COLOR APPLICATION (CONDITIONAL) ---
+    if (applyFormatting) {
+      ss.toast("Applying colors...", "Formatting", 1);
+      if (row1Colors.length > 0) mappingSheet.getRange(1, 1, 1, row1Colors.length).setBackgrounds([row1Colors]);
+      mappingSheet.getRange(2, 1, 1, outRow2.length).setBackground("#f1f5f9");
+      applyGlobalFormatting();
+    }
+
+    // Re-apply column visibility + recreate _sys_ after full sheet rebuild.
+    // Order matters: refreshSheetRowVisibility() calls ensureDummyColumn() first,
+    // inserting _sys_ at col 1 and shifting device columns to col 2+.
+    // applyCustomView() then reads the correct layout (col A = _sys_, cols B+ = devices).
+    safeCachePut(syncCache, 'SYNC_STATUS', '👁️ Phase 4/4: Restoring column view...', 60);
+    try {
+      refreshSheetRowVisibility();
+      applyCustomView(getViewPreferences());
+    } catch (visErr) {
+      console.warn('Post-rebuild visibility restore failed:', visErr.message);
+    }
+
+    safeCachePut(syncCache, 'SYNC_STATUS', '✅ Sync complete', 60);
+    ss.toast(`Update Successful (${((new Date().getTime() - startTime) / 1000).toFixed(2)}s)`, "Success", 3);
+
+  } catch (err) {
+    // [LOGGING] Log the full error object to the console
+    console.error("rebuildSheet Failed:", err);
+
+    if (backupValues && backupValues.length > 0) {
+      try {
+        ss.toast("Error detected. Rolling back...", "Safety", 10);
+        let reqRows = backupValues.length;
+        let reqCols = backupValues[0].length;
+        if (mappingSheet.getMaxRows() < reqRows) mappingSheet.insertRowsAfter(mappingSheet.getMaxRows(), reqRows - mappingSheet.getMaxRows());
+        if (mappingSheet.getMaxColumns() < reqCols) mappingSheet.insertColumnsAfter(mappingSheet.getMaxColumns(), reqCols - mappingSheet.getMaxColumns());
+        let restoreData = backupValues;
+        if (backupFormulas && backupFormulas.length > 0) {
+          restoreData = backupValues.map((row, r) => {
+            return row.map((val, c) => {
+              const f = (backupFormulas[r] && backupFormulas[r][c]);
+              return (f && f !== "") ? f : val;
+            });
+          });
+        }
+        mappingSheet.getRange(1, 1, reqRows, reqCols).setValues(restoreData);
+      } catch (rollErr) {
+        console.error("Rollback failed:", rollErr);
+      }
+    }
+    SpreadsheetApp.getUi().alert("✗ Update Failed", "Error: " + err.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+* ========================================================================
+* 🎨 GLOBAL VISUAL FORMATTING ENGINE (UPDATED: Light Colors + PO Support)
+* ========================================================================
+*/
+
+// 1. CONFIGURATION: Define Colors & Rules
+const FORMAT_CONFIG = {
+  colors: {
+    orphan: "#ffffff", // White for unconnected (cleaner look)
+    textMuted: "#1e293b"
+  },
+  // Rules for specific columns (Key = Header Prefix)
+  rules: {
+    'speed': [
+      { text: '1.6t', bg: '#e0e7ff' },
+      { text: '800g', bg: '#fae8ff' },
+      { text: '400g', bg: '#f3e8ff' },
+      { text: '200g', bg: '#dbeafe' },
+      { text: '100g', bg: '#dcfce7' },
+      { text: '50g', bg: '#ccfbf1' },
+      { text: '40g', bg: '#fef9c3' },
+      { text: '25g', bg: '#e0f2fe' },
+      { text: '10g', bg: '#f1f5f9' },
+      { text: '1g', bg: '#f8fafc' }
+    ],
+    'xcvr': [
+      { text: 'OSFP', bg: '#fae8ff' },
+      { text: 'QSFP-DD', bg: '#f3e8ff' },
+      { text: 'QSFP56', bg: '#dbeafe' },
+      { text: 'QSFP28', bg: '#dcfce7' },
+      { text: 'DSFP', bg: '#dcfce7' },
+      { text: 'QSFP+', bg: '#fef9c3' },
+      { text: 'SFP28', bg: '#e0f2fe' },
+      { text: 'SFP+', bg: '#f1f5f9' }
+    ],
+    'sp_mode': [
+      { text: 'l2-et-access', bg: '#f0fdf4', color: '#15803d', type: 'exact' },
+      { text: 'l2-po-access', bg: '#bbf7d0', color: '#14532d', type: 'exact' },
+      { text: 'l2-et-trunk', bg: '#fff7ed', color: '#c2410c', type: 'exact' },
+      { text: 'l2-po-trunk', bg: '#fed7aa', color: '#7c2d12', type: 'exact' },
+      { text: 'l3-et-int', bg: '#f0f9ff', color: '#0369a1', type: 'exact' },
+      { text: 'l3-po-int', bg: '#bae6fd', color: '#0c4a6e', type: 'exact' },
+      { text: 'l3-et-sub-int', bg: '#faf5ff', color: '#7e22ce', type: 'exact' },
+      { text: 'l3-po-sub-int', bg: '#e9d5ff', color: '#581c87', type: 'exact' }
+    ],
+    'ip_type': [
+      { text: 'p2p', bg: '#f3f4f6' },
+      { text: 'gw', bg: '#fff1f2' }
+    ]
+  }
+};
+
+// 2. MAIN FUNCTION
+function applyGlobalFormatting() {
+  applyVisualFormatting();
+}
+
+/**
+ * ------------------------------------------------------------------------
+ * 🎨 GLOBAL VISUAL FORMATTING ENGINE
+ * ------------------------------------------------------------------------
+ */
+function applyVisualFormatting(optionalSheet) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = optionalSheet || ss.getSheetByName(SHEET_DATA);
+    if (!sheet) {
+      console.warn("applyVisualFormatting: Sheet not found");
+      return;
+    }
+
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    if (lastRow < 3) return;
+
+    // Read Data
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0].map(String);
+    const dataRange = sheet.getRange(3, 1, lastRow - 2, lastCol);
+    const data = dataRange.getValues();
+
+    // Calculate Topology & Colors
+    // Apply the same explicit MLAG peer override used in getDeviceConfig() so that
+    // MLAG cell borders in the sheet reflect declared pairs, not just the PO heuristic.
+    const fullData = sheet.getDataRange().getValues();
+    const topo = calculateGlobalTopology(fullData, headers);
+    const explicitMlagPeers = getDeviceMlagPeers();
+    if (Object.keys(explicitMlagPeers).length > 0) {
+      topo.mlagPeerMap = explicitMlagPeers;
+      topo.peerLinkPorts = new Set();
+      const processedPairs = new Set();
+      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+        const pairKey = [devA, devB].sort().join('|');
+        if (processedPairs.has(pairKey)) return;
+        processedPairs.add(pairKey);
+        topo.globalLinkMap.forEach((val, key) => {
+          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
+          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
+        });
+      });
+      topo.mlagConfigPorts = new Set();
+      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+        if (!topo.poMap) return;
+        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
+          if (devConnections[devA] && devConnections[devB]) {
+            topo.mlagConfigPorts.add(devA + ':' + poName);
+            topo.mlagConfigPorts.add(devB + ':' + poName);
+          }
+        });
+      });
+    }
+    const result = calculateConnectionBackgrounds(data, headers, lastCol, topo);
+
+    // 1. Apply Background Colors
+    dataRange.setBackgrounds(result.matrix);
+
+    // 2. Clear Previous Borders (Reset)
+    dataRange.setBorder(null, null, null, null, null, null);
+
+    // 3. Apply Black Borders to MLAG Cells
+    if (result.mlagRanges.length > 0) {
+      const mlagList = sheet.getRangeList(result.mlagRanges);
+      if (mlagList) {
+        // top, left, bottom, right, vertical, horizontal, color, style
+        mlagList.setBorder(true, true, true, true, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+      }
+    }
+
+    // 4. Apply Conditional Rules (Text Colors/Dimming)
+    const rules = buildConditionalRules(sheet, headers, lastRow);
+    sheet.setConditionalFormatRules(rules);
+
+    // 5. Standard Fonts
+    dataRange.setFontFamily("Consolas").setFontSize(10).setVerticalAlignment("middle").setHorizontalAlignment("center");
+
+  } catch (e) {
+    console.error("Error in applyVisualFormatting:", e);
+  }
+}
+
+// ------------------------------------------------------------------------
+// 🧠 LOGIC ENGINE
+// ------------------------------------------------------------------------
+
+function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
+  const deviceMap = {};
+
+  // Helper to convert (row, col) to A1 Notation for Borders
+  const getA1 = (r, c) => {
+    const letter = columnToLetter(c);
+    return `${letter}${r}`;
+  };
+
+  const mlagRanges = []; // Store cells that need borders
+
+  headers.forEach((h, i) => {
+    if (h.startsWith("int_")) {
+      const dev = h.substring(4);
+      if (!deviceMap[dev]) deviceMap[dev] = {};
+      deviceMap[dev].intIdx = i;
+    } else if (h.startsWith("po_")) {
+      const dev = h.substring(3);
+      if (!deviceMap[dev]) deviceMap[dev] = {};
+      deviceMap[dev].poIdx = i;
+    }
+  });
+
+  const matrix = data.map(() => new Array(totalCols).fill("#ffffff"));
+
+  for (let r = 0; r < data.length; r++) {
+    const row = data[r];
+    const absRow = r + 3; // Data starts at Row 3 in Sheet
+    const deviceColorKeys = {};
+
+    Object.keys(deviceMap).forEach(dev => {
+      const idxs = deviceMap[dev];
+      const intVal = idxs.intIdx !== undefined ? String(row[idxs.intIdx] || "").trim() : "";
+      const poVal = idxs.poIdx !== undefined ? String(row[idxs.poIdx] || "").trim() : "";
+      const cleanPo = poVal.replace(/^port-?channel\s*/i, "Po").replace(/^Po\s*/i, "Po");
+
+      if (cleanPo && cleanPo.toLowerCase() !== "po") deviceColorKeys[dev] = `${dev}:${cleanPo}`;
+      else if (intVal) deviceColorKeys[dev] = `${dev}:${intVal}`;
+    });
+
+    const colorPairs = (colType) => {
+      const activeItems = [];
+      const sortedDevs = Object.keys(deviceMap).sort((a, b) => deviceMap[a][colType] - deviceMap[b][colType]);
+
+      sortedDevs.forEach(dev => {
+        const colIdx = deviceMap[dev][colType];
+        if (colIdx !== undefined && String(row[colIdx] || "").trim()) {
+          activeItems.push({ colIdx: colIdx, colorKey: deviceColorKeys[dev] || `${dev}:unknown` });
+        }
+      });
+
+      for (let i = 0; i < activeItems.length - 1; i += 2) {
+        const item1 = activeItems[i];
+        const item2 = activeItems[i + 1];
+        const id1 = item1.colorKey.split(':')[1] || "";
+        const id2 = item2.colorKey.split(':')[1] || "";
+
+        let key = "", type = 'physical';
+
+        // Check if both sides are Port-Channels
+        if (id1.toLowerCase().startsWith("po") && id2.toLowerCase().startsWith("po")) {
+          const num1 = parseInt(id1.replace(/\D/g, ''), 10) || 0;
+          const num2 = parseInt(id2.replace(/\D/g, ''), 10) || 0;
+          key = `Global:po${Math.min(num1, num2)}`;
+
+          const k1 = item1.colorKey.toLowerCase();
+          const k2 = item2.colorKey.toLowerCase();
+
+          // --- ALIGNED MLAG LOGIC ---
+          // 1. Peer Link (Highest Priority)
+          const isPL = topo && (hasKey(topo.peerLinkPorts, k1) || hasKey(topo.peerLinkPorts, k2));
+
+          // 2. MLAG Check
+          // We strictly trust the Topology Engine.
+          // If 'mlagConfigPorts' contains this port, it effectively means:
+          // a) Count >= 4 (Strict Check enforced in calculateGlobalTopology)
+          // b) It spans across two distinct devices (MLAG Pair Logic)
+          const isMlag = topo && (hasKey(topo.mlagConfigPorts, k1) || hasKey(topo.mlagConfigPorts, k2));
+
+          if (isPL) type = 'peer_link';
+          else if (isMlag) {
+            type = 'mlag_po';
+            // Store coordinates for Black Border
+            mlagRanges.push(getA1(absRow, item1.colIdx + 1));
+            mlagRanges.push(getA1(absRow, item2.colIdx + 1));
+          }
+          else if (id1.toLowerCase().startsWith("po")) type = 'regular_po';
+
+        } else {
+          const rawKey = (item1.colorKey < item2.colorKey) ? `${item1.colorKey}<=>${item2.colorKey}` : `${item2.colorKey}<=>${item1.colorKey}`;
+          key = `Phys:${rawKey}`;
+          type = 'physical';
+        }
+
+        const color = generateLightPastelColor(key, type);
+        matrix[r][item1.colIdx] = color;
+        matrix[r][item2.colIdx] = color;
+      }
+
+      // Handle Orphans
+      if (activeItems.length % 2 !== 0) {
+        matrix[r][activeItems[activeItems.length - 1].colIdx] = FORMAT_CONFIG.colors.orphan;
+      }
+    };
+
+    colorPairs('intIdx');
+    colorPairs('poIdx');
+  }
+
+  return { matrix: matrix, mlagRanges: mlagRanges };
+}
+
+function buildConditionalRules(sheet, headers, lastRow) {
+  const rules = [];
+  const getColIdx = (name) => headers.indexOf(name) + 1;
+  const getColLet = (idx) => columnToLetter(idx);
+
+  // A. COMPLEX LOGIC
+  const deviceNames = new Set(headers.filter(h => h.startsWith('int_')).map(h => h.substring(4)));
+
+  deviceNames.forEach(dev => {
+    const intIdx = getColIdx('int_' + dev);
+    const poIdx = getColIdx('po_' + dev);
+    const modeIdx = getColIdx('sp_mode_' + dev);
+    const sviIdx = getColIdx('svi_' + dev);
+    const ipIdx = getColIdx('ip_type_' + dev);
+
+    // Rule 1: "Member Port" logic
+    // MODIFIED: We removed setBackground().
+    // This allows the connection color (Blue/Pink/etc) to show through!
+    // We only mute the text color to indicate it's a member.
+    if (intIdx > 0 && poIdx > 0) {
+      const range = sheet.getRange(3, intIdx, lastRow - 2, 1);
+      const formula = `=AND(REGEXMATCH($${getColLet(intIdx)}3, "^Et"), $${getColLet(poIdx)}3<>"")`;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setFontColor(FORMAT_CONFIG.colors.textMuted) // Only change text color
+        .setItalic(true) // Optional: Italicize to differentiate
+        .setRanges([range]).build());
+    }
+
+    // Rule 2: Gray out SVI if L3 (SVI valid for all L2 modes — et and po)
+    if (sviIdx > 0 && modeIdx > 0) {
+      const range = sheet.getRange(3, sviIdx, lastRow - 2, 1);
+      const formula = `=REGEXMATCH($${getColLet(modeIdx)}3, "^l3")`;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([range]).build());
+    }
+
+    // Rule 2b: Gray out Po if Et mode (po_ is cleared by onEdit; grey shows cell is N/A)
+    if (poIdx > 0 && modeIdx > 0) {
+      const range = sheet.getRange(3, poIdx, lastRow - 2, 1);
+      const formula = `=REGEXMATCH($${getColLet(modeIdx)}3, "^l2-et|^l3-et")`;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([range]).build());
+    }
+
+    // Rule 3: Gray out IP if L2 + No SVI
+    if (ipIdx > 0 && modeIdx > 0 && sviIdx > 0) {
+      const range = sheet.getRange(3, ipIdx, lastRow - 2, 1);
+      const formula = `=AND(REGEXMATCH($${getColLet(modeIdx)}3, "^l2"), $${getColLet(sviIdx)}3="")`;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([range]).build());
+    }
+
+  });
+
+  // B. STANDARD ATTRIBUTE LOGIC
+  headers.forEach((h, i) => {
+    const colIdx = i + 1;
+    const range = sheet.getRange(3, colIdx, lastRow - 2, 1);
+    const configKey = Object.keys(FORMAT_CONFIG.rules).find(k => h.startsWith(k + "_"));
+
+    if (configKey) {
+      FORMAT_CONFIG.rules[configKey].forEach(rule => {
+        let builder = SpreadsheetApp.newConditionalFormatRule().setRanges([range]);
+        if (rule.type === 'exact') builder.whenTextEqualTo(rule.text);
+        else builder.whenTextContains(rule.text);
+        if (rule.bg) builder.setBackground(rule.bg);
+        if (rule.color) builder.setFontColor(rule.color);
+        rules.push(builder.build());
+      });
+    }
+  });
+
+  return rules;
+}
+
+// ------------------------------------------------------------------------
+// 🔧 UTILITIES
+// ------------------------------------------------------------------------
+
+/* 2. COLOR GENERATOR (With distinct Visual Styles) */
+function generateLightPastelColor(str, type) {
+  let h;
+  let num = 0;
+
+  // HUE CALCULATION (Identity)
+  if (type !== 'physical') {
+    // Port-Channels: Use Golden Angle on the Number (Po10 -> 10)
+    const match = str.match(/\d+/);
+    num = match ? parseInt(match[0], 10) : 0;
+    h = Math.floor((num * 137.508) % 360);
+
+    // Shift Regular PO hue to distinguish it from MLAG PO of the same number
+    if (type === 'regular_po') {
+      h = (h + 180) % 360;
+    }
+
+  } else {
+    // Physical Links: Jenkins Hash
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash += str.charCodeAt(i); hash += (hash << 10); hash ^= (hash >> 6);
+    }
+    hash += (hash << 3); hash ^= (hash >> 11); hash += (hash << 15);
+    h = Math.abs(hash % 360);
+  }
+
+  // STYLE PARAMETERS (S=Saturation, L=Lightness)
+  let s, l;
+  switch (type) {
+    case 'peer_link':
+      // Dark Slate Gray (Infrastructure)
+      s = 10; l = 60;
+      break;
+
+    case 'mlag_po':
+      // Vibrant (To stand out inside the Black Border)
+      s = 90; l = 80;
+      break;
+
+    case 'regular_po':
+    case 'physical':
+    default:
+      // Unified Intensity (Clean Pastel)
+      // Matches intensity for both Physical and Regular POs
+      s = 70; l = 85;
+      break;
+  }
+  return hslToHex(h, s, l);
+}
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function columnToLetter(column) {
+  let temp, letter = '';
+  while (column > 0) {
+    temp = (column - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    column = (column - temp - 1) / 26;
+  }
+  return letter;
+}
+
+function hasKey(setObj, lowerKey) {
+  if (!setObj) return false;
+  // 1. Try Direct Match
+  if (setObj.has(lowerKey)) return true;
+  // 2. Try Case-Insensitive Match
+  for (let k of setObj) {
+    if (String(k).toLowerCase() === String(lowerKey).toLowerCase()) return true;
+  }
+  return false;
+}
+
+/**
+* -------------------
+* CUSTOM VIEW HELPERS (Saved Preferences Model)
+* -------------------
+*/
+
+
+function getViewPreferences() {
+  try {
+    const prop = PropertiesService.getUserProperties().getProperty('CUSTOM_VIEW_PREFS');
+    if (prop) {
+      return JSON.parse(prop);
+    }
+  } catch (e) {
+    console.warn("Error parsing view prefs", e);
+  }
+
+  // Fallback: If first time (no prefs), return ALL keys so checkboxes default to checked
+  const schema = getSchemaConfig();
+  return schema.map(s => s.key);
+}
+
+// 2. Apply & Save Preferences
+function applyCustomView(selectedKeys) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return;
+
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 2) return;
+
+  // A. Save the preference for next time + mark mode as CUSTOM
+  PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', JSON.stringify(selectedKeys));
+  PropertiesService.getScriptProperties().setProperties({
+    'SHEET_VIEW_MODE': 'CUSTOM',
+    'CUSTOM_VIEW_PREFIXES': JSON.stringify(selectedKeys)
+  });
+
+  // B. Compute target visibility for every column (type filter + device filter combined)
+  const prefixes = selectedKeys.map(k => k + '_');
+  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  if (!headers || headers.length === 0) return;
+
+  const hiddenDevs = getSheetViewHidden();
+  const target = headers.map(function(h, i) {
+    if (i === 0) return true;                                                          // col A (_sys_) always visible
+    const hdr = String(h);
+    if (!prefixes.some(function(p) { return hdr.startsWith(p); })) return false;      // wrong column type
+    if (hiddenDevs.some(function(d) { return hdr.endsWith('_' + d); })) return false; // device is hidden
+    return true;
+  });
+
+  // C. Apply in batched consecutive runs — no blanket showColumns reset avoids the flash
+  let runStart = -1, runVisible = null, runLen = 0;
+  function flushRun() {
+    if (runStart < 0 || runLen === 0) return;
+    if (runVisible) sheet.showColumns(runStart, runLen);
+    else            sheet.hideColumns(runStart, runLen);
+    runStart = -1; runLen = 0;
+  }
+  for (let i = 0; i < target.length; i++) {
+    const v = target[i];
+    if (runLen > 0 && v === runVisible) {
+      runLen++;
+    } else {
+      flushRun();
+      runStart = i + 1;
+      runVisible = v;
+      runLen = 1;
+    }
+  }
+  flushRun();
+}
+
+/**
+* Lightweight Update: Updates only the Data Validation (Dropdowns)
+* without clearing or rewriting the sheet.
+*/
+function updateSheetDropdownsOnly() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return;
+
+  const schemaObj = getAttributeSchema();
+  const headers = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const lastRow = Math.max(sheet.getLastRow(), 100);
+  const rowSpan = lastRow - 2;
+
+  ss.toast("Updating dropdown rules...", "Quick Sync", 2);
+
+  headers.forEach((header, index) => {
+    // Find the attribute key (e.g. 'sp_mode_' from 'sp_mode_Leaf1')
+    // We look for any key in our schema that matches the start of the header
+    for (let key in schemaObj.rules) {
+      if (header.startsWith(key)) {
+        const col = index + 1;
+        try {
+          // Apply the new validation rule to the existing column
+          sheet.getRange(3, col, rowSpan, 1).setDataValidation(schemaObj.rules[key]);
+        } catch (e) {
+          console.warn(`Could not update validation for col ${col}`);
+        }
+        break;
+      }
+    }
+  });
+
+  ss.toast("Dropdowns Updated", "Success", 2);
+}
+
+function getExistingAttributes(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+
+  const row1 = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const row2 = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  let attributesFound = new Set();
+  let currentDev = null;
+
+  for (let c = 0; c < lastCol; c++) {
+    if (row1[c]) currentDev = String(row1[c]).trim();
+    let header = String(row2[c]).trim();
+    if (currentDev && header.endsWith(currentDev)) {
+      let attr = header.substring(0, header.length - currentDev.length);
+      if (attr) attributesFound.add(attr);
+    }
+  }
+  return Array.from(attributesFound);
+}
+
+/**
+* Handles Device Manager Save (Rename + Reorder)
+*/
+function processDeviceBatch(renames, finalOrderList, hostnamesMap) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return { error: "Sheet not found" };
+
+  // 1. EXECUTE RENAMES FIRST (Modify headers in place)
+  if (renames && renames.length > 0) {
+    const lastCol = sheet.getLastColumn();
+    const range = sheet.getRange(1, 1, 2, lastCol);
+    const values = range.getValues();
+    let row1 = values[0];
+    let row2 = values[1];
+    let changed = false;
+
+    const renameMap = {};
+    renames.forEach(r => renameMap[r.old] = r.new);
+
+    // Update Row 1 (Device Names)
+    row1.forEach((val, i) => {
+      if (renameMap[val]) {
+        row1[i] = renameMap[val];
+        changed = true;
+      }
+    });
+
+    // Update Row 2 (Headers)
+    row2.forEach((h, i) => {
+      let str = String(h);
+      renames.forEach(r => {
+        if (str.endsWith("_" + r.old)) {
+          let prefix = str.substring(0, str.length - r.old.length);
+          row2[i] = prefix + r.new;
+          changed = true;
+        }
+      });
+    });
+
+    if (changed) {
+      range.setValues([row1, row2]);
+      SpreadsheetApp.flush(); // Commit changes before reordering
+    }
+  }
+
+  // 2. EXECUTE REORDER
+  // Pass the full list to rebuildSheet to physically move columns
+  if (finalOrderList && finalOrderList.length > 0) {
+    rebuildSheet(finalOrderList, null);
+  }
+
+  // Save hostnames BEFORE bumping DATA_VERSION so any poller-triggered getTopologyData
+  // that fires immediately after the version bump sees the correct hostname values.
+  if (hostnamesMap && typeof hostnamesMap === 'object') {
+    PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', JSON.stringify(hostnamesMap));
+  }
+
+  PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
+
+  return { success: true };
+}
+
+/**
+* -------------------
+* CONFIGURATION GENERATOR (TOPOLOGY-BASED MLAG & PRIORITY PEER-LINK)
+* -------------------
+*/
+
+function normalizePo(val) {
+  if (!val) return null;
+  let s = String(val).trim();
+
+  // Extract digits (ignores spaces, case, and hyphens)
+  const numMatch = s.match(/\d+/);
+
+  if (numMatch) {
+    // Strictly return "Po" + Number
+    return "Po" + numMatch[0];
+  }
+
+  return null;
+}
+
+/** Wraps CacheService.put() — logs a warning if the cache is full rather than crashing. */
+function safeCachePut(cache, key, value, ttl) {
+  try { cache.put(key, value, ttl); } catch (e) { console.warn('[Cache] put failed for key "' + key + '":', e.message); }
+}
+
+/**
+ * Builds global topology maps (MLAG, peer-links, connections) from sheet data.
+ * @param {Array<Array>} data - Full sheet values (row 0 = row1 header, row 1 = row2 header, row 2+ = data)
+ * @param {Array<string>} headers - Flattened row-2 header strings
+ * @returns {{mlagConfigPorts: Object, peerLinkPorts: Object, debugLogs: Array, mlagPeerMap: Object, globalLinkMap: Object, poMap: Object}}
+ */
+/* REPLACE IN Code.gs */
+function calculateGlobalTopology(data, headers) {
+  const debugLogs = [];
+  const log = (msg) => { console.log(msg); debugLogs.push(msg); };
+
+  // --- 1. MAPPING HEADERS ---
+  const allIntCols = {};
+  const allPoCols = {};
+
+  headers.forEach((h, i) => {
+    // Preserve case for Device Names from headers
+    if (h.startsWith("int_")) allIntCols[h.substring(4)] = i;
+    if (h.startsWith("po_")) allPoCols[h.substring(3)] = i;
+  });
+
+  const poMap = {};
+  const globalLinkMap = new Map();
+
+  // --- 2. SCAN DATA (OPTIMIZED) ---
+  // Pre-calculate valid ports per row to avoid O(N^2) cleaning overhead
+  for (let r = 2; r < data.length; r++) {
+    const row = data[r];
+    const rowNodes = [];
+
+    // Step A: Extract and Clean all valid ports on this row (Linear Scan)
+    for (const [devName, colIdx] of Object.entries(allIntCols)) {
+      const rawPort = row[colIdx];
+      if (!isValidPort(rawPort)) continue;
+
+      const cleanPort = canonicalizeInterface(rawPort); // Run logic ONCE per cell
+
+      // Get Port-Channel if present
+      const poIdx = allPoCols[devName];
+      const poVal = (poIdx !== undefined) ? normalizePo(String(row[poIdx]).trim()) : null;
+
+      rowNodes.push({
+        dev: devName,
+        port: cleanPort,
+        po: poVal
+      });
+    }
+
+    // Step B: Connect the gathered nodes (Strict Pairs)
+    // We iterate by 2 to enforce physical cabling logic: A<->B, C<->D
+    for (let i = 0; i < rowNodes.length - 1; i += 2) {
+      const nodeA = rowNodes[i];
+      const nodeB = rowNodes[i + 1];
+
+      // Register global link lookups (used for config descriptions & BGP neighbor discovery)
+      globalLinkMap.set(nodeA.dev + ":" + nodeA.port, { dev: nodeB.dev, port: nodeB.port });
+      globalLinkMap.set(nodeB.dev + ":" + nodeB.port, { dev: nodeA.dev, port: nodeA.port });
+    }
+
+    // Step C: PO Grouping for MLAG (Must scan all nodes to find splitters)
+    // We do this separately because MLAG logically groups multiple physical pairs
+    for (let i = 0; i < rowNodes.length; i++) {
+      const src = rowNodes[i];
+      if (src.po) {
+        if (!poMap[src.po]) poMap[src.po] = {};
+        if (!poMap[src.po][src.dev]) poMap[src.po][src.dev] = new Set();
+
+        // Add all others on this row as logical neighbors for MLAG calculation
+        for (let k = 0; k < rowNodes.length; k++) {
+          if (i === k) continue;
+          poMap[src.po][src.dev].add(rowNodes[k].dev);
+        }
+      }
+    }
+  }
+
+  // MLAG pair/port detection has been removed from this function.
+  // All MLAG is determined exclusively by explicit DEVICE_MLAG_PEERS declarations.
+  // The caller (getDeviceConfig / applyVisualFormatting) applies the override after
+  // calling this function. poMap is kept — the override uses it to identify shared
+  // PO bundles between declared peer devices.
+  return { mlagConfigPorts: new Set(), peerLinkPorts: new Set(), debugLogs, mlagPeerMap: {}, globalLinkMap, poMap };
+}
+
+/**
+ * Main server entry point for topology fetch. Reads sheet, runs cleanup, builds topology, generates configs.
+ * @param {boolean} forceSync - Skip cache and rebuild from scratch
+ * @param {boolean} isColorEnabled - Whether to apply conditional color formatting
+ * @returns {Object} Topology payload or {error: string}
+ */
+function getTopologyData(forceSync, isColorEnabled) {
+  const cache = CacheService.getUserCache();
+  const scriptProps = PropertiesService.getScriptProperties();
+
+  // PHASE 1: SANITIZE
+  safeCachePut(cache, 'TOPOLOGY_STATUS', '🔹 Phase 1/6: Sanitizing data...', 200);
+
+  try {
+    const targetSheetName = SHEET_DATA;
+
+    // TOPOLOGY CACHE CHECK
+    // Skip on forceSync (schema sync / manual refresh). When DATA_VERSION is unchanged,
+    // return the cached payload immediately — avoids 2 sheet reads and 2 topology
+    // calculations (one in runFullSheetCleanup, one below) on every background fetch.
+    if (!forceSync) {
+      const currentVersion = scriptProps.getProperty('DATA_VERSION');
+      if (currentVersion) {
+        const cached = cache.get('TOPO_' + currentVersion);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            parsed.fromCache = true;
+            return parsed;
+          } catch (e) {
+            console.warn("Topology cache parse failed, recomputing.");
+          }
+        }
+      }
+    }
+
+    // Auto-Cleanup — skipVersionBump=true so the poller doesn't see a version change
+    // mid-computation and spawn a concurrent second execution. We bump the version
+    // ourselves below, only after the topology cache is fully written.
+    let cleanupMadeChanges = false;
+    try { cleanupMadeChanges = runFullSheetCleanup(true); } catch (e) { console.warn("Auto-cleanup warning:", e); }
+    safeCachePut(cache, 'TOPOLOGY_STATUS', cleanupMadeChanges ? '🔹 Phase 1/6: Data sanitized ✓' : '🔹 Phase 1/6: Data clean ✓', 200);
+
+    // PHASE 2: VISUAL STYLES
+    safeCachePut(cache, 'TOPOLOGY_STATUS', '🔹 Phase 2/6: Applying visual styles...', 200);
+    if (isColorEnabled || forceSync) {
+      try { applyGlobalFormatting(); } catch (e) { console.error("Auto-Coloring failed: " + e.message); }
+    }
+
+    // Read Data
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(targetSheetName);
+    if (!sheet) return { error: "Sheet '" + targetSheetName + "' not found!" };
+
+    const data = sheet.getDataRange().getValues();
+    // Allow running with just headers (2 rows) to show an empty map instead of an error
+    if (data.length < 2) return { error: "Sheet '" + targetSheetName + "' is empty." };
+
+    const rowHeaders = data[1];
+    const firstDataRow = data[2];
+
+    // PHASE 3: TOPOLOGY CALCULATION
+    safeCachePut(cache, 'TOPOLOGY_STATUS', '🔹 Phase 3/6: Calculating topology...', 200);
+
+    const dropdowns = getDropdowns();
+    const legends = getLegends();
+    const allDevices = getExistingDevices();
+    // Sheet column visibility does not affect topology — all devices always appear
+    const rawDevices = allDevices;
+
+    const globalIpPrefs = getIpPreferences();
+    const globalUnderlay = (getNetworkSettings().underlay) || 'none';
+    const topo = calculateGlobalTopology(data, rowHeaders);
+
+    const devices = [];
+    let aristaCounter = 0;
+    rawDevices.forEach((d, i) => {
+      const colIndex = rowHeaders.indexOf("int_" + d.name);
+      if (colIndex !== -1) {
+        let sheetIndex = "-";
+        if (d.type === 'full') { aristaCounter++; sheetIndex = aristaCounter; }
+        devices.push({
+          name: d.name, type: d.type, sheetIndex: sheetIndex, visualIndex: i + 1,
+          colIndex: colIndex, attrs: getColumnIndices(rowHeaders, d.name),
+          labels: d.labels || [], hostname: d.hostname || "", role: d.role || "", mlagPeer: d.mlagPeer || ""
+        });
+      }
+    });
+
+    const devicePorts = {};
+    devices.forEach(d => devicePorts[d.name] = {});
+    const links = [];
+    const portFrequency = {};
+    const dataRows = data.slice(2);
+    const totalLinks = dataRows.length;
+
+    safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 3/6: Topology calculated — ${devices.length} devices, ${totalLinks} rows`, 200);
+
+    // PHASE 4: DISCOVERY & LINKING
+    // Global Aggregators
+    const globalPoGroups = {};
+    const registerPoMember = (devName, poName, peerName, remotePo) => {
+      const key = devName + ":" + poName;
+      if (!globalPoGroups[key]) {
+        globalPoGroups[key] = { peerDevs: [], peerDev: peerName, peerPo: null, isPeerLink: false };
+      }
+      if (peerName && !globalPoGroups[key].peerDevs.includes(peerName)) {
+        globalPoGroups[key].peerDevs.push(peerName);
+      }
+      if (remotePo) {
+        globalPoGroups[key].peerPo = remotePo;
+      }
+    };
+
+    const allCollectedNodes = [];
+
+    dataRows.forEach((row, rowIndex) => {
+      // Update status periodically
+      if (rowIndex % 50 === 0) {
+        safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 4/6: Mapping ${rowIndex}/${totalLinks} connections...`, 200);
+      }
+
+      const nodesOnRow = [];
+
+      devices.forEach(device => {
+        if (device.colIndex < row.length) {
+          const portName = row[device.colIndex];
+
+          if (isValidPort(portName)) {
+            const pName = canonicalizeInterface(portName);
+
+            const uniqueId = device.name + ":" + pName;
+            portFrequency[uniqueId] = (portFrequency[uniqueId] || 0) + 1;
+
+            const details = extractDetails(row, device.attrs);
+            details.sheetIndex = device.sheetIndex;
+
+            // 2. Category Logic
+            details.category = determineCategory(details, legends);
+
+            // 3. MLAG / PeerLink Flags
+            // We calculate these for topology accuracy, but we don't force-change the IP type
+            const poVal = normalizePo(details.po_);
+            if (poVal) {
+              if (hasKey(topo.mlagConfigPorts, device.name + ":" + poVal)) details.isMlag = true;
+              if (hasKey(topo.peerLinkPorts, device.name + ":" + poVal)) {
+                details.isPeerLink = true;
+                details.isMlag = false;
+              }
+            } else {
+              if (hasKey(topo.peerLinkPorts, device.name + ":" + pName)) details.isPeerLink = true;
+            }
+
+            nodesOnRow.push({
+              devObj: device, deviceName: device.name, pName: pName, port: pName,
+              details: details, rowId: rowIndex
+            });
+          }
+        }
+      });
+
+      // PEER LINKING (Visual Pairs)
+      for (let i = 0; i < nodesOnRow.length - 1; i += 2) {
+        let nodeA = nodesOnRow[i];
+        let nodeB = nodesOnRow[i + 1];
+        nodeA.details.peerDev = nodeB.devObj.name;
+        nodeA.details.peerPort = nodeB.pName;
+        nodeB.details.peerDev = nodeA.devObj.name;
+        nodeB.details.peerPort = nodeA.pName;
+      }
+
+      // PO REGISTRATION (Updated Logic: Handles Orphans correctly)
+      nodesOnRow.forEach((node, i) => {
+        const poVal = normalizePo(node.details.po_);
+        if (poVal) {
+          const peerName = node.details.peerDev || null;
+          let remotePo = null;
+          // Peek sibling for Remote PO logic (Neighbors on same row)
+          if (i % 2 === 0 && i + 1 < nodesOnRow.length) remotePo = normalizePo(nodesOnRow[i + 1].details.po_);
+          else if (i % 2 !== 0) remotePo = normalizePo(nodesOnRow[i - 1].details.po_);
+
+          registerPoMember(node.deviceName, poVal, peerName, remotePo);
+        }
+      });
+
+      if (nodesOnRow.length > 0) processRowLinks(nodesOnRow, rowIndex, links, devicePorts);
+      nodesOnRow.forEach(n => allCollectedNodes.push(n));
+    });
+
+    // PHASE 5: CONFIG GENERATION
+    const totalNodes = allCollectedNodes.length;
+    safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 5/6: Generating configs (0/${totalNodes} ports)...`, 200);
+
+    const deviceSeenPos = {};
+    devices.forEach(d => deviceSeenPos[d.name] = new Set());
+
+    allCollectedNodes.forEach((node, nodeIndex) => {
+      if (nodeIndex % 25 === 0 && nodeIndex > 0) {
+        safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 5/6: Generating configs (${nodeIndex}/${totalNodes} ports)...`, 200);
+      }
+      // 1. Inject Aggregated Group Data
+      const poVal = normalizePo(node.details.po_);
+      if (poVal) {
+        const key = node.deviceName + ":" + poVal;
+        if (globalPoGroups[key]) {
+          node.details.poGroup = globalPoGroups[key];
+          if (!node.details.poGroup.peerPo) node.details.poGroup.peerPo = node.details.peerPort;
+          if (node.details.isPeerLink) node.details.poGroup.isPeerLink = true;
+        }
+      }
+
+      // 2. RESTORED: Full Config Generation (Fixes Tooltips)
+      if (node.devObj.type === 'full') {
+        node.details.config = generateConfig(
+          node.pName,
+          node.details,
+          globalIpPrefs,
+          deviceSeenPos[node.deviceName],
+          globalUnderlay
+        );
+      } else {
+        node.details.config = "Non-Arista Device";
+      }
+      node.details.configSource = "Auto";
+
+      if (devicePorts[node.deviceName][node.port]) {
+        devicePorts[node.deviceName][node.port].details = node.details;
+      }
+    });
+
+    // Finalize Node List
+    const nodes = devices.map(d => {
+      let primaryMode = "";
+      if (firstDataRow && d.attrs.sp_mode !== undefined && d.attrs.sp_mode !== -1 && d.attrs.sp_mode < firstDataRow.length) {
+        primaryMode = String(firstDataRow[d.attrs.sp_mode]).toLowerCase();
+      }
+      return {
+        id: d.name, type: d.type, mode: primaryMode, sheetIndex: d.sheetIndex,
+        visualIndex: d.visualIndex, ports: Object.values(devicePorts[d.name]),
+        labels: d.labels || [], hostname: d.hostname || "", role: d.role || "", mlagPeer: d.mlagPeer || ""
+      };
+    });
+
+    // Final Sanitization (Deep Clean)
+    // We strip circular references to ensure successful JSON serialization
+    console.log("🧹 Starting Final Sanitization...");
+    nodes.forEach(node => {
+      if (node.ports) {
+        node.ports.forEach(port => {
+          if (port.details) {
+            // Break reference using spread
+            const cleanDetails = { ...port.details };
+            // Delete complex objects causing circular errors
+            if (cleanDetails.poGroup) delete cleanDetails.poGroup;
+            if (cleanDetails.configSource) delete cleanDetails.configSource;
+            port.details = cleanDetails;
+          }
+        });
+      }
+    });
+    console.log("✓ Payload Ready.");
+
+    // PHASE 6: CACHE & DONE
+    safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 6/6: Caching result (${nodes.length} nodes, ${links.length} links)...`, 200);
+
+    // Bump version if cleanup silently modified data (skipVersionBump suppressed it earlier).
+    // Always done regardless of forceSync so verify fetches also update the version.
+    if (cleanupMadeChanges) {
+      scriptProps.setProperty('DATA_VERSION', new Date().getTime().toString());
+    }
+
+    const result = {
+      nodes: nodes,
+      links: links,
+      dropdowns: dropdowns,
+      deviceNames: devices.map(d => d.name).sort(),
+      schema: getSchemaConfig(),
+      portFrequency: portFrequency,
+      logs: topo.debugLogs,
+      version: scriptProps.getProperty('DATA_VERSION')
+    };
+
+    // Always store result in GAS cache (including forceSync/verify fetches) so the
+    // next background fetch gets a warm cache hit instead of recomputing.
+    const currentVersion = scriptProps.getProperty('DATA_VERSION');
+    if (currentVersion) {
+      try {
+        safeCachePut(cache, 'TOPO_' + currentVersion, JSON.stringify(result), 600);
+      } catch (e) {
+        console.warn("Topology cache store skipped (payload too large):", e.message);
+      }
+    }
+
+    return result;
+
+  } catch (e) {
+    console.error(e.stack);
+    return { error: "Server Error: " + e.message };
+  }
+}
+
+/**
+* -------------------
+* GLOBAL CONFIGURATION MANAGER
+* -------------------
+*/
+
+// 1. Storage Key
+const GLOBAL_CONFIG_KEY = "GLOBAL_DEVICE_CONFIG_TEMPLATE";
+
+// 2. Getter
+function getGlobalConfig() {
+  const props = PropertiesService.getDocumentProperties();
+  return props.getProperty(GLOBAL_CONFIG_KEY) || "! No global config defined.\n! Use the menu to add default commands (NTP, AAA, etc).";
+}
+
+// 3. Setter (Called from UI)
+function saveGlobalConfig(text) {
+  const props = PropertiesService.getDocumentProperties();
+  props.setProperty(GLOBAL_CONFIG_KEY, text);
+  return { success: true };
+}
+
+/**
+ * LLDP Verification — queries each device via eAPI and returns raw LLDP neighbor data.
+ * @param {Object} ipMap  {deviceName: ipAddress}
+ * @param {string} protocol  'https' (default) or 'http'
+ * @returns {Object} {deviceName: {ok, neighbors} | {ok:false, error}}
+ */
+function checkLldpNeighbors(ipMap, protocol) {
+  protocol = (protocol === 'http') ? 'http' : 'https';
+  const results = {};
+  for (const devName in ipMap) {
+    const ip = (ipMap[devName] || '').trim();
+    if (!ip) { results[devName] = { ok: false, error: 'No IP configured' }; continue; }
+    try {
+      const resp = UrlFetchApp.fetch(protocol + '://' + ip + '/command-api', {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { 'Authorization': 'Basic ' + Utilities.base64Encode('admin:') },
+        payload: JSON.stringify({
+          jsonrpc: '2.0', method: 'runCmds', id: 'ta-lldp',
+          params: { version: 1, cmds: ['show lldp neighbors detail'], format: 'json' }
+        }),
+        muteHttpExceptions: true,
+        validateHttpsCertificates: false,
+        followRedirects: false
+      });
+      const code = resp.getResponseCode();
+      if (code === 200) {
+        const body = JSON.parse(resp.getContentText());
+        if (body.error) {
+          results[devName] = { ok: false, error: 'eAPI: ' + (body.error.message || JSON.stringify(body.error)) };
+        } else {
+          results[devName] = { ok: true, neighbors: body.result[0].lldpNeighbors || {} };
+        }
+      } else if (code === 401) {
+        results[devName] = { ok: false, error: 'Auth failed (HTTP 401) — check credentials' };
+      } else {
+        results[devName] = { ok: false, error: 'HTTP ' + code };
+      }
+    } catch (e) {
+      results[devName] = { ok: false, error: e.message.substring(0, 100) };
+    }
+  }
+  return results;
+}
+
+/**
+* Unified IP Defaults (Master Source of Truth)
+*/
+function getIpPreferences() {
+  const userProps = PropertiesService.getUserProperties();
+  const defaults = {
+    p2p_v4_first: '200', p2p_v4_mask: '/24',
+    p2p_v6_first: '200', p2p_v6_mask: '/64',
+    gw_v4_first: '100', gw_v4_last: '1', gw_v4_mask: '/24',
+    gw_v6_first: '100', gw_v6_last: '1', gw_v6_mask: '/64',
+    vni_base: '10000'
+  };
+
+  const prefs = {};
+  Object.keys(defaults).forEach(key => {
+    prefs[key] = userProps.getProperty(key) || defaults[key];
+  });
+  return prefs;
+}
+
+function saveIpPreferences(prefs) {
+  const userProps = PropertiesService.getUserProperties();
+  userProps.setProperties(prefs);
+  return { success: true };
+}
+/**
+* HELPER: Called by Frontend to peek at current progress
+*/
+function getProgressStatus() {
+  return CacheService.getUserCache().get('TOPOLOGY_STATUS') || "Waiting for server...";
+}
+
+function getSyncStatus() {
+  return CacheService.getUserCache().get('SYNC_STATUS') || '';
+}
+
+/**
+* BATCH UPDATE: Handles edits from the Sidebar UI.
+* FIX: Sanitizes dependent fields using Case-Insensitive lookup against Future State.
+*/
+function updateMultipleInterfaces(payloads) {
+  const lock = LockService.getDocumentLock();
+  let lockAcquired = false;
+
+  try {
+    lockAcquired = lock.tryLock(30000);
+    if (!lockAcquired) return { error: "Server busy." };
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    const fullRange = sheet.getDataRange();
+    const data = fullRange.getValues();
+
+    if (data.length < 2) return { error: "Sheet data too short." };
+
+    // [FIX] Fetch the dynamic SVI value ("yes") ONCE from Schema
+    const activeSviValue = 'yes';
+
+    const headers = data[1].map(h => String(h).trim());
+    const headerMap = new Map();
+    headers.forEach((h, i) => headerMap.set(h, i));
+    const fieldMap = getFieldMap();
+
+    // ... (Keep existing Map/Index building logic) ...
+    const intColIndices = {};
+    headers.forEach((h, i) => { if (h.startsWith('int_')) intColIndices[h.substring(4)] = i; });
+
+    const portLookup = new Map();
+    for (let r = 2; r < data.length; r++) {
+      for (const [devName, colIdx] of Object.entries(intColIndices)) {
+        const val = data[r][colIdx];
+        if (val && String(val).trim() !== "") {
+          const key = devName + ":" + canonicalizeInterface(val);
+          portLookup.set(key, r);
+        }
+      }
+    }
+
+    const errors = [];
+    let hasChanges = false;
+
+    payloads.forEach(payload => {
+      const key = payload.deviceName + ":" + canonicalizeInterface(payload.portName);
+      const rowIndex = portLookup.get(key);
+      if (rowIndex === undefined) { errors.push(`Port '${payload.portName}' not found.`); return; }
+
+      const originalRowData = data[rowIndex];
+      const futureRowData = [...originalRowData];
+
+      // 1. Apply Updates
+      for (const [k, v] of Object.entries(payload.updates)) {
+        const colPrefix = fieldMap[k] || (k + "_");
+        const targetColName = colPrefix + payload.deviceName;
+        if (headerMap.has(targetColName)) {
+          futureRowData[headerMap.get(targetColName)] = v;
+        }
+      }
+
+      // 2. SANITIZE (Using Dynamic SVI Value)
+      const criticalFields = ["svi", "ip_type"];
+      criticalFields.forEach(field => {
+        const colName = field + "_" + payload.deviceName;
+        let colIndex = -1;
+        if (headerMap.has(colName)) colIndex = headerMap.get(colName);
+        else colIndex = headers.findIndex(h => h.toLowerCase() === colName.toLowerCase());
+
+        if (colIndex !== -1) {
+          const currentValue = futureRowData[colIndex];
+          // Pass 'activeSviValue' here
+          const result = validateAndCleanData(headers[colIndex], currentValue, futureRowData, headers, activeSviValue);
+          if (!result.valid) futureRowData[colIndex] = result.newValue;
+        }
+      });
+
+      // 3. Commit
+      for (let c = 0; c < futureRowData.length; c++) {
+        if (String(futureRowData[c]) !== String(originalRowData[c])) {
+          data[rowIndex][c] = futureRowData[c];
+          hasChanges = true;
+        }
+      }
+    });
+
+    if (hasChanges) {
+      const formulas = fullRange.getFormulas();
+      for (let r = 0; r < data.length; r++) {
+        for (let c = 0; c < data[r].length; c++) {
+          if (formulas[r][c] !== "") data[r][c] = formulas[r][c];
+        }
+      }
+      fullRange.setValues(data);
+      SpreadsheetApp.flush();
+    }
+
+    if (errors.length > 0) return { success: true, warning: errors.join(", ") };
+    return { success: true };
+
+  } catch (e) { return { error: e.toString() }; }
+  finally { if (lockAcquired) lock.releaseLock(); }
+}
+
+/**
+* Unified UI Property Helper
+*/
+function getUiSettings() {
+  const userProps = PropertiesService.getUserProperties();
+  return {
+    width: userProps.getProperty('width') || '220',
+    devGap: userProps.getProperty('devGap') || '100',
+    offset: userProps.getProperty('offset') || '30',
+    top: userProps.getProperty('top') || '40',
+    refresh: userProps.getProperty('refresh') || '60',
+    auto: userProps.getProperty('auto') || 'false'
+  };
+}
+
+/* --- ADD TO Code.gs --- */
+
+/**
+ * 1. VISIBILITY STORAGE HELPER
+ * Gets list of hidden devices from Script Properties.
+ */
+function getHiddenDevices() {
+  const prop = PropertiesService.getScriptProperties().getProperty('TOPOLOGY_HIDDEN_DEVICES');
+  // Return empty list if property doesn't exist
+  return prop ? JSON.parse(prop) : [];
+}
+
+/**
+ * 1. VISIBILITY SAVER (Updated to bump Version)
+ */
+function saveDeviceVisibility(hiddenList) {
+  const props = PropertiesService.getScriptProperties();
+  // Device Manager permanent visibility — shared via ScriptProperties (TOPOLOGY_HIDDEN_DEVICES).
+  // Does NOT bump DATA_VERSION; Device Manager callers call fetchData(true) explicitly.
+  props.setProperty('TOPOLOGY_HIDDEN_DEVICES', JSON.stringify(hiddenList));
+  return { success: true };
+}
+
+// ── Sheet View temporary device visibility (per-user, independent of Device Manager) ──
+// Stored in UserProperties so it never overwrites Device Manager's TOPOLOGY_HIDDEN_DEVICES.
+function getSheetViewHidden() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_HIDDEN');
+  return v ? JSON.parse(v) : [];
+}
+function saveSheetViewHidden(list) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_HIDDEN', JSON.stringify(list));
+}
+
+// ── Sheet View ip_type filter ──
+function getSheetViewIpFilter() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_IP_FILTER');
+  return v ? JSON.parse(v) : ['p2p', 'gw', 'blank'];
+}
+function saveSheetViewIpFilter(filters) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_IP_FILTER', JSON.stringify(filters));
+}
+function applySheetIpFilter(filters) {
+  saveSheetViewIpFilter(filters);
+  refreshSheetRowVisibility();
+}
+
+// ── Sheet View int_mode (sp_mode_) filter ──
+// Groups: 'l2' matches l2-*, 'l3' matches l3-*, 'et' matches *-et-*, 'po' matches *-po-*.
+// Default all 4 active. OR within group, AND with other filters.
+function getSheetViewIntModeFilter() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_INT_MODE_FILTER');
+  if (!v) return []; // [] = skip filter, show all rows (legacy default 'l2/l3/et/po' was group-keys, not full sp_mode values)
+  const parsed = JSON.parse(v);
+  // Migrate legacy group-key format (['l2','l3','et','po']) — treat as "show all"
+  const FULL_MODES = ['l2-et-access','l2-et-trunk','l2-po-access','l2-po-trunk','l3-et-int','l3-et-sub-int','l3-po-int','l3-po-sub-int'];
+  if (parsed.length > 0 && !parsed.some(function(v) { return FULL_MODES.indexOf(v) !== -1; })) return [];
+  return parsed;
+}
+function saveSheetViewIntModeFilter(filters) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_INT_MODE_FILTER', JSON.stringify(filters));
+}
+function applySheetIntModeFilter(filters) {
+  saveSheetViewIntModeFilter(filters);
+  refreshSheetRowVisibility();
+}
+
+// ── Sheet View svi filter ──
+// Values: 'yes' (svi_='yes'), 'blank' (svi_ empty). Default both active.
+function getSheetViewSviFilter() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_SVI_FILTER');
+  return v ? JSON.parse(v) : ['yes', 'blank'];
+}
+function saveSheetViewSviFilter(filters) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_SVI_FILTER', JSON.stringify(filters));
+}
+function applySheetSviFilter(filters) {
+  saveSheetViewSviFilter(filters);
+  refreshSheetRowVisibility();
+}
+
+function getDeviceLabels() {
+  const prop = PropertiesService.getScriptProperties().getProperty('DEVICE_LABELS');
+  return prop ? JSON.parse(prop) : {};
+}
+
+function saveDeviceLabels(labelsMap) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('DEVICE_LABELS', JSON.stringify(labelsMap));
+  props.setProperty('DATA_VERSION', new Date().getTime().toString());
+  return { success: true };
+}
+
+function getDeviceHostnames() {
+  const prop = PropertiesService.getDocumentProperties().getProperty('DEVICE_HOSTNAMES');
+  return prop ? JSON.parse(prop) : {};
+}
+
+function saveDeviceHostnames(hostnamesMap) {
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', JSON.stringify(hostnamesMap));
+  return { success: true };
+}
+
+function getDeviceRoles() {
+  const prop = PropertiesService.getDocumentProperties().getProperty('DEVICE_ROLES');
+  return prop ? JSON.parse(prop) : {};
+}
+
+function saveDeviceRoles(rolesMap, manualNonArista) {
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_ROLES', JSON.stringify(rolesMap));
+  // Auto-sync NON_ARISTA_DEVICES: two sources of non-Arista devices:
+  // 1. Role-based: IXIA/SPIRENT roles are always non-Arista (auto-derived from rolesMap).
+  // 2. Manual: explicitly toggled via Device Manager Non-EOS button (passed as manualNonArista param).
+  // Both are merged; role-based entries win over manual for IXIA/SPIRENT (deduplicated).
+  const nonAristaRoles = new Set(['IXIA', 'SPIRENT']);
+  const roleBasedNonArista = Object.entries(rolesMap)
+    .filter(([, r]) => nonAristaRoles.has((r || '').toUpperCase()))
+    .map(([name]) => name);
+  // Manually toggled non-EOS devices (not IXIA/SPIRENT — those are already covered by role-based path).
+  const validManual = (manualNonArista || []).filter(name => !nonAristaRoles.has((rolesMap[name] || '').toUpperCase()));
+  saveNonAristaList([...new Set([...validManual, ...roleBasedNonArista])]);
+  return { success: true };
+}
+
+function getDeviceMlagPeers() {
+  const prop = PropertiesService.getDocumentProperties().getProperty('DEVICE_MLAG_PEERS');
+  return prop ? JSON.parse(prop) : {};
+}
+
+function saveDeviceMlagPeers(peersMap) {
+  // Enforce bidirectionality: A→B automatically implies B→A.
+  // User only needs to set one side; the server normalizes the pair.
+  const normalized = {};
+  Object.entries(peersMap).forEach(([dev, peer]) => {
+    if (peer) {
+      normalized[dev] = peer;
+      normalized[peer] = dev;
+    }
+  });
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_MLAG_PEERS', JSON.stringify(normalized));
+  return { success: true };
+}
+
+/* --- MODIFY EXISTING FUNCTION IN Code.gs --- */
+
+/**
+ * UPDATED getExistingDevices
+ * Now returns an 'isVisible' property for every device.
+ */
+function getExistingDevices() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return [];
+
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+
+  const r1 = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const r2 = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  let registeredNonArista = getNonAristaList();
+
+  // 🟢 READ HIDDEN LIST
+  const hiddenDevices = getHiddenDevices();
+  const deviceLabels = getDeviceLabels();
+  const deviceHostnames = getDeviceHostnames();
+  const deviceRoles = getDeviceRoles();
+  const deviceMlagPeers = getDeviceMlagPeers();
+
+  let devices = [];
+  let processed = new Set();
+  let visualCounter = 0;
+  let aristaCounter = 0;
+
+  for (let c = 0; c < r2.length; c++) {
+    let header = String(r2[c]);
+    if (!header.startsWith("int_")) continue;
+
+    // Row 1 is non-empty only at the first column of each device group.
+    // Skipping columns where Row 1 is empty prevents multi-word keys like
+    // "int_speed_gd435" from being mistaken for device "speed_gd435".
+    if (!r1[c] || String(r1[c]).trim() === "") continue;
+
+    let devName = header.substring(4);
+    if (devName && !processed.has(devName)) {
+      processed.add(devName);
+      visualCounter++;
+
+      let colCount = 0;
+      r2.forEach(h => { if (String(h).endsWith(devName)) colCount++; });
+      let isNonArista = (registeredNonArista.includes(devName) || colCount === 1);
+
+      let sheetIndex = "-";
+      if (!isNonArista) {
+        aristaCounter++;
+        sheetIndex = aristaCounter;
+      }
+
+      devices.push({
+        name: devName,
+        type: isNonArista ? 'non-arista' : 'full',
+        sheetIndex: sheetIndex,
+        visualIndex: visualCounter,
+        // 🟢 CALCULATE VISIBILITY (True if NOT in hidden list)
+        isVisible: !hiddenDevices.includes(devName),
+        labels: deviceLabels[devName] || [],
+        hostname: deviceHostnames[devName] || "",
+        role: deviceRoles[devName] || "",
+        mlagPeer: deviceMlagPeers[devName] || ""
+      });
+    }
+  }
+  return devices;
+}
+
+/**
+ * Dynamic Field Map Generator.
+ * Prevents "missing column" bugs when you add new fields to the Schema.
+ */
+function getFieldMap() {
+  const schema = getSchemaConfig();
+  const map = { 'desc': 'desc_' }; // Keep description as a base
+  schema.forEach(item => {
+    map[item.key] = item.key + "_";
+  });
+  return map;
+}
+
+/**
+* UI helper
+* */
+
+function savePreferences(width, devGap, offset, top, refresh, auto) {
+  try {
+    PropertiesService.getUserProperties().setProperties({
+      'width': String(width),
+      'devGap': String(devGap),
+      'offset': String(offset),
+      'top': String(top),
+      'refresh': String(refresh),
+      'auto': String(auto)
+    });
+    console.log("✓ Preferences saved for user: " + width + "px width");
+    return "Saved"; // Return a value so the sidebar knows it worked
+  } catch (e) {
+    console.error("✗ Error saving preferences: " + e.toString());
+    return "Error: " + e.toString();
+  }
+}
+
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-07
+function canonicalizeInterface(name) {
+  if (!name) return "";
+  let s = String(name).trim();
+
+  // 1. Remove "interface" keyword if present
+  s = s.replace(/^(interface\s+|int\s+)/i, "");
+
+  // 2. Strict Prefix Replacement (Case-Insensitive Input -> Title Case Output)
+  if (/^(ethernet|eth|et)\d/i.test(s)) {
+    return s.replace(/^(ethernet|eth|et)/i, "Et");
+  }
+  if (/^(port-?channel|po)\d/i.test(s)) {
+    // Handles 'port-channel', 'portchannel', 'po'
+    return s.replace(/^(port-?channel|po)/i, "Po");
+  }
+  if (/^(vlan|vl)\d/i.test(s)) {
+    return s.replace(/^(vlan|vl)/i, "Vl");
+  }
+  if (/^(loopback|lo)\d/i.test(s)) {
+    return s.replace(/^(loopback|lo)/i, "Lo");
+  }
+  if (/^(management|mgmt|ma)\d/i.test(s)) {
+    return s.replace(/^(management|mgmt|ma)/i, "Ma");
+  }
+  if (/^(vxlan|vx)\d/i.test(s)) {
+    return s.replace(/^(vxlan|vx)/i, "Vx");
+  }
+  if (/^(tunnel|tu)\d/i.test(s)) {
+    return s.replace(/^(tunnel|tu)/i, "Tu");
+  }
+
+  // 3. Fallback: Capitalize first letter (e.g., "Fabric" -> "Fabric")
+  if (s.length > 0) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return s;
+}
+
+function getColumnIndices(headers, devName) {
+  const indices = {};
+  const map = getFieldMap();
+  for (let [k, prefix] of Object.entries(map)) {
+    indices[k] = headers.indexOf(prefix + devName);
+  }
+  return indices;
+}
+
+function isValidPort(p) {
+  if (p === null || p === undefined) return false;
+  const s = String(p).trim();
+  // Allow numbers and strings, reject empty, N/A, and "switchport" keywords
+  return s !== "" && s !== "#N/A" && !s.toLowerCase().includes("switchport");
+}
+
+function extractDetails(row, attrs) {
+  const details = {};
+  const map = getFieldMap();
+  for (let [k, idx] of Object.entries(attrs)) {
+    if (idx !== -1) details[map[k]] = (idx < row.length) ? String(row[idx]) : "";
+  }
+  return details;
+}
+
+function processRowLinks(nodes, rowIndex, linksArray, devicePortsMap) {
+  // Helper to safely add port data
+  const add = (dev, port, connected, rId, d) => {
+    if (!devicePortsMap[dev]) return;
+    if (!devicePortsMap[dev][port]) {
+      devicePortsMap[dev][port] = { name: port, connected: connected, order: rId, details: d };
+    } else {
+      const p = devicePortsMap[dev][port];
+      if (connected) p.connected = true;
+      if (rId < p.order) p.order = rId;
+    }
+  };
+
+  // 1. PROCESS PAIRS
+  for (let i = 0; i < nodes.length - 1; i += 2) {
+    const s = nodes[i], t = nodes[i + 1];
+
+    if (devicePortsMap[s.deviceName] && devicePortsMap[t.deviceName]) {
+
+      // --- NEW: ADVANCED LINK CLASSIFICATION ---
+      let linkType = 'std'; // Default Physical Link
+
+      const isNonEosS = s.devObj.type === 'non-arista';
+      const isNonEosT = t.devObj.type === 'non-arista';
+      const hasPoS = normalizePo(s.details.po_) !== null;
+      const hasPoT = normalizePo(t.details.po_) !== null;
+
+      // 1. Peer Link (Highest Priority)
+      if (s.details.isPeerLink && t.details.isPeerLink) {
+        linkType = 'peer';
+      }
+      // 2. MLAG Member
+      else if (s.details.isMlag || t.details.isMlag) {
+        linkType = 'mlag';
+      }
+      // 3. Non-EOS Connection (To Server/Patch Panel)
+      else if (isNonEosS || isNonEosT) {
+        linkType = 'non_eos';
+      }
+      // 4. Regular Port-Channel (LACP)
+      else if (hasPoS && hasPoT) {
+        linkType = 'regular_po';
+      }
+      // -----------------------------------------
+
+      linksArray.push({
+        id: `link-${rowIndex}-${i}`,
+        u: `${s.deviceName}:${s.port}`,
+        v: `${t.deviceName}:${t.port}`,
+        type: linkType // <--- Sending classification to frontend
+      });
+
+      add(s.deviceName, s.port, true, s.rowId, s.details);
+      add(t.deviceName, t.port, true, t.rowId, t.details);
+    }
+  }
+
+  // 2. PROCESS ORPHAN
+  if (nodes.length % 2 !== 0) {
+    const last = nodes[nodes.length - 1];
+    if (devicePortsMap[last.deviceName]) {
+      add(last.deviceName, last.port, false, last.rowId, last.details);
+    }
+  }
+}
+
+function determineCategory(details, legends) {
+  const ipType = (details.ip_type_ || "").toLowerCase();
+  const spMode = (details.sp_mode_ || "").toLowerCase();
+  if (legends.gw && legends.gw.some(l => ipType.includes(l))) return "GW";
+  if (legends.p2p && legends.p2p.some(l => ipType.includes(l))) return "P2P";
+  if (!ipType) { if ((legends.l2 && legends.l2.some(l => spMode === l)) || spMode.includes("access") || spMode.includes("trunk")) return "L2"; }
+  return "NA";
+}
+
+// 7. Operations wrappers
+function deleteInterface(dev, port) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { error: "Busy" };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    const data = sheet.getDataRange().getValues();
+    const headers = data[1];
+    const intColIdx = headers.indexOf("int_" + dev);
+    if (intColIdx === -1) return { error: "Dev not found" };
+
+    let rowIndex = -1;
+    for (let i = 2; i < data.length; i++) {
+      if (canonicalizeInterface(data[i][intColIdx]) === canonicalizeInterface(port)) { rowIndex = i; break; }
+    }
+
+    if (rowIndex !== -1) {
+      headers.forEach((h, c) => {
+        if (String(h).endsWith(dev)) sheet.getRange(rowIndex + 1, c + 1).clearContent();
+      });
+    }
+    return { success: true };
+  } catch (e) { return { error: e.message }; }
+  finally { lock.releaseLock(); }
+}
+
+function addLinkPair(devA, portA, devB, portB, attrsA, attrsB) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { error: "Busy" };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    const headers = sheet.getDataRange().getValues()[1];
+    const nextRow = sheet.getLastRow() + 1;
+    const fieldMap = getFieldMap();
+
+    const findC = (dev, attrKey) => {
+      const prefix = fieldMap[attrKey] || (attrKey + "_");
+      return headers.indexOf(prefix + dev);
+    };
+
+    const setVal = (r, c, v) => { if (c !== -1) sheet.getRange(r, c + 1).setValue(v); };
+
+    setVal(nextRow, headers.indexOf("int_" + devA), portA);
+    setVal(nextRow, headers.indexOf("int_" + devB), portB);
+
+    Object.entries(attrsA).forEach(([k, v]) => setVal(nextRow, findC(devA, k), v));
+    Object.entries(attrsB).forEach(([k, v]) => setVal(nextRow, findC(devB, k), v));
+
+    return { success: true };
+  } catch (e) { return { error: e.message }; }
+  finally { lock.releaseLock(); }
+}
+
+function connectExistingToNew(devA, portA, attrsA, devB, portB, attrsB) {
+  const del = deleteInterface(devA, portA);
+  if (del.error) return del;
+  return addLinkPair(devA, portA, devB, portB, attrsA, attrsB);
+}
+
+/**
+* -------------------
+* PROPERTIES HELPERS (Persistent Memory)
+* -------------------
+*/
+function getNonAristaList() {
+  const props = PropertiesService.getDocumentProperties();
+  const raw = props.getProperty('NON_ARISTA_DEVICES');
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveNonAristaList(namesArray) {
+  const props = PropertiesService.getDocumentProperties();
+  const unique = [...new Set(namesArray)];
+  props.setProperty('NON_ARISTA_DEVICES', JSON.stringify(unique));
+}
+
+
+/**
+* -------------------
+* SHARED VALIDATION LOGIC (Dynamic SVI)
+* -------------------
+*/
+function validateAndCleanData(header, value, rowData, headers, activeSviValue) {
+  const valStr = String(value || "").trim();
+  // Default to 'yes' if dynamic value wasn't passed, for safety
+  const targetSvi = (activeSviValue || 'yes').toLowerCase();
+
+  if (valStr === "") return { valid: true, newValue: "", warning: null };
+
+  const headerParts = header.split('_');
+  const devName = headerParts.length > 1 ? headerParts[headerParts.length - 1] : "";
+
+  const getSiblingVal = (keyPrefix) => {
+    const target = (keyPrefix + devName).toLowerCase();
+    const colIdx = headers.findIndex(h => h.toLowerCase() === target);
+    return (colIdx !== -1) ? String(rowData[colIdx] || "").trim().toLowerCase() : null;
+  };
+
+  const mode = getSiblingVal("sp_mode_");
+  const svi = getSiblingVal("svi_");
+
+  // Rules 1, 2, 3 removed — audit flags L3+SVI, L2+ip_type_, ET+Po; user may want to rollback
+
+  // --- RULE 4: VLAN format (numbers, ranges, or comma-separated lists) ---
+  if (header.toLowerCase().startsWith("vlan_") || header.toLowerCase().startsWith("n_vlan_")) {
+    if (!/^(\d+(-\d+)?(,\d+(-\d+)?)*)?$/.test(valStr)) {
+      return {
+        valid: false,
+        newValue: "",
+        warning: "Invalid VLAN format. Use: 10, 10,20, or 10-20"
+      };
+    }
+  }
+
+  // --- RULE 6: Po format auto-correction ---
+  if (header.toLowerCase().startsWith("po_")) {
+    const normalized = normalizePo(valStr);
+    if (normalized && normalized !== valStr) {
+      return { valid: true, newValue: normalized, warning: null };
+    }
+  }
+
+  return { valid: true, newValue: valStr, warning: null };
+}
+
+/**
+ * MASTER CLEANUP FUNCTION
+ * 1. Standardizes Port Names (Ethernet1 -> Et1)
+ * 2. Standardizes SVI Values (true/1/y -> yes)
+ * 3. Removes Invalid L3 Mode on MLAG ports
+ * 4. Cleans up invalid L2/L3 configs
+ * * RETURNS: Boolean (true if changes were made, false if clean)
+ */
+function runFullSheetCleanup(skipVersionBump) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return false;
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 3) return false;
+
+  // 1. Read Data
+  const fullRange = sheet.getDataRange();
+  const allValues = fullRange.getValues();
+  const headers = allValues[1].map(h => String(h).trim());
+  const bodyValues = allValues.slice(2);
+
+  // 2. Pre-Calculate Topology
+  const topo = calculateGlobalTopology(allValues, headers);
+
+  let changeCount = 0;
+  const devices = getExistingDevices();
+
+  // 3. Iterate & Sanitize
+  for (let r = 0; r < bodyValues.length; r++) {
+    const row = bodyValues[r];
+    devices.forEach(dev => {
+      const getIdx = (prefix) => headers.findIndex(h => h.toLowerCase() === (prefix + dev.name).toLowerCase());
+      const intIdx = getIdx("int_");
+      const modeIdx = getIdx("sp_mode_");
+      const sviIdx = getIdx("svi_");
+      const ipIdx = getIdx("ip_type_");
+      const poIdx = getIdx("po_");
+
+      // A. NAME NORMALIZATION
+      if (intIdx !== -1) {
+        const rawName = String(row[intIdx] || "");
+        if (rawName) {
+          const cleanName = canonicalizeInterface(rawName);
+          if (cleanName !== rawName) {
+            row[intIdx] = cleanName;
+            changeCount++;
+          }
+        }
+      }
+
+      // B. SVI STANDARDIZATION
+      if (sviIdx !== -1) {
+        const rawSvi = String(row[sviIdx] || "").trim().toLowerCase();
+        const originalVal = String(row[sviIdx] || "");
+        if (['true', '1', 'y', 'yes'].includes(rawSvi)) {
+          if (originalVal !== 'yes') {
+            row[sviIdx] = 'yes';
+            changeCount++;
+          }
+        }
+      }
+
+      if (modeIdx === -1) return;
+
+      const modeVal = String(row[modeIdx] || "").trim().toLowerCase();
+      const rawPoVal = (poIdx !== -1) ? String(row[poIdx] || "").trim() : "";
+      const poVal = rawPoVal ? normalizePo(rawPoVal) : null;
+
+      // Po FORMAT NORMALIZATION (e.g. port-channel10 → Po10)
+      if (poIdx !== -1 && rawPoVal && poVal && poVal !== rawPoVal) {
+        row[poIdx] = poVal;
+        changeCount++;
+      }
+
+      // C. MLAG + L3 CONFLICT — removed: audit (Check B) flags this; user may need to rollback
+      // D. L3 MODE CLEANUP — removed: audit (Check C) flags L3+SVI; user may need to rollback
+      // E. L2 MODE CLEANUP — removed: audit (Check I) flags stale ip_type_ on L2+no SVI; user may want to rollback
+      // F. ET MODE: CLEAR STALE PO VALUE — removed: audit (Check H) flags stale PO; user may want to rollback ET→PO
+
+
+    });
+  }
+
+  // 4. Commit Changes (LOOP PREVENTION)
+  if (changeCount > 0) {
+    const writeRange = sheet.getRange(3, 1, bodyValues.length, lastCol);
+    writeRange.setValues(bodyValues);
+
+    // [CRITICAL] Only update version if actual changes happened.
+    // This stops infinite refresh loops.
+    // skipVersionBump: caller (e.g. getTopologyData) will bump the version itself
+    // after storing the cache, so the poller never sees a mid-computation version change.
+    if (!skipVersionBump) {
+      PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
+    }
+
+    if (typeof ss.toast === 'function') {
+      ss.toast(`Auto-Sanitized ${changeCount} cells.`, "Data Cleaned");
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * TRIGGER: MANUAL EDITS
+ * Handles data validation, auto-cleaning of dependent fields, and versioning.
+ * Wrapped in LockService to prevent race conditions during bulk edits.
+ */
+function onEdit(e) {
+  // 1. Transactional Lock: Wait up to 10 seconds for other edits to finish
+  const lock = LockService.getDocumentLock();
+  if (!lock.tryLock(10000)) return;
+
+  try {
+    const sheet = e.source.getActiveSheet();
+    if (sheet.getName() !== SHEET_DATA) return;
+
+    const range = e.range;
+    const startRow = range.getRow();
+    const startCol = range.getColumn();
+
+    // Guard: column A is reserved for _sys_ row-visibility column — revert any user edit
+    if (startCol === 1) {
+      if (startRow === 2) {
+        // Row 2 holds the _sys_ header — restore it so ensureDummyColumn doesn't insert a duplicate column
+        range.setValue(DUMMY_VIS_HEADER);
+      } else {
+        range.clearContent();
+      }
+      e.source.toast('Column A is reserved for TopoAssist row visibility markers and cannot be edited.', '⚠ Protected Column', 5);
+      return;
+    }
+
+    if (startRow < 3) return; // Skip Header rows
+
+    const numRows = range.getNumRows();
+    const numCols = range.getNumColumns();
+
+    // 2. Fetch Context: Get headers and full row data for the edited range
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+    const dataRange = sheet.getRange(startRow, 1, numRows, lastCol);
+    const allRowValues = dataRange.getValues();
+
+    const SVI_YES = 'yes';
+    let hasChanges = false;
+    const bgUpdates = []; // Collect cell background changes from mode edits
+
+    // 3. Process every cell in the edited range (Handles single edits and bulk pastes)
+    for (let r = 0; r < numRows; r++) {
+      const rowData = allRowValues[r]; // Reference to allRowValues[r] — mutations here update the array
+
+      for (let c = 0; c < numCols; c++) {
+        const absCol = startCol + c;
+        const header = String(headers[absCol - 1] || "");
+        const cellValue = rowData[absCol - 1];
+        const valStr = String(cellValue || "").trim();
+
+        // --- PHASE 0: Strict Type Validation (Interfaces & Port-Channels) ---
+        if (valStr !== "") {
+          if (header.toLowerCase().startsWith("int_")) {
+            const isValidInt = /^(Et|Po|Lo|Vl|Ma|Mgmt|Vx|Tu)\d+/i.test(valStr);
+            if (!isValidInt) e.source.toast("△ Invalid Interface format. Use Et1, Po10, etc.", "Format Warning");
+          }
+          if (header.toLowerCase().startsWith("po_")) {
+            const isValidPo = /^(Po|Port-?Channel)\d+/i.test(valStr);
+            if (!isValidPo) e.source.toast("△ Invalid Port-Channel format. Use Po100, etc.", "Format Warning");
+          }
+        }
+
+        // --- PHASE A: Standard Validation ---
+        const result = validateAndCleanData(header, cellValue, rowData, headers, SVI_YES);
+        if (!result.valid) {
+          if (r === 0 && c === 0) e.source.toast("△ " + result.warning, "Invalid Input");
+          rowData[absCol - 1] = result.newValue;
+          hasChanges = true;
+        }
+
+        // --- PHASE B: Contextual Auto-Cleaning ---
+        if (!header.includes("_")) continue;
+
+        const devName = header.substring(header.indexOf("_") + 1);
+        const getIdx = (prefix) => {
+          const key = (prefix + devName).toLowerCase();
+          return headers.findIndex(h => h.toLowerCase() === key) + 1;
+        };
+
+        const modeIdx = getIdx("sp_mode_");
+        const sviIdx = getIdx("svi_");
+        const ipIdx = getIdx("ip_type_");
+        let modeVal = (modeIdx > 0) ? String(rowData[modeIdx - 1] || "").trim().toLowerCase() : "";
+
+        // === USER EDITED: MODE COLUMN ===
+        if (header.toLowerCase().startsWith("sp_mode_")) {
+          // Auto-clears for ET/L3/L2 removed — audit flags these; user may want to rollback
+
+          // Immediate cell backgrounds: po_ grey for Et modes; svi_ grey for l3 only
+          const poColNum = getIdx("po_");
+          const isEtMode = /^l[23]-et/.test(modeVal);
+          if (poColNum > 0) bgUpdates.push({ row: startRow + r, col: poColNum, bg: isEtMode ? "#e2e8f0" : null });
+          if (sviIdx > 0) bgUpdates.push({ row: startRow + r, col: sviIdx, bg: modeVal.startsWith("l3") ? "#e2e8f0" : null });
+        }
+
+        // === USER EDITED: SVI COLUMN — auto-clear of ip_type_ removed; audit (Check I) flags it ===
+      }
+    }
+
+    // 4. Single batch write — only if auto-cleaning changed something
+    if (hasChanges) dataRange.setValues(allRowValues);
+
+    // 4b. Apply cell background updates from mode column edits (immediate greying)
+    bgUpdates.forEach(u => { if (u.col > 0) sheet.getRange(u.row, u.col).setBackground(u.bg); });
+
+    // 5. Always bump version — user made an edit, sidebar must refresh
+    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
+
+  } catch (err) {
+    console.error("onEdit Error: " + err.toString());
+  } finally {
+    // 5. CRITICAL: Always release the lock so other users/scripts can edit
+    lock.releaseLock();
+  }
+}
+
+// Structural-change guard: re-insert _sys_ column if the user deletes col A.
+// This is an INSTALLABLE trigger handler — ensureOnChangeTrigger() wires it up.
+function onStructuralChange(e) {
+  if (e.changeType !== 'REMOVE_COLUMN') return;
+  const ss = e.source;
+  const sheet = ss.getActiveSheet();
+  if (sheet.getName() !== SHEET_DATA) return;
+  ensureDummyColumn(sheet);
+  ss.toast('Column A (_sys_) was deleted and has been automatically restored. Do not delete this column — TopoAssist needs it to track row visibility.', '⚠ Column Restored', 8);
+}
+
+// Installs the onChange installable trigger if it isn't already present.
+// Called from onOpen() — safe to fail silently when auth is limited.
+function ensureOnChangeTrigger() {
+  const ss = SpreadsheetApp.getActive();
+  const already = ScriptApp.getProjectTriggers().some(function(t) {
+    return t.getHandlerFunction() === 'onStructuralChange' &&
+           t.getTriggerSourceId() === ss.getId() &&
+           t.getEventType() === ScriptApp.EventType.ON_CHANGE;
+  });
+  if (!already) {
+    ScriptApp.newTrigger('onStructuralChange').forSpreadsheet(ss).onChange().create();
+  }
+}
+
+/**
+* -------------------
+* CONFIGURATION HELPERS
+* -------------------
+*/
+
+// 1. INPUT PARSER: Converts raw strings/ranges into a clean Set of integers
+function expandVlanString(str) {
+  const result = new Set();
+  if (!str) return result;
+
+  // Split by comma, newline, or space to handle any format
+  const parts = String(str).split(/[\n,\s]+/);
+
+  parts.forEach(p => {
+    p = p.trim();
+    if (!p) return;
+
+    if (p.includes("-") && !p.toLowerCase().includes("nan")) {
+      // Handle Range: "10-95"
+      const rangeParts = p.split("-");
+      const start = parseInt(rangeParts[0], 10);
+      const end = parseInt(rangeParts[1], 10);
+
+      // Strict check: Start and End must be valid numbers
+      if (!isNaN(start) && !isNaN(end) && start <= end) {
+        for (let i = start; i <= end; i++) result.add(i);
+      }
+    } else {
+      // Handle Single Number: "10"
+      const num = parseInt(p, 10);
+      if (!isNaN(num)) result.add(num);
+    }
+  });
+  return result;
+}
+
+// 2. OUTPUT GENERATOR: Compresses numbers back into ranges (10,11,12 -> 10-12)
+// *** UPDATED TO BE BULLETPROOF AGAINST NaN ***
+function compressVlanRanges(numberSet) {
+  if (!numberSet || numberSet.size === 0) return "";
+
+  // SAFETY STEP: Convert everything to Numbers and remove NaN/Junk
+  // This fixes the "NaN-NaN" and "19-95" string issues
+  const cleanNumbers = Array.from(numberSet)
+    .map(n => Number(n))    // Force convert to Number
+    .filter(n => !isNaN(n))  // Remove NaNs
+    .sort((a, b) => a - b);  // Sort numerically
+
+  if (cleanNumbers.length === 0) return "";
+
+  const ranges = [];
+  let start = cleanNumbers[0];
+  let prev = cleanNumbers[0];
+
+  for (let i = 1; i < cleanNumbers.length; i++) {
+    if (cleanNumbers[i] !== prev + 1) {
+      // Gap detected, finalize the previous range
+      ranges.push(start === prev ? String(start) : `${start}-${prev}`);
+      start = cleanNumbers[i];
+    }
+    prev = cleanNumbers[i];
+  }
+
+  // Add the final range
+  ranges.push(start === prev ? String(start) : `${start}-${prev}`);
+
+  return ranges.join(",");
+}
+
+/* REPLACE IN Code.gs */
+function getDeviceConfig(deviceName) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    if (!sheet) return { error: "Sheet '" + SHEET_DATA + "' not found" };
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[1];
+    const rows = data.slice(2);
+
+    const targetColIndex = headers.indexOf("int_" + deviceName);
+    if (targetColIndex === -1) return { error: "Device '" + deviceName + "' not found" };
+
+    // 1. Calculate Topology (Single Source of Truth)
+    const topo = calculateGlobalTopology(data, headers);
+
+    // 1a. Apply explicit MLAG peer declarations (overrides topology heuristic).
+    // Only MLAG pair declaration is replaced — peer-link port is still found from
+    // globalLinkMap (direct link between the two declared peers).
+    const explicitMlagPeers = getDeviceMlagPeers();
+    if (Object.keys(explicitMlagPeers).length > 0) {
+      // Replace mlagPeerMap entirely with explicit declarations.
+      topo.mlagPeerMap = explicitMlagPeers;
+
+      // Rebuild peerLinkPorts: for each explicit pair, find the direct link
+      // between the two devices in globalLinkMap and tag those ports.
+      topo.peerLinkPorts = new Set();
+      const processedPairs = new Set();
+      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+        const pairKey = [devA, devB].sort().join('|');
+        if (processedPairs.has(pairKey)) return;
+        processedPairs.add(pairKey);
+        topo.globalLinkMap.forEach((val, key) => {
+          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
+          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
+        });
+      });
+
+      // Rebuild mlagConfigPorts: for each explicit pair, find shared PO bundles
+      // (both devices appear as keys in the same poMap entry — same PO toward a common upstream).
+      topo.mlagConfigPorts = new Set();
+      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+        if (!topo.poMap) return;
+        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
+          if (devConnections[devA] && devConnections[devB]) {
+            topo.mlagConfigPorts.add(devA + ':' + poName);
+            topo.mlagConfigPorts.add(devB + ':' + poName);
+          }
+        });
+      });
+    }
+
+    const indices = getColumnIndices(headers, deviceName);
+    const ipPrefs = getIpPreferences() || {};
+    const settings = getNetworkSettings();
+
+    // FEATURE FLAGS
+    const underlay = settings.underlay || 'none'; // 'bgp' | 'ospf' | 'bgp+ospf' | 'none'
+    let isBgp = underlay.includes('bgp');
+    let isOspf = underlay.includes('ospf');
+
+    const allDevices = getExistingDevices() || [];
+    const targetDeviceObj = allDevices.find(d => d.name === deviceName);
+    const deviceSheetIndex = targetDeviceObj ? targetDeviceObj.sheetIndex : 1;
+
+    // Device role gates VXLAN/EVPN generation.
+    // Only LEAF/SPINE get VXLAN+EVPN. All other roles (HARNESS, unset, etc.) get BGP underlay only.
+    const deviceRole = ((targetDeviceObj && targetDeviceObj.role) || '').toUpperCase();
+    const isEvpnDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
+    const isVxlanDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
+    let isVxlan = (settings.vxlan === 'true') && isVxlanDevice;
+    let isEvpn  = (settings.evpn  === 'true') && isEvpnDevice;
+
+    // Build peer-role map for BGP generation (used to skip OVERLAY sessions toward HARNESS peers)
+    const peerRoles = {};
+    allDevices.forEach(d => { peerRoles[d.name] = (d.role || '').toUpperCase(); });
+
+    // 2. Detect MLAG State
+    const mlagState = detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, isOspf);
+    const devData = collectDeviceData(rows, headers, targetColIndex, deviceName, topo.mlagPeerMap);
+    // Pre-compute VTEP leaves for static flood list (only computed when VXLAN is enabled)
+    const vtepNames = isVxlan ? computeVtepNames(allDevices, rows, headers, topo) : new Set();
+
+    // --- 3. AGGREGATE PORT-CHANNEL NEIGHBORS ---
+    const poRemoteMlagMap = {};
+    const tempPoNeighborSets = {};
+
+    rows.forEach(row => {
+      const portName = row[targetColIndex];
+      if (isValidPort(portName)) {
+        const pName = canonicalizeInterface(portName);
+        const details = extractDetails(row, indices);
+        const poVal = normalizePo(details.po_);
+
+        const peerEntry = topo.globalLinkMap.get(deviceName + ":" + pName);
+        if (poVal && peerEntry) {
+          const neighbor = peerEntry.dev;
+          if (!tempPoNeighborSets[poVal]) tempPoNeighborSets[poVal] = new Set();
+          tempPoNeighborSets[poVal].add(neighbor);
+
+          const neighborPartner = topo.mlagPeerMap[neighbor];
+          if (neighborPartner) {
+            tempPoNeighborSets[poVal].add(neighborPartner);
+          }
+        }
+      }
+    });
+
+    Object.keys(tempPoNeighborSets).forEach(po => {
+      const neighbors = Array.from(tempPoNeighborSets[po]).sort();
+      if (neighbors.length >= 2) {
+        poRemoteMlagMap[po] = neighbors.join(" & ");
+      } else if (neighbors.length === 1) {
+        poRemoteMlagMap[po] = neighbors[0];
+      }
+    });
+
+    const configMap = {};
+    const eosHostname = (targetDeviceObj && targetDeviceObj.hostname) ? targetDeviceObj.hostname : deviceName;
+
+    // [SECTION 000] GLOBAL
+    configMap["000_GLOBAL"] = {
+      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice),
+      blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
+    };
+
+    // [SECTION 001] SYSTEM
+    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans));
+    configMap["001_SYSTEM"] = {
+      full: "!--- SYSTEM CONFIG ---\n" + sysBlock + "\n!--------------------",
+      blockStatus: "System"
+    };
+
+    // [SECTION 055] VXLAN CONFIGURATION
+    if (isVxlan) {
+      // Condition 1: Must have P2P links (to be part of the fabric)
+      if (devData.hasP2p) {
+        // Condition 2: Must have Gateway VLANs (SVIs) to be a VTEP
+        if (devData.gwVlans.size > 0) {
+          // -> IT IS A LEAF (VTEP)
+          let peerIdForVxlan = mlagState.isActive ? mlagState.peerId : deviceSheetIndex;
+          configMap["055_VXLAN"] = {
+            full: generateVxlanBlock(
+              mlagState.isActive,
+              deviceSheetIndex,
+              peerIdForVxlan,
+              devData.gwVlans,
+              allDevices,
+              deviceName,
+              topo,
+              data,
+              headers,
+              isEvpn,
+              parseInt(ipPrefs.vni_base) || 10000,
+              vtepNames
+            ),
+            blockStatus: "VXLAN Active"
+          };
+        } else {
+          // -> Role is LEAF/SPINE but no GW VLANs configured — behaves as underlay router
+          configMap["055_VXLAN"] = {
+            full: `! VXLAN Skipped: ${deviceRole} has no Gateway VLANs configured (no Vx1/SVI rows)\n!`,
+            blockStatus: "Skipped (No GW VLANs)"
+          };
+        }
+      } else {
+        // -> NO P2P LINKS (L2 Switch)
+        configMap["055_VXLAN"] = {
+          full: "! VXLAN Skipped: No P2P interfaces configured\n!",
+          blockStatus: "Skipped (No Uplinks)"
+        };
+      }
+    } else if (!isVxlanDevice) {
+      // -> ROLE NOT LEAF/SPINE
+      configMap["055_VXLAN"] = {
+        full: "! VXLAN Skipped: No LEAF/SPINE role configured\n!",
+        blockStatus: "Disabled (No Role)"
+      };
+    } else {
+      // -> ROLE IS LEAF/SPINE BUT VXLAN DISABLED IN TECH SETTINGS
+      configMap["055_VXLAN"] = {
+        full: "! VXLAN Skipped: Feature Disabled in Tech Settings\n!",
+        blockStatus: "Disabled"
+      };
+    }
+
+    // --- INTERFACE GENERATION ---
+    const deviceSeenPos = new Set();
+
+    // AP VLAN GW: pre-collect ALL vx1 rows (one per VRF/VLAN group) before main loop.
+    // Each row may have different vlan_ and vrf_. deviceSeenPos is pre-marked so the
+    // main loop skips all Vx1 rows — only vlan_ and svi_ fields are used.
+    const vx1Entries = [];
+    rows.forEach(row => {
+      if (isValidPort(row[targetColIndex]) && canonicalizeInterface(row[targetColIndex]) === "Vx1") {
+        const d = extractDetails(row, indices);
+        d.sheetIndex = deviceSheetIndex;
+        vx1Entries.push(d);
+      }
+    });
+    if (vx1Entries.length > 0) {
+      deviceSeenPos.add("Vx1");
+      const cfg2 = ipPrefs || getIpPreferences();
+      const sviLines = [];
+      vx1Entries.forEach(d => {
+        const apVlans = expandVlanString(String(d.vlan_ || ""));
+        if (apVlans.length > 0 && (d.svi_ || "").toLowerCase() === "yes") {
+          apVlans.forEach(v => {
+            const oct2 = Math.floor(v / 100);
+            const oct3 = v % 100;
+            sviLines.push([
+              "!",
+              `interface Vlan${v}`,
+              d.vrf_ ? ` vrf ${d.vrf_}` : null,
+              ` description ANYCAST_GW_${v}`,
+              ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`,
+              ` default ipv6 address virtual`,
+              ` ipv6 address virtual ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`,
+              ` no shutdown`
+            ].filter(Boolean).join("\n"));
+          });
+        }
+      });
+      if (sviLines.length > 0) {
+        configMap["050_Vx1"] = { full: sviLines.join("\n"), blockStatus: "AP VLAN SVI" };
+      }
+    }
+
+    rows.forEach(row => {
+      const portName = row[targetColIndex];
+      if (isValidPort(portName)) {
+        const pName = canonicalizeInterface(portName);
+        if (deviceSeenPos.has(pName)) return;
+        deviceSeenPos.add(pName);
+
+        const details = extractDetails(row, indices);
+        details.sheetIndex = deviceSheetIndex;
+        const poVal = normalizePo(details.po_);
+
+        const linkInfo = topo.globalLinkMap.get(deviceName + ":" + pName);
+        if (linkInfo) {
+          details.peerDev = linkInfo.dev;
+          details.peerPort = linkInfo.port;
+        }
+
+        if (poVal && poRemoteMlagMap[poVal]) {
+          details.remoteMlagPair = poRemoteMlagMap[poVal];
+        }
+
+        // [CRITICAL] Use Title Case Keys (e.g. "Leaf1:Po10") to match Topology Engine
+        if (poVal) {
+          const poKey = deviceName + ":" + poVal;
+          if (hasKey(topo.mlagConfigPorts, poKey)) details.isMlag = true;
+          if (hasKey(topo.peerLinkPorts, poKey)) details.isPeerLink = true;
+        } else {
+          const pKey = deviceName + ":" + pName;
+          if (hasKey(topo.peerLinkPorts, pKey)) details.isPeerLink = true;
+        }
+
+        {
+          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, underlay);
+          if (pName.startsWith("Po")) {
+            configMap["060_" + pName] = { full: cfg, blockStatus: "Logical" };
+          } else {
+            configMap["050_" + pName] = { full: cfg, blockStatus: "Physical" };
+          }
+        }
+      }
+    });
+
+    // [SECTION 070] MLAG
+    if (mlagState.isActive) {
+      configMap["070_MLAG"] = { full: mlagState.mlagConfigBlock, blockStatus: "MLAG Active" };
+    } else {
+      configMap["070_MLAG"] = {
+        full: "! MLAG Skipped: No MLAG role configured (Standalone Mode)\n!",
+        blockStatus: "Skipped (Standalone)"
+      };
+    }
+
+    // [SECTION 090] OSPF UNDERLAY
+    if (isOspf) {
+      const hasP2pForOspf = Object.values(mlagState.bgpNeighbors).some(
+        p => p.peerParams && p.peerParams.some(pp => !pp.isMlag)
+      );
+      if (hasP2pForOspf) {
+        configMap["090_OSPF_UNDERLAY"] = {
+          full: generateOSPF(deviceSheetIndex, mlagState.bgpNeighbors),
+          blockStatus: "OSPF Underlay"
+        };
+      } else {
+        configMap["090_OSPF_UNDERLAY"] = {
+          full: "! OSPF Underlay Skipped: No P2P interfaces configured\n!",
+          blockStatus: "Skipped"
+        };
+      }
+    } else {
+      configMap["090_OSPF_UNDERLAY"] = {
+        full: "! OSPF Underlay Skipped: Feature Disabled in Tech Settings\n!",
+        blockStatus: "Disabled"
+      };
+    }
+
+    // [SECTION 100] BGP UNDERLAY / BGP EVPN OVERLAY
+    if (isBgp) {
+      // Full BGP underlay (+ EVPN overlay if enabled)
+      const bgpKey = isEvpn ? "100_BGP_EVPN" : "100_BGP_UNDERLAY";
+      if (Object.keys(mlagState.bgpNeighbors).length > 0) {
+        configMap[bgpKey] = {
+          full: generateBGP(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, isEvpn, deviceRole, peerRoles),
+          blockStatus: isEvpn ? "Routing + Overlay" : "Routing (Underlay Only)"
+        };
+      } else {
+        configMap[bgpKey] = {
+          full: isEvpn
+            ? "! BGP EVPN Skipped: No P2P interfaces configured\n!"
+            : "! BGP Underlay Skipped: No P2P interfaces configured\n!",
+          blockStatus: "Skipped"
+        };
+      }
+    } else if (isOspf && isEvpn) {
+      // OSPF underlay + BGP EVPN overlay only
+      if (Object.keys(mlagState.bgpNeighbors).length > 0) {
+        configMap["100_BGP_EVPN"] = {
+          full: generateBGPEvpnOverlay(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, peerRoles),
+          blockStatus: "BGP EVPN Overlay (over OSPF)"
+        };
+      } else {
+        configMap["100_BGP_EVPN"] = {
+          full: "! BGP EVPN Overlay Skipped: No P2P interfaces configured\n!",
+          blockStatus: "Skipped"
+        };
+      }
+    } else {
+      configMap["100_BGP_UNDERLAY"] = {
+        full: "! BGP Underlay Skipped: Feature Disabled in Tech Settings\n!",
+        blockStatus: "Disabled"
+      };
+    }
+
+    // This ensures that after the interface/BGP commands,
+    // the switch remains in config mode and saves the state.
+    configMap["999_EOF"] = {
+      full: "configure\nwrite memory",
+      blockStatus: "EOF"
+    };
+
+    return { config: configMap };
+
+  } catch (e) {
+    return { error: "Config Engine Error: " + e.message };
+  }
+}
+
+function generateSystemBlocks(deviceId, vrfs, vlans) {
+  // Safety: Ensure inputs are Arrays
+  const safeVrfs = Array.isArray(vrfs) ? vrfs : [];
+  const safeVlans = Array.isArray(vlans) ? vlans : [];
+
+  let lines = [];
+
+  // System IDs
+  lines.push(`! System IDs (Derived from ID: ${deviceId})`);
+  lines.push(`interface Loopback0`);
+  lines.push(` ip address ${deviceId}.${deviceId}.${deviceId}.${deviceId}/32`);
+  lines.push(` ipv6 address ${deviceId}:${deviceId}:${deviceId}::${deviceId}/128`);
+  lines.push(`!`);
+  lines.push(`router general`);
+  lines.push(` router-id ipv4 ${deviceId}.${deviceId}.${deviceId}.${deviceId}`);
+  lines.push(` router-id ipv6 ${deviceId}:${deviceId}:${deviceId}::${deviceId}`);
+  lines.push(`!`);
+
+  // VRFs
+  if (safeVrfs.length > 0) {
+    // Filter undefined/null inside the array
+    safeVrfs.filter(v => v).forEach(v => {
+      lines.push(`vrf instance ${v}`);
+      lines.push(`ip routing vrf ${v}`);
+      lines.push(`ipv6 unicast-routing vrf ${v}`);
+      lines.push(`!`);
+    });
+  } else {
+    lines.push(`! No VRFs found`);
+  }
+  lines.push(`!`);
+
+  // VLANs
+  lines.push(`! VLAN Configuration`);
+  lines.push(`default vlan 1-4094`);
+  lines.push(`!`);
+
+  if (safeVlans.length > 0) {
+    // Filter valid numbers
+    const validVlans = safeVlans.filter(v => !isNaN(v) && v > 0);
+    if (validVlans.length > 0) {
+      // Sort and compact
+      validVlans.sort((a, b) => a - b);
+      let ranges = [];
+      let start = validVlans[0];
+      let prev = start;
+      for (let i = 1; i < validVlans.length; i++) {
+        if (validVlans[i] !== prev + 1) {
+          ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+          start = validVlans[i];
+        }
+        prev = validVlans[i];
+      }
+      ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+      lines.push(`vlan ${ranges.join(",")}`);
+    }
+  }
+  lines.push(`!`);
+
+  return lines.join("\n");
+}
+
+/**
+* Generates configuration for an interface.
+* REFACTORED: Implements strict 9-rule description logic.
+*/
+function generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol) {
+  const isSubInt = String(portName).includes(".");
+  const poVal = normalizePo(d.po_) || ""; // Local Port-Channel Name (e.g. Po10)
+  const hasPo = (poVal !== "");
+  const mode = String(d.sp_mode_ || "").toLowerCase();
+
+  let cfg = "interface " + portName + "\n";
+
+  // ==========================================
+  // 1. PHYSICAL INTERFACE CONFIG
+  // ==========================================
+  if (!isSubInt && !portName.toLowerCase().startsWith("po")) {
+    if (d.et_speed_) cfg += " speed " + d.et_speed_ + "\n";
+    if (d.encoding_ && portName.startsWith("Et")) cfg += " error-correction encoding " + d.encoding_ + "\n";
+
+    // --- DESCRIPTION LOGIC (PHYSICAL) ---
+    // Rule 1: Manual Override
+    if (d.desc_ && d.desc_.trim() !== "") {
+      cfg += " description " + d.desc_.replace(/"/g, '') + "\n";
+    }
+    else if (d.peerDev && d.peerPort) {
+      let desc = "";
+
+      // Rule 4, 6, 8: Child of Po (Regular OR MLAG OR PeerLink)
+      // Format: -> Leaf2-Et1-Po10 (PeerDev-PeerPort-LocalPo)
+      if (hasPo) {
+        desc = `${d.peerDev}-${d.peerPort}-${poVal}`;
+      }
+      // Rule 3: Physical Peer Link (Standalone)
+      // Format: -> Leaf2-Et1-MLAG-PEER-LINK
+      else if (d.isPeerLink) {
+        desc = `${d.peerDev}-${d.peerPort}-MLAG-PEER-LINK`;
+      }
+      // Rule 2: Regular Physical
+      // Format: -> Leaf2-Et1
+      else {
+        desc = `${d.peerDev}-${d.peerPort}`;
+      }
+
+      cfg += ` description -> ${desc}\n`;
+    }
+
+    // Physical Member Config
+    if (hasPo) {
+      const poNum = poVal.replace(/\D/g, '');
+      cfg += " channel-group " + poNum + " mode active\n";
+    }
+    // REMOVED: 'else if (d.isPeerLink)' check here.
+    // Trunk groups belong on the logical interface (Po) or will be handled
+    // by generateAttributesBlock if this is a standalone interface.
+
+    cfg += " no shutdown\n";
+  }
+
+  // ==========================================
+  // 2. PORT-CHANNEL INTERFACE CONFIG
+  // ==========================================
+  if (hasPo) {
+    if (!seenPos || !seenPos.has(poVal)) {
+      if (seenPos) seenPos.add(poVal);
+
+      // [GUARD] STRICT ARISTA LOGIC: MLAG + ANY L3 MODE IS INVALID
+      if (d.isMlag && mode.startsWith("l3")) {
+        return `!\ninterface ${poVal}\n !! ERROR: INVALID CONFIGURATION !!\n !! MLAG member '${portName}' cannot use L3 mode '${mode}'.\n !! Action: Change mode to L2 (switchport).\n!\n`;
+      }
+
+      cfg += "!\ninterface " + poVal + "\n";
+
+      // --- DESCRIPTION LOGIC (PORT-CHANNEL) ---
+      // Rule 1: Manual Override (Implicit for POs too)
+      if (d.desc_ && d.desc_.trim() !== "") {
+        cfg += " description " + d.desc_ + "\n";
+      }
+      else if (d.poGroup) {
+        let finalDesc = "";
+
+        // Calculate Neighbor String (Rule 5 & 7)
+        // Rule 5: "Leaf2" | Rule 7: "Leaf2 & Leaf3"
+        let neighbors = "";
+        if (d.poGroup.peerDevs && d.poGroup.peerDevs.length > 0) {
+          const unique = [...new Set(d.poGroup.peerDevs)];
+          neighbors = unique.sort().join(" & ");
+        } else if (d.poGroup.peerDev) {
+          neighbors = d.poGroup.peerDev;
+        }
+
+        // Get Remote PO Name (e.g. Po10)
+        const remotePo = d.poGroup.peerPo || "Po??";
+
+        // Rule 9: MLAG Peer Link
+        // Format: -> Leaf2-Po10-MLAG-PEER-LINK
+        if (d.poGroup.isPeerLink) {
+          finalDesc = `${neighbors}-${remotePo}-MLAG-PEER-LINK`;
+        }
+        // Rule 5 & 7: Regular or MLAG PO
+        // Format: -> Leaf2-Po10 OR Leaf2 & Leaf3-Po10
+        else {
+          finalDesc = `${neighbors}-${remotePo}`;
+        }
+
+        if (finalDesc) cfg += ` description -> ${finalDesc}\n`;
+      } else if (d.remoteMlagPair) {
+        cfg += ` description -> ${d.remoteMlagPair}\n`;
+      }
+
+      cfg += " no shutdown\n";
+
+      if (d.isMlag) {
+        const poNum = poVal.replace(/\D/g, '');
+        cfg += " mlag " + poNum + "\n";
+      }
+
+      // REMOVED: Duplicate 'switchport trunk group' logic.
+      // It is now exclusively handled below by generateAttributesBlock(d)
+
+      cfg += generateAttributesBlock(d);
+      cfg += generateComplexL3Block(poVal, d, ipPrefs, underlayProtocol);
+    }
+  } else {
+    // Virtual interfaces (Loopback, Vlan, etc)
+    if (!hasPo && !portName.startsWith("Po")) {
+      cfg += generateAttributesBlock(d);
+      cfg += generateComplexL3Block(portName, d, ipPrefs, underlayProtocol);
+    }
+  }
+
+  return cfg;
+}
+
+/**
+* Generates Attribute Block (Switchport, VLANs, Trunk Groups)
+* Acts as the SINGLE SOURCE OF TRUTH for trunk group configuration.
+*/
+function generateAttributesBlock(d) {
+  let block = "";
+  let sp_mode = String(d.sp_mode_ || "").trim().toLowerCase();
+
+  // Robustly identify Peer Link (Check both Item and Group)
+  const isPeerLink = d.isPeerLink === true || (d.poGroup && d.poGroup.isPeerLink === true);
+
+  // 1. Base Layer 2/3 State & Reset VLANs
+  if (sp_mode.startsWith("l2")) {
+    block += " switchport\n";
+    block += " default switchport trunk allowed vlan\n";
+    block += " default switchport access vlan\n";
+  } else if (sp_mode.startsWith("l3")) {
+    block += " no switchport\n";
+  }
+
+  // 2. MLAG PEER-LINK SPECIFIC (High Priority)
+  // This centralizes the logic so we don't duplicate "switchport trunk group" commands.
+  if (isPeerLink) {
+    block += " switchport mode trunk\n";
+    block += " switchport trunk group MLAG_PEER\n"; // Correct Text
+    return block; // Exit early (Peer links don't need standard trunk/access logic)
+  }
+
+  // 3. Standard Mode Configuration
+  if (sp_mode.includes("access")) {
+    block += " switchport mode access\n";
+    if (d.vlan_) block += ` switchport access vlan ${d.vlan_}\n`;
+  }
+  else if (sp_mode.includes("trunk")) {
+    block += " switchport mode trunk\n";
+    if (d.n_vlan_) block += ` switchport trunk native vlan ${d.n_vlan_}\n`;
+    if (d.vlan_) block += ` switchport trunk allowed vlan ${d.vlan_}\n`;
+  }
+
+  return block;
+}
+
+/* REPLACE IN Code.gs */
+function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
+  if (!d.sp_mode_ || !d.vlan_) return "";
+
+  const mode = String(d.sp_mode_).toLowerCase();
+
+  // [GUARD] MLAG + ANY L3 MODE IS INVALID ON ARISTA EOS
+  if (d.isMlag && mode.startsWith("l3")) {
+    return ` !! IP CONFIG SUPPRESSED: MLAG + L3 IS INVALID ON ARISTA EOS !!\n !! Interface '${portName}' mode '${mode}' cannot coexist with MLAG.\n`;
+  }
+
+  // Use provided prefs or fetch defaults
+  const cfg = ipPrefs || getIpPreferences();
+
+  // PARSING: Filter for valid numbers only
+  let vlans = String(d.vlan_).split(",")
+    .map(s => s.trim())
+    .filter(s => s !== "" && !isNaN(parseInt(s)));
+
+  // ERROR HANDLING
+  if (vlans.length === 0) {
+    return " ! ERROR: VLAN ID missing or invalid\n";
+  }
+
+  const sheetIndex = parseInt(d.sheetIndex) || 1;
+  const gwLastV4 = parseInt(cfg.gw_v4_last);
+  const gwLastV6 = parseInt(cfg.gw_v6_last);
+
+  // Helper to build the IP config lines
+  const getIpBlock = (v) => {
+    let val = parseInt(v);
+    if (isNaN(val)) return "";
+
+    let lines = [];
+
+    // --- FIX: Modern VRF Syntax ---
+    if (d.vrf_) lines.push(" vrf " + d.vrf_);
+
+    let ipType = (d.ip_type_ || "").toLowerCase();
+
+    // Calculate 2nd and 3rd octets based on VLAN ID
+    let oct2 = Math.floor(val / 100);
+    let oct3 = val % 100;
+
+    // A. P2P LINKS
+    if (ipType.includes("p2p")) {
+      lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
+      lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
+    }
+    // B. GATEWAY (SVI/Sub-Int)
+    else if (ipType.includes("gw")) {
+
+      if (d.isMlag) {
+        // MLAG Logic: Distinct Physical IPs + Virtual IP
+        // phySuffix = gwLast + sheetIndex guarantees:
+        //   (a) never equals gwLast (virtual-router IP) since sheetIndex >= 1
+        //   (b) unique per peer since sheetIndex is unique per device
+        const phySuffixV4 = gwLastV4 + sheetIndex;
+        const phySuffixV6 = gwLastV6 + sheetIndex;
+
+        lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
+        lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
+
+        // VARP (Virtual ARP) - L3 modes are blocked by the guard above
+        lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
+        lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+
+      } else {
+        // Standalone Gateway
+        lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+        lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+      }
+    }
+
+    return lines.join("\n");
+  };
+
+  let block = "";
+
+  // 1. SVI (Vlan Interface)
+  if (mode.startsWith("l2-") && (d.svi_ || "").toLowerCase() === "yes") {
+    vlans.forEach(v => {
+      block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+    });
+  }
+  // 2. Sub-Interfaces (Router on a Stick)
+  else if (mode.includes("-sub-int")) {
+    vlans.forEach(v => {
+      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+    });
+  }
+  // 3. L3 Routed Interfaces (No Sub-Int)
+  else if (mode === "l3-et-int" || mode === "l3-po-int") {
+    if (vlans.length > 0) block += getIpBlock(vlans[0]) + "\n no shutdown\n";
+    // OSPF per-interface commands only for default VRF — VRF interfaces use BGP, not OSPF underlay
+    if (underlayProtocol && underlayProtocol.includes('ospf') && !d.vrf_) {
+      block += " ip ospf network point-to-point\n";
+      block += " ip ospf area 0.0.0.0\n";
+      block += " ip ospf neighbor bfd\n";
+    }
+  }
+
+  return block;
+}
+
+function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMap) {
+  const allVlans = new Set(); // For System Config (Create VLAN)
+  const gwVlans = new Set(); // For VXLAN/EVPN (Map VNI)
+  const vrfs = new Set();
+  let p2pCount = 0;
+
+  const myMlagPeer = mlagPeerMap ? mlagPeerMap[deviceName] : null;
+  let peerIndices = null;
+  let peerIntIdx = -1;
+
+  // Indices for Local Device
+  const indices = getColumnIndices(headers, deviceName);
+
+  // Indices for Peer Device (to capture shared GW VLANs)
+  if (myMlagPeer) {
+    peerIndices = getColumnIndices(headers, myMlagPeer);
+    peerIntIdx = headers.indexOf("int_" + myMlagPeer);
+  }
+
+  const analyzeRow = (row, idxObj) => {
+    const details = extractDetails(row, idxObj);
+    const ipType = (details.ip_type_ || "").toLowerCase();
+
+    // 1. Collect VRFs
+    if (details.vrf_) vrfs.add(details.vrf_);
+
+    // 2. Count P2P Interfaces (Routing)
+    if (ipType.includes("p2p")) {
+      p2pCount++;
+    }
+
+    // 3. Collect VLANs
+    if (details.vlan_) {
+      const rowVlans = expandVlanString(String(details.vlan_));
+      rowVlans.forEach(v => {
+        // Always add to "All VLANs" (so they exist in config)
+        allVlans.add(v);
+
+        // Only add to "GW VLANs" if ip_type is Gateway
+        if (ipType.includes("gw")) {
+          gwVlans.add(v);
+        }
+      });
+    }
+
+    // Native VLANs are usually infra, but we add to 'all' just in case
+    if (details.n_vlan_) allVlans.add(parseInt(details.n_vlan_));
+  };
+
+  rows.forEach(row => {
+    const rawPort = row[targetColIndex];
+    if (isValidPort(rawPort)) {
+      analyzeRow(row, indices);
+      // Vx1 rows declare AP VLANs — always add to gwVlans for VNI mapping,
+      // regardless of ip_type_ (which is not used for vx1 rows).
+      if (canonicalizeInterface(rawPort) === "Vx1") {
+        const details = extractDetails(row, indices);
+        if (details.vlan_) {
+          expandVlanString(String(details.vlan_)).forEach(v => gwVlans.add(v));
+        }
+      }
+    }
+    // Analyze Peer (If MLAG, their GW VLANs are my GW VLANs)
+    if (myMlagPeer && isValidPort(row[peerIntIdx])) {
+      analyzeRow(row, peerIndices);
+      // Mirror the Vx1 explicit handling for the MLAG peer — ip_type_ is not used for
+      // AP VLAN rows, so analyzeRow alone won't add them to gwVlans.
+      if (canonicalizeInterface(row[peerIntIdx]) === "Vx1") {
+        const peerDetails = extractDetails(row, peerIndices);
+        if (peerDetails.vlan_) {
+          expandVlanString(String(peerDetails.vlan_)).forEach(v => gwVlans.add(v));
+        }
+      }
+    }
+  });
+
+  return { allVlans, gwVlans, vrfs, hasP2p: (p2pCount > 0) };
+}
+
+/**
+ * Returns a Set of device names that are VTEP leaves.
+ * A device is a VTEP leaf iff it has P2P uplinks (part of the fabric) AND
+ * has at least one GW/AP VLAN (has something to bridge over VXLAN).
+ * Used by generateVxlanBlock() to restrict the static flood list to leaves only.
+ */
+function computeVtepNames(allDevices, rows, headers, topo) {
+  const vtepNames = new Set();
+  allDevices.forEach(d => {
+    if (d.type === 'non-arista') return;
+    const role = (d.role || '').toUpperCase();
+    // Only LEAFs are VTEPs (participate in VXLAN data-plane / flood list).
+    // SPINEs are underlay routers only — adding them to the flood list is incorrect.
+    if (role === 'LEAF') {
+      vtepNames.add(d.name);
+    }
+    // All other roles (SPINE, HARNESS, unset, etc.): never a VTEP
+  });
+  return vtepNames;
+}
+
+function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowIndex) {
+  const mode = (String(details.sp_mode_ || "")).toLowerCase();
+  const vlans = Array.from(expandVlanString(String(details.vlan_ || "")));
+  const l3IntNames = [];
+  const poVal = normalizePo(details.po_);
+
+  // Determine Interface Names
+  if (mode.includes("l3-po-sub-int") && poVal) vlans.forEach(v => l3IntNames.push(`${poVal}.${v}`));
+  else if (mode.includes("l3-et-sub-int")) vlans.forEach(v => l3IntNames.push(`${pName}.${v}`));
+  else if (mode.includes("l3-po-int") && poVal) l3IntNames.push(poVal);
+  else if (mode.includes("l3-et-int")) l3IntNames.push(pName);
+  else if (mode.startsWith("l2-") && details.svi_ === 'yes') vlans.forEach(v => l3IntNames.push(`Vlan${v}`));
+
+  // Calculate IPs
+  let val = 0;
+  if (vlans.length > 0) val = parseInt(vlans[0]);
+  else if (details.n_vlan_) val = parseInt(details.n_vlan_);
+  if (!val || isNaN(val)) val = rowIndex + 1;
+
+  let oct2 = Math.floor(val / 100);
+  let oct3 = val % 100;
+
+  const peerId = peerObj.sheetIndex;
+  const baseV4 = ipPrefs.p2p_v4_first || "200";
+  const peerIpV4 = `${baseV4}.${oct2}.${oct3}.${peerId}`;
+  const baseV6 = ipPrefs.p2p_v6_first || "200";
+  const peerIpV6 = `${baseV6}:${oct2}:${oct3}::${peerId}`;
+
+  if (!bgpNeighbors[peerObj.name]) {
+    bgpNeighbors[peerObj.name] = {
+      id: peerObj.sheetIndex,
+      loopbackV4: `${peerId}.${peerId}.${peerId}.${peerId}`,
+      peerParams: []
+    };
+  }
+
+  l3IntNames.forEach(l3Name => {
+    bgpNeighbors[peerObj.name].peerParams.push({
+      interface: l3Name,
+      peerIpV4: peerIpV4,
+      peerIpV6: peerIpV6,
+      vrf: details.vrf_,
+      description: `To ${peerObj.name} (${pName})`
+    });
+  });
+}
+
+function generateGlobalBlock(isEvpnDevice) {
+  let globalCfgText = getGlobalConfig() || "";
+  let mandatory = ["!"];
+  // multi-agent model is required for EVPN; skip on pure-underlay devices (e.g. HARNESS)
+  if (isEvpnDevice) {
+    mandatory.push("service routing protocols model multi-agent");
+  }
+  mandatory.push(
+    "ip routing",
+    "ip routing ipv6 interfaces",
+    "ipv6 unicast-routing",
+    "!"
+  );
+  return globalCfgText + "\n" + mandatory.join("\n");
+}
+
+/**
+* REFACTORED HELPER: Detects MLAG & Neighbors using Topology Engine
+*/
+function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, isOspf) {
+  const state = {
+    isActive: false,
+    peerId: null,
+    peerName: "",
+    mlagConfigBlock: "",
+    bgpNeighbors: {}
+  };
+
+  const ipPrefs = getIpPreferences();
+
+  // 1. MLAG PARTNER DETECTION
+  const myPeerName = topo.mlagPeerMap ? topo.mlagPeerMap[deviceName] : null;
+
+  if (myPeerName) {
+    const peerObj = allDevices.find(d => d.name === myPeerName);
+    if (peerObj) {
+      state.isActive = true;
+      state.peerName = myPeerName;
+      state.peerId = peerObj.sheetIndex;
+
+      // IMPROVED: Strict search for the Peer Link Interface
+      let peerLinkPort = null;
+      for (const key of topo.peerLinkPorts) {
+        if (key.startsWith(deviceName + ":")) {
+          peerLinkPort = key.split(":")[1];
+          break;
+        }
+      }
+
+      // Error handling if topo fails to find the physical link
+      if (!peerLinkPort) {
+        state.mlagConfigBlock = "!! ERROR: No Physical Peer-Link detected in Topology !!";
+      } else {
+        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, isOspf);
+        state.mlagConfigBlock = mlagData.mlagConfigBlock;
+      }
+    }
+  }
+
+  // 2. NEIGHBOR DETECTION
+  rows.forEach((row, rIdx) => {
+    const localPort = row[targetColIndex];
+    if (!isValidPort(localPort)) return;
+
+    const pName = canonicalizeInterface(localPort); // "Et1"
+
+    // [FIX] Lookup Key: "Leaf1:Et1"
+    const myKey = deviceName + ":" + pName;
+    const linkEntry = topo.globalLinkMap ? topo.globalLinkMap.get(myKey) : null;
+
+    if (linkEntry) {
+      const neighborObj = allDevices.find(d => d.name === linkEntry.dev);
+
+      if (neighborObj && neighborObj.type === 'full') {
+        const details = extractDetails(row, indices);
+        const ipType = (String(details.ip_type_ || "")).toLowerCase();
+
+        if (ipType.includes("p2p") && linkEntry.dev !== myPeerName) {
+          processP2pNeighbor(state.bgpNeighbors, neighborObj, details, pName, ipPrefs, rIdx);
+        }
+      }
+    }
+  });
+
+  return state;
+}
+
+/**
+* Helper: Generates MLAG Global Config, SVIs, and BGP Peering
+* Updates the bgpNeighbors object by reference.
+*/
+function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, isOspf) {
+  const partnerId = partnerObj.sheetIndex;
+  const partnerName = partnerObj.name;
+
+  const isLower = (localId < partnerId);
+  const localIpBit = isLower ? 0 : 1;
+  const peerIpBit = isLower ? 1 : 0;
+  const priority = isLower ? 10 : 20;
+
+  const lowerId = Math.min(localId, partnerId);
+  const higherId = Math.max(localId, partnerId);
+
+  // FIXED: Mac format to 0011.2233.hhhh (e.g., 0011.2233.0002)
+  const hexId = lowerId.toString(16).padStart(4, '0');
+  const vRouterMac = `0011.2233.${hexId}`;
+
+  const mlagLines = [];
+
+  mlagLines.push("! MLAG Infrastructure");
+  mlagLines.push("no spanning-tree vlan 4093-4094");
+  mlagLines.push(`ip virtual-router mac-address ${vRouterMac}`);
+  mlagLines.push("!");
+
+  // FIXED: Changed 'description' to 'name' for VLAN context
+  mlagLines.push("vlan 4093");
+  mlagLines.push(" name MLAG_L3_UNDERLAY_PEERING");
+  mlagLines.push(" trunk group MLAG_PEER");
+  mlagLines.push("!");
+  mlagLines.push("vlan 4094");
+  mlagLines.push(" name MLAG_CONTROL_PLANE");
+  mlagLines.push(" trunk group MLAG_PEER");
+  mlagLines.push("!");
+
+  mlagLines.push("interface Vlan4094");
+  mlagLines.push(" description MLAG_CONTROL_PLANE");
+  mlagLines.push(" no autostate");
+  mlagLines.push(` ip address 169.254.0.${localIpBit}/31`);
+  mlagLines.push(" no shutdown");
+  mlagLines.push("!");
+  mlagLines.push("interface Vlan4093");
+  mlagLines.push(" description MLAG_L3_PEERING");
+  mlagLines.push(" no autostate");
+  mlagLines.push(` ip address 169.254.1.${localIpBit}/31`);
+  mlagLines.push(` ipv6 address 169:254:1::${localIpBit}/127`);
+  if (isOspf) {
+    mlagLines.push(" ip ospf network point-to-point");
+    mlagLines.push(" ip ospf area 0.0.0.0");
+  }
+  mlagLines.push(" no shutdown");
+  mlagLines.push("!");
+
+  mlagLines.push("mlag configuration");
+  mlagLines.push(` domain-id MLAG_DOMAIN_${lowerId}-${higherId}`);
+  mlagLines.push(` local-interface Vlan4094`);
+  mlagLines.push(` peer-address 169.254.0.${peerIpBit}`);
+  mlagLines.push(` peer-link ${peerLinkName}`);
+  mlagLines.push(` primary-priority ${priority}`);
+
+  // REMOVED: vxlan virtual-router encapsulation command per request
+
+  // FIXED: Syntax changed to 'reload-delay non-mlag' (removed 'mode')
+  mlagLines.push(" reload-delay mlag 300");
+  mlagLines.push(" reload-delay non-mlag 330");
+  mlagLines.push("!");
+
+  if (!bgpNeighbors[partnerName]) {
+    bgpNeighbors[partnerName] = {
+      id: partnerId,
+      loopbackV4: `${partnerId}.${partnerId}.${partnerId}.${partnerId}`,
+      peerParams: []
+    };
+  }
+  bgpNeighbors[partnerName].peerParams.push({
+    peerIpV4: `169.254.1.${peerIpBit}`,
+    peerIpV6: `169:254:1::${peerIpBit}`,
+    interface: "Vlan4093",
+    description: `MLAG_L3_UNDERLAY_TO_${partnerName}`,
+    isMlag: true
+  });
+
+  return { mlagConfigBlock: mlagLines.join("\n") };
+}
+
+/* REPLACE IN Code.gs */
+/**
+ * Generates BGP configuration for Arista EOS.
+ * FIX:
+ * 1. Strict naming convention (UNDERLAY_VRF_...).
+ * 2. Applies 'next-hop address-family ipv6 originate' correctly.
+ * 3. Prevents _V4_P2P_IP groups from appearing in IPv6 families (Global & VRF).
+ */
+function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpnEnabled, deviceRole, peerRoles) {
+  // Helper: returns true if a peer should participate in EVPN overlay sessions.
+  // Only LEAF/SPINE peers get OVERLAY peer groups. All others (HARNESS, unset, etc.) get underlay only.
+  const peerRoles_ = peerRoles || {};
+  const isPeerEvpn = (peerName) => {
+    const pr = (peerRoles_[peerName] || '').toUpperCase();
+    return pr === 'LEAF' || pr === 'SPINE';
+  };
+  if (!bgpNeighbors) return "! No BGP Neighbors";
+
+  const localAsn = 65000 + deviceSheetIndex;
+  const configLines = [];
+
+  // --- 1. DATA PRE-PROCESSING ---
+  const globalPeers = {};
+  const vrfPeers = {};
+  const allPeerGroups = [];
+
+  Object.keys(bgpNeighbors).forEach(peerName => {
+    const peerData = bgpNeighbors[peerName];
+    if (!peerData || !peerData.peerParams) return;
+
+    peerData.peerParams.forEach(p => {
+      // Context & Naming
+      const rawVrf = (p.vrf && p.vrf.trim() !== "") ? p.vrf : "DEFAULT";
+      const isVrf = (rawVrf !== "DEFAULT");
+
+      const vrfStr = rawVrf.toUpperCase();
+      const peerStr = peerName.toUpperCase();
+      const mlagStr = p.isMlag ? "_MLAG" : "";
+
+      const baseName = `UNDERLAY_VRF_${vrfStr}_${peerStr}`;
+
+      const pgV4 = `${baseName}_V4_P2P_IP${mlagStr}`;
+      const pgV6 = `${baseName}_V6_P2P_IP${mlagStr}`;
+      const pgV6Int = `${baseName}_V6_INT_UN${mlagStr}`;
+
+      const pgOvV4 = `OVERLAY_${peerStr}_V4_LO_IP`;
+      const pgOvV6 = `OVERLAY_${peerStr}_V6_LO_IP`;
+
+      const pgEntry = {
+        name: peerName,
+        asn: 65000 + peerData.id,
+        pgV4: pgV4,
+        pgV6: pgV6,
+        pgV6Int: pgV6Int,
+        pgOvV4: pgOvV4,
+        pgOvV6: pgOvV6,
+        params: p,
+        isVrf: isVrf,
+        vrfName: isVrf ? p.vrf : null,
+        loopbackV4: peerData.loopbackV4,
+        peerId: peerData.id
+      };
+
+      if (isVrf) {
+        if (!vrfPeers[p.vrf]) vrfPeers[p.vrf] = [];
+        vrfPeers[p.vrf].push(pgEntry);
+      } else {
+        if (!globalPeers[peerName]) globalPeers[peerName] = [];
+        globalPeers[peerName].push(pgEntry);
+      }
+      allPeerGroups.push(pgEntry);
+    });
+  });
+
+  // --- 2. GLOBAL ROUTER CONFIGURATION ---
+  configLines.push(`router bgp ${localAsn}`);
+  configLines.push(` no bgp default ipv4-unicast`);
+  configLines.push(` bgp log-neighbor-changes`);
+  configLines.push(` maximum-paths 64`);
+  configLines.push(` distance bgp 20 200 200`);
+  configLines.push(` graceful-restart restart-time 300`);
+  configLines.push(` graceful-restart`);
+  configLines.push(` redistribute connected`);
+
+  // --- 3. DEFINE ALL PEER GROUPS ---
+  const definedGroups = new Set();
+
+  allPeerGroups.forEach(pg => {
+    const define = (gName, isOverlay = false) => {
+      if (definedGroups.has(gName)) return;
+      definedGroups.add(gName);
+
+      configLines.push(` neighbor ${gName} peer group`);
+      configLines.push(` neighbor ${gName} remote-as ${pg.asn}`);
+      configLines.push(` neighbor ${gName} bfd`);
+
+      if (isOverlay) {
+        configLines.push(` neighbor ${gName} update-source Loopback0`);
+        configLines.push(` neighbor ${gName} ebgp-multihop 3`);
+        configLines.push(` neighbor ${gName} next-hop-unchanged`);
+      } else {
+        configLines.push(` neighbor ${gName} next-hop-self`);
+      }
+      configLines.push(` neighbor ${gName} send-community standard extended`);
+      configLines.push(` neighbor ${gName} maximum-routes 12000`);
+    };
+
+    if (pg.params.peerIpV4) define(pg.pgV4);
+    if (pg.params.peerIpV6) define(pg.pgV6);
+    if (pg.params.interface) define(pg.pgV6Int);
+
+    if (isEvpnEnabled && !pg.isVrf && !pg.params.isMlag && isPeerEvpn(pg.name)) {
+      define(pg.pgOvV4, true);
+      define(pg.pgOvV6, true);
+    }
+  });
+
+  // --- 4. CONFIGURE GLOBAL NEIGHBORS ---
+  Object.keys(globalPeers).forEach(key => {
+    globalPeers[key].forEach(item => {
+      const p = item.params;
+      const descSuffix = `To ${item.name} via ${p.interface}`;
+
+      if (p.peerIpV4) {
+        configLines.push(` neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
+        configLines.push(` neighbor ${p.peerIpV4} description ${descSuffix} (IPv4)`);
+      }
+      if (p.peerIpV6) {
+        configLines.push(` neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
+        configLines.push(` neighbor ${p.peerIpV6} description ${descSuffix} (IPv6)`);
+      }
+      if (p.interface) {
+        configLines.push(` neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
+      }
+
+      if (isEvpnEnabled && !p.isMlag && isPeerEvpn(item.name)) {
+        if (item.loopbackV4) {
+          configLines.push(` neighbor ${item.loopbackV4} peer group ${item.pgOvV4}`);
+          configLines.push(` neighbor ${item.loopbackV4} description Overlay to ${item.name}`);
+        }
+        const pid = item.peerId;
+        const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
+        configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
+        configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
+      }
+    });
+  });
+
+  // --- 5. GLOBAL ADDRESS FAMILIES ---
+  configLines.push(` !`);
+  configLines.push(` address-family ipv4`);
+  definedGroups.forEach(gName => {
+    // A. Activate Groups in DEFAULT VRF
+    if (gName.includes("_VRF_DEFAULT_")) {
+      configLines.push(`  neighbor ${gName} activate`);
+
+      // B. Apply Next-Hop Fix (for Unnumbered AND IPv6 P2P)
+      if (gName.includes("_V6_INT_UN") || gName.includes("_V6_P2P_IP")) {
+        configLines.push(`  neighbor ${gName} next-hop address-family ipv6 originate`);
+      }
+    }
+  });
+
+  configLines.push(` !`);
+  configLines.push(` address-family ipv6`);
+  definedGroups.forEach(gName => {
+    // A. Activate Groups in DEFAULT VRF
+    if (gName.includes("_VRF_DEFAULT_")) {
+      // B. EXCLUSION RULE: Do NOT activate IPv4 P2P groups in IPv6 Family
+      if (!gName.includes("_V4_P2P_IP")) {
+        configLines.push(`  neighbor ${gName} activate`);
+      }
+    }
+  });
+
+  if (isEvpnEnabled) {
+    configLines.push(` !`);
+    configLines.push(` address-family evpn`);
+    definedGroups.forEach(gName => {
+      if (gName.startsWith("OVERLAY_")) {
+        configLines.push(`  neighbor ${gName} activate`);
+      }
+    });
+    if (gwVlans && gwVlans.size > 0) {
+      Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
+        configLines.push(`  vlan ${v}`);
+        configLines.push(`   rd auto`);
+        configLines.push(`   route-target both ${v}:${v}`);
+        configLines.push(`   redistribute learned`);
+      });
+    }
+  }
+
+  // --- 6. VRF CONFIGURATION ---
+  Object.keys(vrfPeers).sort().forEach(vrfName => {
+    configLines.push(` !`);
+    configLines.push(` vrf ${vrfName}`);
+    configLines.push(`  redistribute connected`);
+
+    const activeVrfGroups = new Set();
+
+    // A. Apply Neighbors
+    vrfPeers[vrfName].forEach(item => {
+      const p = item.params;
+      const descSuffix = `To ${item.name} via ${p.interface}`;
+
+      if (p.peerIpV4) {
+        configLines.push(`  neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
+        configLines.push(`  neighbor ${p.peerIpV4} description ${descSuffix}`);
+        activeVrfGroups.add(item.pgV4);
+      }
+      if (p.peerIpV6) {
+        configLines.push(`  neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
+        configLines.push(`  neighbor ${p.peerIpV6} description ${descSuffix}`);
+        activeVrfGroups.add(item.pgV6);
+      }
+      if (p.interface) {
+        configLines.push(`  neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
+        activeVrfGroups.add(item.pgV6Int);
+      }
+    });
+
+    // B. VRF Address Family IPv4
+    configLines.push(`  !`);
+    configLines.push(`  address-family ipv4`);
+    activeVrfGroups.forEach(gName => {
+      configLines.push(`   neighbor ${gName} activate`);
+
+      // FIX: IPv6 Next-Hop for IPv4 (Unnumbered + IPv6 P2P)
+      if (gName.includes("_V6_INT_UN") || gName.includes("_V6_P2P_IP")) {
+        configLines.push(`   neighbor ${gName} next-hop address-family ipv6 originate`);
+      }
+    });
+
+    // C. VRF Address Family IPv6
+    configLines.push(`  !`);
+    configLines.push(`  address-family ipv6`);
+    activeVrfGroups.forEach(gName => {
+      // FIX: EXCLUSION RULE - Do NOT activate IPv4 P2P groups in IPv6 Family
+      if (!gName.includes("_V4_P2P_IP")) {
+        configLines.push(`   neighbor ${gName} activate`);
+      }
+    });
+  });
+
+  return configLines.join("\n");
+}
+
+/**
+ * Generates OSPF underlay configuration (area 0, single-area leaf-spine).
+ * Per-interface OSPF commands (point-to-point, area, bfd) are added by
+ * generateComplexL3Block() when underlayProtocol === 'ospf'.
+ */
+function generateOSPF(deviceSheetIndex, bgpNeighbors) {
+  const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
+  const lines = [];
+
+  // Collect P2P interface names from neighbor params for 'no passive-interface'
+  const p2pInterfaces = new Set();
+  let hasMlagPeer = false;
+  Object.values(bgpNeighbors).forEach(peerData => {
+    if (!peerData || !peerData.peerParams) return;
+    peerData.peerParams.forEach(p => {
+      // Only default-VRF interfaces belong in router ospf 1; VRF interfaces use BGP
+      if (p.interface && !p.isMlag && !p.vrf) p2pInterfaces.add(p.interface);
+      if (p.isMlag) hasMlagPeer = true;
+    });
+  });
+  if (hasMlagPeer) p2pInterfaces.add("Vlan4093");
+
+  lines.push("router ospf 1");
+  lines.push(` router-id ${routerId}`);
+  lines.push(" passive-interface default");
+  p2pInterfaces.forEach(intf => lines.push(` no passive-interface ${intf}`));
+  lines.push(" bfd default");
+  lines.push(" max-lsa 12000");
+  lines.push("!");
+
+  return lines.join("\n");
+}
+
+/**
+ * Generates a BGP EVPN overlay-only block for use when OSPF is the underlay.
+ * No P2P underlay sessions — only loopback-to-loopback overlay peers + EVPN AF.
+ */
+function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles) {
+  const localAsn = 65000 + deviceSheetIndex;
+  const lines = [];
+  const peerRoles_ = peerRoles || {};
+  const isPeerEvpn = (peerName) => {
+    const pr = (peerRoles_[peerName] || '').toUpperCase();
+    return pr === 'LEAF' || pr === 'SPINE';
+  };
+
+  lines.push(`router bgp ${localAsn}`);
+  lines.push(" no bgp default ipv4-unicast");
+  lines.push(" bgp log-neighbor-changes");
+  lines.push(" maximum-paths 4");
+  lines.push(" graceful-restart");
+
+  const definedGroups = new Set();
+
+  // Define overlay peer groups (loopback-to-loopback) — skip non-EVPN peers (e.g. HARNESS)
+  Object.keys(bgpNeighbors).forEach(peerName => {
+    const peerData = bgpNeighbors[peerName];
+    if (!peerData) return;
+    if (!isPeerEvpn(peerName)) return;
+    const isMlagOnly = peerData.peerParams && peerData.peerParams.every(p => p.isMlag);
+    if (isMlagOnly) return;
+    const pgOvV4 = `OVERLAY_${peerName.toUpperCase()}_V4_LO_IP`;
+    if (!definedGroups.has(pgOvV4)) {
+      definedGroups.add(pgOvV4);
+      const peerAsn = 65000 + peerData.id;
+      lines.push(` neighbor ${pgOvV4} peer group`);
+      lines.push(` neighbor ${pgOvV4} remote-as ${peerAsn}`);
+      lines.push(` neighbor ${pgOvV4} update-source Loopback0`);
+      lines.push(` neighbor ${pgOvV4} ebgp-multihop 3`);
+      lines.push(` neighbor ${pgOvV4} send-community extended`);
+      lines.push(` neighbor ${pgOvV4} maximum-routes 12000`);
+    }
+    if (peerData.loopbackV4) {
+      lines.push(` neighbor ${peerData.loopbackV4} peer group ${pgOvV4}`);
+      lines.push(` neighbor ${peerData.loopbackV4} description Overlay to ${peerName}`);
+    }
+  });
+
+  // EVPN address family
+  lines.push(" !");
+  lines.push(" address-family evpn");
+  definedGroups.forEach(gName => lines.push(`  neighbor ${gName} activate`));
+
+  if (gwVlans && gwVlans.size > 0) {
+    Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
+      lines.push(`  vlan ${v}`);
+      lines.push(`   rd auto`);
+      lines.push(`   route-target both ${v}:${v}`);
+      lines.push(`   redistribute learned`);
+    });
+  }
+
+  lines.push("!");
+  return lines.join("\n");
+}
+
+/**
+* Generates VXLAN Data Plane Config
+* - Calculates VTEP IP (Loopback1 for MLAG, Loopback0 for Standalone)
+* - Maps VNIs
+* - [FIX] Flood List is ONLY generated if EVPN is DISABLED.
+* - [FIX] Flood List ONLY includes Leaf VTEPs (GW + P2P), ignoring Spines.
+*/
+/* REPLACE IN Code.gs */
+function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames) {
+  const lines = [];
+  lines.push("!");
+
+  // 1. Calculate My VTEP IP (IPv4 + IPv6)
+  let myVtepIpV4 = "";
+  let myVtepIpV6 = "";
+
+  if (isMlag) {
+    // Shared IP Logic (Anycast VTEP)
+    const id1 = parseInt(myId) || 0;
+    const id2 = parseInt(peerId) || 0;
+    const low = Math.min(id1, id2);
+    const high = Math.max(id1, id2);
+
+    // IPv4: 1.1.2.2 (Min.Min.Max.Max)
+    myVtepIpV4 = `${low}.${low}.${high}.${high}`;
+
+    // IPv6: 1:1:2::2 (Min:Min:Max::Max) <--- UPDATED HERE
+    myVtepIpV6 = `${low}:${low}:${high}::${high}`;
+
+    lines.push("interface Loopback1");
+    lines.push(" description VTEP_VXLAN_ANYCAST");
+    lines.push(` ip address ${myVtepIpV4}/32`);
+    lines.push(` ipv6 address ${myVtepIpV6}/128`);
+    lines.push("!");
+
+    lines.push("interface Vxlan1");
+    lines.push(" vxlan source-interface Loopback1");
+    lines.push(" vxlan virtual-router encapsulation mac-address mlag-system-id");
+
+  } else {
+    // Standalone Logic
+    // IPv4: 3.3.3.3
+    myVtepIpV4 = `${myId}.${myId}.${myId}.${myId}`;
+
+    // IPv6: 3:3:3::3 <--- UPDATED FOR CONSISTENCY
+    myVtepIpV6 = `${myId}:${myId}:${myId}::${myId}`;
+
+    lines.push("interface Vxlan1");
+    lines.push(" vxlan source-interface Loopback0");
+  }
+
+  lines.push(" vxlan udp-port 4789");
+
+  // 2. VNI Mapping (base configurable via IP + VNI Config modal, default 10000)
+  const resolvedVniBase = parseInt(vniBase) || 10000;
+  if (gwVlans && gwVlans.size > 0) {
+    const sortedVlans = Array.from(gwVlans).sort((a, b) => a - b);
+    sortedVlans.forEach(v => {
+      if (v > 1 && v < 4094) {
+        lines.push(` vxlan vlan ${v} vni ${resolvedVniBase + parseInt(v)}`);
+      }
+    });
+  }
+
+  // 3. STATIC FLOOD LIST (IPv6 Support)
+  if (!isEvpnEnabled) {
+    const floodIps = new Set();
+
+    allDevices.forEach(d => {
+      if (d.name === currentDeviceName || d.type === 'non-arista') return;
+      if (isMlag && parseInt(d.sheetIndex) === parseInt(peerId)) return;
+      // Only include VTEP leaves (hasP2p && gwVlans.size > 0). Spines are underlay-only
+      // and have no Vxlan1 interface — they must never appear in the flood list.
+      if (vtepNames && vtepNames.size > 0 && !vtepNames.has(d.name)) return;
+
+      let remoteVtepIp = "";
+      const remotePeerName = topo.mlagPeerMap[d.name];
+
+      if (remotePeerName) {
+        // Shared IP Logic
+        const remotePeerObj = allDevices.find(dev => dev.name === remotePeerName);
+        if (remotePeerObj) {
+          const id1 = parseInt(d.sheetIndex);
+          const id2 = parseInt(remotePeerObj.sheetIndex);
+          const low = Math.min(id1, id2);
+          const high = Math.max(id1, id2);
+
+          // Using IPv4 for Flood List (Standard Practice)
+          remoteVtepIp = `${low}.${low}.${high}.${high}`;
+        }
+      } else {
+        const rid = d.sheetIndex;
+        remoteVtepIp = `${rid}.${rid}.${rid}.${rid}`;
+      }
+
+      if (remoteVtepIp && remoteVtepIp !== myVtepIpV4) {
+        floodIps.add(remoteVtepIp);
+      }
+    });
+
+    if (floodIps.size > 0) {
+      const sortedList = Array.from(floodIps).sort((a, b) => {
+        // Numeric sort for IPs (simple first octet check)
+        return parseInt(a) - parseInt(b);
+      });
+      lines.push(` vxlan flood vtep ${sortedList.join(" ")}`);
+    }
+  }
+
+  lines.push("!");
+  return lines.join("\n");
+}
+
+/**
+ * Creates a static snapshot of the current data and generated configurations.
+ */
+function createTopologySnapshot() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sourceSheet = ss.getSheetByName(SHEET_DATA);
+
+  if (!sourceSheet) {
+    SpreadsheetApp.getUi().alert("Error: Source sheet not found.");
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt('Create Sheet Checkpoint', 'Enter a name for this checkpoint (e.g., Stable_MLAG_Lab):', ui.ButtonSet.OK_CANCEL);
+
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  // Sanitize: replace whitespace with underscore, strip chars illegal in sheet names
+  const safeName = response.getResponseText()
+    .replace(/\s+/g, '_')
+    .replace(/[\/\\:*?"<>|'\[\]]/g, '')
+    .slice(0, 40) || 'checkpoint';
+  const snapshotName = "SNAP_" + new Date().getTime() + "_" + safeName;
+
+  try {
+    // 1. Create the Snapshot Sheet
+    const snapSheet = sourceSheet.copyTo(ss).setName(snapshotName);
+
+    // 2. Convert all formulas to static values to preserve the "moment in time"
+    const fullRange = snapSheet.getDataRange();
+    fullRange.setValues(fullRange.getValues());
+
+    // 3. Add metadata header
+    snapSheet.insertRowsBefore(1, 2);
+    snapSheet.getRange("A1").setValue("SNAPSHOT METADATA").setFontWeight("bold");
+    snapSheet.getRange("A2").setValue("Created: " + new Date().toLocaleString() + " | Source: " + SHEET_DATA);
+    snapSheet.setTabColor("orange");
+
+    ss.toast("Snapshot created: " + snapshotName, "Success");
+
+  } catch (e) {
+    ui.alert("Snapshot Failed: " + e.message);
+  }
+}
+
+/**
+ * Lists all available snapshot tabs (those starting with SNAP_)
+ */
+function getSnapshotList() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheets()
+    .filter(s => s.getName().startsWith("SNAP_"))
+    .map(s => {
+      const name  = s.getName();
+      const parts = name.split('_');
+      const ts    = parseInt(parts[1], 10);
+      const label = parts.slice(2).join('_') || name;
+      const dateStr = isNaN(ts) ? '' : new Date(ts).toLocaleString();
+      return { name, label, dateStr };
+    })
+    .reverse();
+}
+
+/**
+ * Computes a diff summary between the live sheet and a named snapshot.
+ * Snapshot structure: rows 1-2 = metadata, row 3 = device names, row 4 = int_ headers, rows 5+ = data.
+ */
+function getSnapshotDiff(snapshotName) {
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const liveSheet = ss.getSheetByName(SHEET_DATA);
+  const snapSheet = ss.getSheetByName(snapshotName);
+  if (!liveSheet || !snapSheet) throw new Error("Sheet missing.");
+
+  const liveLastRow = liveSheet.getLastRow();
+  const liveLastCol = liveSheet.getLastColumn();
+  const snapLastRow = snapSheet.getLastRow();
+  const snapLastCol = snapSheet.getLastColumn();
+
+  if (snapLastRow < 4) throw new Error("Snapshot appears empty or corrupted.");
+
+  const liveHeaders = liveLastRow >= 2
+    ? liveSheet.getRange(2, 1, 1, liveLastCol).getValues()[0]
+    : [];
+
+  // Snapshot row 4 = original row 2 (int_ headers), after 2 metadata rows + row 1 device names
+  const snapHeaders = snapSheet.getRange(4, 1, 1, snapLastCol).getValues()[0];
+
+  const liveDevices = new Set(
+    liveHeaders.filter(h => String(h).startsWith('int_')).map(h => String(h).slice(4))
+  );
+  const snapDevices = new Set(
+    snapHeaders.filter(h => String(h).startsWith('int_')).map(h => String(h).slice(4))
+  );
+
+  const devicesAdded   = [...snapDevices].filter(d => !liveDevices.has(d));
+  const devicesRemoved = [...liveDevices].filter(d => !snapDevices.has(d));
+
+  // Data rows: live rows 3+ ; snapshot rows 5+
+  const liveDataRows = Math.max(0, liveLastRow - 2);
+  const snapDataRows = Math.max(0, snapLastRow - 4);
+
+  let changedCells = 0;
+  const overlapRows = Math.min(liveDataRows, snapDataRows);
+  const overlapCols = Math.min(liveLastCol, snapLastCol);
+
+  if (overlapRows > 0 && overlapCols > 0) {
+    const liveData = liveSheet.getRange(3, 1, overlapRows, overlapCols).getValues();
+    const snapData = snapSheet.getRange(5, 1, overlapRows, overlapCols).getValues();
+    for (let r = 0; r < overlapRows; r++) {
+      for (let c = 0; c < overlapCols; c++) {
+        if (String(liveData[r][c]) !== String(snapData[r][c])) changedCells++;
+      }
+    }
+  }
+
+  return { devicesAdded, devicesRemoved, liveDataRows, snapDataRows,
+           changedCells, rowDelta: snapDataRows - liveDataRows };
+}
+
+/**
+ * Restores data from a snapshot tab back to the live target sheet.
+ */
+function restoreFromSnapshot(snapshotName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const liveSheet = ss.getSheetByName(SHEET_DATA);
+  const snapSheet = ss.getSheetByName(snapshotName);
+
+  if (!liveSheet || !snapSheet) throw new Error("Sheet missing.");
+
+  // Snapshots have 2 extra metadata rows at the top.
+  // We grab data starting from Row 3 (the original Row 1).
+  const lastRow = snapSheet.getLastRow();
+  const lastCol = snapSheet.getLastColumn();
+
+  if (lastRow < 3) throw new Error("Snapshot appears empty.");
+
+  const snapData = snapSheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
+
+  // Validate snapshot before touching live sheet
+  if (!snapData || snapData.length === 0) throw new Error("Snapshot data is empty — restore aborted.");
+
+  // Back up live sheet so we can rollback if the restore write fails
+  const liveLastRow = liveSheet.getLastRow();
+  const liveLastCol = liveSheet.getLastColumn();
+  let liveBackup = null;
+  if (liveLastRow > 0 && liveLastCol > 0) {
+    liveBackup = liveSheet.getRange(1, 1, liveLastRow, liveLastCol).getValues();
+  }
+
+  try {
+    liveSheet.clear();
+    liveSheet.getRange(1, 1, snapData.length, lastCol).setValues(snapData);
+    // Re-apply standard formatting (optional but recommended)
+    syncSchemaPreservingOrder();
+    return { success: true };
+  } catch (e) {
+    // Rollback: restore live backup if clear/write failed
+    if (liveBackup) {
+      try {
+        liveSheet.clear();
+        liveSheet.getRange(1, 1, liveBackup.length, liveBackup[0].length).setValues(liveBackup);
+      } catch (rollbackErr) {
+        console.error("restoreFromSnapshot rollback failed:", rollbackErr);
+      }
+    }
+    throw new Error("Restore failed: " + e.message + (liveBackup ? " — original data has been restored." : " — WARNING: original data may be lost."));
+  }
+}
+
+/**
+ * UI Launcher for the Restore Wizard (with diff preview and human-readable dates).
+ */
+function showRestoreWizard() {
+  const html = HtmlService.createTemplate(`
+    <html>
+      <head>
+        <style>
+          body{font-family:'JetBrains Mono',monospace;padding:15px;background:#f8fafc;font-size:12px;color:#1e293b;box-sizing:border-box}
+          *{box-sizing:border-box}
+          .title{font-weight:bold;margin-bottom:10px;font-size:13px}
+          select{width:100%;padding:7px 8px;border-radius:4px;border:1px solid #cbd5e1;margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:12px;background:#fff}
+          .warning{font-size:11px;color:#b91c1c;background:#fee2e2;padding:10px;border-radius:4px;margin-bottom:10px}
+          .btn-restore{background:#3b82f6;color:#fff;border:none;padding:9px 14px;border-radius:4px;cursor:pointer;font-weight:bold;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px}
+          .btn-restore:hover:not(:disabled){background:#2563eb}
+          .btn-restore:disabled{background:#94a3b8;cursor:not-allowed}
+          #diffPanel{display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:10px;margin-bottom:10px;font-size:11px}
+          #diffPanel.show{display:block}
+          .diff-loading{color:#64748b;font-style:italic;text-align:center;padding:6px 0}
+          .diff-row{display:flex;justify-content:space-between;margin-bottom:3px}
+          .diff-label{color:#475569}
+          .diff-value{font-weight:bold}
+          .pos{color:#16a34a}.neg{color:#dc2626}.neu{color:#64748b}
+          .diff-sub{margin-top:6px;border-top:1px solid #e2e8f0;padding-top:6px;font-size:10px}
+          .diff-sub-lbl{color:#475569;margin-bottom:2px}
+          .diff-sub-val{color:#0f172a;font-weight:bold;word-break:break-all}
+          #statusMsg{text-align:center;padding-top:10px;color:#475569;font-size:11px;min-height:18px}
+        </style>
+      </head>
+      <body>
+        <div class="title">Restore Sheet Checkpoint</div>
+        <? if (snapshots.length === 0) { ?>
+          <div class="warning">No checkpoints found. Use <b>Create Sheet Checkpoint</b> first.</div>
+        <? } else { ?>
+        <select id="snapSelect" onchange="loadDiff()">
+          <option value="">— Select a checkpoint —</option>
+          <? snapshots.forEach(function(snap){ ?>
+            <option value="<?= snap.name ?>"><?= snap.label ?> — <?= snap.dateStr ?></option>
+          <? }); ?>
+        </select>
+        <div id="diffPanel">
+          <div id="diffContent"><div class="diff-loading">Loading diff...</div></div>
+        </div>
+        <div class="warning">△ <b>Warning:</b> Restoring will overwrite ALL data in "<?= targetSheet ?>". This cannot be undone.</div>
+        <button class="btn-restore" id="btnRestore" onclick="runRestore()" disabled>Restore Checkpoint</button>
+        <div id="statusMsg"></div>
+        <script>
+          function loadDiff(){
+            var val=document.getElementById('snapSelect').value;
+            var panel=document.getElementById('diffPanel');
+            var btn=document.getElementById('btnRestore');
+            btn.disabled=true;
+            if(!val){panel.classList.remove('show');return;}
+            panel.classList.add('show');
+            document.getElementById('diffContent').innerHTML='<div class="diff-loading">Loading diff...</div>';
+            google.script.run
+              .withSuccessHandler(function(d){
+                var rd=d.rowDelta,rs=rd>0?'pos':rd<0?'neg':'neu',sg=rd>0?'+':'';
+                var h='<div class="diff-row"><span class="diff-label">Live rows \u2192 Snapshot:</span>'
+                  +'<span class="diff-value neu">'+d.liveDataRows+' \u2192 '+d.snapDataRows+'</span></div>'
+                  +'<div class="diff-row"><span class="diff-label">Row delta:</span>'
+                  +'<span class="diff-value '+rs+'">'+sg+rd+'</span></div>'
+                  +'<div class="diff-row"><span class="diff-label">Changed cells:</span>'
+                  +'<span class="diff-value '+(d.changedCells>0?'neg':'pos')+'">'+d.changedCells+'</span></div>';
+                if(d.devicesAdded.length)
+                  h+='<div class="diff-sub"><div class="diff-sub-lbl">Devices restored (not in live):</div>'
+                    +'<div class="diff-sub-val">'+d.devicesAdded.join(', ')+'</div></div>';
+                if(d.devicesRemoved.length)
+                  h+='<div class="diff-sub"><div class="diff-sub-lbl">Devices removed (not in snapshot):</div>'
+                    +'<div class="diff-sub-val">'+d.devicesRemoved.join(', ')+'</div></div>';
+                document.getElementById('diffContent').innerHTML=h;
+                document.getElementById('btnRestore').disabled=false;
+              })
+              .withFailureHandler(function(err){
+                document.getElementById('diffContent').innerHTML='<div style="color:#b91c1c">Error: '+err.message+'</div>';
+              })
+              .getSnapshotDiff(val);
+          }
+          function runRestore(){
+            var val=document.getElementById('snapSelect').value;
+            if(!val)return;
+            var btn=document.getElementById('btnRestore');
+            btn.disabled=true;
+            document.getElementById('snapSelect').disabled=true;
+            document.getElementById('statusMsg').innerText='Restoring... Please wait.';
+            google.script.run
+              .withSuccessHandler(function(){google.script.host.close();})
+              .withFailureHandler(function(err){
+                document.getElementById('statusMsg').innerHTML='<span style="color:#b91c1c">Restore failed: '+err.message+'</span>';
+                btn.disabled=false;
+                document.getElementById('snapSelect').disabled=false;
+              })
+              .restoreFromSnapshot(val);
+          }
+        </script>
+        <? } ?>
+      </body>
+    </html>
+  `);
+
+  html.snapshots = getSnapshotList();
+  html.targetSheet = SHEET_DATA;
+  SpreadsheetApp.getUi().showModalDialog(
+    html.evaluate().setWidth(420).setHeight(430),
+    'Restore Sheet Checkpoint'
+  );
+}
+
+/**
+ * Shows a modal dialog to reset the sheet to a clean new-project state.
+ */
+function showNewProjectDialog() {
+  const html = HtmlService.createTemplate(`
+    <html>
+      <head>
+        <style>
+          body{font-family:'JetBrains Mono',monospace;padding:16px;background:#f8fafc;font-size:12px;color:#1e293b;box-sizing:border-box}
+          *{box-sizing:border-box}
+          .title{font-weight:bold;margin-bottom:10px;font-size:13px;color:#0f172a}
+          .warning-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px;margin-bottom:14px}
+          .warning-title{font-weight:bold;color:#b91c1c;font-size:12px;margin-bottom:6px}
+          .warning-text{color:#7f1d1d;font-size:11px;line-height:1.5}
+          .check-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:#334155}
+          .check-row input[type=checkbox]{width:14px;height:14px;cursor:pointer}
+          .device-row{margin-bottom:14px}
+          .device-label{font-size:11px;color:#64748b;margin-bottom:4px}
+          input[type=text]{width:100%;padding:7px 8px;border-radius:4px;border:1px solid #cbd5e1;font-family:'JetBrains Mono',monospace;font-size:12px;background:#fff;color:#0f172a}
+          input[type=text]:disabled{background:#f1f5f9;color:#94a3b8}
+          .actions{display:flex;gap:8px;justify-content:flex-end}
+          .btn-cancel{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px}
+          .btn-cancel:hover{background:#e2e8f0}
+          .btn-reset{background:#dc2626;color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-weight:bold;font-family:'JetBrains Mono',monospace;font-size:12px}
+          .btn-reset:hover:not(:disabled){background:#b91c1c}
+          .btn-reset:disabled{background:#94a3b8;cursor:not-allowed}
+          #statusMsg{text-align:center;padding-top:10px;color:#64748b;font-size:11px;min-height:16px}
+        </style>
+      </head>
+      <body>
+        <div class="title">New Project — Reset All Data</div>
+        <div class="warning-box">
+          <div class="warning-title">⚠ Warning: This action cannot be undone</div>
+          <div class="warning-text">All port data, cabling, and configuration in the <b><?= targetSheet ?></b> sheet will be permanently erased. Consider creating a <b>Sheet Checkpoint</b> before proceeding.</div>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="chkKeepDevice" checked onchange="toggleDeviceInput()">
+          <label for="chkKeepDevice">Keep one device as starting point</label>
+        </div>
+        <div class="device-row" id="deviceRow">
+          <div class="device-label">Starting device name:</div>
+          <input type="text" id="deviceName" value="Spine1" placeholder="e.g. Spine1">
+        </div>
+        <div class="actions">
+          <button class="btn-cancel" onclick="google.script.host.close()">Cancel</button>
+          <button class="btn-reset" id="btnReset" onclick="runReset()">Reset &amp; Start New Project</button>
+        </div>
+        <div id="statusMsg"></div>
+        <script>
+          function toggleDeviceInput() {
+            var keep = document.getElementById('chkKeepDevice').checked;
+            document.getElementById('deviceRow').style.display = keep ? 'block' : 'none';
+          }
+          function runReset() {
+            var keep = document.getElementById('chkKeepDevice').checked;
+            var name = keep ? (document.getElementById('deviceName').value || 'Spine1').trim() : '';
+            if (!name && keep) { document.getElementById('deviceName').focus(); return; }
+            document.getElementById('btnReset').disabled = true;
+            document.getElementById('btnReset').innerText = 'Resetting...';
+            document.getElementById('statusMsg').innerText = 'Please wait...';
+            google.script.run
+              .withSuccessHandler(function(){ google.script.host.close(); })
+              .withFailureHandler(function(err){
+                document.getElementById('statusMsg').innerHTML = '<span style="color:#dc2626">Error: ' + err.message + '</span>';
+                document.getElementById('btnReset').disabled = false;
+                document.getElementById('btnReset').innerText = 'Reset & Start New Project';
+              })
+              .resetToNewProject(keep, name);
+          }
+        </script>
+      </body>
+    </html>
+  `);
+  html.targetSheet = SHEET_DATA;
+  SpreadsheetApp.getUi().showModalDialog(
+    html.evaluate().setWidth(400).setHeight(330),
+    'New Project — Reset All Data'
+  );
+}
+
+/**
+ * Clears the working sheet and optionally rebuilds it with a single seed device.
+ * @param {boolean} keepDevice - If true, rebuild with one device.
+ * @param {string}  deviceName - Name for the seed device (ignored when keepDevice=false).
+ */
+function resetToNewProject(keepDevice, deviceName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) throw new Error('Working sheet "' + SHEET_DATA + '" not found.');
+
+  // Validate before clearing — if rebuild will fail, don't touch the sheet
+  if (keepDevice && deviceName) {
+    const trimmed = deviceName.trim();
+    if (!trimmed || !/^[a-zA-Z0-9_\-]{1,64}$/.test(trimmed)) {
+      throw new Error('Invalid device name: "' + deviceName + '". Use alphanumeric, hyphens, or underscores (max 64 chars).');
+    }
+    deviceName = trimmed;
+  }
+
+  // Back up live data before clearing so we can rollback if rebuild fails
+  const lastR = sheet.getLastRow();
+  const lastC = sheet.getLastColumn();
+  let backup = null;
+  if (lastR > 0 && lastC > 0) {
+    backup = sheet.getRange(1, 1, lastR, lastC).getValues();
+  }
+
+  try {
+    sheet.clear();
+    if (keepDevice && deviceName) {
+      rebuildSheet([{ name: deviceName, type: 'full' }], null, false);
+    }
+  } catch (e) {
+    if (backup) {
+      try {
+        sheet.clear();
+        sheet.getRange(1, 1, backup.length, backup[0].length).setValues(backup);
+      } catch (rollbackErr) {
+        console.error("resetToNewProject rollback failed:", rollbackErr);
+      }
+    }
+    throw new Error("Reset failed: " + e.message + (backup ? " — original data has been restored." : " — WARNING: original data may be lost."));
+  }
+}
+
+
+/**
+ * Server-side equivalent of client-side formatConfigText().
+ * Sorts config map keys numerically and joins .full values with EOS section separator.
+ */
+function formatConfigMap(configMap) {
+  if (!configMap) return "";
+  const keys = Object.keys(configMap).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const parts = [];
+  keys.forEach(k => { if (configMap[k] && configMap[k].full) parts.push(configMap[k].full); });
+  return parts.join('\n!\n');
+}
+
+/**
+ * Creates or overwrites the "Configs" sheet tab with formatted device configs.
+ * Col A = device name headers, Col B = config lines. Tab color: indigo (#6366f1).
+ */
+function writeConfigsToSheet(configs) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = "Configs";
+  let sheet = ss.getSheetByName(sheetName);
+  if (sheet) { sheet.clear(); } else { sheet = ss.insertSheet(sheetName); }
+  sheet.setTabColor("#6366f1");
+  if (!configs.length) return sheetName;
+
+  const rows = [];
+  configs.forEach(cfg => {
+    rows.push(["! === " + cfg.name + " ===", ""]);
+    (cfg.text || "").split('\n').forEach(line => rows.push(["", line]));
+    rows.push(["", ""]);
+  });
+
+  const range = sheet.getRange(1, 1, rows.length, 2);
+  range.setValues(rows);
+  range.setFontFamily("Consolas").setFontSize(10).setHorizontalAlignment("left").setVerticalAlignment("middle");
+
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] && rows[i][0].startsWith("! ===")) {
+      sheet.getRange(i + 1, 1, 1, 2)
+        .setFontWeight("bold").setBackground("#1e1b4b").setFontColor("#e0e7ff");
+    }
+  }
+  sheet.setColumnWidth(1, 220);
+  sheet.setColumnWidth(2, 600);
+  return sheetName;
+}
+
+/**
+ * Generates EOS configs for all visible Arista devices and writes to "Configs" sheet.
+ * Calls getDeviceConfig() per device (sequential). Returns { configs, sheetName } or { error }.
+ */
+function getAllDeviceConfigs() {
+  try {
+    const aristaVisible = (getExistingDevices() || []).filter(d => d.type === 'full' && d.isVisible);
+    if (!aristaVisible.length) return { error: "No visible Arista devices found." };
+
+    const configs = aristaVisible.map(dev => {
+      const result = getDeviceConfig(dev.name);
+      return {
+        name: dev.name,
+        text: (result && result.config) ? formatConfigMap(result.config) : "!! ERROR: Config generation failed."
+      };
+    });
+
+    const sheetName = writeConfigsToSheet(configs);
+    return { configs, sheetName };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// Not used by the script but used in IXIA TAB of Gsheet, hence needed
+function SHEETNAME(dummy_cell) {
+  return SpreadsheetApp.getActiveSheet().getName();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SHEET ASSISTANT PANEL — GAS HELPERS
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Combined init call: returns device list + schema dropdown options in one round-trip.
+ */
+function getSheetAssistData() {
+  return { devices: getSheetDeviceList(), opts: getSchemaOptions() };
+}
+
+/**
+ * Returns attribute options (non-empty only) keyed by schema attribute key.
+ * e.g. { sp_mode: [...], speed: [...], encoding: [...] }
+ */
+function getSchemaOptions() {
+  const schema = getSchemaConfig();
+  const opts = {};
+  schema.forEach(function(item) {
+    if (item.options && item.options.length > 0) opts[item.key] = item.options;
+  });
+  return opts;
+}
+
+/**
+ * Returns all data rows (row 3+) that have at least one non-empty int_ cell.
+ * Each entry: { rowNum, pairs: [{dev, port}, ...] }
+ */
+function getConnectionRows() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return [];
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 3 || lastCol < 1) return [];
+
+  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  const dataRows = sheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
+
+  const intCols = [];
+  headers.forEach(function(h, i) {
+    if (String(h).startsWith('int_')) intCols.push({ col: i, dev: String(h).substring(4) });
+  });
+
+  const result = [];
+  dataRows.forEach(function(row, ri) {
+    const pairs = [];
+    intCols.forEach(function(ic) {
+      const port = row[ic.col];
+      if (port !== null && port !== undefined && String(port).trim() !== '') {
+        pairs.push({ dev: ic.dev, port: String(port).trim() });
+      }
+    });
+    if (pairs.length > 0) result.push({ rowNum: ri + 3, pairs: pairs });
+  });
+  return result;
+}
+
+/**
+ * Stamps attrsMap values onto every device present in each specified row.
+ * Only overwrites columns that exist; skips blank attr values.
+ */
+function bulkUpdateRows(rowNumbers, attrsMap) {
+  if (!rowNumbers || rowNumbers.length === 0) return { success: true, updated: 0 };
+  if (!attrsMap || Object.keys(attrsMap).length === 0) return { success: true, updated: 0 };
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return { error: 'Busy' };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    if (!sheet) return { error: 'Sheet not found' };
+
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    const fieldMap = getFieldMap();
+
+    const intCols = [];
+    headers.forEach(function(h, i) {
+      if (String(h).startsWith('int_')) intCols.push({ col: i, dev: String(h).substring(4) });
+    });
+
+    // Pre-resolve which (attrKey -> colOffset per device) to avoid redundant indexOf per row
+    const attrEntries = Object.entries(attrsMap).filter(function([k, v]) {
+      return v !== null && v !== undefined && String(v).trim() !== '';
+    });
+
+    let updated = 0;
+    rowNumbers.forEach(function(rowNum) {
+      const rowData = sheet.getRange(rowNum, 1, 1, lastCol).getValues()[0];
+      // Collect all writes for this row, then apply in one batch via setValues on individual cells
+      const writes = []; // [{col1idx, value}, ...]
+      intCols.forEach(function(ic) {
+        const port = rowData[ic.col];
+        if (port === null || port === undefined || String(port).trim() === '') return;
+        attrEntries.forEach(function(entry) {
+          const attrKey = entry[0], attrVal = entry[1];
+          const prefix = fieldMap[attrKey] || (attrKey + '_');
+          const colIdx = headers.indexOf(prefix + ic.dev);
+          if (colIdx !== -1) writes.push({ col: colIdx + 1, val: attrVal });
+        });
+      });
+      // Apply writes: batch consecutive columns as single range where possible
+      writes.sort(function(a, b) { return a.col - b.col; });
+      writes.forEach(function(w) { sheet.getRange(rowNum, w.col).setValue(w.val); });
+      if (writes.length > 0) updated++;
+    });
+    return { success: true, updated: updated };
+  } catch (e) {
+    return { error: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Per-device port summary: total ports present, connected (≥2 devices in row), orphan (1 device only).
+ */
+function getDevicePortSummary() {
+  const devices = getSheetDeviceList();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  const empty = devices.map(function(d) { return { name: d.name, hostname: d.hostname, total: 0, connected: 0, orphan: 0 }; });
+  if (!sheet || devices.length === 0) return empty;
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 3 || lastCol < 1) return empty;
+
+  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  const dataRows = sheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
+
+  const intColMap = {};
+  headers.forEach(function(h, i) {
+    if (String(h).startsWith('int_')) intColMap[String(h).substring(4)] = i;
+  });
+
+  const counts = {};
+  devices.forEach(function(d) { counts[d.name] = { total: 0, connected: 0, orphan: 0 }; });
+
+  dataRows.forEach(function(row) {
+    const present = [];
+    devices.forEach(function(d) {
+      const ci = intColMap[d.name];
+      if (ci !== undefined) {
+        const v = row[ci];
+        if (v !== null && v !== undefined && String(v).trim() !== '') present.push(d.name);
+      }
+    });
+    const isConn = present.length >= 2;
+    present.forEach(function(devName) {
+      counts[devName].total++;
+      if (isConn) counts[devName].connected++;
+      else counts[devName].orphan++;
+    });
+  });
+
+  return devices.map(function(d) {
+    const c = counts[d.name] || { total: 0, connected: 0, orphan: 0 };
+    return { name: d.name, hostname: d.hostname, total: c.total, connected: c.connected, orphan: c.orphan };
+  });
+}
+
+/**
+ * Finds rows where devA and/or devB have a non-empty interface.
+ * Activates the first result row in the sheet. Returns [{rowNum, portA, portB}].
+ */
+function searchConnectionRows(devA, devB) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (!sheet) return [];
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 3 || lastCol < 1) return [];
+
+  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  const colA = devA ? headers.indexOf('int_' + devA) : -1;
+  const colB = devB ? headers.indexOf('int_' + devB) : -1;
+
+  if (devA && colA === -1) return [];
+  if (devB && colB === -1) return [];
+
+  // For extra attrs (speed/mode/vlan), use whichever device is specified as reference
+  const refDev = devA || devB;
+  const speedCol = refDev ? headers.indexOf('et_speed_' + refDev) : -1;
+  const modeCol  = refDev ? headers.indexOf('sp_mode_' + refDev) : -1;
+  const vlanCol  = refDev ? headers.indexOf('vlan_'    + refDev) : -1;
+
+  const dataRows = sheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
+  const results = [];
+
+  dataRows.forEach(function(row, ri) {
+    const portA = colA !== -1 ? String(row[colA] || '').trim() : '';
+    const portB = colB !== -1 ? String(row[colB] || '').trim() : '';
+    const matchA = !devA || portA !== '';
+    const matchB = !devB || portB !== '';
+    if (matchA && matchB && (portA !== '' || portB !== '')) {
+      results.push({
+        rowNum: ri + 3,
+        portA:  portA,
+        portB:  portB,
+        speed:  speedCol !== -1 ? String(row[speedCol] || '').trim() : '',
+        mode:   modeCol  !== -1 ? String(row[modeCol]  || '').trim() : '',
+        vlan:   vlanCol  !== -1 ? String(row[vlanCol]  || '').trim() : ''
+      });
+    }
+  });
+
+  if (results.length > 0) sheet.getRange(results[0].rowNum, 1).activate();
+  return results;
+}
+
+/**
+ * Activates a specific row in the sheet (used by FIND tab results click).
+ */
+function activateRow(rowNum) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DATA);
+  if (sheet) sheet.getRange(rowNum, 1).activate();
+}

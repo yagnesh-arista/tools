@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --bg: #f8fafc;
+      --text: #334155;
+      --border: #e2e8f0;
+      --success: #10b981;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      padding: 30px;
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #0f172a;
+      border-bottom: 4px solid var(--primary);
+      padding-bottom: 10px;
+      font-size: 24px;
+      margin-top: 0;
+    }
+
+    h2 {
+      color: #1e40af;
+      font-size: 18px;
+      margin-top: 40px;
+      border-left: 5px solid var(--primary);
+      padding-left: 15px;
+      text-transform: uppercase;
+      background: #eff6ff;
+      padding-top: 5px;
+      padding-bottom: 5px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    h3 {
+      color: #0f172a;
+      font-size: 15px;
+      margin-bottom: 5px;
+      margin-top: 20px;
+    }
+
+    .step-box {
+      border-left: 3px solid #cbd5e1;
+      padding-left: 15px;
+      margin-bottom: 20px;
+    }
+
+    .step-num {
+      color: var(--primary);
+      font-weight: bold;
+      font-size: 12px;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #ef4444;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin-top: 5px;
+    }
+
+    li {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    b {
+      color: #0f172a;
+    }
+
+    .menu-path {
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: #64748b;
+      font-size: 11px;
+      display: inline-block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      border: 1px solid #e2e8f0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .badge-new {
+      background: #ecfdf5;
+      color: #10b981;
+      border: 1px solid #10b981;
+    }
+
+    .legend-table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+    }
+
+    .legend-table td {
+      padding: 8px 4px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+
+    .legend-table td:first-child {
+      width: 36px;
+      text-align: center;
+    }
+
+    .icon-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .icon-cell svg {
+      display: block;
+    }
+
+    .icon-cell.text-icon {
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .icon-cell.btn-yellow {
+      background: #fde047;
+      border-color: #facc15;
+    }
+
+    .inline-icon {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+
+    .kbd {
+      background: #334155;
+      color: #fff;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 15px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #475569;
+      margin: 2px 2px 2px 0;
+    }
+
+    .info-box {
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .info-box.blue  { background: #f0f9ff; border: 1px solid #bae6fd; }
+    .info-box.pink  { background: #fdf2f8; border: 1px solid #fbcfe8; }
+    .info-box.amber { background: #fff7ed; border: 1px solid #fed7aa; }
+    .info-box.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .info-box.slate { background: #f8fafc; border: 1px solid #e2e8f0; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🌐 Network Topology &amp; Config Manager v4.5</h1>
+
+    <!-- ================================================================ -->
+    <h2>🚀 Quick Start</h2>
+
+    <div class="step-box">
+      <span class="step-num">Step 1 — Create Devices</span>
+      <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Device Manager</span>
+      <p>Enter device names like <code>Leaf1</code> or ranges like <code>Leaf[1-4]</code> (zero-padded ranges like <code>Leaf[01-04]</code> are also supported). Select the device type:</p>
+      <ul>
+        <li><b>Arista (full)</b> — gets all attribute columns, config is generated.</li>
+        <li><b>Non-Arista</b> — gets only the <code>int_</code> column (traffic generators, non-Arista switches). Devices assigned the <b>IXIA</b> or <b>SPIRENT</b> role are automatically Non-EOS. Any device can also be toggled manually by clicking the <b>EOS</b> badge in the device list — it switches to <b>Non-EOS</b> and back without requiring a delete/re-add. Changes take effect after Save + Force Sync.</li>
+      </ul>
+      <p>Use the <b>👁 visibility toggle</b> to hide devices from the topology without deleting their data. Drag rows to reorder devices (affects sheet column order).</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 2 — Connect Interfaces</span>
+      <div class="info-box blue">
+        <b style="color:#0369a1;">Option A: Spreadsheet Matrix (Fastest)</b><br>
+        Find the column for the <b>Remote Device</b> (e.g. <code>int_Leaf2</code>). In the row for the <b>Local Device</b> (e.g. <code>Leaf1</code>), type the port name (e.g. <code>Et1</code>). The topology refreshes automatically.
+      </div>
+      <div class="info-box pink" style="margin-top:10px;">
+        <b style="color:#be185d;">Option B: Visual Edit Mode</b><br>
+        Enable <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span> Edit Mode</b> in the visualizer toolbar. Click a <b>red dot</b> (disconnected port) on one device, then click a red dot on another device to cable them. Use <b>(+) Link Pair</b> to add a new row.
+      </div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 3 — Set Modes &amp; Attributes</span>
+      <p>Fill in the <code>sp_mode_</code> column for each port. This drives config generation and visual color-coding.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; font-size:12px;">
+        <span class="pill" style="background:#f0fdf4; color:#15803d;">l2-et-access</span>
+        <span class="pill" style="background:#bbf7d0; color:#14532d;">l2-po-access</span>
+        <span class="pill" style="background:#fff7ed; color:#c2410c;">l2-et-trunk</span>
+        <span class="pill" style="background:#fed7aa; color:#7c2d12;">l2-po-trunk</span>
+        <span class="pill" style="background:#f0f9ff; color:#0369a1;">l3-et-int</span>
+        <span class="pill" style="background:#bae6fd; color:#0c4a6e;">l3-po-int</span>
+        <span class="pill" style="background:#faf5ff; color:#7e22ce;">l3-et-sub-int</span>
+        <span class="pill" style="background:#e9d5ff; color:#581c87;">l3-po-sub-int</span>
+      </div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 4 — Generate &amp; Copy Config</span>
+      <p>Click any cable or device in the topology. A <b>Copy Strip</b> appears at the bottom of the toolbar with split buttons for the <b>Device</b>, <b>Left</b> endpoint, and <b>Right</b> endpoint. Click <b>Copy</b> to send EOS config to clipboard, or <b>View</b> to open a scrollable config preview.</p>
+    </div>
+
+    <!-- ================================================================ -->
+    <h2>🖥️ Topology Toolbar</h2>
+
+    <h3>Primary Row</h3>
+    <table class="legend-table">
+      <tr>
+        <td><span class="icon-cell text-icon btn-yellow">－</span></td>
+        <td><b>Minimize</b> — collapses the window to a thin title bar. Click ＋ to restore.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span></td>
+        <td><b>Refresh</b> — pulls latest data from the Google Sheet. Also triggers auto-coloring.</td>
+      </tr>
+      <tr>
+        <td style="font-size:11px; font-weight:bold; color:#475569;">W G</td>
+        <td><b>Card Width / Device Gap</b> — adjust the width of device cards and horizontal spacing between them. Changes apply live.</td>
+      </tr>
+      <tr>
+        <td style="font-size:11px; font-weight:bold; color:#475569;">O T</td>
+        <td><b>Cable Offset / Top Margin</b> — fine-tune where cables start on each card and their top clearance.</td>
+      </tr>
+      <tr>
+        <td><span class="pill" style="font-size:9px;">SORT</span></td>
+        <td><b>Port Sort</b> — <span class="pill">SHEET</span> <span class="pill">MODE</span> <span class="pill">IP</span> <span class="pill">ALPHA</span> — sort ports within each device card by sheet row order, interface mode, IP priority, or alphabetically.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span></td>
+        <td><b>Edit Mode</b> — enables interactive cabling. Red dots = unconnected ports. Click two to link them.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="5 3"/><path d="M12 8v8M8 12h8"/></svg></span></td>
+        <td><b>Group Rect</b> — draw labeled rectangles over the Holistic view to mark logical groups (POD, DC, tier). Only active in ◎ Simple mode.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell text-icon">B</span></td>
+        <td><b>Bold Labels</b> — toggles bold font on device node labels.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span></td>
+        <td><b>Technology Stack</b> — enable/disable BGP, VXLAN, EVPN. Affects config generation output.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span></td>
+        <td><b>IP Configuration</b> — set base subnets, VRF mappings, and IP preferences used during config generation.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span></td>
+        <td><b>Snapshot</b> — exports the current topology view as a PNG image.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg></span></td>
+        <td><b>Cabling Export</b> — generates a structured cabling table. Download as formatted text, or use <b>Copy CSV</b> / <b>Copy Markdown</b> to copy all connections (DeviceA, PortA, DeviceB, PortB, Speed) directly to clipboard.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span></td>
+        <td><b>Generate All Configs</b> — generates EOS config for all visible Arista devices and writes to the <b>Configs</b> sheet tab. Shows a per-device summary with line counts. Use <b>Copy All</b> to copy every config to clipboard at once.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg></span></td>
+        <td><b>VLAN Summary</b> — shows all VLANs in the topology with type (L2/L3), VRF, and the ports carrying each VLAN. Click any row to run a VLAN trace for that VLAN. Use the filter box to search by VLAN ID, VRF, or device name.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span></td>
+        <td><b>Device Bridge</b> — SSH bridge to lab devices. Verifies LLDP cabling, reads EOS version &amp; platform, checks interface op-status, and verifies device hostnames. Requires <code>device_bridge.py</code> running locally. See the <b>Device Bridge</b> section below.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span></td>
+        <td><b>Shortcuts</b> — inline keyboard shortcut reference.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></td>
+        <td><b>Dark / Light Theme</b> — toggles between themes. Preference is saved across sessions.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span></td>
+        <td><b>Audit Mode</b> — runs topology integrity checks. Badge shows error count. Click flagged ports to highlight them.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></td>
+        <td><b>Collapse Secondary Row</b> — hides the search bar / view mode row to maximise canvas height.</td>
+      </tr>
+    </table>
+
+    <h3>Secondary Row</h3>
+    <table class="legend-table">
+      <tr>
+        <td><span class="pill">◎</span></td>
+        <td><b>Simple (Holistic)</b> — one node per device, one line per device pair. Best for high-level topology understanding. Supports Group Rects.</td>
+      </tr>
+      <tr>
+        <td><span class="pill">▤</span></td>
+        <td><b>Linear</b> — device cards in fixed sheet order with full port detail. Best for cabling and patching documentation.</td>
+      </tr>
+      <tr>
+        <td><span class="pill">✦</span></td>
+        <td><b>Flexible</b> — D3 force-directed graph. Nodes are freely draggable; positions are saved per session.</td>
+      </tr>
+      <tr>
+        <td><span class="pill">▾</span> <span class="pill">▴</span></td>
+        <td><b>Collapse / Expand All</b> — ▾ collapses every device card to just its title bar (cables hidden); ▴ expands all. Individual cards can also be double-clicked to toggle. Collapsed state is saved in localStorage per device.</td>
+      </tr>
+      <tr>
+        <td><span class="pill">ERR</span></td>
+        <td><b>Errors Only (Audit filter)</b> — only active in Audit Mode. Hides devices with no errors so you can focus on problem nodes. Click again to restore all. Automatically resets when Audit Mode is turned off.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;border:1px solid #cbd5e1;border-radius:4px;padding:1px 4px;font-size:10px;color:#94a3b8;background:#f8fafc;">Filter…</span></td>
+        <td>
+          <b>Search / Filter</b> — type to filter by device name, port, role label, VLAN, mode, IP, or VRF. Special syntax:<br>
+          &nbsp;&nbsp;<code>v10</code> or <code>v1050</code> — trace all ports carrying that VLAN (highlighted across the topology).<br>
+          &nbsp;&nbsp;Press <b>Enter</b> (with no autocomplete item selected) to pan and scroll to the first matching device.<br>
+          &nbsp;&nbsp;Click any <b>role pill</b> on a device header to filter the topology to devices with that role (click again to clear).<br>
+          Enable <b>Strict</b> checkbox for exact-match only (no substring).
+        </td>
+      </tr>
+    </table>
+
+    <!-- ================================================================ -->
+    <h2>⌨️ Keyboard Shortcuts</h2>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>Navigation</h3>
+        <ul style="list-style:none; padding:0;">
+          <li><span class="kbd">`</span> or <span class="kbd">C</span> &nbsp;→ <b>Reset / centre view</b></li>
+          <li><span class="kbd">Ctrl + Scroll</span> &nbsp;→ <b>Zoom</b></li>
+          <li><span class="kbd">Click + Drag</span> &nbsp;→ <b>Pan canvas</b></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Edit Mode</h3>
+        <ul style="list-style:none; padding:0;">
+          <li><span class="kbd">Click red dot</span> &nbsp;→ <b>Select port</b></li>
+          <li><span class="kbd">Click second dot</span> &nbsp;→ <b>Cable the pair</b></li>
+          <li><span class="kbd">Esc</span> &nbsp;→ <b>Cancel selection</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <h2>🎨 Visual Color Coding</h2>
+
+    <h3>Sheet — Connection Backgrounds</h3>
+    <ul>
+      <li>Each cable pair gets a <b>unique pastel color</b> — both endpoints share the same shade so you can follow a cable across the sheet at a glance.</li>
+      <li><b>MLAG Port-Channels</b> get an additional <b>black medium border</b>.</li>
+      <li><b>Peer-Link</b> cables use a distinct color.</li>
+      <li><b>Orphan ports</b> (no paired connection in this row) remain white.</li>
+    </ul>
+
+    <h3>Sheet — Conditional Dimming</h3>
+    <ul>
+      <li><b>Member port</b> (<code>Et</code> with a <code>Po</code> filled): text goes italic/muted — connection color still shows through.</li>
+      <li><b>SVI</b> column is grayed when mode is <code>l3-*</code> (SVI is only valid on L2 modes).</li>
+      <li><b>Po</b> column is grayed when mode is <code>l2-et-*</code> or <code>l3-et-*</code> (no Po on direct Ethernet modes).</li>
+      <li><b>IP Type</b> column is grayed when mode is <code>l2-*</code> and SVI is empty.</li>
+    </ul>
+
+    <h3>Device Labels (Topology Nodes)</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+      <span style="background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">SPINE</span>
+      <span style="background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">LEAF</span>
+      <span style="background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">HARNESS</span>
+      <span style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">TRANSIT</span>
+      <span style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">DUT</span>
+      <span style="background:#cffafe; color:#0e7490; border:1px solid #67e8f9; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">IXIA</span>
+      <span style="background:#fce7f3; color:#9d174d; border:1px solid #f9a8d4; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">SPIRENT</span>
+    </div>
+    <p style="font-size:13px; margin-top:8px;">Assign labels in <b>Device Manager</b> via the Tags column. Multiple labels per device are supported.</p>
+
+    <!-- ================================================================ -->
+    <h2>🔧 Sheet &amp; Schema Management</h2>
+
+    <h3>Column Visibility Views</h3>
+    <span class="menu-path">TopoAssist &gt; Column Views</span>
+    <p style="font-size:13px;">Quickly focus the sheet on specific data without losing any columns:</p>
+    <ul>
+      <li><b>Show All Columns</b> — unhide everything.</li>
+      <li><b>Cabling Focused</b> — <code>int_</code> columns only.</li>
+      <li><b>Po Focused</b> — <code>int_</code> + <code>po_</code>.</li>
+      <li><b>Transceiver Focused</b> — <code>int_</code> + <code>xcvr_</code>.</li>
+      <li><b>Mode Focused</b> — <code>int_</code> + <code>po_</code> + <code>sp_mode_</code>.</li>
+      <li><b>Vlan Focused</b> — <code>int_</code> + <code>po_</code> + <code>vlan_</code>.</li>
+      <li><b>Custom View</b> — pick any column combination and save it.</li>
+    </ul>
+
+    <h3>Column &amp; Schema Manager</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Manage Column &amp; Formatting</span>
+    <ul>
+      <li>Add, remove, or reorder attribute columns (affects all devices).</li>
+      <li>Customise dropdown options for any column (e.g. add a new speed value).</li>
+      <li><b>Save &amp; Sync</b> rebuilds the sheet with the new schema — existing data is preserved. You will be prompted before any orphaned columns are deleted.</li>
+      <li><b>Apply GSheet Coloring</b> checkbox — re-applies connection backgrounds and conditional rules during sync.</li>
+    </ul>
+    <div class="info-box amber">
+      <b>Note:</b> After editing conditional format rules, always run <b>Save &amp; Sync</b> from the Schema Manager to push the changes to the sheet.
+    </div>
+
+    <h3>Checkpoints (Snapshots)</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
+    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Use <b>Restore Sheet Checkpoint</b> to roll back to any saved snapshot.</p>
+
+    <!-- ================================================================ -->
+    <h2>⚙️ Configuration Generation</h2>
+
+    <h3>1. Interface Naming</h3>
+    <p>The system validates and normalises Arista EOS interface names:</p>
+    <ul>
+      <li><code>Et</code> — Ethernet &nbsp;|&nbsp; <code>Po</code> — Port-Channel &nbsp;|&nbsp; <code>Vl</code> — Vlan SVI</li>
+      <li><code>Lo</code> — Loopback &nbsp;|&nbsp; <code>Ma</code> — Management</li>
+    </ul>
+
+    <h3>2. MLAG Detection (Strict Count = 4)</h3>
+    <p>A Port-Channel is automatically classified as MLAG if it appears on <b>4 or more rows</b> across the full sheet. Physical links between the two MLAG peers are tagged as <b>Peer-Links</b> automatically.</p>
+    <div class="info-box slate">
+      <b>Guard:</b> MLAG + any L3 mode (<code>l3-*</code>) is invalid on Arista EOS. The config generator outputs an explicit <code>!! ERROR</code> comment block instead of broken config.
+    </div>
+
+    <h3>3. IP Addressing (VLAN-Derived)</h3>
+    <p>Middle octets are derived from the VLAN ID:</p>
+    <ul>
+      <li>VLAN <code>1050</code> → octets <code>.10.50</code></li>
+      <li>Last octet = Device DID (sequential Arista device index, set in Device Manager).</li>
+    </ul>
+    <div class="info-box amber">
+      IPv6 uses the same pattern as IPv4 for lab convenience — this intentionally deviates from strict Arista EOS syntax.
+    </div>
+
+    <h3>4. Auto-Description Logic</h3>
+    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value:</p>
+    <ul>
+      <li>Physical standalone: <code>-&gt; PeerDev-PeerPort</code></li>
+      <li>Physical member of Po: <code>-&gt; PeerDev-PeerPort-PoX</code></li>
+      <li>Peer-link physical: <code>-&gt; PeerDev-PeerPort-MLAG-PEER-LINK</code></li>
+      <li>Port-Channel (regular): <code>-&gt; PeerDev</code> or <code>-&gt; PeerDev &amp; PeerDev2</code></li>
+      <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2 (MLAG)</code></li>
+    </ul>
+
+    <h3>5. Global Config Template</h3>
+    <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Global Config</span>
+    <p style="font-size:13px;">Define a base config template (NTP, management, AAA, etc.) that is prepended to every device's generated output.</p>
+
+    <h3>6. Technology Stack</h3>
+    <p style="font-size:13px;">Enable <b>BGP</b>, <b>VXLAN</b>, and <b>EVPN</b> via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
+
+    <!-- ================================================================ -->
+    <h2>Audit Engine</h2>
+    <p>Click the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon in the toolbar to run topology integrity checks. A badge shows the error count when issues are found.</p>
+    <ul>
+      <li><b>Po Mismatch</b> — both sides of a cable have <code>po_</code> set but to different Port-Channel numbers. Both ports are flagged.</li>
+      <li><b>Po Asymmetry</b> — one side of a cable has <code>po_</code> set and the peer does not. Both ports are flagged.</li>
+      <li><b>MLAG Destination Conflict</b> — the same Po number points to different remote device names across links.</li>
+      <li><b>VLAN Mismatch</b> — the <code>vlan_</code> values differ across a cable (Arista-only links).</li>
+      <li><b>Mode Incompatible</b> — the <code>sp_mode_</code> pair across a cable is not a supported combination.</li>
+      <li><b>Invalid Interface Name</b> — <code>int_</code> does not match a standard EOS prefix (Et, Po, Lo, Vl, etc.).</li>
+      <li><b>Missing Po for Port-Channel mode</b> — interface mode is po-based but <code>po_</code> is blank.</li>
+      <li><b>Stale Po value on Ethernet mode</b> — interface mode is et-based but <code>po_</code> has a value.</li>
+      <li><b>Duplicate Interface</b> — the same <code>int_</code> name appears more than once for the same device.</li>
+      <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
+      <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
+    </ul>
+    <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
+
+    <!-- ================================================================ -->
+    <h2>🔌 Device Bridge</h2>
+    <p style="font-size:13px;">The Device Bridge is a lightweight local Python server (<code>device_bridge.py</code>) that gives TopoAssist live read access to lab devices via SSH, eAPI, REST, or gNMI — without any cloud dependency. Its primary purpose is to <b>reduce lab bring-up time</b> by surfacing cabling errors, device identity issues, and interface state directly in the topology view.</p>
+
+    <h3>Setup</h3>
+    <div class="step-box">
+      <span class="step-num">Step 1 — Get the bridge script</span>
+      <p>Click the <b>Device Bridge</b> toolbar button (shield icon), then click <b>Download Bridge</b> in the modal footer. This saves <code>device_bridge.py</code> to your Downloads folder — it is always in sync with the current sidebar version.</p>
+    </div>
+    <div class="step-box">
+      <span class="step-num">Step 2 — Configure &amp; run</span>
+      <p>Open <code>device_bridge.py</code> in a text editor and set the config at the top:</p>
+      <ul>
+        <li><code>METHOD</code> — transport to use: <code>"ssh"</code> (default), <code>"eapi"</code>, <code>"rest"</code>, or <code>"gnmi"</code></li>
+        <li><code>JUMP_HOST</code> — SSH jump server hostname (e.g. <code>"bus-home"</code>); set <code>""</code> to SSH devices directly</li>
+        <li><code>SSH_USER</code> — device login username (default <code>"admin"</code>, passwordless)</li>
+      </ul>
+      <p>Then run it in a terminal and keep it open:</p>
+      <code style="display:block; background:#f1f5f9; padding:8px 12px; border-radius:6px; font-size:13px; margin-top:6px;">python3 device_bridge.py</code>
+      <p style="margin-top:8px;">The bridge listens on <code>http://localhost:8765</code>. The modal shows a green dot when it is reachable.</p>
+    </div>
+    <div class="info-box blue">
+      <b>Transport options:</b><br>
+      <code>ssh</code> — CLI over SSH; requires OpenSSH + <code>sshpass</code> on the bridge machine. No pip deps.<br>
+      <code>eapi</code> — Arista eAPI JSON-RPC over HTTPS (port 443); same output as SSH; single request per device. No pip deps.<br>
+      <code>rest</code> — RESTCONF over HTTPS; OpenConfig YANG format. No pip deps. Requires EOS 4.22+.<br>
+      <code>gnmi</code> — gRPC/gNMI; OpenConfig YANG format. Requires <code>pip install pygnmi</code>. Port 6030. EOS 4.22+.
+    </div>
+
+    <h3>Running a Check</h3>
+    <p style="font-size:13px;">Open the modal, enter or confirm the <b>Host / IP</b> for each device (defaults to device name for DNS-resolvable hosts), then click <b>Run Checks</b>. The bridge queries all devices in parallel. A spinner shows progress and updates as each sweep completes (<i>LLDP done</i> → <i>LLDP + status done</i>).</p>
+
+    <h3>Device List — Status Dots</h3>
+    <p style="font-size:13px;">Each device row shows two indicator dots after the IP field:</p>
+    <table class="legend-table" style="margin-top:8px;">
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;"></span></td>
+        <td><b>SSH dot — green</b>: bridge reached the device successfully.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#dc2626;"></span></td>
+        <td><b>SSH dot — red</b>: SSH failed (wrong IP, auth issue, device unreachable).</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#94a3b8;"></span></td>
+        <td><b>SSH dot — gray</b>: no IP configured for this device.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;"></span></td>
+        <td><b>Hostname dot — green</b>: device hostname matches topology name. Hover for confirmed hostname.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#eab308;box-shadow:0 0 3px rgba(234,179,8,0.5);"></span></td>
+        <td><b>Hostname dot — amber</b>: hostname mismatch — wrong device on that IP. Hover to see expected vs. actual name.</td>
+      </tr>
+    </table>
+    <div class="info-box amber">
+      An amber hostname dot is a critical lab bring-up signal — it means the device responding on that IP is not the device you think it is. Check physical cabling and IP assignment before pushing config.
+    </div>
+
+    <h3>LLDP Results</h3>
+    <p style="font-size:13px;">Results are shown per cable, sorted by severity:</p>
+    <table class="legend-table" style="margin-top:8px;">
+      <tr>
+        <td style="color:#16a34a; font-weight:bold; font-size:13px;">✓</td>
+        <td><b>Match</b> — LLDP confirms the cable: both sides see the correct neighbor and port.</td>
+      </tr>
+      <tr>
+        <td style="color:#dc2626; font-weight:bold; font-size:13px;">✗</td>
+        <td><b>Mismatch</b> — LLDP sees a different neighbor or port than the topology expects. Detail line shows what was actually seen. Always flagged in Audit mode.</td>
+      </tr>
+      <tr>
+        <td style="color:#d97706; font-weight:bold; font-size:13px;">?</td>
+        <td><b>Partial</b> — one side was queried OK, the other was not (wrong IP or SSH failure on that device).</td>
+      </tr>
+      <tr>
+        <td style="color:#94a3b8; font-weight:bold; font-size:13px;">?</td>
+        <td><b>Unknown</b> — neither device was reachable; result is inconclusive.</td>
+      </tr>
+      <tr>
+        <td style="color:#94a3b8; font-weight:bold; font-size:13px;">—</td>
+        <td><b>Skip</b> — non-Arista device or non-Ethernet interface (LLDP check only covers Et↔Et Arista links).</td>
+      </tr>
+    </table>
+
+    <h3>Topology Card Indicators</h3>
+    <p style="font-size:13px;">After a check, results appear directly on topology device cards — no need to keep the modal open:</p>
+    <ul>
+      <li><b>EOS version line</b> — shown under the device hostname (e.g. <code>EOS 4.32.1F · 7050SX3-48YC12</code>). Populated from <code>show version</code>.</li>
+      <li>
+        <b>LL column</b> — per-port LLDP indicator dot before the St column:
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;"></span> match &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#eab308;vertical-align:middle;margin:0 3px;"></span> mismatch &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> missing (when "Flag missing neighbors" is on) &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> missing (when flag is off)
+      </li>
+      <li>
+        <b>St column</b> — when devstatus data is available, the port dot reflects live interface operational state:
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;"></span> connected &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin:0 3px;"></span> notconnect &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> errdisabled &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> other
+      </li>
+    </ul>
+    <p style="font-size:13px;">Card indicators survive topology redraws — re-rendered automatically after each refresh.</p>
+
+    <h3>LLDP Audit Integration</h3>
+    <p style="font-size:13px;">The <b>LLDP Audit</b> row in the modal controls how LLDP results feed into Audit mode:</p>
+    <ul>
+      <li><b>Mismatches always flagged</b> — any LLDP mismatch is automatically raised as a red error in Audit mode. This cannot be disabled.</li>
+      <li><b>Flag missing neighbors</b> (checkbox) — when on, ports with no LLDP neighbor turn red and appear in Audit. Turn this <i>off</i> for early-stage labs where some interfaces are intentionally dark (not all cables patched yet).</li>
+    </ul>
+
+    <h3>Config Push</h3>
+    <p style="font-size:13px;">Config Push sends the generated EOS configuration directly to lab devices via SSH — no manual copy-paste required. It uses an EOS <b>configure session</b> for a safe, atomic commit and runs a post-push verification diff to confirm the device is in the desired state.</p>
+
+    <div class="step-box" style="margin-bottom:10px;">
+      <div class="step-number">Requirements</div>
+      <div class="step-body">
+        <ul style="margin:0;padding-left:18px;font-size:12px;">
+          <li>Device Bridge must be running (<code>python3 device_bridge.py</code>) with <code>METHOD = "ssh"</code> or <code>METHOD = "eapi"</code></li>
+          <li>Each device needs an IP or hostname — set in the Device Bridge modal (management IPs from the sheet are auto-detected)</li>
+        </ul>
+      </div>
+    </div>
+
+    <p style="font-size:13px;"><b>Single-device push</b> — from the copy strip or config modal:</p>
+    <ol style="font-size:13px;">
+      <li>Select a device or link, then click <b>Push</b> on the strip. TopoAssist fetches the config (from cache if available, otherwise from the sheet) and runs a dry-run preview.</li>
+      <li>A <b>diff modal</b> appears showing what will change. Review, then click <b>Commit</b>.</li>
+      <li>After commit, a Phase 3 verification dry-run confirms the device matches — <span style="color:#10b981;font-weight:600;">Push successful, no config diff</span> means fully in sync.</li>
+      <li>If nothing changed, the modal is skipped and the status bar shows <b>already in sync</b>.</li>
+    </ol>
+
+    <p style="font-size:13px;"><b>Push All</b> — from the Device Bridge modal:</p>
+    <ol style="font-size:13px;">
+      <li>Open the <b>Device Bridge</b> modal and confirm the bridge is running (green dot).</li>
+      <li>Click <b>Push All</b>. No prior config generation needed — configs are fetched automatically per device (cache hit = instant, cache miss = fetched from the sheet).</li>
+      <li>Up to 3 devices are pushed concurrently. Each row shows live status: <code>fetching config…</code> → <code>pushing…</code> → <code>verifying…</code> → result.</li>
+      <li>Results: <span style="color:#10b981;font-weight:600;">Push successful, no config diff</span> (green) = committed and verified clean. Amber = committed but residual diff or verify check failed. Red = push failed.</li>
+      <li>Failed attempts retry up to 3 times automatically before reporting an error.</li>
+    </ol>
+
+    <div class="info-box" style="border-left-color:#f59e0b;background:#fffbeb;margin-bottom:10px;">
+      <b>Note:</b> Config push is supported for <code>ssh</code> and <code>eapi</code> transports only. The <code>rest</code> and <code>gnmi</code> transports are read-only.
+    </div>
+
+    <!-- ================================================================ -->
+    <h2>💡 Tips &amp; Notes</h2>
+    <ul>
+      <li>The topology <b>auto-refreshes</b> when sheet data changes (configurable polling interval via the Refresh settings).</li>
+      <li>Layout preferences (card width, gap, theme, sort mode, node positions) are <b>saved in browser localStorage</b> per device.</li>
+      <li>In <b>Flexible mode</b>, drag nodes to arrange the topology. Positions are saved automatically.</li>
+      <li>In <b>Simple mode</b>, use <b>Group Rects</b> to annotate logical groups (PODs, tiers). Click an existing rect to edit its label, color, and text position.</li>
+      <li>The <b>Rename Sheet</b> option (<span class="menu-path">Sheet Manager &gt; Change Sheet Name</span>) safely renames the working tab and updates all internal references.</li>
+      <li>Non-Arista devices (IXIA, Spirent) appear in the topology for cabling context but no EOS config is generated for them.</li>
+      <li><b>Card Collapse</b> — double-click any device's header bar to collapse it to just its title row. Cables to/from that device are hidden while collapsed. Double-click again to expand. Single click still selects the device. Collapsed state is saved in browser localStorage per device.</li>
+      <li><b>Po Group Highlight</b> — clicking any port that has a <code>po_</code> value set will highlight all ports across the topology sharing the same Port-Channel number with an amber outline. Press Escape to clear.</li>
+      <li><b>Role Pill Filter</b> — click a role badge (e.g. SPINE, LEAF) on any device header to filter the topology to devices with that role. Click the same badge again to clear the filter.</li>
+      <li><b>Config Age</b> — the copy/view toolbar shows how long ago each device's config was fetched (e.g. "just now", "3m ago"). The age refreshes automatically every 30 seconds.</li>
+    </ul>
+
+    <div style="text-align:center; color: #94a3b8; font-size: 11px; margin-top: 40px;">
+      Arista EOS Automation Suite &bull; Lab Testing Version
+    </div>
+  </div>
+</body>
+
+</html>

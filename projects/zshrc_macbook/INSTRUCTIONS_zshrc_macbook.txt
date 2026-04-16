@@ -1,0 +1,62 @@
+INSTRUCTIONS — zshrc_macbook project
+Last updated: 2026-04-17 (Up arrow bound to fzf-history-widget in section 4, after source <(fzf --zsh); two bindkey lines: ^[[A (standard) and ^[OA (application mode/tmux) — matches bus-home up arrow behaviour)
+Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command))
+Previous: 2026-04-16 (fixed section numbering: 1-9 sequential)
+
+PROJECT OVERVIEW
+================
+.zshrc configuration for the macbook (yagnes76D0W4m).
+Shell: zsh (macOS default). This is the single source of truth — .bashrc is no longer used.
+Source file lives at: ~/claude/projects/zshrc_macbook/.zshrc
+Deploy target: ~/.zshrc on macbook via scp (no auto-hook — remote machine)
+
+Deploy command:
+  scp ~/claude/projects/zshrc_macbook/.zshrc yagnesh@<macbook-hostname>:~/.zshrc
+
+FILE STRUCTURE
+==============
+~/claude/projects/zshrc_macbook/
+  .zshrc                          — The actual zshrc config
+  INSTRUCTIONS_zshrc_macbook.txt  — This file (AI rebuild prompt)
+  CLAUDE.md                       — Auto-loaded constraints summary (no auto-deploy, source order, precmd_functions, zsh-only)
+  .claude/commands/
+    deploy.md                     — /deploy: show scp command + source order verification
+
+CURRENT .zshrc SECTIONS
+========================
+1. bus()  — Interactive tmux session menu for jump host (bus-home) via SSH multiplexing + expect
+2. wsc()  — Remote Wireshark live capture via SSH + named pipe (FIFO) to Wireshark app
+           NOTE: ssh_error uses 2>&1 >/dev/null to capture stderr for host key change detection
+3. General Settings + PATH + CDPATH:
+   - ~/go/bin prepended to PATH (fzf, gnmi, and other go-installed binaries)
+   - fzf keybindings via source <(fzf --zsh) — Ctrl+R history, Ctrl+T file, Alt+C dir
+   - Up arrow bound to fzf-history-widget (^[[A + ^[OA) immediately after source <(fzf --zsh)
+     so the widget exists before bindkey runs; matches bus-home up arrow behaviour
+   - FZF_DEFAULT_OPTS: --height 20% --layout=reverse --border
+   - FZF_TMUX_HEIGHT=20% (controls fzf internal default height — must be set)
+   - FZF_CTRL_R_OPTS: --height 20% --no-sort --exact (force height override, preserve order)
+   - Up arrow: normal zsh history (one by one); Ctrl+R for fzf fuzzy search
+   (fzf installed via: go install github.com/junegunn/fzf@latest)
+   - zsh-autosuggestions: cloned to ~/.zsh/zsh-autosuggestions/, sourced after fzf
+     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=fg=cyan set in General Settings
+   - stty -ixon                              (disable Ctrl+S/Q flow control)
+   - setopt IGNORE_EOF + IGNOREEOF=2         (require 3 Ctrl+D presses to exit)
+   - TZ=Asia/Kolkata                         (timezone)
+   - ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=fg=cyan (autosuggestion color, visible in tmux)
+   - EDITOR/VISUAL=vim
+4. History: HISTSIZE=100000, SAVEHIST=200000, SHARE_HISTORY (syncs across tmux panes),
+            HIST_FIND_NO_DUPS (up/down arrow skips duplicates)
+5. Aliases: ll, la, ls, lrtha, grep, .., ..., mkcd()
+6. Prompt: green user@host, blue cwd, git branch via vcs_info
+   NOTE: uses precmd_functions+=(vcs_info_precmd) NOT precmd() directly — avoids conflict with iTerm2
+7. iTerm2 shell integration: sourced AFTER prompt so it appends to precmd_functions cleanly
+   Skips itself automatically inside tmux ($TERM == tmux-256color)
+
+INSTRUCTIONS FOR AI
+====================
+- Read this file before making any changes to the project.
+- After every change, update the relevant section(s) of this file and bump
+  the "Last updated" date at the top.
+- This is zsh on macOS — use zsh syntax (setopt, not set -o; [[ ]] not [ ]).
+- Do not add bloat — only include what the user explicitly asks for.
+- No auto-deploy hook. Remind user to scp after every change.
