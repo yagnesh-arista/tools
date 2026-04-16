@@ -23,7 +23,7 @@ Last updated: 2026-04-17
 | 11 | Refactoring — surface opportunities, don't act without being asked | `rules/` | `rules/quality.md` |
 | 12 | Security — validate at every system boundary, block on hardcoded secrets | `rules/` | `rules/security.md` |
 | 13 | Tests — real paths, independent, no internal mocks, happy path + edge cases | `rules/` | `rules/testing.md` |
-| 14 | Review — git/local/unmanaged detection, `/review` before every commit | `hooks/` + `commands/` | `hooks/commit-guard.sh`, `commands/review.md` |
+| 14 | Review — scope/hygiene, bugs, design quality (over/under-engineering), test quality, refactoring opportunities; `/review-global` before every commit | `hooks/` + `commands/` | `hooks/commit-guard.sh`, `commands/review-global.md` |
 | 15 | Ambiguity — ask before tasks touching 3+ files or multiple valid approaches | `CLAUDE.md` | `CLAUDE.md` |
 | 16 | Claude Code anatomy reference — layer table mapping rules to files | `CLAUDE.md` | `CLAUDE.md` |
 | 17 | Git workflow — every project gets `git init`, commit after every change, push always | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
@@ -70,7 +70,7 @@ git push
 | When | Command |
 |---|---|
 | New project | `/new-project` — 7-question gate, `git init` runs first |
-| Before committing | `/review` |
+| Before committing | `/review-global` |
 | New machine | `bash ~/claude/projects/settings/setup.sh` |
 
 ---
@@ -102,7 +102,7 @@ git push
 | Security rules | `~/.claude/rules/security.md` | Injection, secrets, boundaries |
 | Test rules | `~/.claude/rules/testing.md` | Isolation, mocking, coverage |
 | Commands | `~/.claude/commands/new-project.md` | New project gate |
-| Commands | `~/.claude/commands/review.md` | Pre-commit review |
+| Commands | `~/.claude/commands/review-global.md` | Pre-commit review |
 | Hooks | `~/.claude/settings.json` | All automatic enforcement |
 | Backup | `~/claude/projects/settings/` | Restore kit for new machine |
 | Reference | `~/claude/Reference_Card.md` | This file — single source of truth |
