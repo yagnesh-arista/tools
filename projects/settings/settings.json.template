@@ -60,7 +60,7 @@
           },
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then result=$(cd $HOME/claude/projects/topoassist && python3 -m pytest tests/ -q 2>&1 | tail -1); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[PYTEST] $result\\\"}}\"; fi 2>/dev/null || true",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then result=$(cd $HOME/claude/projects/topoassist && python3 -m pytest tests/ -q 2>&1 | tail -1); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[PYTEST] $result — Deploy to Mac: scp bus-home:~/claude/projects/topoassist/device_bridge.py ~/device_bridge.py\\\"}}\"; fi 2>/dev/null || true",
             "statusMessage": "Running TopoAssist pytest..."
           },
           {

@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-17 (Rule 13: added test suite — tests/test_device_bridge.py (34 pytest cases, 6 pure functions) + Tests.gs (GAS harness, 4 pure functions, 34 cases); see TESTING section near end)
+  Last updated: 2026-04-17 (Mac deploy: scp hook prints deploy command after every device_bridge.py edit; /deploy-bridge command added)
+  Previous: 2026-04-17 (Rule 13: added test suite — tests/test_device_bridge.py (34 pytest cases, 6 pure functions) + Tests.gs (GAS harness, 4 pure functions, 34 cases); see TESTING section near end)
   Previous: 2026-04-17 (VERSION 2.6→2.7: SSH_USER and JUMP_HOST now env-var overridable in device_bridge.py; startup banner shows "Overrides:" hint; removed unused shlex from embedded template; Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-17 (lldp_bridge.py: JUMP_HOST restored to "bus-home" default, now overridable via LLDP_JUMP_HOST env var — export LLDP_JUMP_HOST="" to SSH directly without editing file. File: lldp_bridge.py)
   Previous: 2026-04-16 (Quality review fixes: (1) Code.gs getNetworkSettings/saveNetworkSettings: getUserProperties→getDocumentProperties — network settings are shared topology settings, must be per-sheet not per-user; (2) device_bridge.py: removed unused shlex import; (3) lldp_bridge.py: JUMP_HOST hardcoded "bus-home"→"" so fresh installs SSH directly; (4) Sidebar-js.html: 11 inline HTML escape chains replaced with existing escapeHtml() helper. Files: Code.gs, device_bridge.py, lldp_bridge.py, Sidebar-js.html)
