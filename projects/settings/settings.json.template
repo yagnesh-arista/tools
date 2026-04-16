@@ -72,6 +72,11 @@
             "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); SETTINGS_BACKUP=$HOME/claude/projects/settings; changed=0; case \"$f\" in $HOME/.claude/hooks/*.sh) mkdir -p \"$SETTINGS_BACKUP/hooks\"; cp \"$f\" \"$SETTINGS_BACKUP/hooks/\" && chmod +x \"$SETTINGS_BACKUP/hooks/$(basename $f)\" && changed=1 ;; $HOME/.claude/rules/*.md) mkdir -p \"$SETTINGS_BACKUP/rules\"; cp \"$f\" \"$SETTINGS_BACKUP/rules/\" && changed=1 ;; $HOME/.claude/commands/*.md) mkdir -p \"$SETTINGS_BACKUP/commands\"; cp \"$f\" \"$SETTINGS_BACKUP/commands/\" && changed=1 ;; $HOME/.claude/settings.json) sed \"s|$HOME|\\$HOME|g\" \"$f\" > \"$SETTINGS_BACKUP/settings.json.template\" && changed=1 ;; $HOME/claude/CLAUDE.md) mkdir -p \"$SETTINGS_BACKUP/global-rules\"; cp \"$f\" \"$SETTINGS_BACKUP/global-rules/CLAUDE.md\" && changed=1 ;; esac; if [ \"$changed\" -eq 1 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SETTINGS BACKUP] $(basename $f) auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude.\\\"}}\"; fi 2>/dev/null || true",
             "statusMessage": "Syncing to settings backup..."
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/topoassist-userguide-check.sh",
+            "statusMessage": "Checking if UserGuide.html needs updating..."
           }
         ]
       }
