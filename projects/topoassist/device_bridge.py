@@ -19,7 +19,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"2.8","port":8765}
+  GET  /health      → {"status":"ok","version":"2.9","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -28,7 +28,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.8"
+VERSION = "2.9"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -270,7 +270,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
         else:
             # /pushconfig — ipMap values are {ip, config} dicts, not plain IPs
-            results = {}
+            # Pre-initialize every device to None so the key always exists in the
+            # response even if the thread doesn't finish before join() returns.
+            results = {dev: None for dev in ip_map}
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
             def run_push(dev, entry):
@@ -291,7 +293,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
                        for d, v in ip_map.items()]
             for t in threads: t.start()
-            for t in threads: t.join(timeout=TIMEOUT + 3)
+            # Allow cleanup (≤5s) + main push (≤TIMEOUT) + overhead; daemon threads
+            # that outlast the join continue in background but their result is lost.
+            for t in threads: t.join(timeout=TIMEOUT * 2 + 5)
+            # Any thread that didn't finish gets a descriptive timeout error instead
+            # of null, so the JS never falls through to the generic 'something went wrong'.
+            for dev in results:
+                if results[dev] is None:
+                    results[dev] = {
+                        "ok": False,
+                        "error": "Push timed out — verify config was applied manually",
+                    }
             self._json(200, results)
 
     # ── Transport: SSH ────────────────────────────────────────────────────────
@@ -463,11 +475,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
-        # Pre-cleanup stale sessions; ignore failures (best-effort)
-        try:
-            self._abort_stale_sessions(ip)
-        except Exception:
-            pass
+        # Pre-cleanup stale sessions; best-effort, capped at 5s so it cannot
+        # consume the push thread's join budget (which is TIMEOUT * 2 + 5).
+        _ct = threading.Thread(target=lambda: self._abort_stale_sessions(ip),
+                               daemon=True)
+        _ct.start()
+        _ct.join(timeout=min(5, TIMEOUT))
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
