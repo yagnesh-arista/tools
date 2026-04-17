@@ -57,7 +57,7 @@
   let selectedInDevVis = new Set();
   let topoIpFilter      = ['p2p', 'gw', 'blank'];       // default: all selected
   let topoIntModeFilter = ['l2-et-access','l2-et-trunk','l2-po-access','l2-po-trunk','l3-et-int','l3-et-sub-int','l3-po-int','l3-po-sub-int']; // default: all selected
-  let topoSviFilter     = ['yes', 'blank'];             // default: all selected
+  let topoSviFilter     = ['active', 'blank'];           // default: all selected
   const DEV_VIS_EYE_OPEN   = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   const DEV_VIS_EYE_CLOSED = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
   let isFirstLoad = true;
@@ -1180,6 +1180,9 @@ function initSchemaManager() {
 
     renderSchemaList();
   }).getSchemaConfig();
+
+  // Pre-scan for orphaned columns — updates Force Sync warning badge (read-only, non-blocking)
+  google.script.run.withSuccessHandler(_updateForceSyncBadge).withFailureHandler(function() {}).getOrphanedColumnsInfo(null);
 }
 
 // 2. HELPER: Prepares data for comparison (removes UI artifacts)
@@ -1584,6 +1587,25 @@ function setUiBusy(isBusy) {
   inputs.forEach(el => el.disabled = isBusy);
 }
 
+// Updates the warning badge on #btnForceSync based on orphaned column scan results.
+// Called on schema panel open and after every sync completes.
+function _updateForceSyncBadge(orphans) {
+  const badge = document.getElementById('forceSyncWarnBadge');
+  const btn   = document.getElementById('btnForceSync');
+  if (!badge || !btn) return;
+  if (!orphans || orphans.length === 0) {
+    badge.style.display = 'none';
+    badge.innerHTML = '';
+    btn.title = '';
+    return;
+  }
+  const warnSvg = '<svg width="10" height="10" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0" fill="#92400e"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="#fff"/></svg>';
+  badge.innerHTML = warnSvg + '\u202f' + orphans.length;
+  badge.style.display = 'inline-flex';
+  const names = orphans.map(function(o) { return o.key.replace(/_$/, '') + (o.hasData ? ' (has data)' : ''); }).join('\n  ');
+  btn.title = orphans.length + ' column(s) not in schema — will prompt for deletion on Force Sync:\n  ' + names;
+}
+
 /**
 * --- UPDATED SYNC FUNCTION ---
 * Now includes Error Handling and Global UI Lock
@@ -1599,7 +1621,7 @@ function triggerSyncOnly() {
   // Step 1: detect orphaned columns (sheet cols not in schema) with data flags
   google.script.run
     .withSuccessHandler(orphans => {
-      let deleteOrphans = null;
+      let deleteOrphans = false; // default: keep — pre-check is authoritative, never reach server-side ui.alert
       if (orphans.length > 0) {
         const withData = orphans.filter(o => o.hasData);
         let msg = `${orphans.length} sheet column(s) are not in the current schema:\n`;
@@ -1639,7 +1661,11 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
       hideGlobalLoading();
       btn.innerHTML = '<span class="btn-icon">✓</span> Synced!';
       setUiBusy(false);
-      setTimeout(() => { btn.innerHTML = origHtml; }, 1500);
+      setTimeout(() => {
+        btn.innerHTML = origHtml;
+        // Re-scan after sync so badge reflects actual post-sync state
+        google.script.run.withSuccessHandler(_updateForceSyncBadge).withFailureHandler(function() {}).getOrphanedColumnsInfo(null);
+      }, 1500);
     })
     .withFailureHandler((err) => {
       clearInterval(syncPollTimer);
@@ -7691,7 +7717,7 @@ function fetchData(force, autoVerify, silent) {
     if (!silent) {
       topoIpFilter      = ['p2p', 'gw', 'blank'];
       topoIntModeFilter = ['l2-et-access','l2-et-trunk','l2-po-access','l2-po-trunk','l3-et-int','l3-et-sub-int','l3-po-int','l3-po-sub-int'];
-      topoSviFilter     = ['yes', 'blank'];
+      topoSviFilter     = ['active', 'blank'];
       renderIpTypeList();
       renderIntModeList();
       renderSviList();

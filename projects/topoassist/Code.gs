@@ -406,7 +406,7 @@ function refreshSheetRowVisibility() {
         const sviCol = devSviCol[dev];
         if (sviCol === undefined) return sviFilter.includes('blank');
         const sviVal = String(row[sviCol] || '').toLowerCase().trim();
-        return sviFilter.includes(sviVal === 'yes' ? 'yes' : 'blank');
+        return sviFilter.includes(sviVal ? 'active' : 'blank');
       });
     }
     (active ? toShow : toHide).push(ri + 3);
@@ -537,7 +537,7 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'sp_mode', label: 'Mode', options: ['l2-et-access', 'l2-et-trunk', 'l2-po-access', 'l2-po-trunk', 'l3-et-int', 'l3-et-sub-int', 'l3-po-int', 'l3-po-sub-int'] },
   { key: 'n_vlan', label: 'Native VLAN', options: [] },
   { key: 'vlan', label: 'VLANs', options: [] },
-  { key: 'svi_vlan', label: 'SVI VLANs', options: ['all'] },
+  { key: 'svi_vlan', label: 'SVI VLANs', options: [] },  // free-text: 'all' or VLAN IDs e.g. '10' or '10,20'
   { key: 'ip_type', label: 'IP Type', options: ['p2p', 'gw'] },
   { key: 'vrf', label: 'VRF', options: [] },
   { key: 'et_speed', label: 'Et Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
@@ -2885,8 +2885,8 @@ function saveNonAristaList(namesArray) {
 */
 function validateAndCleanData(header, value, rowData, headers, activeSviValue) {
   const valStr = String(value || "").trim();
-  // Default to 'yes' if dynamic value wasn't passed, for safety
-  const targetSvi = (activeSviValue || 'yes').toLowerCase();
+  // Default to 'all' if dynamic value wasn't passed, for safety
+  const targetSvi = (activeSviValue || 'all').toLowerCase();
 
   if (valStr === "") return { valid: true, newValue: "", warning: null };
 
