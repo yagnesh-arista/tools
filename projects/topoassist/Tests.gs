@@ -14,6 +14,7 @@
  *   hasKey                 — case-insensitive Set lookup
  *   normalizePo            — Port-Channel number extraction
  *   isValidPort            — port string validation
+ *   _parseSviVlans         — SVI VLAN subset selection from svi_vlan_ value
  */
 
 
@@ -102,6 +103,37 @@ function test_isValidPort() {
 }
 
 
+// ── _parseSviVlans ─────────────────────────────────────────────────────────────
+
+function test_parseSviVlans() {
+  const t = assert_;
+  return [
+    t("all → returns all vlans",
+      _parseSviVlans('all', ['10', '20']),          ['10', '20']),
+    t("ALL uppercase → returns all vlans",
+      _parseSviVlans('ALL', ['10', '20']),          ['10', '20']),
+    t("blank → empty",
+      _parseSviVlans('', ['10', '20']),             []),
+    t("undefined → empty",
+      _parseSviVlans(undefined, ['10', '20']),      []),
+    t("single VLAN in list → returns match",
+      _parseSviVlans('10', ['10', '20']),           ['10']),
+    t("single VLAN not in list → empty",
+      _parseSviVlans('30', ['10', '20']),           []),
+    t("comma list → intersection",
+      _parseSviVlans('10,20', ['10', '20', '30']), ['10', '20']),
+    t("partial overlap",
+      _parseSviVlans('10,30', ['10', '20']),        ['10']),
+    t("number elements in vlans array",
+      _parseSviVlans('10', [10, 20]),               [10]),
+    t("all with number elements",
+      _parseSviVlans('all', [10, 20]),              [10, 20]),
+    t("whitespace in svi_vlan_ value",
+      _parseSviVlans(' 10 , 20 ', ['10', '20']),   ['10', '20']),
+  ];
+}
+
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -110,6 +142,7 @@ function runAllTests() {
     { name: "hasKey",                fn: test_hasKey },
     { name: "normalizePo",           fn: test_normalizePo },
     { name: "isValidPort",           fn: test_isValidPort },
+    { name: "_parseSviVlans",        fn: test_parseSviVlans },
   ];
 
   let totalPass = 0;

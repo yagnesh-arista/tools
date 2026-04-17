@@ -335,7 +335,7 @@ function refreshSheetRowVisibility() {
   const hiddenDevs = new Set(getSheetViewHidden());
   const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0]; // re-read after insert
 
-  // Build device → column index maps for int_, ip_type_, sp_mode_, svi_ (visible devices only)
+  // Build device → column index maps for int_, ip_type_, sp_mode_, svi_vlan_ (visible devices only)
   // Single pass over headers.
   const ipFilter      = getSheetViewIpFilter();      // [] = all shown
   const intModeFilter = getSheetViewIntModeFilter();  // [] = all shown
@@ -343,7 +343,7 @@ function refreshSheetRowVisibility() {
   const devIntCol     = {}; // lowercased device name → int_ col index
   const devIpTypeCol  = {}; // lowercased device name → ip_type_ col index
   const devSpModeCol  = {}; // lowercased device name → sp_mode_ col index
-  const devSviCol     = {}; // lowercased device name → svi_ col index
+  const devSviCol     = {}; // lowercased device name → svi_vlan_ col index
   const visIntCols    = [];
   headers.forEach(function(h, i) {
     if (i + 1 === visColIdx) return; // skip _sys_
@@ -357,8 +357,8 @@ function refreshSheetRowVisibility() {
     } else if (s.startsWith('sp_mode_')) {
       const dev = s.slice(8);
       if (!hasKey(hiddenDevs, dev)) devSpModeCol[dev.toLowerCase()] = i;
-    } else if (s.startsWith('svi_')) {
-      const dev = s.slice(4);
+    } else if (s.startsWith('svi_vlan_')) {
+      const dev = s.slice(9);
       if (!hasKey(hiddenDevs, dev)) devSviCol[dev.toLowerCase()] = i;
     }
   });
@@ -398,7 +398,7 @@ function refreshSheetRowVisibility() {
         return intModeFilter.includes(sp);
       });
     }
-    // AND: svi filter — check svi_ only for devices active on this row
+    // AND: svi filter — check svi_vlan_ only for devices active on this row
     if (active && sviFilter.length > 0) {
       active = Object.keys(devIntCol).some(function(dev) {
         const intVal = String(row[devIntCol[dev]] || '').trim();
@@ -537,7 +537,7 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'sp_mode', label: 'Mode', options: ['l2-et-access', 'l2-et-trunk', 'l2-po-access', 'l2-po-trunk', 'l3-et-int', 'l3-et-sub-int', 'l3-po-int', 'l3-po-sub-int'] },
   { key: 'n_vlan', label: 'Native VLAN', options: [] },
   { key: 'vlan', label: 'VLANs', options: [] },
-  { key: 'svi', label: 'SVI', options: ['yes'] },
+  { key: 'svi_vlan', label: 'SVI VLANs', options: ['all'] },
   { key: 'ip_type', label: 'IP Type', options: ['p2p', 'gw'] },
   { key: 'vrf', label: 'VRF', options: [] },
   { key: 'et_speed', label: 'Et Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
@@ -1446,7 +1446,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     const intIdx = getColIdx('int_' + dev);
     const poIdx = getColIdx('po_' + dev);
     const modeIdx = getColIdx('sp_mode_' + dev);
-    const sviIdx = getColIdx('svi_' + dev);
+    const sviIdx = getColIdx('svi_vlan_' + dev);
     const ipIdx = getColIdx('ip_type_' + dev);
 
     // Rule 1: "Member Port" logic
@@ -2328,8 +2328,8 @@ function updateMultipleInterfaces(payloads) {
 
     if (data.length < 2) return { error: "Sheet data too short." };
 
-    // [FIX] Fetch the dynamic SVI value ("yes") ONCE from Schema
-    const activeSviValue = 'yes';
+    // [FIX] Fetch the dynamic SVI value ("all") ONCE from Schema
+    const activeSviValue = 'all';
 
     const headers = data[1].map(h => String(h).trim());
     const headerMap = new Map();
@@ -2372,7 +2372,7 @@ function updateMultipleInterfaces(payloads) {
       }
 
       // 2. SANITIZE (Using Dynamic SVI Value)
-      const criticalFields = ["svi", "ip_type"];
+      const criticalFields = ["svi_vlan", "ip_type"];
       criticalFields.forEach(field => {
         const colName = field + "_" + payload.deviceName;
         let colIndex = -1;
@@ -2496,10 +2496,10 @@ function applySheetIntModeFilter(filters) {
 }
 
 // ── Sheet View svi filter ──
-// Values: 'yes' (svi_='yes'), 'blank' (svi_ empty). Default both active.
+// Values: 'active' (svi_vlan_ has any value), 'blank' (svi_vlan_ empty). Default both active.
 function getSheetViewSviFilter() {
   const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_SVI_FILTER');
-  return v ? JSON.parse(v) : ['yes', 'blank'];
+  return v ? JSON.parse(v) : ['active', 'blank'];
 }
 function saveSheetViewSviFilter(filters) {
   PropertiesService.getUserProperties().setProperty('SHEET_VIEW_SVI_FILTER', JSON.stringify(filters));
@@ -2900,7 +2900,7 @@ function validateAndCleanData(header, value, rowData, headers, activeSviValue) {
   };
 
   const mode = getSiblingVal("sp_mode_");
-  const svi = getSiblingVal("svi_");
+  const svi = getSiblingVal("svi_vlan_");
 
   // Rules 1, 2, 3 removed — audit flags L3+SVI, L2+ip_type_, ET+Po; user may want to rollback
 
@@ -2929,7 +2929,7 @@ function validateAndCleanData(header, value, rowData, headers, activeSviValue) {
 /**
  * MASTER CLEANUP FUNCTION
  * 1. Standardizes Port Names (Ethernet1 -> Et1)
- * 2. Standardizes SVI Values (true/1/y -> yes)
+ * 2. Standardizes SVI VLANs Values (true/1/y/yes -> all)
  * 3. Removes Invalid L3 Mode on MLAG ports
  * 4. Cleans up invalid L2/L3 configs
  * * RETURNS: Boolean (true if changes were made, false if clean)
@@ -2962,7 +2962,7 @@ function runFullSheetCleanup(skipVersionBump) {
       const getIdx = (prefix) => headers.findIndex(h => h.toLowerCase() === (prefix + dev.name).toLowerCase());
       const intIdx = getIdx("int_");
       const modeIdx = getIdx("sp_mode_");
-      const sviIdx = getIdx("svi_");
+      const sviIdx = getIdx("svi_vlan_");
       const ipIdx = getIdx("ip_type_");
       const poIdx = getIdx("po_");
 
@@ -2978,13 +2978,13 @@ function runFullSheetCleanup(skipVersionBump) {
         }
       }
 
-      // B. SVI STANDARDIZATION
+      // B. SVI_VLAN STANDARDIZATION (migrate legacy 'yes'/aliases → 'all')
       if (sviIdx !== -1) {
         const rawSvi = String(row[sviIdx] || "").trim().toLowerCase();
         const originalVal = String(row[sviIdx] || "");
         if (['true', '1', 'y', 'yes'].includes(rawSvi)) {
-          if (originalVal !== 'yes') {
-            row[sviIdx] = 'yes';
+          if (originalVal !== 'all') {
+            row[sviIdx] = 'all';
             changeCount++;
           }
         }
@@ -3074,7 +3074,7 @@ function onEdit(e) {
     const dataRange = sheet.getRange(startRow, 1, numRows, lastCol);
     const allRowValues = dataRange.getValues();
 
-    const SVI_YES = 'yes';
+    const SVI_YES = 'all';
     let hasChanges = false;
     const bgUpdates = []; // Collect cell background changes from mode edits
 
@@ -3118,7 +3118,7 @@ function onEdit(e) {
         };
 
         const modeIdx = getIdx("sp_mode_");
-        const sviIdx = getIdx("svi_");
+        const sviIdx = getIdx("svi_vlan_");
         const ipIdx = getIdx("ip_type_");
         let modeVal = (modeIdx > 0) ? String(rowData[modeIdx - 1] || "").trim().toLowerCase() : "";
 
@@ -3126,7 +3126,7 @@ function onEdit(e) {
         if (header.toLowerCase().startsWith("sp_mode_")) {
           // Auto-clears for ET/L3/L2 removed — audit flags these; user may want to rollback
 
-          // Immediate cell backgrounds: po_ grey for Et modes; svi_ grey for l3 only
+          // Immediate cell backgrounds: po_ grey for Et modes; svi_vlan_ grey for l3 only
           const poColNum = getIdx("po_");
           const isEtMode = /^l[23]-et/.test(modeVal);
           if (poColNum > 0) bgUpdates.push({ row: startRow + r, col: poColNum, bg: isEtMode ? "#e2e8f0" : null });
@@ -3247,6 +3247,25 @@ function compressVlanRanges(numberSet) {
   ranges.push(start === prev ? String(start) : `${start}-${prev}`);
 
   return ranges.join(",");
+}
+
+/**
+ * Returns the subset of vlans that should get SVIs, based on svi_vlan_ value.
+ * svi_vlan_ = 'all' (or blank with any truthy alias) → all vlans
+ * svi_vlan_ = '10' or '10,20' → only those VLAN IDs that exist in vlans
+ * svi_vlan_ = '' / undefined → [] (no SVIs)
+ * vlans: Array of VLAN IDs (numbers or numeric strings) from vlan_ column.
+ * Returns an array of the same element type as vlans.
+ */
+function _parseSviVlans(sviVlanVal, vlans) {
+  const v = String(sviVlanVal || "").trim().toLowerCase();
+  if (!v) return [];
+  const arr = Array.isArray(vlans) ? vlans : Array.from(vlans);
+  if (v === 'all') return arr;
+  const requested = new Set(
+    String(sviVlanVal).split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+  );
+  return arr.filter(x => requested.has(parseInt(x, 10)));
 }
 
 /* REPLACE IN Code.gs */
@@ -3441,7 +3460,7 @@ function getDeviceConfig(deviceName) {
 
     // AP VLAN GW: pre-collect ALL vx1 rows (one per VRF/VLAN group) before main loop.
     // Each row may have different vlan_ and vrf_. deviceSeenPos is pre-marked so the
-    // main loop skips all Vx1 rows — only vlan_ and svi_ fields are used.
+    // main loop skips all Vx1 rows — only vlan_ and svi_vlan_ fields are used.
     const vx1Entries = [];
     rows.forEach(row => {
       if (isValidPort(row[targetColIndex]) && canonicalizeInterface(row[targetColIndex]) === "Vx1") {
@@ -3456,8 +3475,9 @@ function getDeviceConfig(deviceName) {
       const sviLines = [];
       vx1Entries.forEach(d => {
         const apVlans = expandVlanString(String(d.vlan_ || ""));
-        if (apVlans.length > 0 && (d.svi_ || "").toLowerCase() === "yes") {
-          apVlans.forEach(v => {
+        const apSviVlans = _parseSviVlans(d.svi_vlan_, Array.from(apVlans));
+        if (apSviVlans.length > 0) {
+          apSviVlans.forEach(v => {
             const oct2 = Math.floor(v / 100);
             const oct3 = v % 100;
             sviLines.push([
@@ -3921,8 +3941,9 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
   let block = "";
 
   // 1. SVI (Vlan Interface)
-  if (mode.startsWith("l2-") && (d.svi_ || "").toLowerCase() === "yes") {
-    vlans.forEach(v => {
+  const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
+  if (mode.startsWith("l2-") && sviVlans.length > 0) {
+    sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
     });
   }
@@ -4057,7 +4078,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   else if (mode.includes("l3-et-sub-int")) vlans.forEach(v => l3IntNames.push(`${pName}.${v}`));
   else if (mode.includes("l3-po-int") && poVal) l3IntNames.push(poVal);
   else if (mode.includes("l3-et-int")) l3IntNames.push(pName);
-  else if (mode.startsWith("l2-") && details.svi_ === 'yes') vlans.forEach(v => l3IntNames.push(`Vlan${v}`));
+  else if (mode.startsWith("l2-")) _parseSviVlans(details.svi_vlan_, vlans).forEach(v => l3IntNames.push(`Vlan${v}`));
 
   // Calculate IPs
   let val = 0;

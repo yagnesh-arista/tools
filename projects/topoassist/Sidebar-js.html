@@ -2146,12 +2146,12 @@ function runValidation() {
 
     // --- Data Prep ---
     const mode = (d.sp_mode_ || "").toLowerCase();
-    const svi = (d.svi_ || "").toLowerCase();
+    const svi = (d.svi_vlan_ || "").toLowerCase().trim();
     const ipType = (d.ip_type_ || "").toLowerCase();
     const portName = node.name.toLowerCase();
 
-    // SVI is "On" if 'yes' OR if it's a Vlan Interface
-    let isSviOn = (svi === 'yes' || svi === 'true' || svi === '1');
+    // SVI is "On" if svi_vlan_ has any value ('all' or specific VLANs)
+    let isSviOn = svi !== '';
     if (portName.startsWith("vlan")) isSviOn = true;
 
     const hasIp = (ipType !== "" && ipType !== "-");
@@ -11922,10 +11922,10 @@ function toggleTopoIntModeFilter(val) {
 
 // ── svi filter ────────────────────────────────────────────────────────────
 const _SVI_ITEMS = [
-  { val: 'yes',   label: 'yes' },
-  { val: 'blank', label: '\u2014' },
-  { val: null,    label: '' },
-  { val: null,    label: '' },
+  { val: 'active', label: 'active' },
+  { val: 'blank',  label: '\u2014' },
+  { val: null,     label: '' },
+  { val: null,     label: '' },
 ];
 
 function renderSviList() {
@@ -11951,8 +11951,8 @@ function applyTopoSviFilter() {
   Object.entries(globalPortElements).forEach(function([id, elObj]) {
     const row = elObj.row;
     if (topoSviFilter.length === 0) { row.classList.remove('hidden-svi'); return; }
-    const svi = String(((allNodesData[id] || {}).details || {}).svi_ || '').toLowerCase().trim();
-    const mapped = svi === 'yes' ? 'yes' : 'blank';
+    const svi = String(((allNodesData[id] || {}).details || {}).svi_vlan_ || '').toLowerCase().trim();
+    const mapped = svi ? 'active' : 'blank';
     if (topoSviFilter.indexOf(mapped) !== -1) row.classList.remove('hidden-svi');
     else row.classList.add('hidden-svi');
   });

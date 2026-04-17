@@ -429,7 +429,7 @@
     <h3>Sheet — Conditional Dimming</h3>
     <ul>
       <li><b>Member port</b> (<code>Et</code> with a <code>Po</code> filled): text goes italic/muted — connection color still shows through.</li>
-      <li><b>SVI</b> column is grayed when mode is <code>l3-*</code> (SVI is only valid on L2 modes).</li>
+      <li><b>SVI VLANs</b> column is grayed when mode is <code>l3-*</code> (SVI is only valid on L2 modes). Value: <code>all</code> = SVI for every VLAN in the VLANs column; <code>10</code> or <code>10,20</code> = SVI only for those VLANs; blank = no SVI.</li>
       <li><b>Po</b> column is grayed when mode is <code>l2-et-*</code> or <code>l3-et-*</code> (no Po on direct Ethernet modes).</li>
       <li><b>IP Type</b> column is grayed when mode is <code>l2-*</code> and SVI is empty.</li>
     </ul>
