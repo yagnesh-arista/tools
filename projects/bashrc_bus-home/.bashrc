@@ -26,6 +26,8 @@ fi
 export FZF_TMUX_HEIGHT=30%
 export FZF_DEFAULT_OPTS='--height 30% --layout=reverse --border'
 export FZF_CTRL_R_OPTS='--height 30% --no-sort --exact'
+export FZF_CTRL_T_OPTS='--preview "bat --color=always --style=numbers --line-range=:200 {}" --preview-window=right:50%:wrap'
+export FZF_ALT_C_OPTS='--preview "ls -lhF --color=always {}" --preview-window=right:40%'
 
 # 5. Custom Functions
 # Quick SSH to a device as admin.

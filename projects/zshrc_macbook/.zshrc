@@ -217,6 +217,8 @@ export CDPATH=".:~:~/claude/projects"
 export FZF_TMUX_HEIGHT=30%
 export FZF_DEFAULT_OPTS='--height 30% --layout=reverse --border'
 export FZF_CTRL_R_OPTS='--height 30% --no-sort --exact'   # Force height, preserve order
+export FZF_CTRL_T_OPTS='--preview "bat --color=always --style=numbers --line-range=:200 {}" --preview-window=right:50%:wrap'
+export FZF_ALT_C_OPTS='--preview "tree -C {} 2>/dev/null | head -50 || ls -lhF --color=always {}" --preview-window=right:40%'
 source <(fzf --zsh)   # Ctrl+R: fuzzy history, Ctrl+T: file search, Alt+C: dir jump
 bindkey '^[[A' fzf-history-widget   # Up arrow → fzf history panel (standard terminals)
 bindkey '^[OA' fzf-history-widget   # Up arrow → fzf history panel (application mode / tmux)

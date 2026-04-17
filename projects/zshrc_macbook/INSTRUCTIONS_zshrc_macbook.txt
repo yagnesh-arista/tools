@@ -1,5 +1,6 @@
 INSTRUCTIONS — zshrc_macbook project
-Last updated: 2026-04-17 (Up arrow bound to fzf-history-widget in section 4, after source <(fzf --zsh); two bindkey lines: ^[[A (standard) and ^[OA (application mode/tmux) — matches bus-home up arrow behaviour)
+Last updated: 2026-04-17 (Added FZF_CTRL_T_OPTS and FZF_ALT_C_OPTS — bat preview for files, tree+ls fallback for dirs)
+Previous: 2026-04-17 (Up arrow bound to fzf-history-widget in section 4, after source <(fzf --zsh); two bindkey lines: ^[[A (standard) and ^[OA (application mode/tmux) — matches bus-home up arrow behaviour)
 Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command))
 Previous: 2026-04-16 (fixed section numbering: 1-9 sequential)
 
@@ -32,10 +33,12 @@ CURRENT .zshrc SECTIONS
    - fzf keybindings via source <(fzf --zsh) — Ctrl+R history, Ctrl+T file, Alt+C dir
    - Up arrow bound to fzf-history-widget (^[[A + ^[OA) immediately after source <(fzf --zsh)
      so the widget exists before bindkey runs; matches bus-home up arrow behaviour
-   - FZF_DEFAULT_OPTS: --height 20% --layout=reverse --border
-   - FZF_TMUX_HEIGHT=20% (controls fzf internal default height — must be set)
-   - FZF_CTRL_R_OPTS: --height 20% --no-sort --exact (force height override, preserve order)
-   - Up arrow: normal zsh history (one by one); Ctrl+R for fzf fuzzy search
+   - FZF_DEFAULT_OPTS: --height 30% --layout=reverse --border
+   - FZF_TMUX_HEIGHT=30% (controls fzf internal default height — must be set)
+   - FZF_CTRL_R_OPTS: --height 30% --no-sort --exact (force height override, preserve order)
+   - FZF_CTRL_T_OPTS: bat preview right:50% (Ctrl+T file search with syntax-highlighted preview)
+   - FZF_ALT_C_OPTS: tree fallback ls preview right:40% (Alt+C dir jump with tree or ls preview)
+   - Up arrow: fzf-history-widget (both ^[[A and ^[OA); Ctrl+R also works
    (fzf installed via: go install github.com/junegunn/fzf@latest)
    - zsh-autosuggestions: cloned to ~/.zsh/zsh-autosuggestions/, sourced after fzf
      ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=fg=cyan set in General Settings

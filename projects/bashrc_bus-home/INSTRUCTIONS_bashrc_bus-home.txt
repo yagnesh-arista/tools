@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-17 (Added eod alias for daily git commit+push)
+Last updated: 2026-04-17 (Added FZF_CTRL_T_OPTS and FZF_ALT_C_OPTS — bat preview for files, ls preview for dirs)
+Previous: 2026-04-17 (Added eod alias for daily git commit+push)
 Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check-order.md (/check-order command))
 
 PROJECT OVERVIEW
@@ -29,8 +30,11 @@ CURRENT .bashrc SECTIONS
     /etc/bashrc disables hashing (set +h); re-enabling is required for NVM and other tools
 2.  Fix Tmux Resizing (shopt -s checkwinsize)
 3.  Standard Tab Completion (bash-completion)
-4.  FZF: source ~/.fzf.bash, FZF_TMUX_HEIGHT=20%, FZF_DEFAULT_OPTS (20% height, reverse, border),
-    FZF_CTRL_R_OPTS (--height 20%, no-sort, exact); up arrow = normal history (Ctrl+R for fzf)
+4.  FZF: source ~/.fzf.bash, FZF_TMUX_HEIGHT=30%, FZF_DEFAULT_OPTS (30% height, reverse, border),
+    FZF_CTRL_R_OPTS (--height 30%, no-sort, exact),
+    FZF_CTRL_T_OPTS (bat preview right:50%, file search via Ctrl+T),
+    FZF_ALT_C_OPTS (ls preview right:40%, dir jump via Alt+C);
+    up arrow → __fzf_history__ (Ctrl+R also works); bat available, fd/tree not installed
 5.  Custom Functions — command_not_found_handle (@<device> SSHes to admin@<device>); mkcd()
     IMPORTANT: must stay BEFORE section 6 (ble.sh) so ble.sh wraps the handler on load/reload
 6.  Up arrow bound to __fzf_history__ via bash readline bind -x (ble.sh removed — caused flickering)
