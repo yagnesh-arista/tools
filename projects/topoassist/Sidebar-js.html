@@ -7970,9 +7970,9 @@ Endpoints:
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os
+import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.7"
+VERSION = "2.8"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -8080,6 +8080,42 @@ def _extract_session_diff(output):
                 break
             diff.append(s)
     return "\\n".join(diff).strip()
+
+
+# -- Section-level cleaners for idempotent push --------------------------------
+
+_SECTION_CLEANERS = [
+    (re.compile(r'^interface\s+((?:Ethernet|Et)\S+)$', re.I),   'default interface {0}'),
+    (re.compile(r'^interface\s+((?:Port-Channel|Po)\d+\S*)$', re.I), 'default interface {0}'),
+    (re.compile(r'^interface\s+(Loopback\d+)$', re.I),          'default interface {0}'),
+    (re.compile(r'^interface\s+(Vxlan\d+)$', re.I),             'default interface {0}'),
+    (re.compile(r'^interface\s+(Vlan\d+)$', re.I),              'default interface {0}'),
+    (re.compile(r'^router\s+bgp\s+(\d+)$', re.I),              'no router bgp {0}'),
+    (re.compile(r'^router\s+ospf\s+\d+$', re.I),               'no router ospf 1'),
+    (re.compile(r'^mlag\s+configuration$', re.I),               'no mlag configuration'),
+]
+
+_MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
+
+
+def _prepend_section_cleaners(config_text):
+    """Prepend section-level cleanup commands before each major EOS config section.
+    Ensures idempotent push: stale BGP neighbors, interface IPs, OSPF areas, etc.
+    are wiped before new config is applied. Management interfaces are never touched."""
+    out = []
+    for line in config_text.split("\\n"):
+        s = line.strip()
+        if _MGMT_IFACE_RE.match(s):
+            out.append(line)
+            continue
+        for pattern, fmt in _SECTION_CLEANERS:
+            m = pattern.match(s)
+            if m:
+                grp = m.group(1) if m.lastindex else None
+                out.append(fmt.format(grp) if grp else fmt)
+                break
+        out.append(line)
+    return "\\n".join(out)
 
 
 # -- Bridge HTTP handler --------------------------------------------------------
@@ -8222,7 +8258,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     def _push_config(self, ip, config_text, dry_run=False):
-        lines = [l for l in config_text.strip().split("\\n") if l.strip()]
+        cleaned = _prepend_section_cleaners(config_text)
+        lines = [l for l in cleaned.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
         try:

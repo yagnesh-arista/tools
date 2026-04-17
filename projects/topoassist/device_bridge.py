@@ -19,16 +19,16 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"2.7","port":8765}
+  GET  /health      → {"status":"ok","version":"2.8","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os
+import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.7"
+VERSION = "2.8"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -169,6 +169,65 @@ def _extract_session_diff(output):
                 break
             diff.append(s)
     return '\n'.join(diff).strip()
+
+
+# ── Section-level cleaners for idempotent push ────────────────────────────────
+
+_SECTION_CLEANERS = [
+    # Physical interfaces (Ethernet1, Et4/1, breakouts) — Management excluded below
+    (re.compile(r'^interface\s+((?:Ethernet|Et)\S+)$', re.I),   'default interface {0}'),
+    # Port-Channel interfaces
+    (re.compile(r'^interface\s+((?:Port-Channel|Po)\d+\S*)$', re.I), 'default interface {0}'),
+    # Loopback interfaces (Loopback0 = router-id, Loopback1 = VTEP)
+    (re.compile(r'^interface\s+(Loopback\d+)$', re.I),          'default interface {0}'),
+    # VXLAN data-plane interface
+    (re.compile(r'^interface\s+(Vxlan\d+)$', re.I),             'default interface {0}'),
+    # SVI interfaces — cleans stale IPs when VLANs/subnets change
+    (re.compile(r'^interface\s+(Vlan\d+)$', re.I),              'default interface {0}'),
+    # BGP — removes stale neighbors/networks from previous topology state
+    (re.compile(r'^router\s+bgp\s+(\d+)$', re.I),              'no router bgp {0}'),
+    # OSPF
+    (re.compile(r'^router\s+ospf\s+\d+$', re.I),               'no router ospf 1'),
+    # MLAG
+    (re.compile(r'^mlag\s+configuration$', re.I),               'no mlag configuration'),
+]
+
+# Management interfaces must never be defaulted — would kill SSH connectivity
+_MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
+
+
+def _prepend_section_cleaners(config_text):
+    """Prepend section-level cleanup commands before each major EOS config section.
+
+    Ensures idempotent push: existing config in each section is wiped before
+    the new config is applied, preventing stale commands (old BGP neighbors,
+    old interface IPs, old OSPF areas) from surviving topology changes.
+
+    Rules:
+      - Physical/LAG/Loopback/Vxlan/Vlan interfaces → default interface <name>
+      - router bgp <ASN>   → no router bgp <ASN>
+      - router ospf 1      → no router ospf 1
+      - mlag configuration → no mlag configuration
+      - Management interfaces: never touched (SSH safety)
+      - Global/additive lines (hostname, ip routing, vrf, vlan, configure,
+        write memory): passed through unchanged — they are idempotent.
+      - Indented sub-commands (leading space): not matched — patterns require
+        the section header to be unindented (at configure-session root level).
+    """
+    out = []
+    for line in config_text.split('\n'):
+        s = line.strip()
+        if _MGMT_IFACE_RE.match(s):
+            out.append(line)
+            continue
+        for pattern, fmt in _SECTION_CLEANERS:
+            m = pattern.match(s)
+            if m:
+                grp = m.group(1) if m.lastindex else None
+                out.append(fmt.format(grp) if grp else fmt)
+                break
+        out.append(line)
+    return '\n'.join(out)
 
 
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
@@ -399,7 +458,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             at session root where show/commit/abort work. ('top' was tried but does not
             reliably navigate to session root — sessions accumulated as pending.)
           - 'terminal length 0' (SSH) suppresses --More-- pagination."""
-        lines = [l for l in config_text.strip().split('\n') if l.strip()]
+        cleaned = _prepend_section_cleaners(config_text)
+        lines = [l for l in cleaned.strip().split('\n') if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
