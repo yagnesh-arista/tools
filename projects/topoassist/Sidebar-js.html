@@ -8987,10 +8987,10 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
       if (st) st.innerText = `${label}: ${errMsg}`;
       return;
     }
-    // Empty diff = already in sync — skip modal and commit entirely
+    // Empty diff = already in sync — show modal briefly then auto-close
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      if (st) st.innerText = `${label}: already in sync — no push needed`;
+      _showPushConfirmModal(label, '', false, true);
       return;
     }
     // Store pending push details, show confirm modal (button stays disabled)
@@ -9002,21 +9002,27 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   }
 }
 
-function _showPushConfirmModal(deviceName, diff, readOnly = false) {
+function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync = false) {
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
   const modal    = document.getElementById('pushConfirmModal');
   const subtitle = document.getElementById('pushConfirmSubtitle');
   const body     = document.getElementById('pushConfirmBody');
   subtitle.textContent = deviceName;
-  // readOnly = verification result: hide Commit, rename Cancel→Close, update title
   const titleEl  = document.getElementById('pushConfirmTitle');
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
-  if (titleEl)   titleEl.textContent  = readOnly ? 'Verification Result' : 'Confirm Config Push';
-  if (commitBtn) commitBtn.style.display = readOnly ? 'none' : 'inline-block';
-  if (cancelHdr) cancelHdr.textContent = readOnly ? 'Close' : 'Cancel';
-  if (cancelFtr) cancelFtr.textContent = readOnly ? 'Close' : 'Cancel';
+  const noCommit = readOnly || alreadyInSync;
+  if (titleEl)    titleEl.textContent     = alreadyInSync ? 'Already in Sync' : (readOnly ? 'Verification Result' : 'Confirm Config Push');
+  if (commitBtn)  commitBtn.style.display = noCommit ? 'none' : 'inline-block';
+  if (cancelHdr)  cancelHdr.textContent   = noCommit ? 'Close' : 'Cancel';
+  if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
+  if (alreadyInSync) {
+    body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
+    modal.style.display = 'flex';
+    _pushAutoCloseTimeout = setTimeout(closePushConfirmModal, 2000);
+    return;
+  }
   const lines   = diff.split('\n');
   const changed = lines.filter(l => l.startsWith('+') || l.startsWith('-')).length;
   let html = '';
@@ -10698,10 +10704,10 @@ async function _pushConfigText(deviceName, config, label, btnId) {
       if (st) st.innerText = `${label}: ${errMsg}`;
       return;
     }
-    // Empty diff = already in sync — skip modal and commit entirely
+    // Empty diff = already in sync — show modal briefly then auto-close
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      if (st) st.innerText = `${label}: already in sync — no push needed`;
+      _showPushConfirmModal(label, '', false, true);
       return;
     }
     _pendingPush = { deviceName, ip, config, btnId, origText, label };
