@@ -669,8 +669,8 @@
     <ol style="font-size:13px;">
       <li>Select a device or link, then click <b>Push</b> on the strip. TopoAssist fetches the config (from cache if available, otherwise from the sheet) and runs a dry-run preview.</li>
       <li>A <b>diff modal</b> appears showing what will change. Review, then click <b>Commit</b>.</li>
-      <li>After commit, a Phase 3 verification dry-run confirms the device matches — <span style="color:#10b981;font-weight:600;">Push successful, no config diff</span> means fully in sync.</li>
-      <li>If nothing changed, the modal is skipped and the status bar shows <b>already in sync</b>.</li>
+      <li>The modal switches to a live phase tracker: <b>Phase 1: Dry-run ✓</b> → <b>Phase 2: Commit</b> (updates live, retries shown) → <b>Phase 3: Verify</b> (confirms device matches). Green = in sync, amber = residual diff shown inline, red = failed.</li>
+      <li>If nothing changed, an <b>Already in Sync</b> modal appears and auto-closes after 5 s.</li>
     </ol>
 
     <p style="font-size:13px;"><b>Push All</b> — from the Device Bridge modal:</p>

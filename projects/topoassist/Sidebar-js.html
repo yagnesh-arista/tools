@@ -9020,7 +9020,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   if (alreadyInSync) {
     body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
     modal.style.display = 'flex';
-    _pushAutoCloseTimeout = setTimeout(closePushConfirmModal, 2000);
+    _pushAutoCloseTimeout = setTimeout(closePushConfirmModal, 5000);
     return;
   }
   const lines   = diff.split('\n');
@@ -9074,7 +9074,33 @@ async function commitPushConfig() {
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
+
+  // Disable commit + both cancel buttons; switch body to phase tracker
   if (commitBtn) { commitBtn.disabled = true; commitBtn.textContent = 'Committing…'; }
+  if (cancelHdr) cancelHdr.style.display = 'none';
+  if (cancelFtr) cancelFtr.style.display = 'none';
+
+  const _ptRowHtml = (label, id, initColor, initText) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;` +
+    `margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">` +
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-main);">${label}</span>` +
+    `<span id="${id}" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${initColor};">${initText}</span></div>`;
+
+  if (bodyEl) bodyEl.innerHTML =
+    _ptRowHtml('Phase 1: Dry-run', 'pt1', '#10b981', '✓ diff ready') +
+    _ptRowHtml('Phase 2: Commit',  'pt2', '#94a3b8', 'committing…') +
+    _ptRowHtml('Phase 3: Verify',  'pt3', '#64748b', 'pending…') +
+    '<div id="pt_detail" style="margin-top:6px;"></div>';
+
+  const _ptSet = (id, color, text) => {
+    const el = document.getElementById(id);
+    if (el) { el.style.color = color; el.textContent = text; }
+  };
+  const _ptDetail = (html) => {
+    const el = document.getElementById('pt_detail');
+    if (el) el.innerHTML = html;
+  };
+
   try {
     // Phase 2: commit with retry (null result = server thread timeout → retry)
     let res = null;
@@ -9082,7 +9108,9 @@ async function commitPushConfig() {
     const PUSH_MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= 1 + PUSH_MAX_RETRIES; attempt++) {
       lastAttempt = attempt;
+      const attemptLabel = attempt === 1 ? 'committing…' : `retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
       if (commitBtn) commitBtn.textContent = attempt === 1 ? 'Committing…' : `Retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
+      _ptSet('pt2', '#94a3b8', attemptLabel);
       try {
         const resp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
           method:  'POST',
@@ -9095,7 +9123,7 @@ async function commitPushConfig() {
       } catch (e) { res = { ok: false, error: e.message }; break; }
       if (res !== null) break;
     }
-    const btn  = document.getElementById(btnId);
+    const btn = document.getElementById(btnId);
     if (!res) {
       // All retries timed out — run /devstatus reachability check (matches bulk push behavior)
       let reachable = false;
@@ -9109,21 +9137,20 @@ async function commitPushConfig() {
       const errMsg = reachable
         ? 'Push timed out — device reachable, verify config manually'
         : 'No response — device unreachable or push timed out';
+      _ptSet('pt2', '#f87171', '✗ timed out');
+      _ptSet('pt3', '#475569', '—');
+      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(errMsg)}</div>`);
       if (titleEl) titleEl.textContent = 'Push Timed Out';
-      if (bodyEl)  bodyEl.innerHTML = `<div style="color:#f87171;padding:8px 0;">${errMsg}</div>`;
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _setPushStatus(`<b>${label || deviceName}</b> — <span style="color:#f87171;font-weight:600;">${errMsg}</span>`);
     } else if (res.ok) {
-      // Phase 3: keep modal open, hide buttons, show verifying state
+      // Phase 2 success → start Phase 3
+      const retryNote = lastAttempt > 1 ? ` (${lastAttempt - 1} retr${lastAttempt === 2 ? 'y' : 'ies'})` : '';
+      _ptSet('pt2', '#10b981', `✓ committed${retryNote}`);
+      _ptSet('pt3', '#94a3b8', 'verifying…');
       if (commitBtn) commitBtn.style.display = 'none';
-      if (cancelHdr) cancelHdr.style.display = 'none';
-      if (cancelFtr) cancelFtr.style.display = 'none';
-      if (titleEl)   titleEl.textContent = 'Verifying…';
-      if (bodyEl)    bodyEl.innerHTML =
-        '<div style="color:var(--text-muted,#94a3b8);padding:8px 0;">Running Phase 3 verification…</div>';
-      const retryNote = lastAttempt > 1 ? ` (committed after ${lastAttempt - 1} retr${lastAttempt === 2 ? 'y' : 'ies'})` : '';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
       try {
         const vResp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
@@ -9138,9 +9165,8 @@ async function commitPushConfig() {
           const rem = (vRes.diff || '').split('\n')
             .filter(l => l.startsWith('+') || l.startsWith('-')).length;
           if (rem === 0) {
+            _ptSet('pt3', '#10b981', '✓ no diff remaining');
             if (titleEl) titleEl.textContent = 'Push Successful';
-            if (bodyEl)  bodyEl.innerHTML =
-              '<div style="color:#10b981;font-weight:600;padding:8px 0;">Push successful, no config diff</div>';
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
               `<span style="color:#10b981;font-weight:600;">Push successful, no config diff</span>`);
             if (btn) {
@@ -9150,12 +9176,12 @@ async function commitPushConfig() {
             _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 2500);
             setTimeout(() => { const st = document.getElementById('status'); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } }, 5000);
           } else {
-            // Render remaining diff inline
-            if (titleEl) titleEl.textContent = 'Partial Push Successful, check diff';
+            // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
-            const changed = dlines.filter(l => l.startsWith('+') || l.startsWith('-')).length;
-            let dhtml = `<div style="margin-bottom:8px;color:var(--text-muted,#94a3b8);font-size:11px;">${changed} line${changed !== 1 ? 's' : ''} still differ after push</div>`;
-            dhtml += `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#0f172a;border-radius:4px;padding:8px;overflow-x:auto;max-height:260px;white-space:pre;margin:0;">`;
+            _ptSet('pt3', '#f59e0b', `⚠ ${rem} line${rem !== 1 ? 's' : ''} still differ`);
+            if (titleEl) titleEl.textContent = 'Partial Push';
+            let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#0f172a;border-radius:4px;` +
+              `padding:8px;overflow-x:auto;max-height:220px;white-space:pre;margin:0;">`;
             dhtml += dlines.map(l => {
               const e = escapeHtml(l);
               if (l.startsWith('+')) return `<span style="color:#4ade80;">${e}</span>`;
@@ -9163,7 +9189,7 @@ async function commitPushConfig() {
               if (l.startsWith('@')) return `<span style="color:#94a3b8;">${e}</span>`;
               return `<span style="color:#cbd5e1;">${e}</span>`;
             }).join('\n') + '</pre>';
-            if (bodyEl) bodyEl.innerHTML = dhtml;
+            _ptDetail(dhtml);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
             _setPushStatus(`<b>${label || deviceName}</b> — ` +
               `<span style="color:#f59e0b;font-weight:600;">${rem} line${rem !== 1 ? 's' : ''} still differ after push</span>`);
@@ -9174,9 +9200,9 @@ async function commitPushConfig() {
           }
         } else {
           const vErrSafe = escapeHtml(vRes.error || 'something went wrong');
+          _ptSet('pt3', '#f87171', '✗ verify failed');
           if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
-          if (bodyEl)  bodyEl.innerHTML =
-            `<div style="color:#f87171;padding:8px 0;">Config was committed but the post-push verification check failed:<br>${vErrSafe}</div>`;
+          _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
           if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
           _setPushStatus(`<b>${label || deviceName}</b> — ` +
             `<span style="color:#f87171;font-weight:600;">verify failed: ${vErrSafe}</span>`);
@@ -9184,31 +9210,35 @@ async function commitPushConfig() {
         }
       } catch (verifyErr) {
         const vErrSafe = escapeHtml(verifyErr.message);
+        _ptSet('pt3', '#f87171', '✗ verify error');
         if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
-        if (bodyEl)  bodyEl.innerHTML =
-          `<div style="color:#f87171;padding:8px 0;">Config was committed but the post-push verification check failed:<br>${vErrSafe}</div>`;
+        _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
         if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
         _setPushStatus(`<b>${label || deviceName}</b> — ` +
           `<span style="color:#f87171;font-weight:600;">verify error: ${vErrSafe}</span>`);
         if (btn) { btn.disabled = false; btn.textContent = origText; }
       }
     } else {
-      // Phase 2 explicit device error — stay in modal, show inline
+      // Phase 2 explicit device error
       const errSafe = escapeHtml(res.error || 'something went wrong');
+      _ptSet('pt2', '#f87171', '✗ push failed');
+      _ptSet('pt3', '#475569', '—');
+      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}</div>`);
       if (titleEl) titleEl.textContent = 'Push Failed';
-      if (bodyEl)  bodyEl.innerHTML = `<div style="color:#f87171;padding:8px 0;">${errSafe}</div>`;
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _setPushStatus(`<b>${label || deviceName}</b> — <span style="color:#f87171;font-weight:600;">push failed: ${errSafe}</span>`);
     }
   } catch (err) {
-    // Network/bridge error — stay in modal, show inline
+    // Network/bridge error
     const errSafe = escapeHtml(err.message);
+    _ptSet('pt2', '#f87171', '✗ network error');
+    _ptSet('pt3', '#475569', '—');
+    _ptDetail(
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}<br>` +
+      `<span style="opacity:0.7;">Is device_bridge.py running?</span></div>`);
     if (titleEl) titleEl.textContent = 'Push Error';
-    if (bodyEl)  bodyEl.innerHTML =
-      `<div style="color:#f87171;padding:8px 0;">${errSafe}<br>` +
-      `<span style="opacity:0.7;font-size:11px;">Is device_bridge.py running?</span></div>`;
     if (commitBtn) commitBtn.style.display = 'none';
     if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
     const btn = document.getElementById(btnId);
