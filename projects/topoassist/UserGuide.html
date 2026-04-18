@@ -536,20 +536,61 @@
     </ul>
 
     <h3>7. Snake Test (L2 / L3)</h3>
-    <p style="font-size:13px;">A snake test chains switch ports using external loopback cables to measure throughput end-to-end. TopoAssist supports both L2 and L3 snake configurations on the same device.</p>
-    <p style="font-size:13px;"><b>Sheet setup:</b> Each snake pair occupies one row. Set the primary port in the <code>int_</code> column and the secondary (other end of the loopback cable) in the <code>snake_int_</code> column. All other columns (sp_mode, vlan, ip_type, etc.) apply to both ports from the same row.</p>
+    <p style="font-size:13px;">A snake test chains switch ports with external loopback cables to measure forwarding throughput end-to-end. IXIA (or similar traffic generator) injects traffic on the first primary port; each loopback cable carries traffic to the next pair until it exits at the last secondary port (IXIA_OUT).</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Supported Modes</h4>
+    <table class="legend-table" style="font-size:12px;">
+      <tr><th>Mode</th><th>sp_mode</th><th>ip_type</th><th>What is generated</th></tr>
+      <tr><td><b>L2 trunk</b></td><td><code>l2-et-trunk</code></td><td>(none)</td><td>switchport trunk + allowed vlan on both ports. No routing, no VRF.</td></tr>
+      <tr><td><b>L3 routed</b></td><td><code>l3-et-int</code></td><td><code>p2p</code></td><td>no switchport + per-port VRF (SNAKE_EtX) + .1/24 IP + ARP + egress-vrf route chain.</td></tr>
+      <tr><td><b>L3 sub-int</b></td><td><code>l3-et-sub-int</code></td><td><code>p2p</code></td><td>no switchport on parent + EtX.VLAN sub-interface per port in its own VRF + same ARP/route chain.</td></tr>
+    </table>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Physical Setup (Manual)</h4>
     <ul style="font-size:13px;">
-      <li><b>L2 snake</b> (<code>sp_mode = l2-et-trunk</code>) — both ports become trunk ports with the configured allowed VLANs. An SVI is only generated on the primary port to avoid duplicates.</li>
-      <li><b>L3 snake</b> (<code>sp_mode = l3-et-int</code>, <code>ip_type = p2p</code>) — each port is placed in its own VRF (<code>SNAKE_Et2</code>, <code>SNAKE_Et3</code>, …) with IP <code>{base}.oct2.oct3.1/24</code>. OSPF and BGP are suppressed on snake ports.</li>
+      <li>Cable each snake <b>primary → secondary</b> pair with a direct loopback patch cable (e.g., Et2 ↔ Et3, Et4 ↔ Et5).</li>
+      <li>Connect IXIA port 1 to the first primary port (IXIA_IN) and IXIA port 2 to the last secondary port (IXIA_OUT).</li>
+      <li>Each snake row needs a <b>unique VLAN</b> — the VLAN determines the L3 subnet (<code>{base}.vlan÷100.vlan%100.0/24</code>). The audit engine enforces uniqueness.</li>
     </ul>
-    <p style="font-size:13px;"><b>L3 VRF chain routing</b> (auto-generated in the <code>080_SNAKE</code> config block):</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Sheet Setup</h4>
+    <p style="font-size:13px;">Each snake pair occupies one row. Use the Edit modal with the same device on both sides (devA = devB) — TopoAssist detects this and writes to both <code>int_</code> and <code>snake_int_</code> columns automatically. You can also fill the sheet directly:</p>
     <ul style="font-size:13px;">
-      <li>Static ARP: <code>arp vrf SNAKE_Et2 {subnet}.2 {bridge-mac} arpa</code> — maps the cable's remote IP to the switch's bridge MAC so no real ARP is needed across the loopback cable.</li>
-      <li>Primary route: <code>ip route vrf SNAKE_Et2 10.99.99.98/32 {subnet}.2</code> — traffic exits the primary port and arrives at the secondary via the loopback cable.</li>
-      <li>Secondary route (non-last): <code>ip route vrf SNAKE_Et3 10.99.99.98/32 egress-vrf SNAKE_Et4 {next-subnet}.2</code> — chains traffic to the next pair's VRF.</li>
-      <li>Last secondary: no route — traffic terminates at the IXIA_OUT port.</li>
+      <li><code>int_Leaf1</code> = primary port (e.g., <code>Et2</code>)</li>
+      <li><code>snake_int_Leaf1</code> = secondary port (e.g., <code>Et3</code>)</li>
+      <li><code>sp_mode_Leaf1</code>, <code>vlan_Leaf1</code>, <code>ip_type_Leaf1</code> — set once, applied to both ports</li>
     </ul>
-    <p style="font-size:13px;"><b>Bridge MAC:</b> Required for L3 snake. Set it in <span class="menu-path">Auto Config</span> → <b>Snake Test → Bridge MAC</b>. Use the switch's system bridge MAC (visible in EOS with <code>show mac address-table</code> or <code>show interfaces management</code>). Without it, the <code>080_SNAKE</code> block emits a placeholder comment instead of ARP/route entries.</p>
+    <p style="font-size:13px;">Snake links appear as <b>orange arcs</b> looping off the right side of the device node on the canvas.</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">L3 VRF Chain — What Gets Generated</h4>
+    <p style="font-size:13px;">For each L3 snake pair, TopoAssist auto-generates across four config sections:</p>
+    <ul style="font-size:13px;">
+      <li><b>001_SYSTEM</b> — <code>vrf instance SNAKE_Et2</code> + <code>ip routing vrf SNAKE_Et2</code> (one per port, no IPv6 unicast-routing).</li>
+      <li><b>050_Et2</b> — <code>vrf SNAKE_Et2 / ip address {base}.oct2.oct3.1/24 / no shutdown</code>. Same for the secondary in 050_Et3.</li>
+      <li><b>080_SNAKE</b> — static ARP entries + ip route chain (see below). Only generated when bridge MAC is set.</li>
+    </ul>
+    <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px; font-size:11px; white-space:pre-wrap;">! Pair 1: Et2 &lt;-&gt; Et3 (VLAN 200, subnet 200.2.0.0/24)
+arp vrf SNAKE_Et2 200.2.0.2 001c.7300.abcd arpa
+arp vrf SNAKE_Et3 200.2.0.2 001c.7300.abcd arpa
+ip route vrf SNAKE_Et2 10.99.99.98/32 200.2.0.2
+ip route vrf SNAKE_Et3 10.99.99.98/32 egress-vrf SNAKE_Et4 200.4.0.2
+
+! Pair 2: Et4 &lt;-&gt; Et5 (VLAN 400, subnet 200.4.0.0/24)
+arp vrf SNAKE_Et4 200.4.0.2 001c.7300.abcd arpa
+arp vrf SNAKE_Et5 200.4.0.2 001c.7300.abcd arpa
+ip route vrf SNAKE_Et4 10.99.99.98/32 200.4.0.2
+! SNAKE_Et5: last secondary (IXIA_OUT) - traffic terminates here</p>
+    <p style="font-size:13px;"><b>How it works:</b> Traffic from IXIA hits Et2 → SNAKE_Et2 routes it to 200.2.0.2 (static ARP → bridge MAC) → frame exits Et2 with DMAC=bridge-mac → loopback cable delivers it to Et3 → switch accepts (own MAC) → SNAKE_Et3 routes via egress-vrf SNAKE_Et4 → traffic exits Et4 → next loopback cable → Et5 (no route, exits to IXIA_OUT).</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Manual Config Required</h4>
+    <ol style="font-size:13px;">
+      <li><b>Bridge MAC</b> — the only switch-specific input TopoAssist needs. Find it on EOS:<br>
+        <code style="font-size:11px;">show version | grep "System MAC"</code><br>
+        Then set it in <span class="menu-path">Auto Config</span> → <b>Snake Test → Bridge MAC</b> (format: <code>001c.7300.abcd</code>). Without this, the <code>080_SNAKE</code> block emits a warning comment and no ARP/routes are generated.</li>
+      <li><b>Loopback cables</b> — physical patch cables between each primary/secondary pair.</li>
+      <li><b>IXIA traffic stream</b> — configure IXIA to send traffic to destination <code>10.99.99.98/32</code>. Ingress port = IXIA_IN (connected to first primary); egress port = IXIA_OUT (connected to last secondary).</li>
+    </ol>
+    <p style="font-size:13px;">Everything else — VRF declarations, interface config, ARP entries, and routing chain — is generated automatically from the sheet data.</p>
 
     <!-- ================================================================ -->
     <h2>Audit Engine</h2>
