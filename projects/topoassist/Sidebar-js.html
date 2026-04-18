@@ -1205,13 +1205,14 @@ function checkSchemaChanges() {
 function updateSaveButtonVisuals() {
   const btn = document.getElementById("btnSaveSchema");
   if (!btn) return;
-
+  if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
+  const label = btn.dataset.cleanLabel;
   if (isSchemaDirty) {
-    btn.style.background = "#f59e0b"; // Orange
-    btn.innerText = "Save & Sync *";
+    btn.style.background = "#f59e0b";
+    btn.innerText = label + " *";
   } else {
-    btn.style.background = "#10b981"; // Green
-    btn.innerText = "Save & Sync";
+    btn.style.background = "#10b981";
+    btn.innerText = label;
   }
 }
 
@@ -1408,15 +1409,14 @@ onchange="updateSchemaOption('${item.key}', this.value, this)">${valStr}</textar
 function updateDeviceSaveButton() {
   const btn = document.getElementById("btnSaveOrder");
   if (!btn) return;
-
+  if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
+  const label = btn.dataset.cleanLabel;
   if (isDeviceListDirty) {
-    // DIRTY: Yellow
     btn.style.background = "#f59e0b";
-    btn.innerText = "Save Changes *";
+    btn.innerText = label + " *";
   } else {
-    // CLEAN: Green (or Blue if you prefer, but Green indicates "Saved")
     btn.style.background = "#10b981";
-    btn.innerText = "Save Changes";
+    btn.innerText = label;
   }
 }
 
@@ -3870,18 +3870,19 @@ function closeAuditModal() {
 /**
 * Updates a button's visual state based on whether data is "Dirty" (Changed).
 */
-function updateDirtyButton(btnSelector, isDirty, defaultText) {
+// Reads the button's own text on first call (strips any trailing " *") so the
+// label never needs to be hardcoded at each call site — rename the HTML and it follows.
+function updateDirtyButton(btnSelector, isDirty) {
   const btn = document.querySelector(btnSelector);
   if (!btn) return;
-
+  if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
+  const label = btn.dataset.cleanLabel;
   if (isDirty) {
-    // DIRTY STATE (Orange)
-    btn.innerText = defaultText + " *";
-    btn.style.background = "#f59e0b"; // Warning Orange
+    btn.innerText = label + " *";
+    btn.style.background = "#f59e0b";
   } else {
-    // CLEAN STATE (Green)
-    btn.innerText = defaultText;
-    btn.style.background = "#10b981"; // Success Green
+    btn.innerText = label;
+    btn.style.background = "#10b981";
   }
 }
 
@@ -3897,7 +3898,7 @@ function getCurrentIpState() {
 function checkIpDirty() {
   const currentState = getCurrentIpState();
   const isDirty = (currentState !== initialIpState);
-  updateDirtyButton("#ipConfigModal .btn-success-mono", isDirty, "Save & Apply");
+  updateDirtyButton("#ipConfigModal .btn-success-mono", isDirty);
 }
 
 // --- UPDATED OPEN FUNCTION ---
@@ -4059,7 +4060,7 @@ function checkTechDirty() {
   }
   if (saveBtn) saveBtn.disabled = errors.length > 0;
 
-  updateDirtyButton("#techModal .btn-success-mono", isDirty && errors.length === 0, "Save & Close");
+  updateDirtyButton("#techModal .btn-success-mono", isDirty && errors.length === 0);
 }
 
 /* --- TECH COMPAT: protocol checkboxes valid per P2P interface mode --- */
@@ -4223,10 +4224,11 @@ function openGlobalCfgModal() {
   const textarea = document.getElementById('globalCfgTextarea');
   const status   = document.getElementById('globalCfgStatus');
   const btn      = document.getElementById('btnSaveGlobalCfg');
+  if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.textContent.trim();
   textarea.value = 'Loading...';
   textarea.disabled = true;
   btn.disabled = true;
-  btn.textContent = 'Save & Apply';
+  btn.textContent = btn.dataset.cleanLabel;
   status.textContent = '';
   document.getElementById('globalCfgModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
@@ -4296,7 +4298,7 @@ function saveGlobalCfgFromSidebar() {
     })
     .withFailureHandler(function(err) {
       btn.disabled = false;
-      btn.textContent = 'Save & Apply';
+      btn.textContent = btn.dataset.cleanLabel || 'Save & Apply';
       status.style.color = 'var(--error-text,#ef4444)';
       status.textContent = 'Save failed: ' + err.message;
     })

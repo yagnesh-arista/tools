@@ -13,9 +13,12 @@ Every project must have both:
 
 ## 2. JetBrains Mono on All UI Elements
 Every UI element (buttons, inputs, labels, badges, dropdowns, modals, tooltips, status bars) must explicitly set `font-family: 'JetBrains Mono', monospace`. Do NOT rely on inheritance — it does not work in Google Apps Script dialogs or some browser contexts.
+Font scale: **10px** category markers / **11px** secondary text (hints, captions) / **12px** primary controls (inputs, buttons, radio labels). Never below 10px; no arbitrary sizes outside this scale.
 
 ## 3. UI/UX Symmetry
 Spacing, alignment, sizing, padding, and interactions must be consistent and balanced across all elements. If you add a button row, all buttons must share the same height, font size, and padding. If a modal has 16px padding on the left, it must have 16px on the right.
+- **No text overflow**: text must never bleed outside its container — wrap or truncate (ellipsis / word-break) within the bounding box.
+- **Uniform box sizing**: all sibling boxes/panels in a modal share the same width and height unless a specific design reason justifies deviation.
 
 ## 4. No Modal or HTML Object Out of Canvas
 Every modal, tooltip, dropdown, overlay, and floating panel must stay fully within viewport/canvas bounds at all times — including after window resize and drag. Clamp positions to viewport edges. Never let content overflow off-screen.
@@ -30,7 +33,10 @@ Apply `user-select: none; -webkit-user-select: none` broadly to all non-editable
 - For clipboard copy, always use `navigator.clipboard.writeText()` with an `execCommand` fallback (set `user-select: text` inline on a temporary textarea).
 - If a modal displays read-only content the user might want to copy (diff output, config text), leave that specific element selectable.
 
-## 7. All Icons Must Be SVG (Never Unicode)
+## 7. Modal Default Background
+All modals must use a white background (`#ffffff`) by default. Dark mode overrides via a `--bg-modal` CSS variable or dark-mode theme selector — never hardcode dark on a modal outside a dark-mode rule. In CSS-variable projects: define `--bg-modal: #ffffff` as the base; override with the dark card color under the dark-mode selector only.
+
+## 7a. All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon. Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text baselines, and render inconsistently across platforms.
 
 ## 8. New Project Structure (required for every new project)
