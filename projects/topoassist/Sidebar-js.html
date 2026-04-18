@@ -3901,6 +3901,18 @@ function checkIpDirty() {
   updateDirtyButton("#ipConfigModal .btn-success-mono", isDirty);
 }
 
+function checkSnakeIxiaWarning() {
+  const warn = document.getElementById("snakeIxiaWarning");
+  if (!warn) return;
+  const hasSnake = globalLinks.some(l => l.type === 'snake');
+  if (!hasSnake) { warn.style.display = 'none'; return; }
+  const allFilled = ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet'].every(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim() !== '';
+  });
+  warn.style.display = allFilled ? 'none' : 'block';
+}
+
 // --- UPDATED OPEN FUNCTION ---
 function openIpConfigModal(btn) {
   showModalLoading("ipConfigModal");
@@ -3926,6 +3938,9 @@ function openIpConfigModal(btn) {
     if (!prefs.bridge_mac && _detectedBridgeMac) {
       document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
     }
+    document.getElementById("ip_ixia_mac").value = prefs.ixia_mac || "";
+    document.getElementById("ip_ixia_nh").value = prefs.ixia_nh || "";
+    document.getElementById("ip_ixia_subnet").value = prefs.ixia_subnet || "";
 
     // 2. Capture Snapshot
     initialIpState = getCurrentIpState();
@@ -3933,9 +3948,15 @@ function openIpConfigModal(btn) {
     // 3. Bind Listeners to ALL inputs
     const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
     inputs.forEach(el => el.oninput = checkIpDirty);
+    // IXIA fields also trigger snake warning re-check
+    ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.oninput = () => { checkIpDirty(); checkSnakeIxiaWarning(); };
+    });
 
     // 4. Reset Button Visuals
     checkIpDirty();
+    checkSnakeIxiaWarning();
 
     hideGlobalLoading();
     document.getElementById("editOverlay").style.display = "block";
@@ -3977,7 +3998,10 @@ function saveIpConfig() {
     gw_v6_mask: document.getElementById("ip_gw_v6_mask").value || '/64',
     vni_base: document.getElementById("ip_vni_base").value || '10000',
     bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000',
-    bridge_mac: (document.getElementById("ip_bridge_mac").value || '').trim()
+    bridge_mac: (document.getElementById("ip_bridge_mac").value || '').trim(),
+    ixia_mac: (document.getElementById("ip_ixia_mac").value || '').trim(),
+    ixia_nh: (document.getElementById("ip_ixia_nh").value || '').trim(),
+    ixia_subnet: (document.getElementById("ip_ixia_subnet").value || '').trim()
   };
 
   showGlobalLoading("Saving & Applying IPs...");
@@ -10444,6 +10468,10 @@ function resetIpConfig() {
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
   document.getElementById("ip_bridge_mac").value = "";
+  document.getElementById("ip_ixia_mac").value = "";
+  document.getElementById("ip_ixia_nh").value = "";
+  document.getElementById("ip_ixia_subnet").value = "";
+  checkSnakeIxiaWarning();
 }
 
 // --- HELPER: BUTTON FEEDBACK ---

@@ -2430,7 +2430,10 @@ function getIpPreferences() {
     gw_v6_first: '100', gw_v6_last: '1', gw_v6_mask: '/64',
     vni_base: '10000',
     bgp_asn_base: '65000',
-    bridge_mac: ''
+    bridge_mac: '',
+    ixia_mac: '',
+    ixia_nh: '',
+    ixia_subnet: ''
   };
 
   const prefs = {};
@@ -3776,10 +3779,12 @@ function getDeviceConfig(deviceName) {
       });
     }
     if (snakePairsForStatic.length > 0) {
-      const bridgeMac = ipPrefs.bridge_mac || '';
+      const missing = [];
+      if (!ipPrefs.bridge_mac) missing.push('Bridge MAC');
+      if (!ipPrefs.ixia_mac || !ipPrefs.ixia_nh || !ipPrefs.ixia_subnet) missing.push('IXIA config');
       configMap["080_SNAKE"] = {
-        full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs, bridgeMac),
-        blockStatus: bridgeMac ? "Snake VRF Chain" : "Snake VRF Chain (Bridge MAC missing)"
+        full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs),
+        blockStatus: missing.length ? `Snake VRF Chain (${missing.join(', ')} missing)` : "Snake VRF Chain"
       };
     }
 
@@ -4405,10 +4410,13 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
  * @param {Object} ipPrefs — from getIpPreferences()
  * @param {string} bridgeMac — switch bridge MAC (e.g. "001c.7300.abcd")
  */
-function generateSnakeStaticConfig(snakePairs, ipPrefs, bridgeMac) {
+function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   if (!snakePairs || snakePairs.length === 0) return "";
   const base = ipPrefs.p2p_v4_first || '200';
-  const dest = '10.99.99.98/32'; // Standard snake test destination address
+  const bridgeMac = ipPrefs.bridge_mac || '';
+  const ixiaMac = ipPrefs.ixia_mac || '';
+  const ixiaNh  = ipPrefs.ixia_nh  || '';
+  const dest = ipPrefs.ixia_subnet ? `${ipPrefs.ixia_subnet}.98/32` : '10.99.99.98/32';
 
   if (!bridgeMac) {
     return [
@@ -4430,9 +4438,9 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs, bridgeMac) {
     lines.push(`! Pair ${idx + 1}: ${primaryPort} <-> ${secondaryPort} (VLAN ${vlan}, subnet ${subnet}.0/24)`);
     lines.push(`arp vrf SNAKE_${primaryPort} ${remoteIp} ${bridgeMac} arpa`);
     lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
-    // Primary exits via own subnet .2 (resolved to bridge-mac → loopback cable)
+    // Primary: exits via loopback cable (bridge-mac ARP trick)
     lines.push(`ip route vrf SNAKE_${primaryPort} ${dest} ${remoteIp}`);
-    // Secondary: chain to next pair via egress-vrf, or terminate if last
+    // Secondary: chain to next pair, or terminate via IXIA_OUT if last
     const isLastPair = (idx === snakePairs.length - 1);
     if (!isLastPair) {
       const nextPair = snakePairs[idx + 1];
@@ -4440,8 +4448,12 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs, bridgeMac) {
       const nextOct3 = nextPair.vlan % 100;
       const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
       lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} egress-vrf SNAKE_${nextPair.primaryPort} ${nextRemote}`);
+    } else if (ixiaMac && ixiaNh) {
+      // Last secondary: IXIA_OUT port is in this VRF; route to IXIA via static ARP
+      lines.push(`arp vrf SNAKE_${secondaryPort} ${ixiaNh} ${ixiaMac} arpa`);
+      lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} ${ixiaNh}`);
     } else {
-      lines.push(`! SNAKE_${secondaryPort}: last secondary (IXIA_OUT) - traffic terminates here`);
+      lines.push(`! SNAKE_${secondaryPort}: last secondary (IXIA_OUT) - IXIA MAC/NH not configured`);
     }
   });
   lines.push(`!`);

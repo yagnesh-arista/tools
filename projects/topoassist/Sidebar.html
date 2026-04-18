@@ -505,9 +505,27 @@
       </div>
 
       <div class="section-header">Snake Test</div>
+      <div id="snakeIxiaWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
+        Snake pairs detected — IXIA MAC, NH, and Subnet required for complete config generation.
+      </div>
       <div class="ip-row"><span class="ip-label">Bridge MAC</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Switch Bridge MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">IXIA MAC</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>IXIA Device MAC</label><input type="text" id="ip_ixia_mac" placeholder="0000.0000.0000"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">IXIA NH</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>IXIA Next-Hop IP</label><input type="text" id="ip_ixia_nh" placeholder="10.99.99.2"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">IXIA Subnet</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>IXIA Subnet Prefix</label><input type="text" id="ip_ixia_subnet" placeholder="10.99.99"></div>
         </div>
       </div>
 
