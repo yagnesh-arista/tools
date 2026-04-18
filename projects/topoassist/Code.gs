@@ -4132,16 +4132,17 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
       if (d.isSnakePrimary || d.isSnakeSecondary) {
-        // Snake self-loop: last octet = Ethernet port number, /32 host address (no subnet → no overlap in same VRF)
-        const etNum = parseInt(((/(\d+)/.exec(portName)) || [, 1])[1]) || 1;
+        // Snake self-loop: unique VLAN (enforced by audit) gives unique oct2.oct3;
+        // primary = sheetIndex, secondary = sheetIndex+1; /32 avoids same-VRF subnet conflict
+        const lastOctet = d.isSnakeSecondary ? sheetIndex + 1 : sheetIndex;
         if (p2pHasIpv4) {
-          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${etNum}/32`);
+          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${lastOctet}/32`);
         }
         if (p2pUseIpv6Unnum) {
           lines.push(` ipv6 enable`);
           lines.push(` ipv6 unnumbered Loopback0`);
         } else if (p2pUseIpv6Explicit) {
-          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${etNum}/128`);
+          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${lastOctet}/128`);
         }
       } else {
         // Regular P2P: last octet = device sheetIndex, configured mask
