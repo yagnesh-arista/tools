@@ -4131,16 +4131,29 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
-      // Snake loops: primary uses .1, secondary uses .2 (both on same device, same sheetIndex)
-      const lastOctet = d.isSnakeSecondary ? 2 : sheetIndex;
-      if (p2pHasIpv4) {
-        lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${lastOctet}${cfg.p2p_v4_mask}`);
-      }
-      if (p2pUseIpv6Unnum) {
-        lines.push(` ipv6 enable`);
-        lines.push(` ipv6 unnumbered Loopback0`);
-      } else if (p2pUseIpv6Explicit) {
-        lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${lastOctet}${cfg.p2p_v6_mask}`);
+      if (d.isSnakePrimary || d.isSnakeSecondary) {
+        // Snake self-loop: last octet = Ethernet port number, /32 host address (no subnet → no overlap in same VRF)
+        const etNum = parseInt(((/(\d+)/.exec(portName)) || [, 1])[1]) || 1;
+        if (p2pHasIpv4) {
+          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${etNum}/32`);
+        }
+        if (p2pUseIpv6Unnum) {
+          lines.push(` ipv6 enable`);
+          lines.push(` ipv6 unnumbered Loopback0`);
+        } else if (p2pUseIpv6Explicit) {
+          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${etNum}/128`);
+        }
+      } else {
+        // Regular P2P: last octet = device sheetIndex, configured mask
+        if (p2pHasIpv4) {
+          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
+        }
+        if (p2pUseIpv6Unnum) {
+          lines.push(` ipv6 enable`);
+          lines.push(` ipv6 unnumbered Loopback0`);
+        } else if (p2pUseIpv6Explicit) {
+          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
+        }
       }
     }
     // B. GATEWAY (SVI/Sub-Int/L3-routed) — GW uses explicit IPs for VARP; IPv6 unnum does not apply
