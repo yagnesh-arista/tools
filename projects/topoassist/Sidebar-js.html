@@ -3922,6 +3922,10 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_vni_base").value = prefs.vni_base || "10000";
     document.getElementById("ip_bgp_asn_base").value = prefs.bgp_asn_base || "65000";
     document.getElementById("ip_bridge_mac").value = prefs.bridge_mac || "";
+    // Auto-fill from device bridge if field is still empty and a unique MAC was detected
+    if (!prefs.bridge_mac && _detectedBridgeMac) {
+      document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
+    }
 
     // 2. Capture Snapshot
     initialIpState = getCurrentIpState();
@@ -8068,7 +8072,8 @@ function toggleMinimize() {
 const LLDP_BRIDGE_URL = 'http://localhost:8765';
 let lldpPortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let lldpAuditFlagMissing = localStorage.getItem('lldpAuditFlagMissing') === 'true';
-let devStatusMap = {};    // devId → {ok, version, platform, interfaces: {FullName: {linkStatus}}}
+let devStatusMap = {};    // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}}
+let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _pushLeftDev   = null; // device name for the left split-btn push action
 let _pushRightDev  = null; // device name for the right split-btn push action
 let _pushLeftPort  = null; // interface name for left push (link selection → single-interface push)
@@ -8106,7 +8111,7 @@ Transport options (set METHOD below):
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"2.7","port":8765}
+  GET  /health      -> {"status":"ok","version":"2.10","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
@@ -8115,7 +8120,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.9"
+VERSION = "2.10"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -8481,6 +8486,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return {
                 "ok": True, "hostname": ver.get("hostname", ""), "version": raw_ver,
                 "platform": ver.get("modelName", "").lstrip("DCS-"),
+                "bridgeMac": ver.get("systemMacAddress", ""),
                 "interfaces": {k: {"linkStatus": v.get("linkStatus", "")} for k, v in ifs.get("interfaceStatuses", {}).items()},
             }
         if METHOD == "rest":
@@ -8751,6 +8757,7 @@ function _autoRunLldp() {
     if (devResult.status === 'fulfilled') {
       console.log('🔍 Auto-LLDP: device status received');
       devStatusMap = devResult.value;
+      _autoDetectBridgeMac(devStatusMap);
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
     } else {
@@ -8816,6 +8823,18 @@ function _getLldpMgmtIps() {
     }
   });
   return ips;
+}
+
+// Auto-detect bridge MAC from devstatus results.
+// If exactly one unique non-empty MAC is seen across all queried devices, cache it in
+// _detectedBridgeMac so the Auto Config modal can pre-fill the Bridge MAC field.
+function _autoDetectBridgeMac(dsData) {
+  if (!dsData) return;
+  const macs = new Set();
+  Object.values(dsData).forEach(r => {
+    if (r && r.ok && r.bridgeMac) macs.add(r.bridgeMac);
+  });
+  _detectedBridgeMac = macs.size === 1 ? Array.from(macs)[0] : null;
 }
 
 function _populateLldpDevTable() {
@@ -9023,6 +9042,7 @@ function runLldpCheck() {
 
       if (dsData) {
         devStatusMap = dsData;
+        _autoDetectBridgeMac(devStatusMap);
         _applyHostnameIndicators(devices);
         applyDevStatusToCards();
       }
