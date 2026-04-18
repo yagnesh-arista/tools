@@ -4562,7 +4562,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
 /**
  * Generates OSPF underlay configuration (area 0, single-area leaf-spine).
  * Per-interface OSPF commands (point-to-point, area, bfd) are added by
- * generateComplexL3Block() when underlayProtocol === 'ospf'.
+ * generateComplexL3Block() when underlayProtocol.includes('ospf').
  */
 function generateOSPF(deviceSheetIndex, bgpNeighbors) {
   const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
