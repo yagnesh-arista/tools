@@ -387,6 +387,172 @@ function test_buildCableGroupsForTest() {
 }
 
 
+// ── generateSnakeStaticConfig ──────────────────────────────────────────────────
+//
+// Tests the pure config-generation function for the L3 snake VRF chain.
+// No GAS API dependencies — runs entirely server-side.
+//
+// Conventions used by the function:
+//   subnet   = {p2p_v4_first}.{Math.floor(vlan/100)}.{vlan%100}  (VLAN 200 → 200.2.0.x)
+//   remoteIp = subnet.2   (far-end ARP target, mapped to bridge MAC via static ARP)
+//   dest     = ixia_subnet ? "${ixia_subnet}.98/32" : "10.99.99.98/32"
+//   last secondary: if ixia_mac + ixia_nh → ARP + route; else → placeholder comment
+
+function test_generateSnakeStaticConfig() {
+  const t = assert_;
+  const results = [];
+
+  const MAC  = '001c.7300.abcd';
+  const IMAC = '0000.aaaa.bbbb';
+  const INH  = '200.15.0.2';    // traffic port P2P IP on the TRAFFIC_OUT cable
+  const ISUB = '10.99.99';      // ixia_subnet prefix → dest = 10.99.99.98/32
+  const BASE = '200';
+
+  // Helper: base prefs (bridge MAC set, no IXIA)
+  const prefsBase = (extra) => Object.assign(
+    { p2p_v4_first: BASE, bridge_mac: MAC, ixia_mac: '', ixia_nh: '', ixia_subnet: '' },
+    extra || {}
+  );
+  // Full prefs (all IXIA fields set)
+  const prefsFull = () => prefsBase({ ixia_mac: IMAC, ixia_nh: INH, ixia_subnet: ISUB });
+
+  // ── T1/T2: empty / null pairs → empty string ──────────────────────────────
+  results.push(t("empty pairs → empty string",
+    generateSnakeStaticConfig([], prefsBase()),   ""));
+  results.push(t("null pairs → empty string",
+    generateSnakeStaticConfig(null, prefsBase()), ""));
+
+  // ── T3: bridge MAC missing → comment block only ───────────────────────────
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
+    const out = generateSnakeStaticConfig(pairs, prefsBase({ bridge_mac: '' }));
+    results.push(t("no bridge_mac — first comment line",
+      out.split('\n')[0], '! Snake VRF Chain: Bridge MAC not configured'));
+    results.push(t("no bridge_mac — second comment line",
+      out.split('\n')[1], '! Set Bridge MAC in Auto Config settings to generate ARP + routing entries'));
+    results.push(t("no bridge_mac — no ARP lines emitted",
+      out.includes('arp vrf'), false));
+  })();
+
+  // ── T4: single pair, bridge MAC only, no IXIA ─────────────────────────────
+  // VLAN 200 → oct2=2, oct3=0 → subnet 200.2.0.x, remoteIp=200.2.0.2
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
+    const out = generateSnakeStaticConfig(pairs, prefsBase());
+    const lines = out.split('\n');
+    results.push(t("single pair — header line",
+      lines[0], '! Snake VRF Chain - Static ARP + Routing'));
+    results.push(t("single pair — pair comment",
+      lines[2], '! Pair 1: Et2 <-> Et3 (VLAN 200, subnet 200.2.0.0/24)'));
+    results.push(t("single pair — primary ARP",
+      lines[3], 'arp vrf SNAKE_Et2 200.2.0.2 001c.7300.abcd arpa'));
+    results.push(t("single pair — secondary ARP (same bridge MAC, same remoteIp)",
+      lines[4], 'arp vrf SNAKE_Et3 200.2.0.2 001c.7300.abcd arpa'));
+    results.push(t("single pair — primary route (default dest 10.99.99.98/32)",
+      lines[5], 'ip route vrf SNAKE_Et2 10.99.99.98/32 200.2.0.2'));
+    results.push(t("single pair — last secondary placeholder comment",
+      lines[6], '! SNAKE_Et3: last secondary (TRAFFIC_OUT) - Traffic MAC/NH not configured'));
+    results.push(t("single pair — trailing separator",
+      lines[lines.length - 1], '!'));
+  })();
+
+  // ── T5: VLAN 1500 subnet formula ──────────────────────────────────────────
+  // floor(1500/100)=15, 1500%100=0 → subnet 200.15.0.x, remoteIp=200.15.0.2
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 1500 }];
+    const out = generateSnakeStaticConfig(pairs, prefsBase());
+    results.push(t("VLAN 1500 — subnet comment 200.15.0.0/24",
+      out.includes('subnet 200.15.0.0/24'), true));
+    results.push(t("VLAN 1500 — ARP target 200.15.0.2",
+      out.includes('arp vrf SNAKE_Et2 200.15.0.2'), true));
+    results.push(t("VLAN 1500 — route to 200.15.0.2",
+      out.includes('ip route vrf SNAKE_Et2 10.99.99.98/32 200.15.0.2'), true));
+  })();
+
+  // ── T6: single pair, full IXIA config ─────────────────────────────────────
+  // ixia_subnet='10.99.99' → dest='10.99.99.98/32'
+  // ixia_nh='200.15.0.2', ixia_mac=IMAC → last secondary gets ARP + route
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
+    const out = generateSnakeStaticConfig(pairs, prefsFull());
+    results.push(t("full single — last secondary IXIA ARP",
+      out.includes('arp vrf SNAKE_Et3 200.15.0.2 0000.aaaa.bbbb arpa'), true));
+    results.push(t("full single — last secondary IXIA route",
+      out.includes('ip route vrf SNAKE_Et3 10.99.99.98/32 200.15.0.2'), true));
+    results.push(t("full single — no placeholder comment present",
+      out.includes('Traffic MAC/NH not configured'), false));
+    results.push(t("full single — dest derived from ixia_subnet",
+      out.includes('10.99.99.98/32'), true));
+  })();
+
+  // ── T7: custom ixia_subnet → custom dest ──────────────────────────────────
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
+    const prefs = prefsBase({ ixia_mac: IMAC, ixia_nh: '172.16.1.2', ixia_subnet: '172.16.1' });
+    const out = generateSnakeStaticConfig(pairs, prefs);
+    results.push(t("custom ixia_subnet — primary route dest 172.16.1.98/32",
+      out.includes('ip route vrf SNAKE_Et2 172.16.1.98/32 200.2.0.2'), true));
+    results.push(t("custom ixia_subnet — last secondary IXIA route with custom dest",
+      out.includes('ip route vrf SNAKE_Et3 172.16.1.98/32 172.16.1.2'), true));
+  })();
+
+  // ── T8: two pairs — egress-vrf chain ──────────────────────────────────────
+  // Pair 1: Et2<->Et3 VLAN 200 (200.2.0.x) → secondary egress-vrf SNAKE_Et4 200.4.0.2
+  // Pair 2: Et4<->Et5 VLAN 400 (200.4.0.x) → last secondary: IXIA ARP + route
+  (function() {
+    const pairs = [
+      { primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 },
+      { primaryPort: 'Et4', secondaryPort: 'Et5', vlan: 400 }
+    ];
+    const out = generateSnakeStaticConfig(pairs, prefsFull());
+    results.push(t("2 pairs — pair 1 secondary egress-vrf to SNAKE_Et4",
+      out.includes('ip route vrf SNAKE_Et3 10.99.99.98/32 egress-vrf SNAKE_Et4 200.4.0.2'), true));
+    results.push(t("2 pairs — pair 2 primary ARP (VLAN 400 → 200.4.0.2)",
+      out.includes('arp vrf SNAKE_Et4 200.4.0.2 001c.7300.abcd arpa'), true));
+    results.push(t("2 pairs — pair 2 primary route",
+      out.includes('ip route vrf SNAKE_Et4 10.99.99.98/32 200.4.0.2'), true));
+    results.push(t("2 pairs — last secondary IXIA ARP",
+      out.includes('arp vrf SNAKE_Et5 200.15.0.2 0000.aaaa.bbbb arpa'), true));
+    results.push(t("2 pairs — last secondary IXIA route",
+      out.includes('ip route vrf SNAKE_Et5 10.99.99.98/32 200.15.0.2'), true));
+    results.push(t("2 pairs — no placeholder comment",
+      out.includes('Traffic MAC/NH not configured'), false));
+  })();
+
+  // ── T9: three pairs — full egress-vrf chain ───────────────────────────────
+  // Pair 1 Et2<->Et3 VLAN 200; Pair 2 Et4<->Et5 VLAN 400; Pair 3 Et6<->Et7 VLAN 600
+  // Middle pair secondary routes: SNAKE_Et5 → egress-vrf SNAKE_Et6 200.6.0.2
+  (function() {
+    const pairs = [
+      { primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 },
+      { primaryPort: 'Et4', secondaryPort: 'Et5', vlan: 400 },
+      { primaryPort: 'Et6', secondaryPort: 'Et7', vlan: 600 }
+    ];
+    const out = generateSnakeStaticConfig(pairs, prefsFull());
+    results.push(t("3 pairs — pair 1 secondary egress-vrf to Et4",
+      out.includes('ip route vrf SNAKE_Et3 10.99.99.98/32 egress-vrf SNAKE_Et4 200.4.0.2'), true));
+    results.push(t("3 pairs — pair 2 secondary egress-vrf to Et6",
+      out.includes('ip route vrf SNAKE_Et5 10.99.99.98/32 egress-vrf SNAKE_Et6 200.6.0.2'), true));
+    results.push(t("3 pairs — last secondary IXIA route",
+      out.includes('ip route vrf SNAKE_Et7 10.99.99.98/32 200.15.0.2'), true));
+    results.push(t("3 pairs — three pair-comment lines",
+      (out.match(/! Pair \d+:/g) || []).length, 3));
+  })();
+
+  // ── T10: custom p2p_v4_first base ─────────────────────────────────────────
+  (function() {
+    const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
+    const out = generateSnakeStaticConfig(pairs, prefsBase({ p2p_v4_first: '10' }));
+    results.push(t("custom base — ARP uses 10.2.0.2",
+      out.includes('arp vrf SNAKE_Et2 10.2.0.2'), true));
+    results.push(t("custom base — route uses 10.2.0.2",
+      out.includes('ip route vrf SNAKE_Et2 10.99.99.98/32 10.2.0.2'), true));
+  })();
+
+  return results;
+}
+
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -399,7 +565,8 @@ function runAllTests() {
     { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
     { name: "compressPortList",          fn: test_compressPortList },
     { name: "_breakoutSides",            fn: test_breakoutSides },
-    { name: "_buildCableGroupsForTest",  fn: test_buildCableGroupsForTest },
+    { name: "_buildCableGroupsForTest",       fn: test_buildCableGroupsForTest },
+    { name: "generateSnakeStaticConfig",      fn: test_generateSnakeStaticConfig },
   ];
 
   let totalPass = 0;
