@@ -907,15 +907,19 @@
   .tech-radio-label {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text-main);
     font-family: 'JetBrains Mono', monospace;
+    padding: 4px 2px;
+    border-radius: 4px;
     user-select: none;
     -webkit-user-select: none;
+    transition: color 0.1s;
   }
+  .tech-radio-label:hover { color: var(--primary, #3b82f6); }
 
   .tech-proto-col {
     display: flex;
@@ -924,12 +928,12 @@
   }
 
   .tech-proto-header {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: #94a3b8;
     text-transform: uppercase;
-    padding: 7px 10px 6px;
+    padding: 8px 12px 7px;
     border-bottom: 1px solid var(--border-light);
     background: var(--bg-section, #f8fafc);
     font-family: 'JetBrains Mono', monospace;
@@ -940,9 +944,9 @@
   .tech-proto-row {
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 8px 10px;
-    font-size: 11px;
+    gap: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text-main);
     cursor: pointer;
@@ -950,19 +954,22 @@
     font-family: 'JetBrains Mono', monospace;
     user-select: none;
     -webkit-user-select: none;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, background 0.1s;
   }
+  .tech-proto-row:hover { background: rgba(59,130,246,0.05); }
 
   .tech-section-label {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: #94a3b8;
     text-transform: uppercase;
     padding-bottom: 6px;
     border-bottom: 1px solid var(--border-light);
-    margin-bottom: 2px;
+    margin-bottom: 10px;
     font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .tech-stack-row {
@@ -2970,80 +2977,94 @@
 
   /* ================= 9. IP CONFIG STYLES ================= */
   .ip-modal-body {
-    padding: 16px;
+    padding: 18px 20px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px
+    gap: 14px
   }
 
   .ip-info-box {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 12px
+    padding: 13px 14px
   }
 
   .info-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 8px
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    font-family: "JetBrains Mono", monospace;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
-
   .section-header {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-main);
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 4px;
-    margin-bottom: 8px
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    font-family: "JetBrains Mono", monospace;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .ip-row {
     display: flex;
     align-items: center;
-    padding: 6px 0;
-    gap: 15px
+    padding: 4px 0;
+    gap: 16px
   }
 
   .ip-label {
-    width: 40px;
-    font-size: 11px;
+    width: 44px;
+    font-size: 12px;
     font-weight: 700;
     color: #64748b;
-    flex-shrink: 0
+    flex-shrink: 0;
+    font-family: "JetBrains Mono", monospace;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .ip-inputs {
     display: flex;
     flex: 1;
-    gap: 15px
+    gap: 12px
   }
 
   .input-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     flex: 1
   }
 
   .input-wrapper label {
-    font-size: 10px;
-    font-family: "JetBrains Mono";
+    font-size: 11px;
+    font-family: "JetBrains Mono", monospace;
     color: #64748b;
-    font-weight: 600
+    font-weight: 600;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .input-wrapper input {
     width: 100%;
     box-sizing: border-box;
-    padding: 6px;
+    padding: 7px 9px;
     border: 1px solid var(--border);
     border-radius: 4px;
-    font-family: "JetBrains Mono";
-    font-size: 11px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
     color: var(--text-main);
     font-weight: 600;
     background: var(--bg-input)
@@ -3059,22 +3080,22 @@
   .ip-section-rows {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
   }
 
   /* Auto Config — fixed (non-configurable) value rows */
   .auto-fixed-grid {
     display: grid;
-    grid-template-columns: 152px 1fr;
-    row-gap: 8px;
-    column-gap: 10px;
+    grid-template-columns: 160px 1fr;
+    row-gap: 10px;
+    column-gap: 12px;
     margin-top: 8px;
     align-items: start;
   }
 
   .auto-fixed-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: #64748b;
     padding-top: 2px;
@@ -3085,19 +3106,19 @@
   .auto-fixed-val {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
   }
 
   .auto-fixed-formula {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-main);
   }
 
   .auto-fixed-eg {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: #94a3b8;
   }
 
@@ -3106,7 +3127,7 @@
     /* Label | Octet | Dot | Octet | Dot | Octet | Dot | Octet */
     /* Exactly 8 columns forces the 9th item (GW) to wrap to the next line */
     grid-template-columns: 40px auto 10px auto 10px auto 10px auto;
-    row-gap: 8px;
+    row-gap: 9px;
     align-items: center;
     font-family: "JetBrains Mono", monospace;
     font-size: 12px;
@@ -3115,43 +3136,45 @@
 
   .ip-example {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-muted);
     border-top: 1px dashed var(--border-light);
-    padding-top: 6px;
-    margin-top: 6px;
+    padding-top: 8px;
+    margin-top: 8px;
   }
 
   .ip-example-title {
-    font-size: 10px;
+    font-size: 11px;
     font-family: "JetBrains Mono", monospace;
     color: var(--text-muted);
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
   }
 
   .ip-example-grid {
     display: grid;
-    grid-template-columns: 28px 1fr 1fr;
-    gap: 3px 10px;
+    grid-template-columns: 32px 1fr 1fr;
+    gap: 4px 12px;
     align-items: center;
   }
 
   .ip-example-key {
-    font-size: 10px;
+    font-size: 11px;
     font-family: "JetBrains Mono", monospace;
     font-weight: 700;
     color: #64748b;
   }
 
   .ip-example-val {
-    font-size: 10px;
+    font-size: 11px;
     font-family: "JetBrains Mono", monospace;
     color: var(--text-main);
   }
 
   .legend-label {
+    font-size: 12px;
     font-weight: 700;
+    font-family: "JetBrains Mono", monospace;
     color: var(--text-main)
   }
 
@@ -3160,14 +3183,18 @@
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 4px;
-    padding: 3px 8px;
+    padding: 4px 8px;
     white-space: nowrap;
+    font-size: 12px;
+    font-family: "JetBrains Mono", monospace;
     font-weight: 600
   }
 
   .legend-sep {
     text-align: center;
+    font-size: 12px;
     font-weight: 700;
+    font-family: "JetBrains Mono", monospace;
     color: #94a3b8
   }
 

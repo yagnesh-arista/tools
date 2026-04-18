@@ -284,28 +284,28 @@
   <!-- 4. ALL MODALS (Paste them ALL here, OUTSIDE app-topology) -->
 
   <!-- Tech Modal -->
-  <div id="techModal" class="modal-std" style="width: 580px;">
+  <div id="techModal" class="modal-std" style="width: 640px;">
     <div class="modal-header">
       <div class="modal-header-title">Network Tech Stack</div>
       <button onclick="closeTechModal()" class="btn-mono">Close</button>
     </div>
-    <div style="padding: 16px 20px; font-family: 'JetBrains Mono', monospace;">
+    <div style="padding: 18px 22px; font-family: 'JetBrains Mono', monospace;">
 
       <!-- GATEWAY: independent IPv4/IPv6 checkboxes (always enabled) -->
-      <div class="tech-section-label" style="margin-bottom: 8px;">GATEWAY</div>
-      <div style="display:flex; gap:24px; margin-bottom:16px; padding:10px 12px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+      <div class="tech-section-label">GATEWAY</div>
+      <div style="display:flex; gap:28px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label">
           <input type="checkbox" id="chkGwIpv4" class="chk-input"> IPv4
         </label>
         <label class="tech-radio-label">
           <input type="checkbox" id="chkGwIpv6" class="chk-input"> IPv6
         </label>
-        <span style="font-size:10px; color:#94a3b8; font-style:italic; margin-left:auto; align-self:center; user-select:none; -webkit-user-select:none;">SVI · Sub-Int · L3 Port</span>
+        <span style="font-size:11px; color:#94a3b8; font-style:italic; margin-left:auto; align-self:center; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">SVI · Sub-Int · L3 Port</span>
       </div>
 
       <!-- P2P INTERFACE: 5-mode radio (gates protocol grid) -->
-      <div class="tech-section-label" style="margin-bottom: 8px;">P2P INTERFACE</div>
-      <div style="display:flex; flex-wrap:wrap; gap:12px 20px; margin-bottom:16px;">
+      <div class="tech-section-label">P2P INTERFACE</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px 16px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label">
           <input type="radio" name="p2pMode" id="p2pModeIpv4" value="ipv4" class="chk-input">
           IPv4
@@ -329,6 +329,7 @@
       </div>
 
       <!-- PROTOCOL GRID: 4 columns, gated by P2P mode -->
+      <div class="tech-section-label">PROTOCOLS</div>
       <div style="display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border-light); border-radius:6px; overflow:hidden;">
 
         <!-- BGP -->
@@ -341,7 +342,7 @@
             <input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6
           </label>
           <label id="row-chkBgpIpv6Unnum" class="tech-proto-row">
-            <input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnum
+            <input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered
           </label>
           <label id="row-chkBgpRfc5549" class="tech-proto-row" style="border-bottom:none;">
             <input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549
@@ -358,7 +359,7 @@
             <input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6
           </label>
           <label id="row-chkOspfIpv6Unnum" class="tech-proto-row" style="border-bottom:none;">
-            <input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnum
+            <input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered
           </label>
         </div>
 
@@ -386,12 +387,12 @@
 
       </div>
 
-      <div style="font-size:10px; color:#94a3b8; font-style:italic; margin-top:10px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
+      <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options are incompatible with the selected P2P interface mode.
       </div>
 
       <!-- Validation error banner (hidden until validateTechSettings finds errors) -->
-      <div id="techValidationErrors" style="display:none; margin-top:10px; padding:8px 12px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; font-size:11px; color:#b91c1c; font-family:'JetBrains Mono',monospace;"></div>
+      <div id="techValidationErrors" style="display:none; margin-top:10px; padding:9px 13px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; font-size:12px; color:#b91c1c; font-family:'JetBrains Mono',monospace; line-height:1.6;"></div>
     </div>
     <div class="modal-actions right-align">
       <button class="btn-success-mono" onclick="saveTechSettings()">Save & Close</button>
@@ -399,7 +400,7 @@
   </div>
 
   <!-- IP Config Modal -->
-  <div id="ipConfigModal" class="modal-std modal-medium">
+  <div id="ipConfigModal" class="modal-std modal-medium" style="width: 520px;">
     <div class="modal-header">
       <div class="modal-header-title">Auto Config</div>
       <button onclick="closeIpModal()" class="btn-mono">Close</button>
