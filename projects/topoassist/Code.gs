@@ -2429,7 +2429,8 @@ function getIpPreferences() {
     gw_v4_first: '100', gw_v4_last: '1', gw_v4_mask: '/24',
     gw_v6_first: '100', gw_v6_last: '1', gw_v6_mask: '/64',
     vni_base: '10000',
-    bgp_asn_base: '65000'
+    bgp_asn_base: '65000',
+    bridge_mac: ''
   };
 
   const prefs = {};
@@ -3699,6 +3700,7 @@ function getDeviceConfig(deviceName) {
         if (linkInfo) {
           details.peerDev = linkInfo.dev;
           details.peerPort = linkInfo.port;
+          if (linkInfo.isSelfLoop) details.isSnakePrimary = true;
         }
 
         if (poVal && poRemoteMlagMap[poVal]) {
@@ -3725,6 +3727,61 @@ function getDeviceConfig(deviceName) {
         }
       }
     });
+
+    // [SNAKE SECONDARY] Generate interface config for snake secondary ports
+    // (Secondary ports live in snake_int_ column — not iterated by the main rows loop)
+    const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
+    if (snakeIntColIdx !== -1) {
+      rows.forEach(row => {
+        const primaryRaw = row[targetColIndex];
+        const secondaryRaw = row[snakeIntColIdx];
+        if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
+        const secondaryPort = canonicalizeInterface(secondaryRaw);
+        if (deviceSeenPos.has(secondaryPort)) return;
+        deviceSeenPos.add(secondaryPort);
+        const det = extractDetails(row, indices);
+        det.sheetIndex = deviceSheetIndex;
+        det.isSnakeSecondary = true;
+        det.isSnakePrimary = false;
+        // Peer info: secondary's peer is the primary on the same device
+        const snakeLinkEntry = topo.globalLinkMap.get(deviceName + ":" + secondaryPort);
+        if (snakeLinkEntry) { det.peerDev = snakeLinkEntry.dev; det.peerPort = snakeLinkEntry.port; }
+        const cfg2 = generateConfig(secondaryPort, det, ipPrefs, deviceSeenPos, settings);
+        configMap["050_" + secondaryPort] = { full: cfg2, blockStatus: "Physical (Snake Secondary)" };
+      });
+    }
+
+    // [SECTION 080] SNAKE VRF CHAIN (static ARP + egress-vrf routes)
+    const snakePairsForStatic = [];
+    if (snakeIntColIdx !== -1) {
+      rows.forEach(row => {
+        const primaryRaw = row[targetColIndex];
+        const secondaryRaw = row[snakeIntColIdx];
+        if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
+        const det = extractDetails(row, indices);
+        if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
+        const vlans = Array.from(expandVlanString(String(det.vlan_ || "")));
+        const vlan = vlans.length > 0 ? parseInt(vlans[0]) : 0;
+        if (!vlan) return;
+        snakePairsForStatic.push({
+          primaryPort: canonicalizeInterface(primaryRaw),
+          secondaryPort: canonicalizeInterface(secondaryRaw),
+          vlan: vlan
+        });
+      });
+      snakePairsForStatic.sort((a, b) => {
+        const numA = parseInt((/(\d+)/.exec(a.primaryPort) || [0, 0])[1]);
+        const numB = parseInt((/(\d+)/.exec(b.primaryPort) || [0, 0])[1]);
+        return numA - numB;
+      });
+    }
+    if (snakePairsForStatic.length > 0) {
+      const bridgeMac = ipPrefs.bridge_mac || '';
+      configMap["080_SNAKE"] = {
+        full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs, bridgeMac),
+        blockStatus: bridgeMac ? "Snake VRF Chain" : "Snake VRF Chain (Bridge MAC missing)"
+      };
+    }
 
     // [SECTION 070] MLAG
     if (mlagState.isActive) {
@@ -3860,7 +3917,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
     safeVrfs.filter(v => v).forEach(v => {
       lines.push(`vrf instance ${v}`);
       lines.push(`ip routing vrf ${v}`);
-      if (hasAnyIpv6) lines.push(`ipv6 unicast-routing vrf ${v}`);
+      if (hasAnyIpv6 && !v.startsWith('SNAKE_')) lines.push(`ipv6 unicast-routing vrf ${v}`);
       lines.push(`!`);
     });
   } else {
@@ -4120,8 +4177,12 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
     let lines = [];
 
-    // --- FIX: Modern VRF Syntax ---
-    if (d.vrf_) lines.push(" vrf " + d.vrf_);
+    // --- VRF: snake ports use programmatic SNAKE_{portName} VRF; others use sheet vrf_ column ---
+    if (d.isSnakePrimary || d.isSnakeSecondary) {
+      lines.push(` vrf SNAKE_${portName}`);
+    } else if (d.vrf_) {
+      lines.push(` vrf ${d.vrf_}`);
+    }
 
     let ipType = (d.ip_type_ || "").toLowerCase();
 
@@ -4132,17 +4193,17 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
       if (d.isSnakePrimary || d.isSnakeSecondary) {
-        // Snake self-loop: unique VLAN (enforced by audit) gives unique oct2.oct3;
-        // primary = sheetIndex, secondary = sheetIndex+1; /32 avoids same-VRF subnet conflict
-        const lastOctet = d.isSnakeSecondary ? sheetIndex + 1 : sheetIndex;
+        // VRF chain snake: each port in its own SNAKE_{portName} VRF, .1/24 as host IP.
+        // Unique VLAN (audit-enforced) → unique oct2.oct3 subnet per pair.
+        // Static ARP maps .2 to bridge-mac; egress-vrf chains ports across loopback cables.
         if (p2pHasIpv4) {
-          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${lastOctet}/32`);
+          lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.1/24`);
         }
         if (p2pUseIpv6Unnum) {
           lines.push(` ipv6 enable`);
           lines.push(` ipv6 unnumbered Loopback0`);
         } else if (p2pUseIpv6Explicit) {
-          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${lastOctet}/128`);
+          lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::1/64`);
         }
       } else {
         // Regular P2P: last octet = device sheetIndex, configured mask
@@ -4198,7 +4259,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
-  if (mode.startsWith("l2-") && sviVlans.length > 0) {
+  if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakeSecondary) {
     sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
       if (addOspfV4) {
@@ -4317,7 +4378,74 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     }
   });
 
+  // Add SNAKE_* VRFs for L3 snake ports (per-port VRF chain)
+  const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
+  if (snakeIntColIdx !== -1) {
+    rows.forEach(row => {
+      const primaryRaw = row[targetColIndex];
+      const secondaryRaw = row[snakeIntColIdx];
+      const det = extractDetails(row, indices);
+      if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
+      if (isValidPort(primaryRaw)) vrfs.add("SNAKE_" + canonicalizeInterface(primaryRaw));
+      if (isValidPort(secondaryRaw)) vrfs.add("SNAKE_" + canonicalizeInterface(secondaryRaw));
+    });
+  }
+
   return { allVlans, gwVlans, vrfs, hasP2p: (p2pCount > 0) };
+}
+
+/**
+ * Generates static ARP entries + egress-vrf route chain for L3 snake test.
+ * Each snake pair gets: SNAKE_{primary} and SNAKE_{secondary} VRFs, each with
+ * ip address {base}.oct2.oct3.1/24 and a static ARP mapping .2 → bridge-mac.
+ * Chain: primary routes to .2 in own subnet (exits via loopback cable);
+ * secondary routes via egress-vrf to next pair's primary VRF (or terminates if last).
+ * Destination: 10.99.99.98/32 (standard snake test target address).
+ * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}] sorted ascending by primary Et#
+ * @param {Object} ipPrefs — from getIpPreferences()
+ * @param {string} bridgeMac — switch bridge MAC (e.g. "001c.7300.abcd")
+ */
+function generateSnakeStaticConfig(snakePairs, ipPrefs, bridgeMac) {
+  if (!snakePairs || snakePairs.length === 0) return "";
+  const base = ipPrefs.p2p_v4_first || '200';
+  const dest = '10.99.99.98/32'; // Standard snake test destination address
+
+  if (!bridgeMac) {
+    return [
+      "! Snake VRF Chain: Bridge MAC not configured",
+      "! Set Bridge MAC in Auto Config settings to generate ARP + routing entries",
+      "!"
+    ].join("\n");
+  }
+
+  const lines = ['! Snake VRF Chain - Static ARP + Routing'];
+  snakePairs.forEach((pair, idx) => {
+    const { primaryPort, secondaryPort, vlan } = pair;
+    const oct2 = Math.floor(vlan / 100);
+    const oct3 = vlan % 100;
+    const subnet = `${base}.${oct2}.${oct3}`;
+    const remoteIp = `${subnet}.2`;
+
+    lines.push(`!`);
+    lines.push(`! Pair ${idx + 1}: ${primaryPort} <-> ${secondaryPort} (VLAN ${vlan}, subnet ${subnet}.0/24)`);
+    lines.push(`arp vrf SNAKE_${primaryPort} ${remoteIp} ${bridgeMac} arpa`);
+    lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
+    // Primary exits via own subnet .2 (resolved to bridge-mac → loopback cable)
+    lines.push(`ip route vrf SNAKE_${primaryPort} ${dest} ${remoteIp}`);
+    // Secondary: chain to next pair via egress-vrf, or terminate if last
+    const isLastPair = (idx === snakePairs.length - 1);
+    if (!isLastPair) {
+      const nextPair = snakePairs[idx + 1];
+      const nextOct2 = Math.floor(nextPair.vlan / 100);
+      const nextOct3 = nextPair.vlan % 100;
+      const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
+      lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} egress-vrf SNAKE_${nextPair.primaryPort} ${nextRemote}`);
+    } else {
+      lines.push(`! SNAKE_${secondaryPort}: last secondary (IXIA_OUT) - traffic terminates here`);
+    }
+  });
+  lines.push(`!`);
+  return lines.join('\n');
 }
 
 /**
