@@ -5563,14 +5563,21 @@ function saveEdit() {
 
     if (!portA || !portB) { alert("Interface Names required."); btn.innerText = originalText; btn.disabled = false; return; }
 
-    google.script.run.withSuccessHandler(function (res) {
-      // ... existing success handler ...
+    const onAddSuccess = function (res) {
       btn.innerText = originalText; btn.disabled = false;
       if (res.error) { alert("Error: " + res.error); }
       else { closeEditModal(); fetchData(true); }
-    }).withFailureHandler(function (err) {
-      btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
-    }).addLinkPair(devA, portA, devB, portB, updatesA, updatesB);
+    };
+    const onAddFail = function (err) { btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message); };
+
+    if (devA === devB) {
+      // Snake self-loop — same device on both sides
+      google.script.run.withSuccessHandler(onAddSuccess).withFailureHandler(onAddFail)
+        .addSnakePair(devA, portA, portB, updatesA);
+    } else {
+      google.script.run.withSuccessHandler(onAddSuccess).withFailureHandler(onAddFail)
+        .addLinkPair(devA, portA, devB, portB, updatesA, updatesB);
+    }
 
     // 3. EDIT MODE
   } else {
@@ -5896,7 +5903,7 @@ function redrawLinks() {
   canvasCtx.clearRect(0, 0, targetW, targetH);
 
   // 🛑 FIX: Split 'base' into 'base_bus' and 'base_direct' for Z-Index ordering
-  const layers = { base_bus: [], base_direct: [], non_eos: [], regular_po: [], mlag: [], peer: [], trace: [], search: [], error: [], selected: [] };
+  const layers = { base_bus: [], base_direct: [], snake: [], non_eos: [], regular_po: [], mlag: [], peer: [], trace: [], search: [], error: [], selected: [] };
 
   validLinks.forEach(link => {
     // Role Check for Non-EOS color sync
@@ -5910,6 +5917,7 @@ function redrawLinks() {
     else if (isValidationMode && validationErrors[link.id]) layers.error.push(link);
     else if (searchActiveLinks.has(link.id)) layers.search.push(link);
     else if (activeLinkColors[link.id]) layers.trace.push(link);
+    else if (link.type === 'snake') layers.snake.push(link);
     else if (link.type === 'peer') layers.peer.push(link);
     else if (link.type === 'mlag') layers.mlag.push(link);
     else if (link.type === 'regular_po') layers.regular_po.push(link);
@@ -5922,7 +5930,7 @@ function redrawLinks() {
     if (links.length === 0) return;
 
     canvasCtx.save();
-    canvasCtx.globalAlpha = (['base_bus', 'base_direct', 'mlag', 'regular_po', 'non_eos'].includes(type)) ? 0.82 : 1.0;
+    canvasCtx.globalAlpha = (['base_bus', 'base_direct', 'snake', 'mlag', 'regular_po', 'non_eos'].includes(type)) ? 0.82 : 1.0;
     canvasCtx.lineCap = "round";
     canvasCtx.lineJoin = "round";
 
@@ -5936,13 +5944,14 @@ function redrawLinks() {
       'mlag':       "#8b5cf6",
       'regular_po': "#0d9488",
       'non_eos':    "#f59e0b",
+      'snake':      "#f97316", // Orange — snake/loopback test connections
       'base_direct':"#94a3b8", // Standard Gray for direct curves
       'base_bus':   "#cbd5e1"  // Lighter Gray for the underlying bus matrix
     };
 
     if (['selected', 'trace', 'error', 'search'].includes(type)) canvasCtx.lineWidth = 6;
     else if (type === 'peer') canvasCtx.lineWidth = 4;
-    else if (type === 'mlag' || type === 'regular_po') canvasCtx.lineWidth = 3;
+    else if (type === 'mlag' || type === 'regular_po' || type === 'snake') canvasCtx.lineWidth = 3;
     else canvasCtx.lineWidth = 2;
 
     if (type === 'trace') {
@@ -5972,7 +5981,7 @@ function redrawLinks() {
   };
 
   // 🛑 FIX: Draw 'base_bus' FIRST, so 'base_direct' draws securely ON TOP of it.
-  ['base_bus', 'base_direct', 'non_eos', 'regular_po', 'mlag', 'peer', 'trace', 'search', 'error', 'selected']
+  ['base_bus', 'base_direct', 'snake', 'non_eos', 'regular_po', 'mlag', 'peer', 'trace', 'search', 'error', 'selected']
     .forEach(lyr => drawBatch(layers[lyr], lyr));
 }
 
@@ -6028,6 +6037,16 @@ function getLinkCoordinatesOptimized(link, posCache, nodeCache) {
   const minTop = parseInt(document.getElementById("cableTopInp").value) || 40;
 
   let cp1x, cp1y, cp2x, cp2y;
+
+  // Self-loop (snake): both ports on the same device — draw a right-side arc
+  if (uDev === vDev) {
+    x1 = uPos.x + uPos.w;  y1 = uPos.y + yOffset;
+    x2 = vPos.x + vPos.w;  y2 = vPos.y + yOffset;
+    const loopR = Math.max(80, gapVal * 2);
+    cp1x = x1 + loopR;  cp1y = y1;
+    cp2x = x2 + loopR;  cp2y = y2;
+    return { x1, y1, x2, y2, cp1x, cp1y, cp2x, cp2y };
+  }
 
   if (layoutMode === 'flexible' || isImmediateNeighbor(link)) {
     const dist = Math.abs(x2 - x1);

@@ -1976,6 +1976,27 @@ function calculateGlobalTopology(data, headers) {
     }
   }
 
+  // STEP D: Snake self-loop detection — scan snake_int_ columns and register self-loop entries
+  const allSnakeIntCols = {};
+  headers.forEach((h, i) => {
+    if (String(h).startsWith("snake_int_")) allSnakeIntCols[h.substring(10)] = i;
+  });
+  for (let r = 2; r < data.length; r++) {
+    const row = data[r];
+    for (const [devName, snakeColIdx] of Object.entries(allSnakeIntCols)) {
+      const snakeRaw = row[snakeColIdx];
+      if (!isValidPort(snakeRaw)) continue;
+      const intColIdx = allIntCols[devName];
+      if (intColIdx === undefined) continue;
+      const primaryRaw = row[intColIdx];
+      if (!isValidPort(primaryRaw)) continue;
+      const primaryPort = canonicalizeInterface(primaryRaw);
+      const snakePort = canonicalizeInterface(snakeRaw);
+      globalLinkMap.set(devName + ":" + primaryPort, { dev: devName, port: snakePort, isSelfLoop: true });
+      globalLinkMap.set(devName + ":" + snakePort, { dev: devName, port: primaryPort, isSelfLoop: true });
+    }
+  }
+
   // MLAG pair/port detection has been removed from this function.
   // All MLAG is determined exclusively by explicit DEVICE_MLAG_PEERS declarations.
   // The caller (getDeviceConfig / applyVisualFormatting) applies the override after
@@ -2124,6 +2145,10 @@ function getTopologyData(forceSync, isColorEnabled) {
             // 2. Category Logic
             details.category = determineCategory(details, legends);
 
+            // 3. Snake primary flag — set if this port is the primary end of a self-loop
+            const selfLoopEntry = topo.globalLinkMap ? topo.globalLinkMap.get(device.name + ":" + pName) : null;
+            if (selfLoopEntry && selfLoopEntry.isSelfLoop) details.isSnakePrimary = true;
+
             // 3. MLAG / PeerLink Flags
             // We calculate these for topology accuracy, but we don't force-change the IP type
             const poVal = normalizePo(details.po_);
@@ -2172,6 +2197,46 @@ function getTopologyData(forceSync, isColorEnabled) {
       if (nodesOnRow.length > 0) processRowLinks(nodesOnRow, rowIndex, links, devicePorts);
       nodesOnRow.forEach(n => allCollectedNodes.push(n));
     });
+
+    // SNAKE SELF-LOOP LINKS: Build frontend link entries and mark ports connected
+    {
+      const seenSnake = new Set();
+      topo.globalLinkMap && topo.globalLinkMap.forEach((val, key) => {
+        if (!val.isSelfLoop) return;
+        const linkKey = [key, val.dev + ":" + val.port].sort().join("|");
+        if (seenSnake.has(linkKey)) return;
+        seenSnake.add(linkKey);
+        const [devA, portA] = key.split(":");
+        links.push({ id: "snake-" + linkKey, u: key, v: val.dev + ":" + val.port, type: 'snake' });
+        [{ dev: devA, port: portA }, { dev: val.dev, port: val.port }].forEach(({ dev, port }) => {
+          if (devicePorts[dev]) {
+            if (!devicePorts[dev][port]) devicePorts[dev][port] = { name: port, connected: true, order: 9999, details: {} };
+            else devicePorts[dev][port].connected = true;
+          }
+        });
+      });
+
+      // Add snake secondary ports to allCollectedNodes for config generation
+      const snakeIntHeaders = {};
+      rowHeaders.forEach((h, i) => { if (String(h).startsWith("snake_int_")) snakeIntHeaders[h.substring(10)] = i; });
+      dataRows.forEach(row => {
+        for (const [devName, snakeColIdx] of Object.entries(snakeIntHeaders)) {
+          const snakeRaw = row[snakeColIdx];
+          if (!isValidPort(snakeRaw)) continue;
+          const device = devices.find(d => d.name === devName);
+          if (!device) continue;
+          const snakePort = canonicalizeInterface(snakeRaw);
+          const details = extractDetails(row, device.attrs);
+          details.sheetIndex = device.sheetIndex;
+          details.category = determineCategory(details, legends);
+          details.isSnakeSecondary = true;
+          allCollectedNodes.push({
+            devObj: device, deviceName: devName, pName: snakePort, port: snakePort,
+            details: details, rowId: -1
+          });
+        }
+      });
+    }
 
     // PHASE 5: CONFIG GENERATION
     const totalNodes = allCollectedNodes.length;
@@ -2943,9 +3008,45 @@ function addLinkPair(devA, portA, devB, portB, attrsA, attrsB) {
   finally { lock.releaseLock(); }
 }
 
+function addSnakePair(dev, portA, portB, attrs) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { error: "Busy" };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    const nextRow = sheet.getLastRow() + 1;
+    const fieldMap = getFieldMap();
+
+    const intColIdx = headers.indexOf("int_" + dev);
+    if (intColIdx === -1) return { error: "Device " + dev + " not found in sheet headers" };
+
+    // Ensure snake_int_ column exists; append at end if not
+    const snakeColName = "snake_int_" + dev;
+    let snakeColIdx = headers.indexOf(snakeColName);
+    if (snakeColIdx === -1) {
+      snakeColIdx = lastCol; // 0-indexed position of new column
+      sheet.getRange(2, lastCol + 1).setValue(snakeColName);
+    }
+
+    const setVal = (r, c, v) => { if (c >= 0) sheet.getRange(r, c + 1).setValue(v); };
+    setVal(nextRow, intColIdx, portA);
+    setVal(nextRow, snakeColIdx, portB);
+    Object.entries(attrs || {}).forEach(([k, v]) => {
+      const prefix = fieldMap[k] || (k + "_");
+      setVal(nextRow, headers.indexOf(prefix + dev), v);
+    });
+
+    return { success: true };
+  } catch (e) { return { error: e.message }; }
+  finally { lock.releaseLock(); }
+}
+
 function connectExistingToNew(devA, portA, attrsA, devB, portB, attrsB) {
   const del = deleteInterface(devA, portA);
   if (del.error) return del;
+  if (devA === devB) return addSnakePair(devA, portA, portB, attrsA);
   return addLinkPair(devA, portA, devB, portB, attrsA, attrsB);
 }
 
@@ -4012,9 +4113,9 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   const gwHasIpv4 = !netSettings || netSettings.gw_ipv4 !== false;           // default true (legacy)
   const gwHasIpv6 = !netSettings || netSettings.gw_ipv6;                     // explicit flag
 
-  // OSPF flags
-  const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4);
-  const addOspfV6 = !!(netSettings && netSettings.ospf_ipv6);
+  // OSPF flags — suppressed for snake ports (cannot form OSPF adjacency with yourself)
+  const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4) && !d.isSnakePrimary && !d.isSnakeSecondary;
+  const addOspfV6 = !!(netSettings && netSettings.ospf_ipv6) && !d.isSnakePrimary && !d.isSnakeSecondary;
 
   // Helper to build the IP config lines
   const getIpBlock = (v) => {
@@ -4034,14 +4135,16 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
+      // Snake loops: primary uses .1, secondary uses .2 (both on same device, same sheetIndex)
+      const lastOctet = d.isSnakeSecondary ? 2 : sheetIndex;
       if (p2pHasIpv4) {
-        lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
+        lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${lastOctet}${cfg.p2p_v4_mask}`);
       }
       if (p2pUseIpv6Unnum) {
         lines.push(` ipv6 enable`);
         lines.push(` ipv6 unnumbered Loopback0`);
       } else if (p2pUseIpv6Explicit) {
-        lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
+        lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${lastOctet}${cfg.p2p_v6_mask}`);
       }
     }
     // B. GATEWAY (SVI/Sub-Int/L3-routed) — GW uses explicit IPs for VARP; IPv6 unnum does not apply
@@ -4346,6 +4449,8 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
     const linkEntry = topo.globalLinkMap ? topo.globalLinkMap.get(myKey) : null;
 
     if (linkEntry) {
+      if (linkEntry.isSelfLoop) return; // Snake self-loop — no routing neighbors generated
+
       const neighborObj = allDevices.find(d => d.name === linkEntry.dev);
 
       if (neighborObj && neighborObj.type === 'full') {
