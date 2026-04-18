@@ -1,7 +1,9 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-19 (Bug fix: viewShowAll() now resets all three row-level filters before refreshing — previously it only reset device visibility and column type visibility but left ip_type / int_mode / svi row filters intact, so rows hidden by those filters stayed hidden after "Show All Columns/Devices". Fix: saveSheetViewIpFilter(['p2p','gw','blank']), saveSheetViewIntModeFilter([]), saveSheetViewSviFilter(['active','blank']) added before applyCustomView(). File: Code.gs)
+  Last updated: 2026-04-19 (Cabling BASE-T display fix: sfp-1000baset in xcvr_speed_ is a transceiver-type descriptor, not a plain speed string. downloadCablingReport: added sL/sR BASE-T normalization → sL='1g' and fills xL='BASE-T' if xcvr_ column was empty (avoids "BASE-T sfp-1000baset" in report). copyCablingCsv + copyCablingMarkdown: cleanSpeed() maps any BASE-T xcvr_speed_ value → '1g'. Code.gs getPhysicalPortParent docstring: removed misleading pizza-box native port examples (Et14/4→Et14, Et48/1→Et48) and replaced with correct modular chassis examples (Et5/22/1→Et5/22). Files: Sidebar-js.html, Code.gs)
+  Previous: 2026-04-19 (Sheet View presets: replaced 5 old presets (Cabling/Po/Mode/Vlan/Xcvr) with 6 named presets — Cabling(int), Transceiver(int+xcvr), Speed(int+xcvr+et_speed+xcvr_speed), Po(int+po), Mode(int+po+sp_mode), Vlan(int+po+sp_mode+vlan). Renamed Code.gs functions: viewIntOnly→viewCabling, viewIntAndXcvr→viewTransceiver, viewIntAndPo→viewPo, viewIntAndMode→viewMode, viewIntAndVlan→viewVlan; added viewSpeed(). Menu labels updated. Sidebar.html preset buttons updated (6 buttons, xcvr→transceiver, +speed). loadViewPreset() in Sidebar-js.html updated. Files: Code.gs, Sidebar.html, Sidebar-js.html)
+  Previous: 2026-04-19 (Bug fix: viewShowAll() now resets all three row-level filters before refreshing — previously it only reset device visibility and column type visibility but left ip_type / int_mode / svi row filters intact, so rows hidden by those filters stayed hidden after "Show All Columns/Devices". Fix: saveSheetViewIpFilter(['p2p','gw','blank']), saveSheetViewIntModeFilter([]), saveSheetViewSviFilter(['active','blank']) added before applyCustomView(). File: Code.gs)
   Previous: 2026-04-19 (Fix 1.6t-8 transceiver regex: old pattern /^(\d+)g-(\d+)$/i used 'g' suffix only — missed '1.6t-8' (Tbps) and decimal prefix. Fixed regex to /^(\d+(?:\.\d+)?)[gt]-(\d+)$/i in 5 locations: aggA/aggB in buildCableGroups() and _buildCableGroupsForTest (Code.gs), lA/lB in _breakoutSides() (Sidebar-js.html + Code.gs), lL/lR in downloadCablingReport(). Ratio check also fixed: parseInt() gave 1 for '1.6t-8' — replaced with _gbps() helper (Math.round(parseFloat(m[1]) * (t-suffix ? 1000 : 1))) in _breakoutSides and downloadCablingReport. Tests.gs: added 3 _breakoutSides cases (1.6t-8 QSFP-A, 1.6t-8 QSFP-B, 1.6t-8 Scenario A) and 1 _buildCableGroupsForTest case (8-lane Scenario C with leaf1:Et14/1..8 xcvr=1.6t-8, server1:Et1..8 xcvr=200g). Files: Sidebar-js.html, Code.gs, Tests.gs)
   Previous: 2026-04-19 (Tests.gs: add test_generateSnakeStaticConfig() — 10 groups / ~30 cases: empty/null pairs, missing bridge_mac, VLAN 200 single pair, VLAN 1500 subnet formula, single pair full IXIA config, custom ixia_subnet→dest, 2-pair egress-vrf chain, 3-pair egress-vrf chain, custom p2p_v4_first base. Added to runAllTests(). UserGuide.html Section 7 rewritten: TRAFFIC_IN/OUT port setup (desc_=TRAFFIC_IN_L3/TRAFFIC_OUT_L3), Auto Config Snake Test fields (IXIA MAC, Traffic Port P2P IP, IXIA Subnet + warning banner), full end-to-end flow (TRAFFIC_IN→snake chain→TRAFFIC_OUT), updated 080_SNAKE example with IXIA ARP+route on last secondary, bidirectional limitation note. Files: Tests.gs, UserGuide.html)
   Previous: 2026-04-19 (Tests.gs: remove misleading getPhysicalPortParent test cases for Et14/1, Et14/4, Et48/1 → on pizza-box switches these are native hardcoded interface names, NOT breakout lanes; aggX guard (xcvr_speed_ must match Xg-N) prevents stripping in production; only modular chassis 3-level case (Et5/22/1→Et5/22) is a realistic stripping scenario. Files: Tests.gs)
@@ -508,13 +510,14 @@ TopoAssist (top-level menu)
 ├── Show Topology               → showTopologyWindow()
 ├── [separator]
 ├── Sheet View                → submenu
-│   ├── Show All Columns/Devices → viewShowAll()
-│   ├── Cabling Focused (Int Only)        → viewIntOnly()
-│   ├── Po Focused (Int + Po)             → viewIntAndPo()
-│   ├── Transceiver Focused (Int + Xcvr)  → viewIntAndXcvr()
-│   ├── Mode Focused (Int + Po + Mode)    → viewIntAndMode()
-│   ├── Vlan Focused (Int + Po + Vlan)    → viewIntAndVlan()
-│   └── Custom View...          → showSheetAssistPanel()  (merged panel)
+│   ├── Show All Columns/Devices        → viewShowAll()
+│   ├── Cabling (Int)                   → viewCabling()
+│   ├── Transceiver (Int + Xcvr)        → viewTransceiver()
+│   ├── Speed (Int + Xcvr + Speed)      → viewSpeed()
+│   ├── Po (Int + Po)                   → viewPo()
+│   ├── Mode (Int + Po + Mode)          → viewMode()
+│   ├── Vlan (Int + Po + Mode + Vlan)   → viewVlan()
+│   └── Custom View...                  → showSheetAssistPanel()  (merged panel)
 ├── [separator]
 ├── Sheet Manager            → submenu
 │   ├── ▤ Manage Column & Formatting → showDeviceDataUi()
@@ -1158,12 +1161,16 @@ viewShowAll():
   Clears all Sheet View hidden devices AND shows all column types AND refreshes row visibility.
   Menu label: "Show All Columns/Devices".
 
-Sheet View menu items — all now use applyCustomView() (same as Sheet View panel):
-  viewIntOnly()    → applyCustomView(['int'])                      + showSheetAssistPanel()
-  viewIntAndPo()   → applyCustomView(['int','po'])                 + showSheetAssistPanel()
-  viewIntAndMode() → applyCustomView(['int','po','sp_mode'])       + showSheetAssistPanel()
-  viewIntAndVlan() → applyCustomView(['int','po','n_vlan','vlan']) + showSheetAssistPanel()
-  viewIntAndXcvr() → applyCustomView(['int','xcvr'])               + showSheetAssistPanel()
+Sheet View menu items — all use applyCustomView() (same as Sheet View panel):
+  viewCabling()     → applyCustomView(['int'])                              + showSheetAssistPanel()
+  viewTransceiver() → applyCustomView(['int','xcvr'])                       + showSheetAssistPanel()
+  viewSpeed()       → applyCustomView(['int','xcvr','et_speed','xcvr_speed'])+ showSheetAssistPanel()
+  viewPo()          → applyCustomView(['int','po'])                         + showSheetAssistPanel()
+  viewMode()        → applyCustomView(['int','po','sp_mode'])               + showSheetAssistPanel()
+  viewVlan()        → applyCustomView(['int','po','sp_mode','vlan'])        + showSheetAssistPanel()
+
+  Sidebar presets (loadViewPreset in Sidebar-js.html) mirror these 6 keys:
+    cabling / transceiver / speed / po / mode / vlan
 
 setColumnVisibility() — REMOVED. All callers now use applyCustomView().
   showAllSheetDevices(): saveSheetViewHidden([]) + applyCustomView(getViewPreferences()) + refresh

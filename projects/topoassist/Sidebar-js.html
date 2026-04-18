@@ -10091,7 +10091,7 @@ function copyCablingCsv() {
   if (!currentData || !currentData.nodes) { alert('No topology data found. Please refresh.'); return; }
   const { cableGroups, sheetIndexMap } = buildCableGroups();
   const sorted = _sortCableGroups(cableGroups, sheetIndexMap);
-  const cleanSpeed = s => { const v = (s || "").trim(); return v.toLowerCase() === 'auto' ? '' : v; };
+  const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
   const rows = ['Device A,Port A,Xcvr A,Speed A,Speed B,Xcvr B,Port B,Device B'];
@@ -10119,7 +10119,7 @@ function copyCablingMarkdown() {
   if (!currentData || !currentData.nodes) { alert('No topology data found. Please refresh.'); return; }
   const { cableGroups, sheetIndexMap } = buildCableGroups();
   const sorted = _sortCableGroups(cableGroups, sheetIndexMap);
-  const cleanSpeed = s => { const v = (s || "").trim(); return v.toLowerCase() === 'auto' ? '' : v; };
+  const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const esc = s => String(s).replace(/\|/g, '\\|');
   const lines = [
@@ -10206,6 +10206,10 @@ function downloadCablingReport(mode) {
     if (sR.toLowerCase() === "auto") sR = "";
     if (xL.toUpperCase().includes('BASE-T')) xL = 'BASE-T';
     if (xR.toUpperCase().includes('BASE-T')) xR = 'BASE-T';
+    // sfp-1000baset in xcvr_speed_ is a transceiver-type descriptor, not a speed string.
+    // Normalize to a clean speed ("1g") and fill xcvr label if not already set.
+    if (sL.toUpperCase().includes('BASE-T')) { if (!xL) xL = 'BASE-T'; sL = '1g'; }
+    if (sR.toUpperCase().includes('BASE-T')) { if (!xR) xR = 'BASE-T'; sR = '1g'; }
 
     let middleInfoFwd = "";
     let middleInfoRev = "";
@@ -10630,11 +10634,12 @@ function toggleAllView(state) {
 
 function loadViewPreset(name) {
   const presets = {
-    cabling: ['int'],
-    po:      ['int', 'po'],
-    mode:    ['int', 'po', 'sp_mode'],
-    vlan:    ['int', 'po', 'n_vlan', 'vlan', 'svi_vlan'],
-    xcvr:    ['int', 'xcvr']
+    cabling:     ['int'],
+    transceiver: ['int', 'xcvr'],
+    speed:       ['int', 'xcvr', 'et_speed', 'xcvr_speed'],
+    po:          ['int', 'po'],
+    mode:        ['int', 'po', 'sp_mode'],
+    vlan:        ['int', 'po', 'sp_mode', 'vlan'],
   };
   const keys = presets[name];
   if (!keys) return;

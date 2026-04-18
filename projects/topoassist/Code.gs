@@ -24,11 +24,12 @@ function onOpen() {
     // 2. Sheet View Controls (Submenu)
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet View')
       .addItem('Show All Columns/Devices', 'viewShowAll')
-      .addItem('Cabling Focused (Int Only)', 'viewIntOnly')
-      .addItem('Po Focused (Int + Po)', 'viewIntAndPo')
-      .addItem('Transceiver Focused (Int + Xcvr)', 'viewIntAndXcvr')
-      .addItem('Mode Focused (Int + Po + Mode)', 'viewIntAndMode')
-      .addItem('Vlan Focused (Int + Po + Vlan)', 'viewIntAndVlan')
+      .addItem('Cabling (Int)', 'viewCabling')
+      .addItem('Transceiver (Int + Xcvr)', 'viewTransceiver')
+      .addItem('Speed (Int + Xcvr + Speed)', 'viewSpeed')
+      .addItem('Po (Int + Po)', 'viewPo')
+      .addItem('Mode (Int + Po + Mode)', 'viewMode')
+      .addItem('Vlan (Int + Po + Mode + Vlan)', 'viewVlan')
       .addSeparator()
       .addItem('Custom View...', 'showSheetAssistPanel'))
     .addSeparator()
@@ -162,28 +163,33 @@ function viewShowAll() {
   refreshSheetRowVisibility();
 }
 
-function viewIntOnly() {
+function viewCabling() {
   applyCustomView(['int']);
   showSheetAssistPanel();
 }
 
-function viewIntAndPo() {
+function viewTransceiver() {
+  applyCustomView(['int', 'xcvr']);
+  showSheetAssistPanel();
+}
+
+function viewSpeed() {
+  applyCustomView(['int', 'xcvr', 'et_speed', 'xcvr_speed']);
+  showSheetAssistPanel();
+}
+
+function viewPo() {
   applyCustomView(['int', 'po']);
   showSheetAssistPanel();
 }
 
-function viewIntAndMode() {
+function viewMode() {
   applyCustomView(['int', 'po', 'sp_mode']);
   showSheetAssistPanel();
 }
 
-function viewIntAndVlan() {
-  applyCustomView(['int', 'po', 'n_vlan', 'vlan']);
-  showSheetAssistPanel();
-}
-
-function viewIntAndXcvr() {
-  applyCustomView(['int', 'xcvr']);
+function viewVlan() {
+  applyCustomView(['int', 'po', 'sp_mode', 'vlan']);
   showSheetAssistPanel();
 }
 
@@ -5993,7 +5999,8 @@ function activateRow(rowNum) {
 
 /**
  * DUPLICATED in Sidebar-js.html. Strips the lane suffix from a breakout port name.
- * Et14/4 → Et14, Et48/1 → Et48, Et1/1/2 → Et1/1, Et1 → Et1
+ * Only called for confirmed QSFP-DD breakout ports (aggX guard in buildCableGroups).
+ * Modular chassis: Et5/22/1 → Et5/22, Et1/1/2 → Et1/1. No slash: Et1 → Et1.
  */
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
