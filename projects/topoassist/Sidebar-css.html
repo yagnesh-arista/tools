@@ -3062,6 +3062,45 @@
     gap: 4px;
   }
 
+  /* Auto Config — fixed (non-configurable) value rows */
+  .auto-fixed-grid {
+    display: grid;
+    grid-template-columns: 152px 1fr;
+    row-gap: 8px;
+    column-gap: 10px;
+    margin-top: 8px;
+    align-items: start;
+  }
+
+  .auto-fixed-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    padding-top: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .auto-fixed-val {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .auto-fixed-formula {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .auto-fixed-eg {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #94a3b8;
+  }
+
   .ip-legend-grid {
     display: grid;
     /* Label | Octet | Dot | Octet | Dot | Octet | Dot | Octet */
