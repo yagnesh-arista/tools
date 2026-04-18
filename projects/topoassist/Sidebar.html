@@ -400,14 +400,27 @@
   </div>
 
   <!-- IP Config Modal -->
-  <div id="ipConfigModal" class="modal-std modal-medium" style="width: 520px;">
+  <div id="ipConfigModal" class="modal-std modal-medium" style="width: 620px;">
     <div class="modal-header">
       <div class="modal-header-title">Auto Config</div>
       <button onclick="closeIpModal()" class="btn-mono">Close</button>
     </div>
     <div class="ip-modal-body">
 
-      <!-- Fixed auto-derived values (not configurable) -->
+      <!-- 1. EXAMPLE (top, linear) -->
+      <div class="ip-info-box">
+        <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1500</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">0</span> &middot; Device ID <span class="f-dyn">2</span></div>
+        <div class="ip-example-linear">
+          <div class="ip-ex-row"><span class="ip-ex-key">P2P IPv4</span><span class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-dyn">2</span>/24</span></div>
+          <div class="ip-ex-row"><span class="ip-ex-key">P2P IPv6</span><span class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">0</span>::<span class="f-dyn">2</span>/64</span></div>
+          <div class="ip-ex-row"><span class="ip-ex-key">GW IPv4</span><span class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">(standalone)</span> &nbsp;&middot;&nbsp; <span class="ip-ex-note">MLAG: phy</span> <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-dyn">3</span>/24 · vip <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span></span></div>
+          <div class="ip-ex-row"><span class="ip-ex-key">GW IPv6</span><span class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">0</span>::<span class="f-var">1</span>/64</span></div>
+          <div class="ip-ex-row"><span class="ip-ex-key">VNI</span><span class="ip-ex-val"><span class="f-var">10000</span> + <span class="f-dyn">1500</span> = <span class="ip-ex-result">11500</span></span></div>
+          <div class="ip-ex-row"><span class="ip-ex-key">ASN</span><span class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span class="ip-ex-result">65002</span></span></div>
+        </div>
+      </div>
+
+      <!-- 2. NON-CONFIG: auto-derived fixed values -->
       <div class="ip-info-box">
         <div class="info-title">Auto-derived &mdash; not configurable</div>
         <div class="auto-fixed-grid">
@@ -433,32 +446,16 @@
         </div>
       </div>
 
-      <!-- Configurable formula key -->
+      <!-- 3. CONFIG FORMULA KEY -->
       <div class="ip-info-box">
         <div class="info-title">Configurable &mdash; VLAN key: oct2 = &lfloor;VLAN &divide; 100&rfloor; &middot; oct3 = VLAN mod 100</div>
         <div class="ip-legend-grid">
           <span class="legend-label">P2P:</span><span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">Device ID</span>
           <span class="legend-label">GW:</span><span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
         </div>
-        <div class="ip-example">
-          <div class="ip-example-title">e.g. VLAN <span class="f-dyn">1500</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">0</span> &middot; Device ID <span class="f-dyn">2</span></div>
-          <div class="ip-example-grid">
-            <span class="ip-example-key">P2P</span>
-            <span class="ip-example-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-dyn">2</span>/24</span>
-            <span class="ip-example-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">0</span>::<span class="f-dyn">2</span>/64</span>
-            <span class="ip-example-key">GW</span>
-            <span class="ip-example-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span>/24 <span style="color:#94a3b8">(standalone)</span></span>
-            <span class="ip-example-val"><span style="color:#94a3b8">MLAG: phy</span> <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-dyn">3</span>/24 · vip <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span></span>
-            <span class="ip-example-key">VNI</span>
-            <span class="ip-example-val"><span class="f-var">10000</span> + <span class="f-dyn">1500</span> = <span style="color:#16a34a;font-weight:700">11500</span></span>
-            <span></span>
-            <span class="ip-example-key">ASN</span>
-            <span class="ip-example-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span style="color:#16a34a;font-weight:700">65002</span></span>
-            <span></span>
-          </div>
-        </div>
       </div>
 
+      <!-- 4. CONFIGURABLE OPTIONS -->
       <div class="section-header">Point-to-Point (Underlay/Routing)</div>
       <div class="ip-section-rows">
         <div class="ip-row"><span class="ip-label">IPv4</span>
@@ -506,6 +503,7 @@
           <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_bgp_asn_base" placeholder="65000"></div>
         </div>
       </div>
+
     </div>
     <div class="modal-actions right-align">
       <button class="btn-danger-mono" onclick="resetIpConfig()">Reset Defaults</button>

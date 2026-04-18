@@ -3171,6 +3171,52 @@
     color: var(--text-main);
   }
 
+  /* Linear example rows (replaces 3-col grid in Auto Config modal) */
+  .ip-example-linear {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 8px;
+    border-top: 1px dashed var(--border-light);
+    padding-top: 8px;
+  }
+
+  .ip-ex-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+  }
+
+  .ip-ex-key {
+    width: 76px;
+    flex-shrink: 0;
+    font-weight: 700;
+    color: #64748b;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .ip-ex-val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--text-main);
+    word-break: break-word;
+  }
+
+  .ip-ex-note {
+    color: #94a3b8;
+    font-style: italic;
+  }
+
+  .ip-ex-result {
+    color: #16a34a;
+    font-weight: 700;
+  }
+
   .legend-label {
     font-size: 12px;
     font-weight: 700;
