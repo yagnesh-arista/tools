@@ -150,7 +150,8 @@ function test_getPhysicalPortParent() {
     t("Et14/1 → Et14",                   getPhysicalPortParent("Et14/1"),  "Et14"),
     t("Et48/1 → Et48",                   getPhysicalPortParent("Et48/1"),  "Et48"),
     t("Et1/1/2 (multi-level) → Et1/1",  getPhysicalPortParent("Et1/1/2"), "Et1/1"),
-    t("Et5/22 non-numeric last part",    getPhysicalPortParent("Et5/22"),  "Et5"),
+    t("Et5/22 numeric 2-digit suffix → Et5", getPhysicalPortParent("Et5/22"),  "Et5"),
+    t("Et5/abc non-numeric last part → unchanged", getPhysicalPortParent("Et5/abc"), "Et5/abc"),
   ];
 }
 
@@ -308,6 +309,66 @@ function test_buildCableGroupsForTest() {
       keys[0], "arista1:Et1 <-> ixia1:Et5/22"));
     results.push(t("Non-Arista — isBreakoutB false (slash suppressed for non-Arista)",
       g[keys[0]].isBreakoutB, false));
+  })();
+
+  // ── Case 3: both ports have slash, only A has aggregate xcvr_speed_ ─────────
+  // isBreakoutA=true, isBreakoutB=true, aggA truthy, aggB null → "DEV_A:phyA <-> DEV_B"
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `leaf1:Et14/${i}`, v: `spine1:Et5/${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`leaf1:Et14/${i}`] = { device: "leaf1",  name: `Et14/${i}`, details: { xcvr_speed_: "100g-4" } };
+      nodes[`spine1:Et5/${i}`] = { device: "spine1", name: `Et5/${i}`,  details: { xcvr_speed_: "25g" } };
+    });
+    const devs = { leaf1: { type: "arista" }, spine1: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("Case 3 (both slash, only A agg) — 1 group", keys.length, 1));
+    results.push(t("Case 3 — key uses phyA, plain devB",         keys[0], "leaf1:Et14 <-> spine1"));
+    results.push(t("Case 3 — isBreakoutA true",                  g[keys[0]].isBreakoutA, true));
+    results.push(t("Case 3 — isBreakoutB true",                  g[keys[0]].isBreakoutB, true));
+    results.push(t("Case 3 — phyA is Et14",                      g[keys[0]].phyA, "Et14"));
+    results.push(t("Case 3 — 4 links in group",                  g[keys[0]].links.length, 4));
+  })();
+
+  // ── Case 4: both ports have slash, only B has aggregate xcvr_speed_ ─────────
+  // isBreakoutA=true, isBreakoutB=true, aggA null, aggB truthy → "DEV_A <-> DEV_B:phyB"
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `leaf1:Et5/${i}`, v: `spine1:Et48/${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`leaf1:Et5/${i}`]  = { device: "leaf1",  name: `Et5/${i}`,  details: { xcvr_speed_: "25g" } };
+      nodes[`spine1:Et48/${i}`] = { device: "spine1", name: `Et48/${i}`, details: { xcvr_speed_: "100g-4" } };
+    });
+    const devs = { leaf1: { type: "arista" }, spine1: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("Case 4 (both slash, only B agg) — 1 group", keys.length, 1));
+    results.push(t("Case 4 — key uses plain devA, phyB",         keys[0], "leaf1 <-> spine1:Et48"));
+    results.push(t("Case 4 — isBreakoutA true",                  g[keys[0]].isBreakoutA, true));
+    results.push(t("Case 4 — isBreakoutB true",                  g[keys[0]].isBreakoutB, true));
+    results.push(t("Case 4 — phyB is Et48",                      g[keys[0]].phyB, "Et48"));
+    results.push(t("Case 4 — 4 links in group",                  g[keys[0]].links.length, 4));
+  })();
+
+  // ── Scenario C reversed: B is QSFP aggregate, A ports are individual SFP ────
+  // isBreakoutA=false (no slash), isBreakoutB=true (slash + aggB) → "DEV_A <-> DEV_B:phyB"
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `server1:Et${i}`, v: `spine1:Et48/${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`server1:Et${i}`]   = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "25g",    xcvr_: "SFP" } };
+      nodes[`spine1:Et48/${i}`] = { device: "spine1",  name: `Et48/${i}`, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" } };
+    });
+    const devs = { server1: { type: "arista" }, spine1: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("Scenario C (B is QSFP) — 1 group",     keys.length, 1));
+    results.push(t("Scenario C (B is QSFP) — key plain A, phyB", keys[0], "server1 <-> spine1:Et48"));
+    results.push(t("Scenario C (B is QSFP) — isBreakoutA false", g[keys[0]].isBreakoutA, false));
+    results.push(t("Scenario C (B is QSFP) — isBreakoutB true",  g[keys[0]].isBreakoutB, true));
+    results.push(t("Scenario C (B is QSFP) — phyB is Et48",      g[keys[0]].phyB, "Et48"));
+    results.push(t("Scenario C (B is QSFP) — 4 links in group",  g[keys[0]].links.length, 4));
   })();
 
   // ── Missing node (link.u or link.v not in nodesData) → skipped silently ──────
