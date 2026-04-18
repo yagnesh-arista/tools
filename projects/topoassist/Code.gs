@@ -2043,7 +2043,7 @@ function getTopologyData(forceSync, isColorEnabled) {
     const rawDevices = allDevices;
 
     const globalIpPrefs = getIpPreferences();
-    const globalUnderlay = (getNetworkSettings().underlay) || 'none';
+    const globalNetSettings = getNetworkSettings();
     const topo = calculateGlobalTopology(data, rowHeaders);
 
     const devices = [];
@@ -2190,7 +2190,7 @@ function getTopologyData(forceSync, isColorEnabled) {
           node.details,
           globalIpPrefs,
           deviceSeenPos[node.deviceName],
-          globalUnderlay
+          globalNetSettings
         );
       } else {
         node.details.config = "Non-Arista Device";
@@ -3960,7 +3960,6 @@ function generateAttributesBlock(d) {
   return block;
 }
 
-/* REPLACE IN Code.gs */
 function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   if (!d.sp_mode_ || !d.vlan_) return "";
 
