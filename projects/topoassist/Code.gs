@@ -154,6 +154,10 @@ function include(filename) {
 
 function viewShowAll() {
   saveSheetViewHidden([]);
+  // Reset all three row-level filters to "show all" defaults so no rows stay hidden
+  saveSheetViewIpFilter(['p2p', 'gw', 'blank']);
+  saveSheetViewIntModeFilter([]);
+  saveSheetViewSviFilter(['active', 'blank']);
   applyCustomView(getSchemaConfig().map(function(s) { return s.key; }));
   refreshSheetRowVisibility();
 }
