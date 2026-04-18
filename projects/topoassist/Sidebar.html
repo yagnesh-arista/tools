@@ -394,12 +394,6 @@
             <span class="auto-fixed-eg">e.g. Device <span class="f-dyn">2</span> &rarr; Loopback0 <span class="f-dyn">2.2.2.2/32</span> &middot; Router-ID <span class="f-dyn">2.2.2.2</span></span>
           </div>
 
-          <span class="auto-fixed-label">BGP ASN</span>
-          <div class="auto-fixed-val">
-            <span class="auto-fixed-formula">65000 + <span class="f-dyn">Device ID</span></span>
-            <span class="auto-fixed-eg">e.g. Device <span class="f-dyn">2</span> &rarr; ASN <span class="f-dyn">65002</span> &middot; Device <span class="f-dyn">3</span> &rarr; ASN <span class="f-dyn">65003</span></span>
-          </div>
-
           <span class="auto-fixed-label">MLAG Ctrl (Vlan4094)</span>
           <div class="auto-fixed-val">
             <span class="auto-fixed-formula">169.254.0.<span class="f-dyn">0</span>/31 &harr; 169.254.0.<span class="f-dyn">1</span>/31</span>
@@ -433,6 +427,9 @@
             <span class="ip-example-val"><span style="color:#94a3b8">MLAG: phy</span> <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-dyn">3</span>/24 · vip <span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">0</span>.<span class="f-var">1</span></span>
             <span class="ip-example-key">VNI</span>
             <span class="ip-example-val"><span class="f-var">10000</span> + <span class="f-dyn">1500</span> = <span style="color:#16a34a;font-weight:700">11500</span></span>
+            <span></span>
+            <span class="ip-example-key">ASN</span>
+            <span class="ip-example-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span style="color:#16a34a;font-weight:700">65002</span></span>
             <span></span>
           </div>
         </div>
@@ -476,6 +473,13 @@
       <div class="ip-row"><span class="ip-label">VNI Base</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Base Offset</label><input type="text" id="ip_vni_base" placeholder="10000"></div>
+        </div>
+      </div>
+
+      <div class="section-header">BGP ASN</div>
+      <div class="ip-row"><span class="ip-label">ASN Base</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_bgp_asn_base" placeholder="65000"></div>
         </div>
       </div>
     </div>

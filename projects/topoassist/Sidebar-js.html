@@ -3919,6 +3919,7 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_gw_v6_last").value = prefs.gw_v6_last;
     document.getElementById("ip_gw_v6_mask").value = prefs.gw_v6_mask;
     document.getElementById("ip_vni_base").value = prefs.vni_base || "10000";
+    document.getElementById("ip_bgp_asn_base").value = prefs.bgp_asn_base || "65000";
 
     // 2. Capture Snapshot
     initialIpState = getCurrentIpState();
@@ -3968,7 +3969,8 @@ function saveIpConfig() {
     gw_v6_first: gw_v6_first || '100',
     gw_v6_last: gw_v6_last || '1',
     gw_v6_mask: document.getElementById("ip_gw_v6_mask").value || '/64',
-    vni_base: document.getElementById("ip_vni_base").value || '10000'
+    vni_base: document.getElementById("ip_vni_base").value || '10000',
+    bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000'
   };
 
   showGlobalLoading("Saving & Applying IPs...");
@@ -10315,6 +10317,7 @@ function resetIpConfig() {
   document.getElementById("ip_gw_v6_last").value = "1";
   document.getElementById("ip_gw_v6_mask").value = "/64";
   document.getElementById("ip_vni_base").value = "10000";
+  document.getElementById("ip_bgp_asn_base").value = "65000";
 }
 
 // --- HELPER: BUTTON FEEDBACK ---

@@ -2350,7 +2350,8 @@ function getIpPreferences() {
     p2p_v6_first: '200', p2p_v6_mask: '/64',
     gw_v4_first: '100', gw_v4_last: '1', gw_v4_mask: '/24',
     gw_v6_first: '100', gw_v6_last: '1', gw_v6_mask: '/64',
-    vni_base: '10000'
+    vni_base: '10000',
+    bgp_asn_base: '65000'
   };
 
   const prefs = {};
@@ -3673,7 +3674,7 @@ function getDeviceConfig(deviceName) {
       const bgpKey = isEvpn ? "100_BGP_EVPN" : "100_BGP_UNDERLAY";
       if (Object.keys(mlagState.bgpNeighbors).length > 0) {
         configMap[bgpKey] = {
-          full: generateBGP(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, isEvpn, deviceRole, peerRoles, settings),
+          full: generateBGP(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, isEvpn, deviceRole, peerRoles, settings, ipPrefs),
           blockStatus: isEvpn ? "Routing + Overlay" : "Routing (Underlay Only)"
         };
       } else {
@@ -3688,7 +3689,7 @@ function getDeviceConfig(deviceName) {
       // OSPF underlay + BGP EVPN overlay only
       if (Object.keys(mlagState.bgpNeighbors).length > 0) {
         configMap["100_BGP_EVPN"] = {
-          full: generateBGPEvpnOverlay(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, peerRoles, settings),
+          full: generateBGPEvpnOverlay(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, peerRoles, settings, ipPrefs),
           blockStatus: "BGP EVPN Overlay (over OSPF)"
         };
       } else {
@@ -4431,7 +4432,7 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
  * 2. Applies 'next-hop address-family ipv6 originate' correctly.
  * 3. Prevents _V4_P2P_IP groups from appearing in IPv6 families (Global & VRF).
  */
-function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpnEnabled, deviceRole, peerRoles, settings) {
+function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpnEnabled, deviceRole, peerRoles, settings, ipPrefs) {
   // Helper: returns true if a peer should participate in EVPN overlay sessions.
   // Only LEAF/SPINE peers get OVERLAY peer groups. All others (HARNESS, unset, etc.) get underlay only.
   const peerRoles_ = peerRoles || {};
@@ -4442,7 +4443,8 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
   };
   if (!bgpNeighbors) return "! No BGP Neighbors";
 
-  const localAsn = 65000 + deviceSheetIndex;
+  const asnBase = parseInt((ipPrefs || {}).bgp_asn_base) || 65000;
+  const localAsn = asnBase + deviceSheetIndex;
   const configLines = [];
 
   // --- 1. DATA PRE-PROCESSING ---
@@ -4474,7 +4476,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
 
       const pgEntry = {
         name: peerName,
-        asn: 65000 + peerData.id,
+        asn: asnBase + peerData.id,
         pgV4: pgV4,
         pgV6: pgV6,
         pgV6Int: pgV6Int,
@@ -4768,8 +4770,9 @@ function generateOSPFv3(deviceSheetIndex, bgpNeighbors) {
  * Generates a BGP EVPN overlay-only block for use when OSPF is the underlay.
  * No P2P underlay sessions — only loopback-to-loopback overlay peers + EVPN AF.
  */
-function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings) {
-  const localAsn = 65000 + deviceSheetIndex;
+function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings, ipPrefs) {
+  const asnBase = parseInt((ipPrefs || {}).bgp_asn_base) || 65000;
+  const localAsn = asnBase + deviceSheetIndex;
   const lines = [];
   const peerRoles_ = peerRoles || {};
   const s = settings || {};
@@ -4795,7 +4798,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
     if (!isPeerEvpn(peerName)) return;
     const isMlagOnly = peerData.peerParams && peerData.peerParams.every(p => p.isMlag);
     if (isMlagOnly) return;
-    const peerAsn = 65000 + peerData.id;
+    const peerAsn = asnBase + peerData.id;
     const pid = peerData.id;
 
     if (useEvpnV4) {
