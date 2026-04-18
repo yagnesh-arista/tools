@@ -9932,6 +9932,7 @@ function buildCableGroups() {
   const cableGroups = {};
 
   globalLinks.forEach(link => {
+    if (link.type === 'snake') return; // snake self-loops are not physical cables
     let nodeA = allNodesData[link.u];
     let nodeB = allNodesData[link.v];
     if (!nodeA || !nodeB) return;
