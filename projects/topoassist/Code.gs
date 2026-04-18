@@ -2321,6 +2321,9 @@ function getTopologyData(forceSync, isColorEnabled) {
       scriptProps.setProperty('DATA_VERSION', new Date().getTime().toString());
     }
 
+    const snakeIxiaHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'IXIA_IN_L3');
+    const snakeIxiaHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'IXIA_OUT_L3');
+
     const result = {
       nodes: nodes,
       links: links,
@@ -2329,7 +2332,8 @@ function getTopologyData(forceSync, isColorEnabled) {
       schema: getSchemaConfig(),
       portFrequency: portFrequency,
       logs: topo.debugLogs,
-      version: scriptProps.getProperty('DATA_VERSION')
+      version: scriptProps.getProperty('DATA_VERSION'),
+      snakeIxiaFlags: { hasIn: snakeIxiaHasIn, hasOut: snakeIxiaHasOut }
     };
 
     // Always store result in GAS cache (including forceSync/verify fetches) so the
@@ -3688,6 +3692,35 @@ function getDeviceConfig(deviceName) {
       }
     }
 
+    // --- PRE-COMPUTE SNAKE PAIRS (needed before main loop for IXIA_IN/OUT VRF assignment) ---
+    const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
+    const snakePairsForStatic = [];
+    if (snakeIntColIdx !== -1) {
+      rows.forEach(row => {
+        const primaryRaw = row[targetColIndex];
+        const secondaryRaw = row[snakeIntColIdx];
+        if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
+        const det = extractDetails(row, indices);
+        if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
+        const vlans = Array.from(expandVlanString(String(det.vlan_ || "")));
+        const vlan = vlans.length > 0 ? parseInt(vlans[0]) : 0;
+        if (!vlan) return;
+        snakePairsForStatic.push({
+          primaryPort: canonicalizeInterface(primaryRaw),
+          secondaryPort: canonicalizeInterface(secondaryRaw),
+          vlan: vlan
+        });
+      });
+      snakePairsForStatic.sort((a, b) => {
+        const numA = parseInt((/(\d+)/.exec(a.primaryPort) || [0, 0])[1]);
+        const numB = parseInt((/(\d+)/.exec(b.primaryPort) || [0, 0])[1]);
+        return numA - numB;
+      });
+    }
+    const snakeFirstPrimary = snakePairsForStatic.length > 0 ? snakePairsForStatic[0].primaryPort : '';
+    const snakeLastSecondary = snakePairsForStatic.length > 0 ? snakePairsForStatic[snakePairsForStatic.length - 1].secondaryPort : '';
+    let foundIxiaIn = false, foundIxiaOut = false;
+
     rows.forEach(row => {
       const portName = row[targetColIndex];
       if (isValidPort(portName)) {
@@ -3697,6 +3730,18 @@ function getDeviceConfig(deviceName) {
 
         const details = extractDetails(row, indices);
         details.sheetIndex = deviceSheetIndex;
+
+        // IXIA_IN/OUT detection via description field
+        const desc = (details.desc_ || '').trim();
+        if (desc === 'IXIA_IN_L3' && snakeFirstPrimary) {
+          details.ixiaRole = 'in';
+          details.snakeFirstPrimary = snakeFirstPrimary;
+          foundIxiaIn = true;
+        } else if (desc === 'IXIA_OUT_L3' && snakeLastSecondary) {
+          details.ixiaRole = 'out';
+          details.snakeLastSecondary = snakeLastSecondary;
+          foundIxiaOut = true;
+        }
         const poVal = normalizePo(details.po_);
 
         const linkInfo = topo.globalLinkMap.get(deviceName + ":" + pName);
@@ -3733,7 +3778,7 @@ function getDeviceConfig(deviceName) {
 
     // [SNAKE SECONDARY] Generate interface config for snake secondary ports
     // (Secondary ports live in snake_int_ column — not iterated by the main rows loop)
-    const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
+    // snakeIntColIdx and snakePairsForStatic are pre-computed above the main rows loop
     if (snakeIntColIdx !== -1) {
       rows.forEach(row => {
         const primaryRaw = row[targetColIndex];
@@ -3755,33 +3800,13 @@ function getDeviceConfig(deviceName) {
     }
 
     // [SECTION 080] SNAKE VRF CHAIN (static ARP + egress-vrf routes)
-    const snakePairsForStatic = [];
-    if (snakeIntColIdx !== -1) {
-      rows.forEach(row => {
-        const primaryRaw = row[targetColIndex];
-        const secondaryRaw = row[snakeIntColIdx];
-        if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
-        const det = extractDetails(row, indices);
-        if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
-        const vlans = Array.from(expandVlanString(String(det.vlan_ || "")));
-        const vlan = vlans.length > 0 ? parseInt(vlans[0]) : 0;
-        if (!vlan) return;
-        snakePairsForStatic.push({
-          primaryPort: canonicalizeInterface(primaryRaw),
-          secondaryPort: canonicalizeInterface(secondaryRaw),
-          vlan: vlan
-        });
-      });
-      snakePairsForStatic.sort((a, b) => {
-        const numA = parseInt((/(\d+)/.exec(a.primaryPort) || [0, 0])[1]);
-        const numB = parseInt((/(\d+)/.exec(b.primaryPort) || [0, 0])[1]);
-        return numA - numB;
-      });
-    }
+    // snakePairsForStatic already sorted and computed above
     if (snakePairsForStatic.length > 0) {
       const missing = [];
       if (!ipPrefs.bridge_mac) missing.push('Bridge MAC');
       if (!ipPrefs.ixia_mac || !ipPrefs.ixia_nh || !ipPrefs.ixia_subnet) missing.push('IXIA config');
+      if (!foundIxiaIn) missing.push('IXIA_IN_L3 desc');
+      if (!foundIxiaOut) missing.push('IXIA_OUT_L3 desc');
       configMap["080_SNAKE"] = {
         full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs),
         blockStatus: missing.length ? `Snake VRF Chain (${missing.join(', ')} missing)` : "Snake VRF Chain"
@@ -4182,8 +4207,12 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
     let lines = [];
 
-    // --- VRF: snake ports use programmatic SNAKE_{portName} VRF; others use sheet vrf_ column ---
-    if (d.isSnakePrimary || d.isSnakeSecondary) {
+    // --- VRF assignment priority: IXIA role > snake primary/secondary > sheet vrf_ ---
+    if (d.ixiaRole === 'in' && d.snakeFirstPrimary) {
+      lines.push(` vrf SNAKE_${d.snakeFirstPrimary}`);
+    } else if (d.ixiaRole === 'out' && d.snakeLastSecondary) {
+      lines.push(` vrf SNAKE_${d.snakeLastSecondary}`);
+    } else if (d.isSnakePrimary || d.isSnakeSecondary) {
       lines.push(` vrf SNAKE_${portName}`);
     } else if (d.vrf_) {
       lines.push(` vrf ${d.vrf_}`);

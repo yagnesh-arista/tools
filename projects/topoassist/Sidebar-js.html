@@ -3906,11 +3906,18 @@ function checkSnakeIxiaWarning() {
   if (!warn) return;
   const hasSnake = globalLinks.some(l => l.type === 'snake');
   if (!hasSnake) { warn.style.display = 'none'; return; }
-  const allFilled = ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet'].every(id => {
-    const el = document.getElementById(id);
-    return el && el.value.trim() !== '';
-  });
-  warn.style.display = allFilled ? 'none' : 'block';
+
+  const msgs = [];
+  const missingFields = ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet']
+    .filter(id => { const el = document.getElementById(id); return !el || !el.value.trim(); })
+    .map(id => ({ ip_ixia_mac: 'IXIA MAC', ip_ixia_nh: 'IXIA NH', ip_ixia_subnet: 'IXIA Subnet' }[id]));
+  if (missingFields.length) msgs.push(missingFields.join(', ') + ' required');
+  if (!_snakeIxiaFlags.hasIn) msgs.push("set IXIA_IN port description to 'IXIA_IN_L3'");
+  if (!_snakeIxiaFlags.hasOut) msgs.push("set IXIA_OUT port description to 'IXIA_OUT_L3'");
+
+  if (msgs.length === 0) { warn.style.display = 'none'; return; }
+  warn.textContent = 'Snake detected — ' + msgs.join('; ') + '.';
+  warn.style.display = 'block';
 }
 
 // --- UPDATED OPEN FUNCTION ---
@@ -7949,6 +7956,7 @@ function fetchData(force, autoVerify, silent) {
       if (data.schema) globalSchema = data.schema;
       if (data.links) globalLinks = data.links;
       if (data.portFrequency) globalPortFrequency = data.portFrequency;
+      if (data.snakeIxiaFlags) _snakeIxiaFlags = data.snakeIxiaFlags;
       currentData = data;
 
       // Sync device manager if it's open and has no pending edits
@@ -8098,6 +8106,7 @@ let lldpPortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let lldpAuditFlagMissing = localStorage.getItem('lldpAuditFlagMissing') === 'true';
 let devStatusMap = {};    // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}}
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
+let _snakeIxiaFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeIxiaWarning()
 let _pushLeftDev   = null; // device name for the left split-btn push action
 let _pushRightDev  = null; // device name for the right split-btn push action
 let _pushLeftPort  = null; // interface name for left push (link selection → single-interface push)
@@ -10679,6 +10688,7 @@ function loadFromSession() {
         if (data.schema) globalSchema = data.schema;
         if (data.links) globalLinks = data.links;
         if (data.portFrequency) globalPortFrequency = data.portFrequency;
+        if (data.snakeIxiaFlags) _snakeIxiaFlags = data.snakeIxiaFlags;
         currentData = data;
         return data;
       }
