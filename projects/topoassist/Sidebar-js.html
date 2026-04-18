@@ -4004,13 +4004,23 @@ function saveIpConfig() {
 
 // --- TECH MODAL: STATE HELPERS ---
 function getCurrentTechState() {
-  const bgp  = document.getElementById('chkTechBgp')  && document.getElementById('chkTechBgp').checked;
-  const ospf = document.getElementById('chkTechOspf') && document.getElementById('chkTechOspf').checked;
-  const underlay = (bgp && ospf) ? 'bgp+ospf' : bgp ? 'bgp' : ospf ? 'ospf' : 'none';
+  const getChk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  const intRadio = document.querySelector('input[name="intIpv6Mode"]:checked');
+  const intMode = intRadio ? intRadio.value : 'ipv4';
   return JSON.stringify({
-    underlay: underlay,
-    vxlan: document.getElementById('chkTechVxlan').checked,
-    evpn: document.getElementById('chkTechEvpn').checked
+    int_ipv6:        intMode === 'ipv6',
+    int_ipv6_unnum:  intMode === 'ipv6unnum',
+    bgp_ipv4:        getChk('chkBgpIpv4'),
+    bgp_ipv6:        getChk('chkBgpIpv6'),
+    bgp_ipv6_unnum:  getChk('chkBgpIpv6Unnum'),
+    bgp_rfc5549:     getChk('chkBgpRfc5549'),
+    ospf_ipv4:       getChk('chkOspfIpv4'),
+    ospf_ipv6:       getChk('chkOspfIpv6'),
+    ospf_ipv6_unnum: getChk('chkOspfIpv6Unnum'),
+    vxlan_ipv4:      getChk('chkVxlanIpv4'),
+    vxlan_ipv6:      getChk('chkVxlanIpv6'),
+    evpn_ipv4:       getChk('chkEvpnIpv4'),
+    evpn_ipv6:       getChk('chkEvpnIpv6')
   });
 }
 
@@ -4032,58 +4042,32 @@ function openTechModal() {
       hideGlobalLoading();
       console.log("✓ [Debug] Settings Received from Server:", settings);
 
-      // 1. Safe Check Helpers
-      const safeCheck = (id, val) => {
+      // 1. Set interface IPv6 mode radio
+      const intMode = settings.int_ipv6_unnum ? 'ipv6unnum' : settings.int_ipv6 ? 'ipv6' : 'ipv4';
+      const intRadio = document.querySelector(`input[name="intIpv6Mode"][value="${intMode}"]`);
+      if (intRadio) intRadio.checked = true;
+
+      // 2. Set all checkboxes
+      const setChk = (id, val) => {
         const el = document.getElementById(id);
-        if (el) {
-          el.checked = (val === 'true');
-          console.log(`> Set ${id} to ${el.checked}`);
-        } else {
-          console.error(`✗ [Debug] CRITICAL: Checkbox ID '${id}' NOT FOUND in HTML!`);
-        }
+        if (el) el.checked = !!val;
       };
+      setChk('chkBgpIpv4',       settings.bgp_ipv4);
+      setChk('chkBgpIpv6',       settings.bgp_ipv6);
+      setChk('chkBgpIpv6Unnum',  settings.bgp_ipv6_unnum);
+      setChk('chkBgpRfc5549',    settings.bgp_rfc5549);
+      setChk('chkOspfIpv4',      settings.ospf_ipv4);
+      setChk('chkOspfIpv6',      settings.ospf_ipv6);
+      setChk('chkOspfIpv6Unnum', settings.ospf_ipv6_unnum);
+      setChk('chkVxlanIpv4',     settings.vxlan_ipv4);
+      setChk('chkVxlanIpv6',     settings.vxlan_ipv6);
+      setChk('chkEvpnIpv4',      settings.evpn_ipv4);
+      setChk('chkEvpnIpv6',      settings.evpn_ipv6);
 
-      // 2. Set Values — underlay checkboxes + overlay checkboxes
-      const underlayVal = settings.underlay || 'none';
-      const chkBgp  = document.getElementById('chkTechBgp');
-      const chkOspf = document.getElementById('chkTechOspf');
-      if (chkBgp)  chkBgp.checked  = underlayVal.includes('bgp');
-      if (chkOspf) chkOspf.checked = underlayVal.includes('ospf');
-      safeCheck('chkTechVxlan', settings.vxlan);
-      safeCheck('chkTechEvpn', settings.evpn);
-
-      // 3. Setup Logic Handlers
-      const chkVxlan = document.getElementById('chkTechVxlan');
-      const chkEvpn = document.getElementById('chkTechEvpn');
-
-      const handleDependency = () => {
-        try {
-          const noUnderlay = !(chkBgp && chkBgp.checked) && !(chkOspf && chkOspf.checked);
-          // Cascade UP: enabling overlay forces prerequisites
-          if (chkEvpn && chkEvpn.checked) {
-            if (chkVxlan) chkVxlan.checked = true;   // EVPN requires VXLAN
-            // If no underlay selected, default to BGP
-            if (noUnderlay && chkBgp) chkBgp.checked = true;
-          }
-          if (chkVxlan && chkVxlan.checked) {
-            if (noUnderlay && chkBgp) chkBgp.checked = true;
-          }
-          // Cascade DOWN: no underlay disables overlay
-          if (noUnderlay) {
-            if (chkVxlan) chkVxlan.checked = false;
-            if (chkEvpn) chkEvpn.checked = false;
-          }
-          if (chkVxlan && !chkVxlan.checked) {
-            if (chkEvpn) chkEvpn.checked = false;    // No VXLAN → no EVPN
-          }
-          checkTechDirty();
-        } catch (e) { console.error("[Debug] Logic Error:", e); }
-      };
-
-      if (chkBgp)   { chkBgp.onchange  = handleDependency; }
-      if (chkOspf)  { chkOspf.onchange = handleDependency; }
-      if (chkVxlan) { chkVxlan.onclick  = handleDependency; }
-      if (chkEvpn)  { chkEvpn.onclick   = handleDependency; }
+      // 3. Attach dirty-check handlers to all inputs
+      document.querySelectorAll('#techModal input').forEach(el => {
+        el.onchange = checkTechDirty;
+      });
 
       // 4. Capture State
       if (typeof getCurrentTechState === 'function') {
@@ -4223,11 +4207,25 @@ function saveGlobalCfgFromSidebar() {
 * - Refreshes Active Device immediately
 */
 function saveTechSettings() {
-  const bgp  = document.getElementById('chkTechBgp')  && document.getElementById('chkTechBgp').checked;
-  const ospf = document.getElementById('chkTechOspf') && document.getElementById('chkTechOspf').checked;
-  const underlay = (bgp && ospf) ? 'bgp+ospf' : bgp ? 'bgp' : ospf ? 'ospf' : 'none';
-  const vxlan = document.getElementById('chkTechVxlan').checked;
-  const evpn = document.getElementById('chkTechEvpn').checked;
+  const getChk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  const intRadio = document.querySelector('input[name="intIpv6Mode"]:checked');
+  const intMode = intRadio ? intRadio.value : 'ipv4';
+
+  const settings = {
+    int_ipv6:        intMode === 'ipv6',
+    int_ipv6_unnum:  intMode === 'ipv6unnum',
+    bgp_ipv4:        getChk('chkBgpIpv4'),
+    bgp_ipv6:        getChk('chkBgpIpv6'),
+    bgp_ipv6_unnum:  getChk('chkBgpIpv6Unnum'),
+    bgp_rfc5549:     getChk('chkBgpRfc5549'),
+    ospf_ipv4:       getChk('chkOspfIpv4'),
+    ospf_ipv6:       getChk('chkOspfIpv6'),
+    ospf_ipv6_unnum: getChk('chkOspfIpv6Unnum'),
+    vxlan_ipv4:      getChk('chkVxlanIpv4'),
+    vxlan_ipv6:      getChk('chkVxlanIpv6'),
+    evpn_ipv4:       getChk('chkEvpnIpv4'),
+    evpn_ipv6:       getChk('chkEvpnIpv6')
+  };
 
   showGlobalLoading("Saving Technology Settings...");
 
@@ -4238,16 +4236,13 @@ function saveTechSettings() {
       closeTechModal();
 
       // 1. Wipe the Cache
-      if (typeof configCache !== 'undefined') {
-        console.log("♻️ Cache Wiped.");
-        configCache = {};
-      }
+      if (typeof configCache !== 'undefined') configCache = {};
 
       // 2. Invalidate Memory (Forces Lazy Load for others)
       if (typeof allDevicesData !== 'undefined') {
         Object.keys(allDevicesData).forEach(key => {
           if (allDevicesData[key]) {
-            allDevicesData[key].fullConfig = null; // Delete stale config
+            allDevicesData[key].fullConfig = null;
             allDevicesData[key].configLoaded = false;
           }
         });
@@ -4255,42 +4250,25 @@ function saveTechSettings() {
 
       // 3. Refresh Active Device
       if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
-        console.log("🔄 Refreshing active selection:", selectedDeviceId);
-
         showGlobalLoading("Tech Settings Saved & Fetching new config...");
-
-        fetchFullConfig(
-          selectedDeviceId,
-          hideGlobalLoading,
-          "<b>New config fetched now</b>"
-        );
+        fetchFullConfig(selectedDeviceId, hideGlobalLoading, "<b>New config fetched now</b>");
       } else {
-        // No Selection: Just confirm save
         hideGlobalLoading();
         const st = document.getElementById("status");
         if (st) {
           st.innerHTML = "<b>Tech Settings Saved</b>";
           st.style.color = "#15803d";
-          setTimeout(() => {
-            st.style.color = "";
-            st.innerText = getReadyStatus();
-          }, 3000);
+          setTimeout(() => { st.style.color = ""; st.innerText = getReadyStatus(); }, 3000);
         }
       }
 
-      // Use smart scheduler instead of setTimeout
       if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
-
     })
     .withFailureHandler(err => {
       hideGlobalLoading();
       alert("Error saving: " + err.message);
     })
-    .saveNetworkSettings({
-      underlay: underlay,
-      vxlan: String(vxlan),
-      evpn: String(evpn)
-    });
+    .saveNetworkSettings(settings);
 }
 
 function showGlobalLoading(msg) {

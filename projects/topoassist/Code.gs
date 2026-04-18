@@ -436,23 +436,87 @@ function _batchRowOp(sheet, rowNums, hide) {
 */
 function getNetworkSettings() {
   const props = PropertiesService.getDocumentProperties();
-  // Migrate legacy NET_BGP=true → underlay='bgp'
-  const stored = props.getProperty('NET_UNDERLAY');
-  const legacyBgp = props.getProperty('NET_BGP');
-  const underlay = stored || (legacyBgp === 'true' ? 'bgp' : 'none');
+
+  // ── Legacy migration (one-shot on first read) ───────────────────────────
+  // NET_UNDERLAY='bgp'/'ospf'/'bgp+ospf' → BGP_IPV4 / OSPF_IPV4
+  // NET_VXLAN='true'                      → VXLAN_IPV4
+  // NET_EVPN='true'                       → EVPN_IPV4
+  const legacyUnderlay = props.getProperty('NET_UNDERLAY') ||
+                         (props.getProperty('NET_BGP') === 'true' ? 'bgp' : 'none');
+  const legacyVxlan = props.getProperty('NET_VXLAN') === 'true';
+  const legacyEvpn  = props.getProperty('NET_EVPN')  === 'true';
+
+  // Helper: read stored bool, fall back to default if key not yet written
+  const get = (key, fallback) => {
+    const v = props.getProperty(key);
+    return v !== null ? v === 'true' : fallback;
+  };
+
+  // ── Interface ────────────────────────────────────────────────────────────
+  const int_ipv6      = get('INT_IPV6',      true);   // default true = backward compat
+  const int_ipv6_unnum= get('INT_IPV6_UNNUM',false);
+
+  // ── BGP ──────────────────────────────────────────────────────────────────
+  const hadBgp        = legacyUnderlay.includes('bgp');
+  const bgp_ipv4      = get('BGP_IPV4',      hadBgp);
+  const bgp_ipv6      = get('BGP_IPV6',      false);
+  const bgp_ipv6_unnum= get('BGP_IPV6_UNNUM',false);
+  const bgp_rfc5549   = get('BGP_RFC5549',   false);
+
+  // ── OSPF ─────────────────────────────────────────────────────────────────
+  const hadOspf        = legacyUnderlay.includes('ospf');
+  const ospf_ipv4      = get('OSPF_IPV4',      hadOspf);
+  const ospf_ipv6      = get('OSPF_IPV6',      false);
+  const ospf_ipv6_unnum= get('OSPF_IPV6_UNNUM',false);
+
+  // ── VXLAN ────────────────────────────────────────────────────────────────
+  const vxlan_ipv4 = get('VXLAN_IPV4', legacyVxlan);
+  const vxlan_ipv6 = get('VXLAN_IPV6', false);
+
+  // ── EVPN ─────────────────────────────────────────────────────────────────
+  const evpn_ipv4 = get('EVPN_IPV4', legacyEvpn);
+  const evpn_ipv6 = get('EVPN_IPV6', false);
+
+  // ── Derived scalar for legacy callers ────────────────────────────────────
+  const hasBgp  = bgp_ipv4 || bgp_ipv6 || bgp_ipv6_unnum || bgp_rfc5549;
+  const hasOspf = ospf_ipv4 || ospf_ipv6 || ospf_ipv6_unnum;
+  const underlay = (hasBgp && hasOspf) ? 'bgp+ospf' : hasBgp ? 'bgp' : hasOspf ? 'ospf' : 'none';
+
   return {
-    underlay: underlay,          // 'bgp' | 'ospf' | 'none'
-    vxlan: props.getProperty('NET_VXLAN') || 'false',
-    evpn: props.getProperty('NET_EVPN') || 'false'
+    // Interface
+    int_ipv6, int_ipv6_unnum,
+    // BGP
+    bgp_ipv4, bgp_ipv6, bgp_ipv6_unnum, bgp_rfc5549,
+    // OSPF
+    ospf_ipv4, ospf_ipv6, ospf_ipv6_unnum,
+    // VXLAN
+    vxlan_ipv4, vxlan_ipv6,
+    // EVPN
+    evpn_ipv4, evpn_ipv6,
+    // Legacy derived (used by old call sites)
+    underlay,
+    vxlan: String(vxlan_ipv4 || vxlan_ipv6),
+    evpn:  String(evpn_ipv4  || evpn_ipv6)
   };
 }
 
 function saveNetworkSettings(settings) {
   const props = PropertiesService.getDocumentProperties();
+  const b = (v) => v ? 'true' : 'false';
   props.setProperties({
-    'NET_UNDERLAY': settings.underlay,
-    'NET_VXLAN': settings.vxlan,
-    'NET_EVPN': settings.evpn
+    'INT_IPV6':       b(settings.int_ipv6),
+    'INT_IPV6_UNNUM': b(settings.int_ipv6_unnum),
+    'BGP_IPV4':       b(settings.bgp_ipv4),
+    'BGP_IPV6':       b(settings.bgp_ipv6),
+    'BGP_IPV6_UNNUM': b(settings.bgp_ipv6_unnum),
+    'BGP_RFC5549':    b(settings.bgp_rfc5549),
+    'OSPF_IPV4':      b(settings.ospf_ipv4),
+    'OSPF_IPV6':      b(settings.ospf_ipv6),
+    'OSPF_IPV6_UNNUM':b(settings.ospf_ipv6_unnum),
+    'VXLAN_IPV4':     b(settings.vxlan_ipv4),
+    'VXLAN_IPV6':     b(settings.vxlan_ipv6),
+    'EVPN_IPV4':      b(settings.evpn_ipv4),
+    'EVPN_IPV6':      b(settings.evpn_ipv6)
   });
   return { success: true };
 }
@@ -3337,10 +3401,9 @@ function getDeviceConfig(deviceName) {
     const ipPrefs = getIpPreferences() || {};
     const settings = getNetworkSettings();
 
-    // FEATURE FLAGS
-    const underlay = settings.underlay || 'none'; // 'bgp' | 'ospf' | 'bgp+ospf' | 'none'
-    let isBgp = underlay.includes('bgp');
-    let isOspf = underlay.includes('ospf');
+    // FEATURE FLAGS (derived from per-family settings flags)
+    const isBgp  = settings.bgp_ipv4 || settings.bgp_ipv6 || settings.bgp_ipv6_unnum || settings.bgp_rfc5549;
+    const isOspf = settings.ospf_ipv4 || settings.ospf_ipv6 || settings.ospf_ipv6_unnum;
 
     const allDevices = getExistingDevices() || [];
     const targetDeviceObj = allDevices.find(d => d.name === deviceName);
@@ -3351,15 +3414,15 @@ function getDeviceConfig(deviceName) {
     const deviceRole = ((targetDeviceObj && targetDeviceObj.role) || '').toUpperCase();
     const isEvpnDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
     const isVxlanDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
-    let isVxlan = (settings.vxlan === 'true') && isVxlanDevice;
-    let isEvpn  = (settings.evpn  === 'true') && isEvpnDevice;
+    const isVxlan = (settings.vxlan_ipv4 || settings.vxlan_ipv6) && isVxlanDevice;
+    const isEvpn  = (settings.evpn_ipv4  || settings.evpn_ipv6)  && isEvpnDevice;
 
     // Build peer-role map for BGP generation (used to skip OVERLAY sessions toward HARNESS peers)
     const peerRoles = {};
     allDevices.forEach(d => { peerRoles[d.name] = (d.role || '').toUpperCase(); });
 
     // 2. Detect MLAG State
-    const mlagState = detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, isOspf);
+    const mlagState = detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings);
     const devData = collectDeviceData(rows, headers, targetColIndex, deviceName, topo.mlagPeerMap);
     // Pre-compute VTEP leaves for static flood list (only computed when VXLAN is enabled)
     const vtepNames = isVxlan ? computeVtepNames(allDevices, rows, headers, topo) : new Set();
@@ -3403,12 +3466,12 @@ function getDeviceConfig(deviceName) {
 
     // [SECTION 000] GLOBAL
     configMap["000_GLOBAL"] = {
-      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice),
+      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings),
       blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
     };
 
     // [SECTION 001] SYSTEM
-    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans));
+    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings);
     configMap["001_SYSTEM"] = {
       full: "!--- SYSTEM CONFIG ---\n" + sysBlock + "\n!--------------------",
       blockStatus: "System"
@@ -3435,7 +3498,8 @@ function getDeviceConfig(deviceName) {
               headers,
               isEvpn,
               parseInt(ipPrefs.vni_base) || 10000,
-              vtepNames
+              vtepNames,
+              settings
             ),
             blockStatus: "VXLAN Active"
           };
@@ -3542,7 +3606,7 @@ function getDeviceConfig(deviceName) {
         }
 
         {
-          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, underlay);
+          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, settings);
           if (pName.startsWith("Po")) {
             configMap["060_" + pName] = { full: cfg, blockStatus: "Logical" };
           } else {
@@ -3562,27 +3626,45 @@ function getDeviceConfig(deviceName) {
       };
     }
 
-    // [SECTION 090] OSPF UNDERLAY
-    if (isOspf) {
+    // [SECTION 090] OSPF v2 UNDERLAY
+    if (settings.ospf_ipv4) {
       const hasP2pForOspf = Object.values(mlagState.bgpNeighbors).some(
         p => p.peerParams && p.peerParams.some(pp => !pp.isMlag)
       );
       if (hasP2pForOspf) {
         configMap["090_OSPF_UNDERLAY"] = {
           full: generateOSPF(deviceSheetIndex, mlagState.bgpNeighbors),
-          blockStatus: "OSPF Underlay"
+          blockStatus: "OSPFv2 Underlay"
         };
       } else {
         configMap["090_OSPF_UNDERLAY"] = {
-          full: "! OSPF Underlay Skipped: No P2P interfaces configured\n!",
+          full: "! OSPFv2 Underlay Skipped: No P2P interfaces configured\n!",
           blockStatus: "Skipped"
         };
       }
     } else {
       configMap["090_OSPF_UNDERLAY"] = {
-        full: "! OSPF Underlay Skipped: Feature Disabled in Tech Settings\n!",
+        full: "! OSPFv2 Underlay Skipped: Feature Disabled in Tech Settings\n!",
         blockStatus: "Disabled"
       };
+    }
+
+    // [SECTION 091] OSPF v3 UNDERLAY
+    if (settings.ospf_ipv6) {
+      const hasP2pForOspf3 = Object.values(mlagState.bgpNeighbors).some(
+        p => p.peerParams && p.peerParams.some(pp => !pp.isMlag)
+      );
+      if (hasP2pForOspf3) {
+        configMap["091_OSPF3_UNDERLAY"] = {
+          full: generateOSPFv3(deviceSheetIndex, mlagState.bgpNeighbors),
+          blockStatus: "OSPFv3 Underlay"
+        };
+      } else {
+        configMap["091_OSPF3_UNDERLAY"] = {
+          full: "! OSPFv3 Underlay Skipped: No P2P interfaces configured\n!",
+          blockStatus: "Skipped"
+        };
+      }
     }
 
     // [SECTION 100] BGP UNDERLAY / BGP EVPN OVERLAY
@@ -3591,7 +3673,7 @@ function getDeviceConfig(deviceName) {
       const bgpKey = isEvpn ? "100_BGP_EVPN" : "100_BGP_UNDERLAY";
       if (Object.keys(mlagState.bgpNeighbors).length > 0) {
         configMap[bgpKey] = {
-          full: generateBGP(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, isEvpn, deviceRole, peerRoles),
+          full: generateBGP(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, isEvpn, deviceRole, peerRoles, settings),
           blockStatus: isEvpn ? "Routing + Overlay" : "Routing (Underlay Only)"
         };
       } else {
@@ -3606,7 +3688,7 @@ function getDeviceConfig(deviceName) {
       // OSPF underlay + BGP EVPN overlay only
       if (Object.keys(mlagState.bgpNeighbors).length > 0) {
         configMap["100_BGP_EVPN"] = {
-          full: generateBGPEvpnOverlay(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, peerRoles),
+          full: generateBGPEvpnOverlay(deviceSheetIndex, deviceName, mlagState.bgpNeighbors, devData.gwVlans, peerRoles, settings),
           blockStatus: "BGP EVPN Overlay (over OSPF)"
         };
       } else {
@@ -3636,10 +3718,11 @@ function getDeviceConfig(deviceName) {
   }
 }
 
-function generateSystemBlocks(deviceId, vrfs, vlans) {
+function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
   // Safety: Ensure inputs are Arrays
   const safeVrfs = Array.isArray(vrfs) ? vrfs : [];
   const safeVlans = Array.isArray(vlans) ? vlans : [];
+  const hasIpv6 = !netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum;
 
   let lines = [];
 
@@ -3647,11 +3730,15 @@ function generateSystemBlocks(deviceId, vrfs, vlans) {
   lines.push(`! System IDs (Derived from ID: ${deviceId})`);
   lines.push(`interface Loopback0`);
   lines.push(` ip address ${deviceId}.${deviceId}.${deviceId}.${deviceId}/32`);
-  lines.push(` ipv6 address ${deviceId}:${deviceId}:${deviceId}::${deviceId}/128`);
+  if (hasIpv6) {
+    lines.push(` ipv6 address ${deviceId}:${deviceId}:${deviceId}::${deviceId}/128`);
+  }
   lines.push(`!`);
   lines.push(`router general`);
   lines.push(` router-id ipv4 ${deviceId}.${deviceId}.${deviceId}.${deviceId}`);
-  lines.push(` router-id ipv6 ${deviceId}:${deviceId}:${deviceId}::${deviceId}`);
+  if (hasIpv6) {
+    lines.push(` router-id ipv6 ${deviceId}:${deviceId}:${deviceId}::${deviceId}`);
+  }
   lines.push(`!`);
 
   // VRFs
@@ -3660,7 +3747,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans) {
     safeVrfs.filter(v => v).forEach(v => {
       lines.push(`vrf instance ${v}`);
       lines.push(`ip routing vrf ${v}`);
-      lines.push(`ipv6 unicast-routing vrf ${v}`);
+      if (hasIpv6) lines.push(`ipv6 unicast-routing vrf ${v}`);
       lines.push(`!`);
     });
   } else {
@@ -3702,7 +3789,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans) {
 * Generates configuration for an interface.
 * REFACTORED: Implements strict 9-rule description logic.
 */
-function generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol) {
+function generateConfig(portName, d, ipPrefs, seenPos, netSettings) {
   const isSubInt = String(portName).includes(".");
   const poVal = normalizePo(d.po_) || ""; // Local Port-Channel Name (e.g. Po10)
   const hasPo = (poVal !== "");
@@ -3818,13 +3905,13 @@ function generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol) {
       // It is now exclusively handled below by generateAttributesBlock(d)
 
       cfg += generateAttributesBlock(d);
-      cfg += generateComplexL3Block(poVal, d, ipPrefs, underlayProtocol);
+      cfg += generateComplexL3Block(poVal, d, ipPrefs, netSettings);
     }
   } else {
     // Virtual interfaces (Loopback, Vlan, etc)
     if (!hasPo && !portName.startsWith("Po")) {
       cfg += generateAttributesBlock(d);
-      cfg += generateComplexL3Block(portName, d, ipPrefs, underlayProtocol);
+      cfg += generateComplexL3Block(portName, d, ipPrefs, netSettings);
     }
   }
 
@@ -3874,7 +3961,7 @@ function generateAttributesBlock(d) {
 }
 
 /* REPLACE IN Code.gs */
-function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
+function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   if (!d.sp_mode_ || !d.vlan_) return "";
 
   const mode = String(d.sp_mode_).toLowerCase();
@@ -3901,6 +3988,14 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
   const gwLastV4 = parseInt(cfg.gw_v4_last);
   const gwLastV6 = parseInt(cfg.gw_v6_last);
 
+  // IPv6 mode: unnumbered takes priority over explicit; null netSettings = backward-compat (explicit)
+  const useIpv6Unnum    = !!(netSettings && netSettings.int_ipv6_unnum);
+  const useIpv6Explicit = !useIpv6Unnum && (!netSettings || netSettings.int_ipv6);
+
+  // OSPF flags
+  const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4);
+  const addOspfV6 = !!(netSettings && netSettings.ospf_ipv6);
+
   // Helper to build the IP config lines
   const getIpBlock = (v) => {
     let val = parseInt(v);
@@ -3920,11 +4015,15 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
       lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
-      lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
+      if (useIpv6Unnum) {
+        lines.push(` ipv6 enable`);
+        lines.push(` ipv6 unnumbered Loopback0`);
+      } else if (useIpv6Explicit) {
+        lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
+      }
     }
-    // B. GATEWAY (SVI/Sub-Int)
+    // B. GATEWAY (SVI/Sub-Int) — unnumbered doesn't apply to GW (need real IPs for VARP)
     else if (ipType.includes("gw")) {
-
       if (d.isMlag) {
         // MLAG Logic: Distinct Physical IPs + Virtual IP
         // phySuffix = gwLast + sheetIndex guarantees:
@@ -3934,16 +4033,20 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
         const phySuffixV6 = gwLastV6 + sheetIndex;
 
         lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-        lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
-
+        if (useIpv6Explicit) {
+          lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
+        }
         // VARP (Virtual ARP) - L3 modes are blocked by the guard above
         lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
-        lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
-
+        if (useIpv6Explicit) {
+          lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+        }
       } else {
         // Standalone Gateway
         lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-        lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+        if (useIpv6Explicit) {
+          lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+        }
       }
     }
 
@@ -3952,17 +4055,18 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
 
   let block = "";
 
-  const addOspf = !!(underlayProtocol && underlayProtocol.includes('ospf'));
-
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
   if (mode.startsWith("l2-") && sviVlans.length > 0) {
     sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
-      if (addOspf) {
+      if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
         block += " ip ospf neighbor bfd\n";
+      }
+      if (addOspfV6) {
+        block += " ipv6 ospf 1 area 0.0.0.0\n";
       }
     });
   }
@@ -3970,20 +4074,26 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
   else if (mode.includes("-sub-int")) {
     vlans.forEach(v => {
       block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
-      if (addOspf) {
+      if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
         block += " ip ospf neighbor bfd\n";
+      }
+      if (addOspfV6) {
+        block += " ipv6 ospf 1 area 0.0.0.0\n";
       }
     });
   }
   // 3. L3 Routed Interfaces (No Sub-Int)
   else if (mode === "l3-et-int" || mode === "l3-po-int") {
     if (vlans.length > 0) block += getIpBlock(vlans[0]) + "\n no shutdown\n";
-    if (addOspf) {
+    if (addOspfV4) {
       block += " ip ospf network point-to-point\n";
       block += " ip ospf area 0.0.0.0\n";
       block += " ip ospf neighbor bfd\n";
+    }
+    if (addOspfV6) {
+      block += " ipv6 ospf 1 area 0.0.0.0\n";
     }
   }
 
@@ -4137,26 +4247,26 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   });
 }
 
-function generateGlobalBlock(isEvpnDevice) {
+function generateGlobalBlock(isEvpnDevice, netSettings) {
   let globalCfgText = getGlobalConfig() || "";
   let mandatory = ["!"];
   // multi-agent model is required for EVPN; skip on pure-underlay devices (e.g. HARNESS)
   if (isEvpnDevice) {
     mandatory.push("service routing protocols model multi-agent");
   }
-  mandatory.push(
-    "ip routing",
-    "ip routing ipv6 interfaces",
-    "ipv6 unicast-routing",
-    "!"
-  );
+  mandatory.push("ip routing");
+  if (!netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum) {
+    mandatory.push("ip routing ipv6 interfaces");
+    mandatory.push("ipv6 unicast-routing");
+  }
+  mandatory.push("!");
   return globalCfgText + "\n" + mandatory.join("\n");
 }
 
 /**
 * REFACTORED HELPER: Detects MLAG & Neighbors using Topology Engine
 */
-function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, isOspf) {
+function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings) {
   const state = {
     isActive: false,
     peerId: null,
@@ -4190,7 +4300,7 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
       if (!peerLinkPort) {
         state.mlagConfigBlock = "!! ERROR: No Physical Peer-Link detected in Topology !!";
       } else {
-        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, isOspf);
+        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, settings);
         state.mlagConfigBlock = mlagData.mlagConfigBlock;
       }
     }
@@ -4228,7 +4338,9 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
 * Helper: Generates MLAG Global Config, SVIs, and BGP Peering
 * Updates the bgpNeighbors object by reference.
 */
-function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, isOspf) {
+function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings) {
+  const isOspf = !!(settings && settings.ospf_ipv4);
+  const hasMlagIpv6 = !settings || settings.int_ipv6 || settings.int_ipv6_unnum;
   const partnerId = partnerObj.sheetIndex;
   const partnerName = partnerObj.name;
 
@@ -4271,7 +4383,7 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   mlagLines.push(" description MLAG_L3_PEERING");
   mlagLines.push(" no autostate");
   mlagLines.push(` ip address 169.254.1.${localIpBit}/31`);
-  mlagLines.push(` ipv6 address 169:254:1::${localIpBit}/127`);
+  if (hasMlagIpv6) mlagLines.push(` ipv6 address 169:254:1::${localIpBit}/127`);
   if (isOspf) {
     mlagLines.push(" ip ospf network point-to-point");
     mlagLines.push(" ip ospf area 0.0.0.0");
@@ -4300,13 +4412,14 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
       peerParams: []
     };
   }
-  bgpNeighbors[partnerName].peerParams.push({
+  const mlagPeerParam = {
     peerIpV4: `169.254.1.${peerIpBit}`,
-    peerIpV6: `169:254:1::${peerIpBit}`,
     interface: "Vlan4093",
     description: `MLAG_L3_UNDERLAY_TO_${partnerName}`,
     isMlag: true
-  });
+  };
+  if (hasMlagIpv6) mlagPeerParam.peerIpV6 = `169:254:1::${peerIpBit}`;
+  bgpNeighbors[partnerName].peerParams.push(mlagPeerParam);
 
   return { mlagConfigBlock: mlagLines.join("\n") };
 }
@@ -4319,10 +4432,11 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
  * 2. Applies 'next-hop address-family ipv6 originate' correctly.
  * 3. Prevents _V4_P2P_IP groups from appearing in IPv6 families (Global & VRF).
  */
-function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpnEnabled, deviceRole, peerRoles) {
+function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpnEnabled, deviceRole, peerRoles, settings) {
   // Helper: returns true if a peer should participate in EVPN overlay sessions.
   // Only LEAF/SPINE peers get OVERLAY peer groups. All others (HARNESS, unset, etc.) get underlay only.
   const peerRoles_ = peerRoles || {};
+  const s = settings || {};
   const isPeerEvpn = (peerName) => {
     const pr = (peerRoles_[peerName] || '').toUpperCase();
     return pr === 'LEAF' || pr === 'SPINE';
@@ -4418,13 +4532,15 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
       configLines.push(` neighbor ${gName} maximum-routes 12000`);
     };
 
-    if (pg.params.peerIpV4) define(pg.pgV4);
-    if (pg.params.peerIpV6) define(pg.pgV6);
-    if (pg.params.interface) define(pg.pgV6Int);
+    // Gate peer groups on IP family flags. MLAG peers bypass bgp_ipv4/bgp_ipv6 gates
+    // because the MLAG link always has both IPv4 and IPv6 addresses configured.
+    if (pg.params.peerIpV4 && (s.bgp_ipv4 || pg.params.isMlag)) define(pg.pgV4);
+    if (pg.params.peerIpV6 && (s.bgp_ipv6 || pg.params.isMlag)) define(pg.pgV6);
+    if (pg.params.interface && s.bgp_rfc5549) define(pg.pgV6Int);
 
     if (isEvpnEnabled && !pg.isVrf && !pg.params.isMlag && isPeerEvpn(pg.name)) {
-      define(pg.pgOvV4, true);
-      define(pg.pgOvV6, true);
+      if (s.evpn_ipv4 !== false) define(pg.pgOvV4, true);
+      if (s.evpn_ipv6) define(pg.pgOvV6, true);
     }
   });
 
@@ -4434,27 +4550,29 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
       const p = item.params;
       const descSuffix = `To ${item.name} via ${p.interface}`;
 
-      if (p.peerIpV4) {
+      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
         configLines.push(` neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
         configLines.push(` neighbor ${p.peerIpV4} description ${descSuffix} (IPv4)`);
       }
-      if (p.peerIpV6) {
+      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag)) {
         configLines.push(` neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
         configLines.push(` neighbor ${p.peerIpV6} description ${descSuffix} (IPv6)`);
       }
-      if (p.interface) {
+      if (p.interface && s.bgp_rfc5549) {
         configLines.push(` neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
       }
 
       if (isEvpnEnabled && !p.isMlag && isPeerEvpn(item.name)) {
-        if (item.loopbackV4) {
+        if (item.loopbackV4 && s.evpn_ipv4 !== false) {
           configLines.push(` neighbor ${item.loopbackV4} peer group ${item.pgOvV4}`);
           configLines.push(` neighbor ${item.loopbackV4} description Overlay to ${item.name}`);
         }
-        const pid = item.peerId;
-        const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
-        configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
-        configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
+        if (s.evpn_ipv6) {
+          const pid = item.peerId;
+          const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
+          configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
+          configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
+        }
       }
     });
   });
@@ -4517,17 +4635,17 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
       const p = item.params;
       const descSuffix = `To ${item.name} via ${p.interface}`;
 
-      if (p.peerIpV4) {
+      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
         configLines.push(`  neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
         configLines.push(`  neighbor ${p.peerIpV4} description ${descSuffix}`);
         activeVrfGroups.add(item.pgV4);
       }
-      if (p.peerIpV6) {
+      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag)) {
         configLines.push(`  neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
         configLines.push(`  neighbor ${p.peerIpV6} description ${descSuffix}`);
         activeVrfGroups.add(item.pgV6);
       }
-      if (p.interface) {
+      if (p.interface && s.bgp_rfc5549) {
         configLines.push(`  neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
         activeVrfGroups.add(item.pgV6Int);
       }
@@ -4562,7 +4680,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
 /**
  * Generates OSPF underlay configuration (area 0, single-area leaf-spine).
  * Per-interface OSPF commands (point-to-point, area, bfd) are added by
- * generateComplexL3Block() when underlayProtocol.includes('ospf').
+ * generateComplexL3Block() when netSettings.ospf_ipv4 is true.
  */
 function generateOSPF(deviceSheetIndex, bgpNeighbors) {
   const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
@@ -4604,13 +4722,58 @@ function generateOSPF(deviceSheetIndex, bgpNeighbors) {
 }
 
 /**
+ * Generates OSPFv3 (IPv6) underlay configuration (area 0, single-area leaf-spine).
+ * Mirrors generateOSPF() but uses `router ospf3 1`. Per-interface commands
+ * (`ipv6 ospf 1 area 0.0.0.0`) are added by generateComplexL3Block() when ospf_ipv6=true.
+ */
+function generateOSPFv3(deviceSheetIndex, bgpNeighbors) {
+  const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
+
+  // Group non-MLAG P2P interfaces by VRF
+  const vrfIntfMap = {};
+  let hasMlagPeer = false;
+  Object.values(bgpNeighbors).forEach(peerData => {
+    if (!peerData || !peerData.peerParams) return;
+    peerData.peerParams.forEach(p => {
+      if (p.isMlag) { hasMlagPeer = true; return; }
+      if (!p.interface) return;
+      const vrf = (p.vrf && p.vrf.trim() !== "") ? p.vrf : "DEFAULT";
+      if (!vrfIntfMap[vrf]) vrfIntfMap[vrf] = new Set();
+      vrfIntfMap[vrf].add(p.interface);
+    });
+  });
+  if (hasMlagPeer) {
+    if (!vrfIntfMap["DEFAULT"]) vrfIntfMap["DEFAULT"] = new Set();
+    vrfIntfMap["DEFAULT"].add("Vlan4093");
+  }
+
+  const buildBlock = (header, intfs) => {
+    const lines = [header, ` router-id ${routerId}`, " passive-interface default"];
+    intfs.forEach(intf => lines.push(` no passive-interface ${intf}`));
+    lines.push(" bfd default", " max-lsa 12000", "!");
+    return lines.join("\n");
+  };
+
+  const parts = [];
+  if (vrfIntfMap["DEFAULT"]) {
+    parts.push(buildBlock("router ospf3 1", vrfIntfMap["DEFAULT"]));
+  }
+  Object.keys(vrfIntfMap).filter(v => v !== "DEFAULT").sort().forEach(vrf => {
+    parts.push(buildBlock(`router ospf3 1 vrf ${vrf}`, vrfIntfMap[vrf]));
+  });
+
+  return parts.join("\n");
+}
+
+/**
  * Generates a BGP EVPN overlay-only block for use when OSPF is the underlay.
  * No P2P underlay sessions — only loopback-to-loopback overlay peers + EVPN AF.
  */
-function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles) {
+function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings) {
   const localAsn = 65000 + deviceSheetIndex;
   const lines = [];
   const peerRoles_ = peerRoles || {};
+  const s = settings || {};
   const isPeerEvpn = (peerName) => {
     const pr = (peerRoles_[peerName] || '').toUpperCase();
     return pr === 'LEAF' || pr === 'SPINE';
@@ -4625,26 +4788,49 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
   const definedGroups = new Set();
 
   // Define overlay peer groups (loopback-to-loopback) — skip non-EVPN peers (e.g. HARNESS)
+  const useEvpnV4 = s.evpn_ipv4 !== false; // default true for backward compat
+  const useEvpnV6 = !!s.evpn_ipv6;
   Object.keys(bgpNeighbors).forEach(peerName => {
     const peerData = bgpNeighbors[peerName];
     if (!peerData) return;
     if (!isPeerEvpn(peerName)) return;
     const isMlagOnly = peerData.peerParams && peerData.peerParams.every(p => p.isMlag);
     if (isMlagOnly) return;
-    const pgOvV4 = `OVERLAY_${peerName.toUpperCase()}_V4_LO_IP`;
-    if (!definedGroups.has(pgOvV4)) {
-      definedGroups.add(pgOvV4);
-      const peerAsn = 65000 + peerData.id;
-      lines.push(` neighbor ${pgOvV4} peer group`);
-      lines.push(` neighbor ${pgOvV4} remote-as ${peerAsn}`);
-      lines.push(` neighbor ${pgOvV4} update-source Loopback0`);
-      lines.push(` neighbor ${pgOvV4} ebgp-multihop 3`);
-      lines.push(` neighbor ${pgOvV4} send-community extended`);
-      lines.push(` neighbor ${pgOvV4} maximum-routes 12000`);
+    const peerAsn = 65000 + peerData.id;
+    const pid = peerData.id;
+
+    if (useEvpnV4) {
+      const pgOvV4 = `OVERLAY_${peerName.toUpperCase()}_V4_LO_IP`;
+      if (!definedGroups.has(pgOvV4)) {
+        definedGroups.add(pgOvV4);
+        lines.push(` neighbor ${pgOvV4} peer group`);
+        lines.push(` neighbor ${pgOvV4} remote-as ${peerAsn}`);
+        lines.push(` neighbor ${pgOvV4} update-source Loopback0`);
+        lines.push(` neighbor ${pgOvV4} ebgp-multihop 3`);
+        lines.push(` neighbor ${pgOvV4} send-community extended`);
+        lines.push(` neighbor ${pgOvV4} maximum-routes 12000`);
+      }
+      if (peerData.loopbackV4) {
+        lines.push(` neighbor ${peerData.loopbackV4} peer group ${pgOvV4}`);
+        lines.push(` neighbor ${peerData.loopbackV4} description Overlay to ${peerName}`);
+      }
     }
-    if (peerData.loopbackV4) {
-      lines.push(` neighbor ${peerData.loopbackV4} peer group ${pgOvV4}`);
-      lines.push(` neighbor ${peerData.loopbackV4} description Overlay to ${peerName}`);
+
+    if (useEvpnV6) {
+      const pgOvV6 = `OVERLAY_${peerName.toUpperCase()}_V6_LO_IP`;
+      if (!definedGroups.has(pgOvV6)) {
+        definedGroups.add(pgOvV6);
+        lines.push(` neighbor ${pgOvV6} peer group`);
+        lines.push(` neighbor ${pgOvV6} remote-as ${peerAsn}`);
+        lines.push(` neighbor ${pgOvV6} update-source Loopback0`);
+        lines.push(` neighbor ${pgOvV6} ebgp-multihop 3`);
+        lines.push(` neighbor ${pgOvV6} next-hop-unchanged`);
+        lines.push(` neighbor ${pgOvV6} send-community standard extended`);
+        lines.push(` neighbor ${pgOvV6} maximum-routes 12000`);
+      }
+      const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
+      lines.push(` neighbor ${v6Loop} peer group ${pgOvV6}`);
+      lines.push(` neighbor ${v6Loop} description Overlay to ${peerName} (v6)`);
     }
   });
 
@@ -4674,9 +4860,11 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 * - [FIX] Flood List ONLY includes Leaf VTEPs (GW + P2P), ignoring Spines.
 */
 /* REPLACE IN Code.gs */
-function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames) {
+function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames, settings) {
   const lines = [];
   lines.push("!");
+  const s = settings || {};
+  const addVtepIpv6 = s.vxlan_ipv6 || s.int_ipv6;
 
   // 1. Calculate My VTEP IP (IPv4 + IPv6)
   let myVtepIpV4 = "";
@@ -4692,13 +4880,13 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
     // IPv4: 1.1.2.2 (Min.Min.Max.Max)
     myVtepIpV4 = `${low}.${low}.${high}.${high}`;
 
-    // IPv6: 1:1:2::2 (Min:Min:Max::Max) <--- UPDATED HERE
+    // IPv6: 1:1:2::2 (Min:Min:Max::Max)
     myVtepIpV6 = `${low}:${low}:${high}::${high}`;
 
     lines.push("interface Loopback1");
     lines.push(" description VTEP_VXLAN_ANYCAST");
     lines.push(` ip address ${myVtepIpV4}/32`);
-    lines.push(` ipv6 address ${myVtepIpV6}/128`);
+    if (addVtepIpv6) lines.push(` ipv6 address ${myVtepIpV6}/128`);
     lines.push("!");
 
     lines.push("interface Vxlan1");

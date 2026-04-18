@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-18 (OSPF expanded: generateComplexL3Block() now emits ip ospf commands on ALL P2P interface modes (L2+SVI, sub-interfaces, L3 routed) — previously only l3-et-int/l3-po-int; !d.vrf_ guard removed from all branches — VRF interfaces now covered by per-VRF OSPF processes; generateOSPF() refactored to group P2P interfaces by VRF and emit one router ospf 1 block for DEFAULT VRF plus router ospf 1 vrf <name> blocks for each non-default VRF; router-id is shared across all VRF instances. Files: Code.gs)
+  Last updated: 2026-04-18 (IP family flags — 13 new DocumentProperty flags replace old underlay string + vxlan/evpn booleans. Flags: INT_IPV6, INT_IPV6_UNNUM, BGP_IPV4, BGP_IPV6, BGP_IPV6_UNNUM, BGP_RFC5549, OSPF_IPV4, OSPF_IPV6, OSPF_IPV6_UNNUM, VXLAN_IPV4, VXLAN_IPV6, EVPN_IPV4, EVPN_IPV6. Tech modal rebuilt: 5-section layout (INTERFACE radio group + 4 protocol checkbox groups), 420px width. generateConfig() 5th param renamed underlayProtocol→netSettings (object, still exactly 5 params). generateBGP() now takes settings as 8th param; peer groups gated per flag (pgV4↔bgp_ipv4, pgV6↔bgp_ipv6, pgV6Int↔bgp_rfc5549); MLAG peers bypass IPv4/IPv6 gate (isMlag=true). generateOSPFv3() added (mirrors generateOSPF but uses router ospf3 1). generateComplexL3Block() handles IPv6 unnumbered (ipv6 enable + ipv6 unnumbered Loopback0) vs explicit IPv6, OSPF per-interface gated on ospf_ipv4/ospf_ipv6. generateGlobalBlock/generateSystemBlocks gate IPv6 routing commands on int_ipv6/int_ipv6_unnum. generateMlagConfig/detectMlagState: last param isOspf→settings; MLAG peer-link IPv6 gated on hasMlagIpv6. generateBGPEvpnOverlay: settings 6th param; V6 overlay new. generateVxlanBlock: settings 13th param; Loopback1 IPv6 gated on vxlan_ipv6||int_ipv6. Backward compat: !netSettings defaults to all-IPv6-on; evpn_ipv4 defaults true. Files: Code.gs, Sidebar.html, Sidebar-js.html)
+  Previous: 2026-04-18 (OSPF expanded: generateComplexL3Block() now emits ip ospf commands on ALL P2P interface modes (L2+SVI, sub-interfaces, L3 routed) — previously only l3-et-int/l3-po-int; !d.vrf_ guard removed from all branches — VRF interfaces now covered by per-VRF OSPF processes; generateOSPF() refactored to group P2P interfaces by VRF and emit one router ospf 1 block for DEFAULT VRF plus router ospf 1 vrf <name> blocks for each non-default VRF; router-id is shared across all VRF instances. Files: Code.gs)
   Previous: 2026-04-18 (Review fixes: getSheetViewSviFilter() migrates stale 'yes'→'active' in saved SHEET_VIEW_SVI_FILTER on read+persist; applyCustomView() dead ScriptProperty writes removed (SHEET_VIEW_MODE, CUSTOM_VIEW_PREFIXES — never read). File: Code.gs)
   Previous: 2026-04-18 (svi_→svi_vlan_ rename stragglers: SheetAssistPanel.html SVI_FILTER_ITEMS val 'yes'→'active' and initSviFilter default ['yes','blank']→['active','blank']; Sidebar.html dev-vis filter label 'svi'→'svi_vlan'. Files: SheetAssistPanel.html, Sidebar.html)
   Previous: 2026-04-17 (SVI alias: added 'active' to svi_vlan_ standardization aliases in validateAndCleanData() — typing 'active' in the svi_vlan_ sheet column is now accepted and auto-converted to 'all' (same as legacy 'yes'/'true'/'1'/'y'). File: Code.gs)
@@ -187,9 +188,10 @@ When any of these are violated, visible bugs result immediately.
    If order is reversed, _sys_ is missing and applyCustomView() corrupts col 1.
 
 2. generateConfig() ALWAYS CALLED WITH ALL 5 ARGS
-   Signature: generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol)
-   Both callers — getTopologyData() and getDeviceConfig() — must pass underlayProtocol.
-   Omitting it silently drops all OSPF per-interface commands (no error, wrong config).
+   Signature: generateConfig(portName, d, ipPrefs, seenPos, netSettings)
+   Both callers — getTopologyData() and getDeviceConfig() — must pass netSettings.
+   netSettings is the full settings object (13 IP family flags). Omitting it silently
+   drops all protocol-family-gated commands (OSPF per-interface, IPv6, etc.).
 
 3. TOOLTIP CONFIG == CONFIGS SHEET CONFIG (same source of truth)
    Both paths call getDeviceConfig() → configMap[key].full.
@@ -235,7 +237,7 @@ TOPOLOGY LOAD (getTopologyData):
   → runFullSheetCleanup()
   → applyGlobalFormatting()
   → calculateGlobalTopology()     ← returns { mlagConfigPorts, peerLinkPorts, mlagPeerMap, globalLinkMap }
-  → [per-port] generateConfig(pName, details, ipPrefs, seenPos, globalUnderlay)
+  → [per-port] generateConfig(pName, details, ipPrefs, seenPos, globalNetSettings)
   → return payload                ← includes pre-generated config per port
 
 CONFIG FETCH (right pane tooltip, on demand):
@@ -741,14 +743,15 @@ IMPORTANT: After editing buildConditionalRules, user must do Save & Sync
 SECTION 11: CONFIG GENERATION
 --------------------------------------------------------------------------------
 
-Entry point: generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol)
-  portName         — interface name (e.g. "Et1", "Po10", "Et1.100")
-  d                — data object with all attribute values for that row
-  ipPrefs          — IP preferences (base subnets, VRFs, etc.)
-  seenPos          — Set of already-generated Port-Channels (prevents duplicates)
-  underlayProtocol — 'bgp'|'ospf'|'bgp+ospf'|'none' — passed to generateComplexL3Block()
-                     to add OSPF per-interface commands (ip ospf network point-to-point,
-                     ip ospf area 0.0.0.0). INVARIANT: MUST be passed by every caller.
+Entry point: generateConfig(portName, d, ipPrefs, seenPos, netSettings)
+  portName    — interface name (e.g. "Et1", "Po10", "Et1.100")
+  d           — data object with all attribute values for that row
+  ipPrefs     — IP preferences (base subnets, VRFs, etc.)
+  seenPos     — Set of already-generated Port-Channels (prevents duplicates)
+  netSettings — IP family flags object from getNetworkSettings(); passed to
+                generateComplexL3Block() to gate IPv6/OSPF/unnumbered commands.
+                INVARIANT: MUST be passed by every caller. Omitting silently drops
+                per-protocol commands (IPv6 addressing, OSPF per-interface, etc.).
 
 DESCRIPTION LOGIC (9-rule system):
   Rule 1: Manual override (d.desc_ is set) → use as-is
@@ -766,7 +769,8 @@ INVALID CONFIG GUARD:
   generateConfig() returns an ERROR comment block instead of real config.
   generateComplexL3Block() also guards: returns "" for all l3-* modes with MLAG.
 
-OSPF UNDERLAY (generateOSPF(deviceSheetIndex, bgpNeighbors)):
+OSPF UNDERLAY (generateOSPF + generateOSPFv3):
+  generateOSPF(deviceSheetIndex, bgpNeighbors) — OSPFv2 (router ospf 1):
   - Generates OSPF process blocks for all VRFs (area 0, single-area leaf-spine).
   - router-id: <id>.<id>.<id>.<id> (same loopback pattern as BGP); shared across
     all VRF OSPF instances (EOS leaf-spine convention).
@@ -775,22 +779,27 @@ OSPF UNDERLAY (generateOSPF(deviceSheetIndex, bgpNeighbors)):
     Non-default VRF → router ospf 1 vrf <name>  (one block per VRF, sorted)
     All blocks use: passive-interface default + no passive-interface per interface,
     bfd default, max-lsa 12000. All emitted in a single 090_OSPF_UNDERLAY string.
-  - Vlan4093 always added to the DEFAULT VRF set when an MLAG peer exists —
-    OSPF must be active on the L3 peer-link for loopback reachability.
-  - Per-interface OSPF commands added by generateComplexL3Block() when
-    underlayProtocol includes 'ospf'. Applied to ALL P2P interface modes:
-      l2-* with svi_vlan_: ip ospf commands on each generated Vlan<x> SVI
-      -sub-int modes:       ip ospf commands on each generated <port>.<vlan> sub-int
-      l3-et-int / l3-po-int: ip ospf commands on the routed interface
-    Commands: ip ospf network point-to-point, ip ospf area 0.0.0.0, ip ospf neighbor bfd
-    No VRF guard — VRF interfaces get ip ospf commands and are covered by the
-    corresponding router ospf 1 vrf <name> process block.
-  - Guard: generateOSPF() is only called when at least one bgpNeighbors entry has
-    a non-MLAG peerParam (hasP2pForOspf check). MLAG-only devices (no P2P uplinks)
-    skip OSPF entirely — otherwise passive-interface default with no active interfaces
-    produces a dead OSPF process.
+  - Vlan4093 always added to the DEFAULT VRF set when an MLAG peer exists.
+  - Guard: called only when netSettings.ospf_ipv4 is true.
 
-BGP EVPN OVERLAY ONLY (generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles)):
+  generateOSPFv3(deviceSheetIndex, bgpNeighbors) — OSPFv3 (router ospf3 1):
+  - Mirrors generateOSPF() exactly but uses "router ospf3 1" keyword.
+  - Emitted as 091_OSPF3_UNDERLAY block (between OSPFv2 and BGP blocks).
+  - Guard: called only when netSettings.ospf_ipv6 is true.
+
+  Per-interface OSPF commands (generateComplexL3Block):
+  - OSPFv2 (addOspfV4 = netSettings.ospf_ipv4): ip ospf network point-to-point,
+    ip ospf area 0.0.0.0, ip ospf neighbor bfd — on all P2P modes:
+      l2-* with svi_vlan_: commands on each Vlan<x> SVI
+      -sub-int modes:       commands on each <port>.<vlan> sub-interface
+      l3-et-int / l3-po-int: commands on the routed interface
+  - OSPFv3 (addOspfV6 = netSettings.ospf_ipv6): ipv6 ospf 1 area 0.0.0.0
+    added on same P2P interfaces.
+  - No VRF guard — VRF interfaces are covered by per-VRF process blocks.
+  - MLAG guard: generateOSPF/generateOSPFv3 called only when hasP2pForOspf —
+    at least one non-MLAG peerParam. MLAG-only devices skip (avoids dead process).
+
+BGP EVPN OVERLAY ONLY (generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings)):
   - Used when OSPF is underlay + EVPN is enabled
   - Generates overlay-only BGP: loopback-to-loopback peers, no P2P sessions
   - Peer groups: OVERLAY_<PEER>_V4_LO_IP with update-source Loopback0 + ebgp-multihop 3
@@ -854,16 +863,18 @@ VTEP LEAF DETECTION & STATIC FLOOD LIST:
     Guard: if vtepNames is empty/null, falls back to all Arista devices (safe default).
     MLAG peer always excluded from flood list (shared anycast IP deduped via Set).
 
-MLAG INFRASTRUCTURE BLOCK (generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, isOspf)):
+MLAG INFRASTRUCTURE BLOCK (generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings)):
   VLANs:
     - vlan 4094: trunk group MLAG_PEER (control plane, restricted to peer-link)
     - vlan 4093: trunk group MLAG_PEER (L3 peering, ALSO restricted to peer-link)
   SVIs:
     - Vlan4094: no autostate + ip address 169.254.0.x/31
-    - Vlan4093: no autostate + ip/ipv6 address 169.254.1.x/31 (both need no autostate
-      so they stay up during failover/reload when peer-link may have no forwarding ports)
-    - Vlan4093 when isOspf=true: adds ip ospf network point-to-point + ip ospf area 0.0.0.0
-      so OSPF adjacency forms directly between MLAG peers (Winnow/EOS confirmed required)
+    - Vlan4093: no autostate + ip address 169.254.1.x/31 + (ipv6 address when hasMlagIpv6)
+      hasMlagIpv6 = !settings || settings.int_ipv6 || settings.int_ipv6_unnum
+      (both SVIs need no autostate so they stay up during failover/reload)
+    - Vlan4093 when settings.ospf_ipv4=true: adds ip ospf network point-to-point +
+      ip ospf area 0.0.0.0 so OSPF adjacency forms directly between MLAG peers
+      (Winnow/EOS confirmed required)
   reload-delay order: mlag 300 first, non-mlag 330 second (non-mlag must be higher
     so MLAG ports are established before non-MLAG ports come up)
   Virtual-router MAC: 0011.2233.<hexId> dotted-hex format, derived from lower peer ID.
@@ -915,27 +926,40 @@ IP PREFERENCES STORAGE:
           gw_v4_first, gw_v4_last, gw_v4_mask, gw_v6_first, gw_v6_last, gw_v6_mask,
           vni_base (default '10000')
 
-NETWORK FEATURE FLAGS (UNDERLAY/VXLAN/EVPN):
-  - Stored in UserProperties
+NETWORK FEATURE FLAGS (IP FAMILY PER PROTOCOL):
+  - Stored in DocumentProperties (shared, per-spreadsheet)
   - getNetworkSettings() / saveNetworkSettings()
-  - Flags: NET_UNDERLAY ('bgp'|'ospf'|'bgp+ospf'|'none'), NET_VXLAN, NET_EVPN
-  - Legacy migration: NET_BGP=true is auto-migrated to NET_UNDERLAY='bgp' on read
-  - UI: tech modal has two sections — UNDERLAY (chkTechBgp + chkTechOspf checkboxes,
-    multi-select, both can be enabled simultaneously) and OVERLAY (chkTechVxlan +
-    chkTechEvpn, indented). No "No Underlay" radio — none = neither box checked.
-  - isBgp = underlay.includes('bgp'); isOspf = underlay.includes('ospf')
-    Both can be true when underlay='bgp+ospf'
-  - OSPF underlay: generateOSPF() process block + per-interface commands in
-    generateComplexL3Block() (l3-et-int/l3-po-int only); guard uses .includes('ospf')
-  - OSPF+EVPN: generateBGPEvpnOverlay() generates overlay-only BGP (loopback peers,
-    EVPN AF only — no P2P underlay sessions)
-  - Section 090_OSPF_UNDERLAY added to configMap (between VXLAN and BGP blocks)
-  - generateConfig() 5th param: underlayProtocol — passed from BOTH getDeviceConfig()
-    AND getTopologyData() (via globalUnderlay = getNetworkSettings().underlay).
-    CRITICAL: getTopologyData() must pass globalUnderlay so the initial tooltip config
-    (pre-populated on topology load) matches the Configs sheet. Without it, OSPF
-    per-interface commands (ip ospf network point-to-point, ip ospf area 0.0.0.0)
-    are absent from the initial tooltip but present in the Configs sheet — divergence.
+  - 13 boolean flags (stored as 'true'/'false' strings):
+      INTERFACE: INT_IPV6, INT_IPV6_UNNUM
+      BGP:       BGP_IPV4, BGP_IPV6, BGP_IPV6_UNNUM, BGP_RFC5549
+      OSPF:      OSPF_IPV4, OSPF_IPV6, OSPF_IPV6_UNNUM
+      VXLAN:     VXLAN_IPV4, VXLAN_IPV6
+      EVPN:      EVPN_IPV4, EVPN_IPV6
+  - Legacy migration: getNetworkSettings() reads old NET_UNDERLAY/NET_VXLAN/NET_EVPN
+    keys and converts to new flags if new flags are absent (one-time upgrade).
+  - INT_IPV6_UNNUM is mutually exclusive with INT_IPV6: unnumbered borrows Loopback0
+    IPv6 /128 on P2P links (ipv6 enable + ipv6 unnumbered Loopback0). GW/SVI
+    interfaces are never unnumbered — they always need explicit IPs for VARP.
+  - BGP_RFC5549: gates pgV6Int peer groups (neighbor interface EtX form).
+  - No cascade/dependency logic: each flag is independent. Enabling EVPN does not
+    require checking VXLAN; enabling OSPF does not require BGP. User picks freely.
+  - Feature derivation in config engine:
+      isBgp  = bgp_ipv4 || bgp_ipv6 || bgp_ipv6_unnum || bgp_rfc5549
+      isOspf = ospf_ipv4 || ospf_ipv6 || ospf_ipv6_unnum
+      isVxlan = (vxlan_ipv4 || vxlan_ipv6) && isVxlanDevice
+      isEvpn  = (evpn_ipv4  || evpn_ipv6)  && isEvpnDevice
+  - Backward compatibility: when netSettings is null/absent, all IPv6 commands are
+    emitted (same behavior as before flags existed). evpn_ipv4 defaults true
+    (evpn_ipv4 !== false pattern).
+  - UI: Tech modal (#techModal) — 5 sections, width 420px, max-height 72vh + scroll:
+      INTERFACE: radio group (intIpv6Mode) — IPv4 only / IPv6 / IPv6 Unnumbered
+      BGP UNDERLAY: chkBgpIpv4, chkBgpIpv6, chkBgpIpv6Unnum, chkBgpRfc5549
+      OSPF UNDERLAY: chkOspfIpv4, chkOspfIpv6, chkOspfIpv6Unnum
+      VXLAN: chkVxlanIpv4, chkVxlanIpv6
+      EVPN: chkEvpnIpv4, chkEvpnIpv6
+  - Config blocks: 090_OSPF_UNDERLAY (ospf_ipv4), 091_OSPF3_UNDERLAY (ospf_ipv6)
+    both between VXLAN and BGP sections. generateConfig() 5th param (netSettings)
+    passed from BOTH getDeviceConfig() AND getTopologyData() (as globalNetSettings).
 
 GLOBAL CONFIG TEMPLATE:
   - Stored in DocumentProperties under key 'GLOBAL_DEVICE_CONFIG_TEMPLATE'
@@ -1744,12 +1768,11 @@ SECTION 24: HARD DESIGN CONSTRAINTS (DO NOT CHANGE)
    "// DUPLICATED ... last synced: <date>" comment — update the date
    whenever either copy is changed, and keep both in sync manually.
 
-6. generateConfig() signature: exactly 5 params (portName, d, ipPrefs, seenPos, underlayProtocol).
-   The 5th param (underlayProtocol) drives OSPF per-interface commands in generateComplexL3Block()
-   (ip ospf network point-to-point, ip ospf area 0.0.0.0). MUST be passed by every caller —
-   both getTopologyData() (as globalUnderlay) and getDeviceConfig() (as underlay). Omitting it
-   silently drops OSPF commands from that config path.
-   localDeviceName, mlagPeerName, poRemoteMlagMap were removed earlier (unused).
+6. generateConfig() signature: exactly 5 params (portName, d, ipPrefs, seenPos, netSettings).
+   The 5th param is the full netSettings object (13 IP family flags). MUST be passed by every
+   caller — both getTopologyData() (as globalNetSettings) and getDeviceConfig() (as netSettings).
+   Omitting it silently drops all protocol-family-gated commands from that config path.
+   generateBGP() has 8 params — settings is the 8th; all call sites must pass it.
 
 7. VRRP is REMOVED: MLAG + L3 is invalid on Arista EOS. The guard covers all
    l3-* modes in generateConfig() and generateComplexL3Block().
@@ -2181,7 +2204,8 @@ PO-count heuristic is removed. Peer-links are physical links between declared pa
 MLAG + L3 is INVALID — output error comment block instead of config.
 
 CONFIG GENERATION:
-generateConfig(portName, d, ipPrefs, seenPos, underlayProtocol) — 5 params. underlayProtocol drives OSPF per-interface commands.
+generateConfig(portName, d, ipPrefs, seenPos, netSettings) — 5 params. netSettings (13 IP family flags object) gates IPv6/OSPF/BGP/VXLAN/EVPN commands.
+generateBGP(..., settings) — 8 params; settings gates peer group emission per protocol family.
 Auto-description (9-rule): physical → 'PeerDev-PeerPort'; Po → neighbor list;
 peer-link → append MLAG-PEER-LINK; child of Po → append PoX.
 IP from VLAN: VLAN 1050 → .10.50. Last octet = device DID. IPv6 same pattern (lab).

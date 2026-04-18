@@ -13,7 +13,7 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **canonicalizeInterface() is duplicated** in Code.gs AND Sidebar-js.html (intentional — server + client both need it without a round-trip). Both copies have a `// DUPLICATED ... last synced: <date>` comment. Update the date and keep both copies in sync whenever either changes.
 
-**generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, underlayProtocol)`. The 5th param drives OSPF per-interface commands in `generateComplexL3Block()`. Every call site must pass it — omitting it silently drops OSPF commands.
+**generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 13-flag IP family settings object (was `underlayProtocol` string). Every call site must pass it — omitting it silently drops all protocol-family-gated commands. **generateBGP() has 8 params** — `settings` is the 8th; gates peer group emission per flag.
 
 **hasKey(setObj, key)** must be used instead of `.has()` for all device name lookups. Device names in Sets are lowercase; sheet names are original-cased — `.has()` will silently miss them.
 
