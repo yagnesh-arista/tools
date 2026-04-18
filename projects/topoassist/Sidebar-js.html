@@ -9932,7 +9932,6 @@ function buildCableGroups() {
   const cableGroups = {};
 
   globalLinks.forEach(link => {
-    if (link.type === 'snake') return; // snake self-loops are not physical cables
     let nodeA = allNodesData[link.u];
     let nodeB = allNodesData[link.v];
     if (!nodeA || !nodeB) return;
@@ -9941,12 +9940,17 @@ function buildCableGroups() {
     let first = (compareResult <= 0) ? nodeA : nodeB;
     let second = (compareResult <= 0) ? nodeB : nodeA;
 
+    // Snake self-loops (same device on both ends) are plain loopback cables.
+    // Force non-breakout so a breakout primary port (e.g. Et14/4) doesn't create
+    // a phantom breakout group — they always take Scenario B (one standard cable row).
+    const isSelfLoop = nodeA.device === nodeB.device;
+
     // Non-Arista devices (IXIA, Spirent) use card/port slash notation (e.g. Et5/22)
     // that is NOT a QSFP-DD breakout — suppress breakout detection for their side.
     const devAIsNonArista = allDevicesData[first.device]?.type === 'non-arista';
     const devBIsNonArista = allDevicesData[second.device]?.type === 'non-arista';
-    let isBreakoutA = !devAIsNonArista && first.name.includes('/');
-    let isBreakoutB = !devBIsNonArista && second.name.includes('/');
+    let isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/');
+    let isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/');
     let phyPortA = (devAIsNonArista || !isBreakoutA) ? first.name : getPhysicalPortParent(first.name);
     let phyPortB = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
 
