@@ -1611,14 +1611,20 @@ function hasKey(setObj, lowerKey) {
 
 
 function getViewPreferences() {
+  // Key migrations: old key → new key (add an entry whenever a schema key is renamed)
+  const KEY_MIGRATIONS = { 'svi': 'svi_vlan' };
+
   try {
     const prop = PropertiesService.getUserProperties().getProperty('CUSTOM_VIEW_PREFS');
     if (prop) {
-      return JSON.parse(prop);
+      const prefs = JSON.parse(prop);
+      const migrated = prefs.map(function(k) { return KEY_MIGRATIONS[k] || k; });
+      // Persist if anything changed so future calls are already clean
+      const changed = migrated.some(function(k, i) { return k !== prefs[i]; });
+      if (changed) PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', JSON.stringify(migrated));
+      return migrated;
     }
-  } catch (e) {
-    console.warn("Error parsing view prefs", e);
-  }
+  } catch (e) { /* malformed JSON — fall through to default */ }
 
   // Fallback: If first time (no prefs), return ALL keys so checkboxes default to checked
   const schema = getSchemaConfig();
@@ -2978,11 +2984,11 @@ function runFullSheetCleanup(skipVersionBump) {
         }
       }
 
-      // B. SVI_VLAN STANDARDIZATION (migrate legacy 'yes'/aliases → 'all')
+      // B. SVI_VLAN STANDARDIZATION (migrate legacy 'yes'/'active'/aliases → 'all')
       if (sviIdx !== -1) {
         const rawSvi = String(row[sviIdx] || "").trim().toLowerCase();
         const originalVal = String(row[sviIdx] || "");
-        if (['true', '1', 'y', 'yes'].includes(rawSvi)) {
+        if (['true', '1', 'y', 'yes', 'active'].includes(rawSvi)) {
           if (originalVal !== 'all') {
             row[sviIdx] = 'all';
             changeCount++;

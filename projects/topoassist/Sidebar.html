@@ -260,7 +260,7 @@
       </div>
       <div class="dev-vis-ip-section" id="devVisSviSection">
         <div class="dev-vis-ip-header">
-          <span class="dev-vis-ip-label">svi</span>
+          <span class="dev-vis-ip-label">svi_vlan</span>
         </div>
         <div class="dev-vis-ip-list" id="devVisSviList"></div>
       </div>
@@ -827,7 +827,7 @@
         </button>
         <button id="btnForceSync" class="btn-std ui-equal-size" onclick="triggerSyncOnly()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          Force Sync
+          Force Sync<span id="forceSyncWarnBadge" style="display:none;align-items:center;gap:2px;margin-left:6px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;font-size:10px;font-family:'JetBrains Mono',monospace;line-height:1.4;user-select:none;-webkit-user-select:none"></span>
         </button>
       </div>
       <div class="footer-group">

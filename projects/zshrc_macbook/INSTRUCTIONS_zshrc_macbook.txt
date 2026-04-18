@@ -1,5 +1,5 @@
 INSTRUCTIONS — zshrc_macbook project
-Last updated: 2026-04-17 (Added FZF_CTRL_T_OPTS and FZF_ALT_C_OPTS — bat preview for files, tree+ls fallback for dirs)
+Last updated: 2026-04-18 (Review fixes: bus0 title; ls GNU/BSD conditional; drop redundant HIST_IGNORE_DUPS + HIST_APPEND)
 Previous: 2026-04-17 (Up arrow bound to fzf-history-widget in section 4, after source <(fzf --zsh); two bindkey lines: ^[[A (standard) and ^[OA (application mode/tmux) — matches bus-home up arrow behaviour)
 Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command))
 Previous: 2026-04-16 (fixed section numbering: 1-9 sequential)
@@ -25,7 +25,8 @@ FILE STRUCTURE
 
 CURRENT .zshrc SECTIONS
 ========================
-1. bus()  — Interactive tmux session menu for jump host (bus-home) via SSH multiplexing + expect
+1. bus0() — Quick direct shell on bus-home: sets terminal title, arista-ssh check-auth || login, then ssh bus-home
+   bus()  — Interactive tmux session menu for jump host (bus-home) via SSH multiplexing + expect
 2. wsc()  — Remote Wireshark live capture via SSH + named pipe (FIFO) to Wireshark app
            NOTE: ssh_error uses 2>&1 >/dev/null to capture stderr for host key change detection
 3. General Settings + PATH + CDPATH:
@@ -47,9 +48,10 @@ CURRENT .zshrc SECTIONS
    - TZ=Asia/Kolkata                         (timezone)
    - ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=fg=cyan (autosuggestion color, visible in tmux)
    - EDITOR/VISUAL=vim
-4. History: HISTSIZE=100000, SAVEHIST=200000, SHARE_HISTORY (syncs across tmux panes),
+4. History: HISTSIZE=100000, SAVEHIST=200000, SHARE_HISTORY (syncs across tmux panes, implies HIST_APPEND),
+            HIST_IGNORE_ALL_DUPS (dedup; supersedes HIST_IGNORE_DUPS — not set),
             HIST_FIND_NO_DUPS (up/down arrow skips duplicates)
-5. Aliases: ll, la, ls, lrtha, grep, .., ..., mkcd()
+5. Aliases: ls/ll/la/lrtha use GNU --color=auto if available, else BSD -G (auto-detected at startup); grep --color=auto; .., ..., mkcd()
 6. Prompt: green user@host, blue cwd, git branch via vcs_info
    NOTE: uses precmd_functions+=(vcs_info_precmd) NOT precmd() directly — avoids conflict with iTerm2
 7. iTerm2 shell integration: sourced AFTER prompt so it appends to precmd_functions cleanly

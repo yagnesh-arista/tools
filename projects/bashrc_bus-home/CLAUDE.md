@@ -5,13 +5,18 @@ This is **bash on Linux** (bus-home jump server). Not macOS, not zsh.
 
 ## Critical Design Constraints
 
-**`command_not_found_handle` MUST stay before `bind -x` (Section 6).** ble.sh (now removed) wrapped the handler on load — if defined after, it would be overwritten. Even without ble.sh, keep this order as a structural invariant.
+**ble.sh source order (critical):**
+- Section 0: `source ble.sh --noattach` — MUST be first line of interactive shell init
+- Section 5: `command_not_found_handle` — MUST be defined before `ble-attach` so ble.sh wraps it
+- Section 13: `ble-attach` — MUST be last; ble.sh takes over line editing here
+
+**No raw `bind -x` for up arrow** — ble.sh neutralizes readline bind calls. Up arrow is handled via `ble-bind -m emacs -x up fzf-history-widget` in section 13.
+
+**No raw `bind` calls at all after section 0** — ble.sh intercepts them. Use `ble-bind` inside the `if [[ "${BLE_VERSION-}" ]]` block instead.
 
 **`/etc/bashrc` disables hashing (`set +h`)** — we immediately re-enable with `set -h` after sourcing it. This is required for NVM and other tools that call `hash`. Never remove the `set -h` line.
 
-**No ble.sh** — it was removed due to flickering and conflicts with fzf. Do not re-add it.
-
-**`bind -x '"\e[A": "__fzf_history__"'`** — up arrow bound to fzf history. `__fzf_history__` is defined by `~/.fzf.bash`. If fzf is not installed, this silently fails (2>/dev/null).
+**Atuin** (section 12) must be initialized with `--disable-up-arrow --disable-ctrl-r` — fzf/ble.sh handle those bindings. Atuin provides ghost-text autosuggestions via its ble.sh integration hook.
 
 ## After Every Change
 - Hook auto-deploys to `~/.bashrc`

@@ -897,14 +897,14 @@
     /* ── SVI FILTER ────────────────────────────────────── */
     var activeSviFilters = [];
     var SVI_FILTER_ITEMS = [
-      { val: 'yes',   label: 'yes' },
-      { val: 'blank', label: '\u2014' },
-      { val: null,    label: '' },
-      { val: null,    label: '' }
+      { val: 'active', label: 'active' },
+      { val: 'blank',  label: '\u2014' },
+      { val: null,     label: '' },
+      { val: null,     label: '' }
     ];
 
     function initSviFilter(savedFilters) {
-      activeSviFilters = Array.isArray(savedFilters) ? savedFilters : ['yes','blank'];
+      activeSviFilters = Array.isArray(savedFilters) ? savedFilters : ['active','blank'];
       renderSviFilterList();
     }
 

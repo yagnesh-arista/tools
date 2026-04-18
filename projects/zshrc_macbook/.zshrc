@@ -3,8 +3,16 @@
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
 # ==============================================================================
-# 1. BUS: Interactive Tmux Menu for Jump Host
+# 1. BUS: Jump Host Shortcuts
+#    bus0 — quick direct shell on bus-home (auth check → ssh)
+#    bus — interactive tmux session picker on bus-home
 # ==============================================================================
+bus0() {
+    echo -ne "\033]0;bus-home\007"
+    arista-ssh check-auth >/dev/null 2>&1 || arista-ssh login >/dev/null 2>&1
+    ssh bus-home
+}
+
 bus() {
     local selection="${1:-}"
 
@@ -234,19 +242,25 @@ source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 export HISTSIZE=100000
 export SAVEHIST=200000
 export HISTFILE=~/.zsh_history
-setopt HIST_IGNORE_DUPS       # Don't record duplicate consecutive entries
-setopt HIST_IGNORE_ALL_DUPS   # Remove older duplicate entries from history
+setopt HIST_IGNORE_ALL_DUPS   # Remove older duplicate entries from history (supersedes HIST_IGNORE_DUPS)
 setopt HIST_FIND_NO_DUPS      # Skip duplicates when navigating with up/down arrow
-setopt HIST_APPEND            # Append to history file, don't overwrite
-setopt SHARE_HISTORY          # Share history across all zsh sessions (tmux panes etc.)
+setopt SHARE_HISTORY          # Share history across all zsh sessions (implies HIST_APPEND)
 
 # ==============================================================================
 # 7. Aliases
 # ==============================================================================
-alias ll='ls -lhF --color=auto'
-alias la='ls -lAhF --color=auto'
-alias ls='ls --color=auto'
-alias lrtha='ls -lrtha --color=auto'
+# ls: GNU coreutils uses --color=auto; BSD ls (macOS default) uses -G
+if ls --color=auto &>/dev/null; then
+    alias ls='ls --color=auto'
+    alias ll='ls -lhF --color=auto'
+    alias la='ls -lAhF --color=auto'
+    alias lrtha='ls -lrtha --color=auto'
+else
+    alias ls='ls -G'
+    alias ll='ls -lhFG'
+    alias la='ls -lAhFG'
+    alias lrtha='ls -lrtha -G'
+fi
 alias grep='grep --color=auto'
 alias ..='cd ..'
 alias ...='cd ../..'

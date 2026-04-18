@@ -2,6 +2,9 @@
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
+# 0. ble.sh — MUST be first (loaded in noattach mode; attaches at section 13)
+[[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --noattach 2>/dev/null
+
 # 1. Load System Defaults
 if [ -f /etc/bashrc ]; then
     source /etc/bashrc 2>/dev/null
@@ -22,6 +25,8 @@ if ! shopt -oq posix; then
 fi
 
 # 4. Enable FZF
+# Note: ~/.fzf.bash sets readline bind calls that ble.sh (section 13) overrides after attach.
+# Keep this source for shell completion helpers (fzf ** tab expansion) — not for bindings.
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 export FZF_TMUX_HEIGHT=30%
 export FZF_DEFAULT_OPTS='--height 30% --layout=reverse --border'
@@ -44,15 +49,12 @@ command_not_found_handle() {
 # mkcd: create directory and cd into it
 mkcd() { mkdir -p "$1" && cd "$1"; }
 
-# 6. Up arrow → fzf history panel (works inside and outside tmux)
-bind -x '"\e[A": "__fzf_history__"' 2>/dev/null
-
-# 7. SAFETY: Prevent Ctrl+D from Closing/Detaching
+# 6. SAFETY: Prevent Ctrl+D from Closing/Detaching
 # You must type 'exit' to close the shell. Ctrl+D will simply print a warning.
 set -o ignoreeof
 export IGNOREEOF=10  # Press Ctrl+D 10 times to close
 
-# 8. Aliases
+# 7. Aliases
 alias ta='tmux attach -d'
 alias fix-tmux='tmux resize-window -x $(tput cols) -y $(tput lines)'
 alias tmux-studio="python3 ~/.tmux-studio/tmux_studio.py"
@@ -65,24 +67,39 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias eod='cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || (git commit -m "EOD $(date +%Y-%m-%d)" && git push) && cd -'
 
-# 9. TimeZone & PATH
+# 8. TimeZone & PATH
 export TZ=Asia/Kolkata
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.atuin/bin:$PATH"
 export EDITOR=vim
 export VISUAL=vim
 export CDPATH=".:~:~/claude/projects"
 
-# 10. History
+# 9. History
 export HISTSIZE=100000
 export HISTFILESIZE=200000
 export HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
-PROMPT_COMMAND="history -a; $PROMPT_COMMAND"  # Append to history file after each command
+[[ "$PROMPT_COMMAND" != *"history -a"* ]] && PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
-# 11. Prompt (with git branch)
+# 10. Prompt (with git branch)
 PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$(__git_ps1 " (%s)")\$ '
 
-# 12. NVM
+# 11. NVM
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# 12. Atuin (history tracking + inline ghost-text via ble.sh)
+# --disable-up-arrow: ble-bind handles up arrow below
+# --disable-ctrl-r:   ble.sh fzf-key-bindings handles Ctrl+R
+eval "$(atuin init bash --disable-up-arrow --disable-ctrl-r)"
+
+# 13. ble.sh: Attach + fzf integration + up-arrow binding
+# MUST be last — ble.sh takes over line editing here.
+# command_not_found_handle (section 5) must be defined before this point.
+if [[ "${BLE_VERSION-}" ]]; then
+    ble-import -d integration/fzf-key-bindings  # Ctrl+R + Ctrl+T + Alt+C via ble-bind
+    ble-import -d integration/fzf-completion    # fzf-powered tab completion
+    ble-bind -m emacs -x up fzf-history-widget  # Up arrow → fzf history panel
+    ble-attach
+fi
