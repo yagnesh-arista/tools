@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -11,8 +11,8 @@ Last updated: 2026-04-17
 | # | Rule | Layer | File |
 |---|---|---|---|
 | 1 | INSTRUCTIONS + CLAUDE.md discipline — create both, read before changes, update after every change | `CLAUDE.md` | `CLAUDE.md` |
-| 2 | JetBrains Mono on ALL UI elements — explicit, no inheritance | `rules/` | `rules/ui.md` |
-| 3 | UI/UX symmetry — consistent spacing, alignment, sizing | `rules/` | `rules/ui.md` |
+| 2 | JetBrains Mono on ALL UI elements — explicit, no inheritance; font scale 10px/11px/12px | `rules/` | `rules/ui.md` |
+| 3 | UI/UX symmetry — consistent spacing/sizing; no text overflow; sibling boxes same size unless design requires otherwise | `rules/` | `rules/ui.md` |
 | 4 | No modal/overlay out of canvas — clamp to viewport always | `rules/` | `rules/ui.md` |
 | 5 | Apply new global rules to all existing projects immediately | `CLAUDE.md` | `CLAUDE.md` |
 | 6 | `user-select: none` on non-editable elements — never on `body` | `rules/` | `rules/ui.md` |

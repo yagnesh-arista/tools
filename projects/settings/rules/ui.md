@@ -5,10 +5,20 @@ Every UI element (buttons, inputs, labels, badges, dropdowns, modals, tooltips, 
 must explicitly set `font-family: 'JetBrains Mono', monospace`.
 Do NOT rely on inheritance — it does not work in Google Apps Script dialogs or some browser contexts.
 
+### Font Scale
+Use this 3-level scale consistently across all projects:
+- **10px** — category markers, section labels, de-emphasized annotations
+- **11px** — secondary text: hints, examples, captions, sub-labels
+- **12px** — primary control text: inputs, checkboxes, radio labels, button text, main body
+
+Never go below 10px. Do not mix arbitrary font sizes outside this scale.
+
 ## UI/UX Symmetry
 Spacing, alignment, sizing, padding, and interactions must be consistent and balanced across all elements.
 - Button rows: all buttons share the same height, font size, and padding.
 - Modals: if 16px padding on the left, must be 16px on the right.
+- **No text overflow**: text must never bleed outside its container — wrap or truncate within the bounding box. Apply `overflow: hidden; text-overflow: ellipsis` or `word-break: break-word` as appropriate.
+- **Uniform box sizing in modals**: all sibling boxes/panels inside a modal should share the same width and height unless a specific design reason requires otherwise (e.g. one panel is a scrollable list, another is a fixed form). Never leave one panel significantly taller or wider than its peers without intent.
 
 ## No Modal or HTML Object Out of Canvas
 Every modal, tooltip, dropdown, overlay, and floating panel must stay fully within viewport/canvas
