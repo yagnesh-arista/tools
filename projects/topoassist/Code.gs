@@ -5979,3 +5979,126 @@ function activateRow(rowNum) {
   const sheet = ss.getSheetByName(SHEET_DATA);
   if (sheet) sheet.getRange(rowNum, 1).activate();
 }
+
+
+// ─────────────────────────────────────────────────────────────────
+// CABLING HELPERS — server-side copies for unit testing
+// DUPLICATED from Sidebar-js.html (intentional — Tests.gs is server-side and cannot
+// call client-side JS). Keep in sync with Sidebar-js.html. Last synced: 2026-04-19
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * DUPLICATED in Sidebar-js.html. Strips the lane suffix from a breakout port name.
+ * Et14/4 → Et14, Et48/1 → Et48, Et1/1/2 → Et1/1, Et1 → Et1
+ */
+function getPhysicalPortParent(portName) {
+  if (!portName) return "";
+  var parts = portName.split('/');
+  if (parts.length > 1) {
+    var last = parts[parts.length - 1];
+    if (!isNaN(parseInt(last))) {
+      parts.pop();
+      return parts.join('/');
+    }
+  }
+  return portName;
+}
+
+/**
+ * DUPLICATED in Sidebar-js.html. Joins a sorted port array as a comma-separated list.
+ * ["Et1", "Et3", "Et2"] → "Et1, Et2, Et3"
+ */
+function compressPortList(portArray) {
+  if (portArray.length === 0) return "";
+  if (portArray.length === 1) return portArray[0];
+  portArray.sort(function(a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+  return portArray.join(", ");
+}
+
+/**
+ * DUPLICATED in Sidebar-js.html. Determines which side of a cable group is the SFP lane
+ * (breakout) side vs the QSFP aggregate side.
+ * Returns { a: bool, b: bool } — true means "this side shows individual lane ports".
+ * QSFP aggregate side → bo=false; SFP lane side → bo=true.
+ */
+function _breakoutSides(g) {
+  var count = g.links.length;
+  if (count <= 1) return { a: false, b: false };
+  var sA = (g.speedA || "").trim().toLowerCase() === 'auto' ? '' : (g.speedA || "").trim();
+  var sB = (g.speedB || "").trim().toLowerCase() === 'auto' ? '' : (g.speedB || "").trim();
+  var lA = sA.match(/^(\d+)g-(\d+)$/i);
+  var lB = sB.match(/^(\d+)g-(\d+)$/i);
+  if (lA && !lB && parseInt(lA[2]) === count) return { a: false, b: true };
+  if (lB && !lA && parseInt(lB[2]) === count) return { a: true, b: false };
+  var sAn = parseInt((sA.match(/^(\d+)/) || [])[1] || "0");
+  var sBn = parseInt((sB.match(/^(\d+)/) || [])[1] || "0");
+  if (sAn > 0 && sBn > 0 && sAn !== sBn) {
+    if (sAn * count === sBn) return { a: true, b: false };
+    if (sBn * count === sAn) return { a: false, b: true };
+  }
+  if (g.isBreakoutA && !g.isBreakoutB) return { a: false, b: true };
+  if (g.isBreakoutB && !g.isBreakoutA) return { a: true, b: false };
+  return { a: false, b: false };
+}
+
+/**
+ * Testable mirror of buildCableGroups() from Sidebar-js.html.
+ * Accepts data as parameters instead of reading client-side globals, so Tests.gs can call it.
+ *
+ * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]
+ * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_,et_speed_}}}
+ * @param {Object} devicesData {"dev": {type:"arista"|"non-arista"}}
+ * @returns {Object} cableGroups map — same shape as buildCableGroups() returns
+ */
+function _buildCableGroupsForTest(links, nodesData, devicesData) {
+  var cableGroups = {};
+  links.forEach(function(link) {
+    var nodeA = nodesData[link.u];
+    var nodeB = nodesData[link.v];
+    if (!nodeA || !nodeB) return;
+
+    var cmp = nodeA.device.localeCompare(nodeB.device, undefined, { numeric: true, sensitivity: 'base' });
+    var first  = (cmp <= 0) ? nodeA : nodeB;
+    var second = (cmp <= 0) ? nodeB : nodeA;
+
+    var isSelfLoop      = nodeA.device === nodeB.device;
+    var devAIsNonArista = ((devicesData[first.device]  || {}).type === 'non-arista');
+    var devBIsNonArista = ((devicesData[second.device] || {}).type === 'non-arista');
+
+    var isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/');
+    var isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/');
+    var phyPortA    = (devAIsNonArista || !isBreakoutA) ? first.name  : getPhysicalPortParent(first.name);
+    var phyPortB    = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
+
+    var speedA_raw = (first.details.xcvr_speed_  || first.details.et_speed_  || "").trim();
+    var speedB_raw = (second.details.xcvr_speed_ || second.details.et_speed_ || "").trim();
+    if (speedA_raw.toLowerCase() === 'auto') speedA_raw = '';
+    if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
+
+    var aggA = speedA_raw.match(/^(\d+)g-(\d+)$/i);
+    var aggB = speedB_raw.match(/^(\d+)g-(\d+)$/i);
+
+    var groupKey;
+    if      (isBreakoutA && !isBreakoutB && aggA)          groupKey = first.device + ':' + phyPortA + ' <-> ' + second.device;
+    else if (isBreakoutB && !isBreakoutA && aggB)          groupKey = first.device + ' <-> ' + second.device + ':' + phyPortB;
+    else if (isBreakoutA && isBreakoutB && aggA && !aggB)  groupKey = first.device + ':' + phyPortA + ' <-> ' + second.device;
+    else if (isBreakoutA && isBreakoutB && aggB && !aggA)  groupKey = first.device + ' <-> ' + second.device + ':' + phyPortB;
+    else if (isBreakoutA && isBreakoutB && aggA && aggB)   groupKey = first.device + ':' + phyPortA + ' <-> ' + second.device + ':' + phyPortB;
+    else                                                   groupKey = first.device + ':' + first.name + ' <-> ' + second.device + ':' + second.name;
+
+    if (!cableGroups[groupKey]) {
+      cableGroups[groupKey] = {
+        devA: first.device,  phyA: phyPortA,
+        devB: second.device, phyB: phyPortB,
+        isBreakoutA: isBreakoutA, isBreakoutB: isBreakoutB,
+        links: [],
+        speedA: first.details.xcvr_speed_  || first.details.et_speed_  || "",
+        speedB: second.details.xcvr_speed_ || second.details.et_speed_ || "",
+        xcvrA:  first.details.xcvr_  || "",
+        xcvrB:  second.details.xcvr_ || ""
+      };
+    }
+    cableGroups[groupKey].links.push({ portA: first.name, portB: second.name });
+  });
+  return cableGroups;
+}

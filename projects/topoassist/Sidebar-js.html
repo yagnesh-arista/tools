@@ -10428,28 +10428,24 @@ function downloadCablingReport(mode) {
 }
 // --- HELPER: Identify Physical Container ---
 // Returns "Et1/1" for input "Et1/4". Returns "Et5" for "Et5".
+// DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
-
-  // Split by slash (e.g., "Et1/1/2" -> ["Et1", "1", "2"])
-  let parts = portName.split('/');
-
-  // If it has slashes (is a breakout)
+  // Strip the lane suffix: Et14/4 → Et14, Et1/1/2 → Et1/1
+  const parts = portName.split('/');
   if (parts.length > 1) {
-    // Check if the last part is a number (the lane ID)
-    let last = parts[parts.length - 1];
+    const last = parts[parts.length - 1];
     if (!isNaN(parseInt(last))) {
-      // Force the last digit to '1' (the parent/primary lane)
-      parts[parts.length - 1] = "1";
+      parts.pop();
       return parts.join('/');
     }
   }
-  // Return original if no breakout detected
   return portName;
 }
 
 // --- HELPER: Compress Port Lists ---
-// Turns ["Et1/1", "Et2/1", "Et3/1", "Et4/1"] into "Et1/1-4/1"
+// DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
+// Joins a sorted port array as a comma-separated list: ["Et1", "Et2", "Et3"] → "Et1, Et2, Et3"
 function compressPortList(portArray) {
   if (portArray.length === 0) return "";
   if (portArray.length === 1) return portArray[0];

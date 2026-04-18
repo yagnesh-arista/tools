@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-19 (Rename IXIA→TRAFFIC throughout snake chain: IXIA_IN_L3→TRAFFIC_IN_L3, IXIA_OUT_L3→TRAFFIC_OUT_L3; all variable names (foundIxiaIn→foundTrafficIn, snakeIxiaFlags→snakeTrafficFlags, _snakeIxiaFlags→_snakeTrafficFlags, checkSnakeIxiaWarning→checkSnakeTrafficWarning, snakeIxiaWarning→snakeTrafficWarning div ID). Generalizes from IXIA-specific to any traffic generator. Files: Code.gs, Sidebar.html, Sidebar-js.html)
+  Last updated: 2026-04-19 (Cabling: fix getPhysicalPortParent bug (was returning Et14/1 instead of Et14 — used parts[last]="1" instead of parts.pop()); fix compressPortList comment (it joins, not compresses); duplicate getPhysicalPortParent, compressPortList, _breakoutSides, _buildCableGroupsForTest to Code.gs for server-side unit testing; add full cabling test suite to Tests.gs covering Scenario A/B/C, snake self-loop, non-Arista, missing node. Files: Code.gs, Sidebar-js.html, Tests.gs)
+  Previous: 2026-04-19 (Rename IXIA→TRAFFIC throughout snake chain: IXIA_IN_L3→TRAFFIC_IN_L3, IXIA_OUT_L3→TRAFFIC_OUT_L3; all variable names (foundIxiaIn→foundTrafficIn, snakeIxiaFlags→snakeTrafficFlags, _snakeIxiaFlags→_snakeTrafficFlags, checkSnakeIxiaWarning→checkSnakeTrafficWarning, snakeIxiaWarning→snakeTrafficWarning div ID). Generalizes from IXIA-specific to any traffic generator. Files: Code.gs, Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-19 (TRAFFIC_IN/OUT auto-detection via description field: ports with desc_='IXIA_IN_L3' auto-assigned vrf SNAKE_{firstPrimary}; 'IXIA_OUT_L3' auto-assigned vrf SNAKE_{lastSecondary}. VRF priority in getIpBlock(): ixiaRole('in'/'out') > isSnakePrimary/Secondary > vrf_ column. snakePairsForStatic pre-computed before main rows loop in getDeviceConfig() (was after) so firstPrimary/lastSecondary are available when processing IXIA rows; duplicate snakeIntColIdx declaration and old snake pairs block removed. foundIxiaIn/foundIxiaOut tracked; 080_SNAKE blockStatus flags 'IXIA_IN_L3 desc'/'IXIA_OUT_L3 desc' missing when snake pairs exist. getTopologyData() scans allCollectedNodes for those desc_ values, returns snakeIxiaFlags:{hasIn,hasOut} in result. Sidebar-js.html: _snakeIxiaFlags global; extracted from data in both topology receive paths; checkSnakeIxiaWarning() now shows per-item messages (missing fields by name + missing desc instructions). Files: Code.gs, Sidebar-js.html)
   Previous: 2026-04-19 (Snake IXIA config: added 3 new Auto Config fields — IXIA MAC, IXIA NH, IXIA Subnet (stored as ixia_mac/ixia_nh/ixia_subnet in UserProperties). getIpPreferences() defaults all 3 to ''. generateSnakeStaticConfig() simplified to 2 params (snakePairs, ipPrefs) — bridgeMac/ixiaMac/ixiaNh all read from ipPrefs; dest derived from ixia_subnet (e.g. 10.99.99.98/32 from prefix 10.99.99) instead of hardcoded. Last-secondary block now emits arp+route toward IXIA_OUT if ixia_mac+ixia_nh set, else comment. Call site blockStatus lists both Bridge MAC and IXIA config if missing. Sidebar.html: 3 new ip-row inputs + snakeIxiaWarning banner (yellow, shown when snake links detected but any IXIA field empty). Sidebar-js.html: load/save/reset for 3 fields; checkSnakeIxiaWarning() added; oninput on IXIA fields calls checkIpDirty+checkSnakeIxiaWarning; warning checked on modal open and after reset. Architecture: IXIA_IN/OUT are regular P2P rows — user sets vrf_ to SNAKE_{firstPrimary}/SNAKE_{lastSecondary} manually. Files: Code.gs, Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-19 (Fix cabling export — snake loopback cables: revert skip-entirely approach; instead suppress breakout detection when nodeA.device===nodeB.device (isSelfLoop). A breakout primary port (e.g. Et14/4) used as snake primary was triggering phantom breakout groups; forcing isBreakoutA/B=false on self-loops makes snake cables always render as Scenario B (standard single cable row) with correct port names. Files: Sidebar-js.html)
@@ -1325,10 +1326,15 @@ buildCableGroups()
          phyPort kept as full port name for non-Arista devices.
 
   GroupKey logic (xcvr_speed_ aggregate + slash combination):
-    isBreakoutA = !devAIsNonArista && portA.includes('/')
-    isBreakoutB = !devBIsNonArista && portB.includes('/')
+    isBreakoutA = !isSelfLoop && !devAIsNonArista && portA.includes('/')
+    isBreakoutB = !isSelfLoop && !devBIsNonArista && portB.includes('/')
     phyPortA = (non-Arista or no slash) ? full port : getPhysicalPortParent(port)
     phyPortB = (non-Arista or no slash) ? full port : getPhysicalPortParent(port)
+
+  getPhysicalPortParent(portName): strips lane suffix → Et14/4 → Et14, Et1/1/2 → Et1/1.
+    Implementation: split('/'), pop() last segment if numeric, join('/').
+    Bug that was fixed: previous impl set parts[last]="1" instead of pop() → returned Et14/1.
+    DUPLICATED in Code.gs for server-side testing. Last synced: 2026-04-19.
 
     if isBreakoutA && !isBreakoutB && aggA           → "DEV_A:phyPortA <-> DEV_B"
     if isBreakoutB && !isBreakoutA && aggB           → "DEV_A <-> DEV_B:phyPortB"

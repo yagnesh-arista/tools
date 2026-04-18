@@ -13,6 +13,8 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **canonicalizeInterface() is duplicated** in Code.gs AND Sidebar-js.html (intentional — server + client both need it without a round-trip). Both copies have a `// DUPLICATED ... last synced: <date>` comment. Update the date and keep both copies in sync whenever either changes.
 
+**Cabling helpers are duplicated** in Code.gs AND Sidebar-js.html for server-side unit testing (Tests.gs is server-side and cannot call client-side JS). Duplicated functions: `getPhysicalPortParent`, `compressPortList`, `_breakoutSides`, `_buildCableGroupsForTest`. All carry `// DUPLICATED in Code.gs ... Last synced: <date>`. Keep in sync when either copy changes. `getPhysicalPortParent` strips lane suffix via `parts.pop()` — never `parts[last]="1"` (that returns Et14/1 instead of Et14).
+
 **generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 16-flag IP family settings object. Every call site must pass it — omitting silently drops all protocol-family-gated commands. **generateBGP() has 8 params** — `settings` is the 8th; gates peer group emission per flag.
 
 **16 network flags** in `getNetworkSettings()`: P2P (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM) + GW (GW_IPV4, GW_IPV6) + BGP (4) + OSPF (3) + VXLAN (2) + EVPN (2). P2P and GW are fully decoupled in `generateComplexL3Block()` — never use `useIpv6Explicit` to gate GW config. `hasP2pIpv6` gates Lo0 IPv6 / router-id ipv6; `hasAnyIpv6` (adds gw_ipv6) gates VRF `ipv6 unicast-routing`.
