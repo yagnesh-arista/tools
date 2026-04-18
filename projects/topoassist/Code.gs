@@ -2321,8 +2321,8 @@ function getTopologyData(forceSync, isColorEnabled) {
       scriptProps.setProperty('DATA_VERSION', new Date().getTime().toString());
     }
 
-    const snakeIxiaHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'IXIA_IN_L3');
-    const snakeIxiaHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'IXIA_OUT_L3');
+    const snakeTrafficHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_IN_L3');
+    const snakeTrafficHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_OUT_L3');
 
     const result = {
       nodes: nodes,
@@ -2333,7 +2333,7 @@ function getTopologyData(forceSync, isColorEnabled) {
       portFrequency: portFrequency,
       logs: topo.debugLogs,
       version: scriptProps.getProperty('DATA_VERSION'),
-      snakeIxiaFlags: { hasIn: snakeIxiaHasIn, hasOut: snakeIxiaHasOut }
+      snakeTrafficFlags: { hasIn: snakeTrafficHasIn, hasOut: snakeTrafficHasOut }
     };
 
     // Always store result in GAS cache (including forceSync/verify fetches) so the
@@ -3692,7 +3692,7 @@ function getDeviceConfig(deviceName) {
       }
     }
 
-    // --- PRE-COMPUTE SNAKE PAIRS (needed before main loop for IXIA_IN/OUT VRF assignment) ---
+    // --- PRE-COMPUTE SNAKE PAIRS (needed before main loop for TRAFFIC_IN/OUT VRF assignment) ---
     const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
     const snakePairsForStatic = [];
     if (snakeIntColIdx !== -1) {
@@ -3719,7 +3719,7 @@ function getDeviceConfig(deviceName) {
     }
     const snakeFirstPrimary = snakePairsForStatic.length > 0 ? snakePairsForStatic[0].primaryPort : '';
     const snakeLastSecondary = snakePairsForStatic.length > 0 ? snakePairsForStatic[snakePairsForStatic.length - 1].secondaryPort : '';
-    let foundIxiaIn = false, foundIxiaOut = false;
+    let foundTrafficIn = false, foundTrafficOut = false;
 
     rows.forEach(row => {
       const portName = row[targetColIndex];
@@ -3731,16 +3731,16 @@ function getDeviceConfig(deviceName) {
         const details = extractDetails(row, indices);
         details.sheetIndex = deviceSheetIndex;
 
-        // IXIA_IN/OUT detection via description field
+        // TRAFFIC_IN/OUT detection via description field
         const desc = (details.desc_ || '').trim();
-        if (desc === 'IXIA_IN_L3' && snakeFirstPrimary) {
+        if (desc === 'TRAFFIC_IN_L3' && snakeFirstPrimary) {
           details.ixiaRole = 'in';
           details.snakeFirstPrimary = snakeFirstPrimary;
-          foundIxiaIn = true;
-        } else if (desc === 'IXIA_OUT_L3' && snakeLastSecondary) {
+          foundTrafficIn = true;
+        } else if (desc === 'TRAFFIC_OUT_L3' && snakeLastSecondary) {
           details.ixiaRole = 'out';
           details.snakeLastSecondary = snakeLastSecondary;
-          foundIxiaOut = true;
+          foundTrafficOut = true;
         }
         const poVal = normalizePo(details.po_);
 
@@ -3805,8 +3805,8 @@ function getDeviceConfig(deviceName) {
       const missing = [];
       if (!ipPrefs.bridge_mac) missing.push('Bridge MAC');
       if (!ipPrefs.ixia_mac || !ipPrefs.ixia_nh || !ipPrefs.ixia_subnet) missing.push('IXIA config');
-      if (!foundIxiaIn) missing.push('IXIA_IN_L3 desc');
-      if (!foundIxiaOut) missing.push('IXIA_OUT_L3 desc');
+      if (!foundTrafficIn) missing.push('TRAFFIC_IN_L3 desc');
+      if (!foundTrafficOut) missing.push('TRAFFIC_OUT_L3 desc');
       configMap["080_SNAKE"] = {
         full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs),
         blockStatus: missing.length ? `Snake VRF Chain (${missing.join(', ')} missing)` : "Snake VRF Chain"
@@ -4469,7 +4469,7 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
     lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
     // Primary: exits via loopback cable (bridge-mac ARP trick)
     lines.push(`ip route vrf SNAKE_${primaryPort} ${dest} ${remoteIp}`);
-    // Secondary: chain to next pair, or terminate via IXIA_OUT if last
+    // Secondary: chain to next pair, or terminate via TRAFFIC_OUT if last
     const isLastPair = (idx === snakePairs.length - 1);
     if (!isLastPair) {
       const nextPair = snakePairs[idx + 1];
@@ -4478,11 +4478,11 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
       const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
       lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} egress-vrf SNAKE_${nextPair.primaryPort} ${nextRemote}`);
     } else if (ixiaMac && ixiaNh) {
-      // Last secondary: IXIA_OUT port is in this VRF; route to IXIA via static ARP
+      // Last secondary: TRAFFIC_OUT port is in this VRF; route to traffic gen via static ARP
       lines.push(`arp vrf SNAKE_${secondaryPort} ${ixiaNh} ${ixiaMac} arpa`);
       lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} ${ixiaNh}`);
     } else {
-      lines.push(`! SNAKE_${secondaryPort}: last secondary (IXIA_OUT) - IXIA MAC/NH not configured`);
+      lines.push(`! SNAKE_${secondaryPort}: last secondary (TRAFFIC_OUT) - Traffic MAC/NH not configured`);
     }
   });
   lines.push(`!`);
