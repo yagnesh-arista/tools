@@ -519,7 +519,21 @@
     <p style="font-size:13px;">Define a base config template (NTP, management, AAA, etc.) that is prepended to every device's generated output.</p>
 
     <h3>6. Technology Stack</h3>
-    <p style="font-size:13px;">Enable <b>BGP</b>, <b>VXLAN</b>, and <b>EVPN</b> via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
+    <p style="font-size:13px;">Configure interface types and routing protocols via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
+    <ul style="font-size:13px;">
+      <li><b>Gateway (top)</b> — two independent checkboxes: <b>IPv4</b> (ip address + VARP) and <b>IPv6</b> (ipv6 address + VARP) on SVI, sub-interface, and L3 routed ports. Both default on.</li>
+      <li><b>P2P Interface (5-mode radio)</b> — sets the addressing mode for point-to-point underlay links:
+        <ul>
+          <li><b>IPv4</b> — ip address only</li>
+          <li><b>IPv6</b> — ipv6 address only (explicit, no IPv4)</li>
+          <li><b>IPv6 Unnum</b> — ipv6 enable + ipv6 unnumbered Loopback0 (no IPv4)</li>
+          <li><b>IPv4 + IPv6</b> — both ip address and ipv6 address</li>
+          <li><b>IPv4 + IPv6 Unnum</b> — ip address + ipv6 unnumbered Loopback0</li>
+        </ul>
+      </li>
+      <li><b>Protocol grid (4 columns)</b> — checkboxes for BGP, OSPF, VXLAN, and EVPN variants. Options that are incompatible with the selected P2P mode are greyed out and automatically unchecked.</li>
+      <li><b>Validation errors</b> — the modal blocks Save and shows an error banner if an invalid combination is chosen (e.g. IPv6 GW with no IPv6 routing protocol, VXLAN without an underlay, EVPN without BGP).</li>
+    </ul>
 
     <!-- ================================================================ -->
     <h2>Audit Engine</h2>

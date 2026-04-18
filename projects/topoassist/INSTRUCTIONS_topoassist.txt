@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-18 (BGP ASN base now configurable: added bgp_asn_base field to getIpPreferences() (default '65000'); generateBGP() and generateBGPEvpnOverlay() accept ipPrefs as new last param, derive asnBase from it; both call sites updated; Auto Config modal gets BGP ASN section with ip_bgp_asn_base input; BGP ASN moved from fixed info box to configurable section with formula example. Files: Code.gs, Sidebar.html, Sidebar-js.html)
+  Last updated: 2026-04-18 (Tech modal redesign: GW on top (chkGwIpv4/chkGwIpv6 independent checkboxes), P2P expanded to 5-mode radio (ipv4/ipv6/ipv6unnum/ipv4ipv6/ipv4ipv6unnum), radio name p2pMode; 3 new flags INT_IPV4/GW_IPV4/GW_IPV6 → 16 total; generateComplexL3Block decoupled into p2pHasIpv4/p2pUseIpv6Unnum/p2pUseIpv6Explicit for P2P and gwHasIpv4/gwHasIpv6 for GW; generateSystemBlocks split into hasP2pIpv6 (Lo0 IPv6, router-id ipv6) + hasAnyIpv6 (VRF ipv6 unicast-routing); generateGlobalBlock gw_ipv6 added to ipv6 unicast-routing gate; generateVxlanBlock addVtepIpv6 now gated on vxlan_ipv6 only (not ||int_ipv6); 4 cross-validation rules in validateTechSettings(): IPv6 GW needs IPv6 routing protocol, VXLAN IPv4 needs IPv4 underlay, VXLAN IPv6 needs IPv6 underlay, EVPN needs BGP; TECH_COMPAT now 5 entries matching 5 P2P modes; P2P_MODE_FLAGS constant maps radio value→{int_ipv4,int_ipv6,int_ipv6_unnum}; error banner #techValidationErrors shown in modal; Save button disabled on validation failure. Files: Code.gs, Sidebar.html, Sidebar-js.html, UserGuide.html)
+  Previous: 2026-04-18 (BGP ASN base now configurable: added bgp_asn_base field to getIpPreferences() (default '65000'); generateBGP() and generateBGPEvpnOverlay() accept ipPrefs as new last param, derive asnBase from it; both call sites updated; Auto Config modal gets BGP ASN section with ip_bgp_asn_base input; BGP ASN moved from fixed info box to configurable section with formula example. Files: Code.gs, Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-18 (Auto Config modal: renamed "IP + VNI Configuration" → "Auto Config" (title + toolbar button); added fixed-values info box showing Loopback/Router-ID, BGP ASN, MLAG peer-link formulas with examples; configurable formula key updated with per-device and MLAG GW examples; all input sections (P2P, GW, VNI) unchanged; added .auto-fixed-grid/.auto-fixed-label/.auto-fixed-val/.auto-fixed-formula/.auto-fixed-eg CSS. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-18 (Tech modal: horizontal 4-column grid layout (560px wide); interface radio controls which protocol options are enabled — incompatible options are dimmed, disabled, and auto-unchecked when interface mode changes; applyTechCompat(mode) added with TECH_COMPAT matrix; radio onchange calls applyTechCompat+checkTechDirty; new CSS: tech-radio-label, tech-proto-col, tech-proto-header, tech-proto-row. Files: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-04-18 (Bug fix: getTopologyData() was passing globalUnderlay string instead of full netSettings object to generateConfig() — all IP family gating in sidebar tooltip configs was broken; replaced globalUnderlay with globalNetSettings = getNetworkSettings(). Also removed stale /* REPLACE IN Code.gs */ comment above generateComplexL3Block(). File: Code.gs)
@@ -933,34 +934,54 @@ IP PREFERENCES STORAGE:
 NETWORK FEATURE FLAGS (IP FAMILY PER PROTOCOL):
   - Stored in DocumentProperties (shared, per-spreadsheet)
   - getNetworkSettings() / saveNetworkSettings()
-  - 13 boolean flags (stored as 'true'/'false' strings):
-      INTERFACE: INT_IPV6, INT_IPV6_UNNUM
-      BGP:       BGP_IPV4, BGP_IPV6, BGP_IPV6_UNNUM, BGP_RFC5549
-      OSPF:      OSPF_IPV4, OSPF_IPV6, OSPF_IPV6_UNNUM
-      VXLAN:     VXLAN_IPV4, VXLAN_IPV6
-      EVPN:      EVPN_IPV4, EVPN_IPV6
-  - Legacy migration: getNetworkSettings() reads old NET_UNDERLAY/NET_VXLAN/NET_EVPN
-    keys and converts to new flags if new flags are absent (one-time upgrade).
-  - INT_IPV6_UNNUM is mutually exclusive with INT_IPV6: unnumbered borrows Loopback0
-    IPv6 /128 on P2P links (ipv6 enable + ipv6 unnumbered Loopback0). GW/SVI
-    interfaces are never unnumbered — they always need explicit IPs for VARP.
-  - BGP_RFC5549: gates pgV6Int peer groups (neighbor interface EtX form).
-  - No cascade/dependency logic: each flag is independent. Enabling EVPN does not
-    require checking VXLAN; enabling OSPF does not require BGP. User picks freely.
+  - 16 boolean flags (stored as 'true'/'false' strings):
+      P2P INTERFACE: INT_IPV4 (default true), INT_IPV6, INT_IPV6_UNNUM
+      GATEWAY:       GW_IPV4 (default true), GW_IPV6
+      BGP:           BGP_IPV4, BGP_IPV6, BGP_IPV6_UNNUM, BGP_RFC5549
+      OSPF:          OSPF_IPV4, OSPF_IPV6, OSPF_IPV6_UNNUM
+      VXLAN:         VXLAN_IPV4, VXLAN_IPV6
+      EVPN:          EVPN_IPV4, EVPN_IPV6
+  - Legacy migration: reads old NET_UNDERLAY/NET_VXLAN/NET_EVPN; INT_IPV4/GW_IPV4
+    default true (all legacy projects had IPv4 always); GW_IPV6 defaults to int_ipv6.
+  - P2P vs GW are FULLY DECOUPLED in generateComplexL3Block():
+      P2P: p2pHasIpv4 (int_ipv4), p2pUseIpv6Unnum (int_ipv6_unnum),
+           p2pUseIpv6Explicit (!unnum && int_ipv6)
+      GW:  gwHasIpv4 (gw_ipv4), gwHasIpv6 (gw_ipv6)
+      GW is ip_type_=gw — applies to SVI (l2-* with svi_vlan_), sub-interfaces
+      (-sub-int), and L3 routed ports (l3-et-int / l3-po-int). GW NEVER uses
+      IPv6 unnumbered — explicit IPs required for VARP.
+  - IPv6 routing gates:
+      hasP2pIpv6 = int_ipv6 || int_ipv6_unnum — gates Lo0 IPv6 addr, ipv6 router-id
+      hasAnyIpv6 = hasP2pIpv6 || gw_ipv6     — gates VRF ipv6 unicast-routing
+      generateGlobalBlock: ipv6 unicast-routing gated on int_ipv6||int_ipv6_unnum||gw_ipv6
+  - BGP_RFC5549: gates pgV6Int peer groups; valid for any IPv6 P2P mode (link-local
+    always present on any IPv6-enabled interface, including unnumbered).
+  - addVtepIpv6 in generateVxlanBlock: gated on vxlan_ipv6 ONLY (not ||int_ipv6).
   - Feature derivation in config engine:
       isBgp  = bgp_ipv4 || bgp_ipv6 || bgp_ipv6_unnum || bgp_rfc5549
       isOspf = ospf_ipv4 || ospf_ipv6 || ospf_ipv6_unnum
       isVxlan = (vxlan_ipv4 || vxlan_ipv6) && isVxlanDevice
       isEvpn  = (evpn_ipv4  || evpn_ipv6)  && isEvpnDevice
-  - Backward compatibility: when netSettings is null/absent, all IPv6 commands are
-    emitted (same behavior as before flags existed). evpn_ipv4 defaults true
-    (evpn_ipv4 !== false pattern).
-  - UI: Tech modal (#techModal) — 5 sections, width 420px, max-height 72vh + scroll:
-      INTERFACE: radio group (intIpv6Mode) — IPv4 only / IPv6 / IPv6 Unnumbered
-      BGP UNDERLAY: chkBgpIpv4, chkBgpIpv6, chkBgpIpv6Unnum, chkBgpRfc5549
-      OSPF UNDERLAY: chkOspfIpv4, chkOspfIpv6, chkOspfIpv6Unnum
-      VXLAN: chkVxlanIpv4, chkVxlanIpv6
-      EVPN: chkEvpnIpv4, chkEvpnIpv6
+  - Cross-validation (validateTechSettings() in Sidebar-js.html — 4 rules):
+      1. gw_ipv6 + no IPv6 routing protocol (bgp_ipv6/rfc5549/bgp_unnum/ospf_ipv6/
+         ospf_ipv6_unnum/evpn_ipv4/evpn_ipv6) → error
+      2. vxlan_ipv4 + no IPv4 underlay (bgp_ipv4/bgp_unnum/rfc5549/ospf_ipv4) → error
+      3. vxlan_ipv6 + no IPv6 underlay (bgp_ipv6/bgp_unnum/rfc5549/ospf_ipv6/
+         ospf_ipv6_unnum) → error
+      4. evpn (any) + no BGP (any variant) → error
+    Errors shown in #techValidationErrors banner; Save button disabled.
+    BGP Unnum and RFC5549 count for IPv4 underlay (both negotiate ipv4 unicast AF).
+  - UI: Tech modal (#techModal) — width 580px:
+      GATEWAY (top): chkGwIpv4, chkGwIpv6 — always enabled, no protocol gating
+      P2P INTERFACE: radio group (name=p2pMode) — 5 values:
+        ipv4 / ipv6 / ipv6unnum / ipv4ipv6 / ipv4ipv6unnum
+      Protocol grid (4 cols, gated by P2P mode):
+        BGP: chkBgpIpv4, chkBgpIpv6, chkBgpIpv6Unnum, chkBgpRfc5549
+        OSPF: chkOspfIpv4, chkOspfIpv6, chkOspfIpv6Unnum
+        VXLAN: chkVxlanIpv4, chkVxlanIpv6
+        EVPN: chkEvpnIpv4, chkEvpnIpv6
+      TECH_COMPAT (5 entries) + P2P_MODE_FLAGS (5 entries, radio→{int_ipv4,int_ipv6,
+        int_ipv6_unnum}) defined as module-level constants in Sidebar-js.html.
   - Config blocks: 090_OSPF_UNDERLAY (ospf_ipv4), 091_OSPF3_UNDERLAY (ospf_ipv6)
     both between VXLAN and BGP sections. generateConfig() 5th param (netSettings)
     passed from BOTH getDeviceConfig() AND getTopologyData() (as globalNetSettings).

@@ -453,8 +453,15 @@ function getNetworkSettings() {
   };
 
   // ── Interface ────────────────────────────────────────────────────────────
+  const int_ipv4      = get('INT_IPV4',      true);   // default true = legacy P2P always had IPv4
   const int_ipv6      = get('INT_IPV6',      true);   // default true = backward compat
   const int_ipv6_unnum= get('INT_IPV6_UNNUM',false);
+
+  // ── GW (gateway interfaces: SVI, sub-int, L3 routed) ────────────────────
+  // gw_ipv4 defaults true (GW always had IPv4 historically)
+  // gw_ipv6 defaults to int_ipv6 so existing projects that had IPv6 P2P keep IPv6 GW
+  const gw_ipv4 = get('GW_IPV4', true);
+  const gw_ipv6 = get('GW_IPV6', int_ipv6);
 
   // ── BGP ──────────────────────────────────────────────────────────────────
   const hadBgp        = legacyUnderlay.includes('bgp');
@@ -483,8 +490,10 @@ function getNetworkSettings() {
   const underlay = (hasBgp && hasOspf) ? 'bgp+ospf' : hasBgp ? 'bgp' : hasOspf ? 'ospf' : 'none';
 
   return {
-    // Interface
-    int_ipv6, int_ipv6_unnum,
+    // Interface (P2P)
+    int_ipv4, int_ipv6, int_ipv6_unnum,
+    // Gateway
+    gw_ipv4, gw_ipv6,
     // BGP
     bgp_ipv4, bgp_ipv6, bgp_ipv6_unnum, bgp_rfc5549,
     // OSPF
@@ -504,8 +513,11 @@ function saveNetworkSettings(settings) {
   const props = PropertiesService.getDocumentProperties();
   const b = (v) => v ? 'true' : 'false';
   props.setProperties({
+    'INT_IPV4':       b(settings.int_ipv4 !== false),  // default true if omitted
     'INT_IPV6':       b(settings.int_ipv6),
     'INT_IPV6_UNNUM': b(settings.int_ipv6_unnum),
+    'GW_IPV4':        b(settings.gw_ipv4 !== false),   // default true if omitted
+    'GW_IPV6':        b(settings.gw_ipv6),
     'BGP_IPV4':       b(settings.bgp_ipv4),
     'BGP_IPV6':       b(settings.bgp_ipv6),
     'BGP_IPV6_UNNUM': b(settings.bgp_ipv6_unnum),
@@ -3723,7 +3735,10 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
   // Safety: Ensure inputs are Arrays
   const safeVrfs = Array.isArray(vrfs) ? vrfs : [];
   const safeVlans = Array.isArray(vlans) ? vlans : [];
-  const hasIpv6 = !netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum;
+  // P2P IPv6 → gates Lo0 IPv6 address and IPv6 router-id (used by underlay protocols)
+  const hasP2pIpv6 = !netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum;
+  // Any IPv6 (P2P or GW) → gates VRF ipv6 unicast-routing
+  const hasAnyIpv6 = hasP2pIpv6 || !!(netSettings && netSettings.gw_ipv6);
 
   let lines = [];
 
@@ -3731,13 +3746,13 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
   lines.push(`! System IDs (Derived from ID: ${deviceId})`);
   lines.push(`interface Loopback0`);
   lines.push(` ip address ${deviceId}.${deviceId}.${deviceId}.${deviceId}/32`);
-  if (hasIpv6) {
+  if (hasP2pIpv6) {
     lines.push(` ipv6 address ${deviceId}:${deviceId}:${deviceId}::${deviceId}/128`);
   }
   lines.push(`!`);
   lines.push(`router general`);
   lines.push(` router-id ipv4 ${deviceId}.${deviceId}.${deviceId}.${deviceId}`);
-  if (hasIpv6) {
+  if (hasP2pIpv6) {
     lines.push(` router-id ipv6 ${deviceId}:${deviceId}:${deviceId}::${deviceId}`);
   }
   lines.push(`!`);
@@ -3748,7 +3763,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
     safeVrfs.filter(v => v).forEach(v => {
       lines.push(`vrf instance ${v}`);
       lines.push(`ip routing vrf ${v}`);
-      if (hasIpv6) lines.push(`ipv6 unicast-routing vrf ${v}`);
+      if (hasAnyIpv6) lines.push(`ipv6 unicast-routing vrf ${v}`);
       lines.push(`!`);
     });
   } else {
@@ -3988,9 +4003,14 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   const gwLastV4 = parseInt(cfg.gw_v4_last);
   const gwLastV6 = parseInt(cfg.gw_v6_last);
 
-  // IPv6 mode: unnumbered takes priority over explicit; null netSettings = backward-compat (explicit)
-  const useIpv6Unnum    = !!(netSettings && netSettings.int_ipv6_unnum);
-  const useIpv6Explicit = !useIpv6Unnum && (!netSettings || netSettings.int_ipv6);
+  // P2P IPv6 mode — fully decoupled from GW
+  const p2pHasIpv4       = !netSettings || netSettings.int_ipv4 !== false;   // default true (legacy)
+  const p2pUseIpv6Unnum  = !!(netSettings && netSettings.int_ipv6_unnum);
+  const p2pUseIpv6Explicit = !p2pUseIpv6Unnum && (!netSettings || netSettings.int_ipv6);
+
+  // GW IPv6 — independent of P2P; null netSettings = backward-compat (explicit)
+  const gwHasIpv4 = !netSettings || netSettings.gw_ipv4 !== false;           // default true (legacy)
+  const gwHasIpv6 = !netSettings || netSettings.gw_ipv6;                     // explicit flag
 
   // OSPF flags
   const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4);
@@ -4014,15 +4034,17 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
     // A. P2P LINKS
     if (ipType.includes("p2p")) {
-      lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
-      if (useIpv6Unnum) {
+      if (p2pHasIpv4) {
+        lines.push(` ip address ${cfg.p2p_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.p2p_v4_mask}`);
+      }
+      if (p2pUseIpv6Unnum) {
         lines.push(` ipv6 enable`);
         lines.push(` ipv6 unnumbered Loopback0`);
-      } else if (useIpv6Explicit) {
+      } else if (p2pUseIpv6Explicit) {
         lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
       }
     }
-    // B. GATEWAY (SVI/Sub-Int) — unnumbered doesn't apply to GW (need real IPs for VARP)
+    // B. GATEWAY (SVI/Sub-Int/L3-routed) — GW uses explicit IPs for VARP; IPv6 unnum does not apply
     else if (ipType.includes("gw")) {
       if (d.isMlag) {
         // MLAG Logic: Distinct Physical IPs + Virtual IP
@@ -4032,19 +4054,25 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
         const phySuffixV4 = gwLastV4 + sheetIndex;
         const phySuffixV6 = gwLastV6 + sheetIndex;
 
-        lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-        if (useIpv6Explicit) {
+        if (gwHasIpv4) {
+          lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
+        }
+        if (gwHasIpv6) {
           lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
         }
-        // VARP (Virtual ARP) - L3 modes are blocked by the guard above
-        lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
-        if (useIpv6Explicit) {
+        // VARP (Virtual ARP/ND) — only if respective family is enabled
+        if (gwHasIpv4) {
+          lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
+        }
+        if (gwHasIpv6) {
           lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
         }
       } else {
         // Standalone Gateway
-        lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-        if (useIpv6Explicit) {
+        if (gwHasIpv4) {
+          lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+        }
+        if (gwHasIpv6) {
           lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
         }
       }
@@ -4255,7 +4283,7 @@ function generateGlobalBlock(isEvpnDevice, netSettings) {
     mandatory.push("service routing protocols model multi-agent");
   }
   mandatory.push("ip routing");
-  if (!netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum) {
+  if (!netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum || netSettings.gw_ipv6) {
     mandatory.push("ip routing ipv6 interfaces");
     mandatory.push("ipv6 unicast-routing");
   }
@@ -4861,12 +4889,11 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 * - [FIX] Flood List is ONLY generated if EVPN is DISABLED.
 * - [FIX] Flood List ONLY includes Leaf VTEPs (GW + P2P), ignoring Spines.
 */
-/* REPLACE IN Code.gs */
 function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames, settings) {
   const lines = [];
   lines.push("!");
   const s = settings || {};
-  const addVtepIpv6 = s.vxlan_ipv6 || s.int_ipv6;
+  const addVtepIpv6 = s.vxlan_ipv6;  // gated on explicit VXLAN IPv6 flag only
 
   // 1. Calculate My VTEP IP (IPv4 + IPv6)
   let myVtepIpV4 = "";

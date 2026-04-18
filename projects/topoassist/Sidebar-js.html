@@ -4004,14 +4004,26 @@ function saveIpConfig() {
     .saveIpPreferences(prefs);
 }
 
-// --- TECH MODAL: STATE HELPERS ---
+// --- TECH MODAL: P2P mode → flag mapping ---
+const P2P_MODE_FLAGS = {
+  ipv4:          { int_ipv4: true,  int_ipv6: false, int_ipv6_unnum: false },
+  ipv6:          { int_ipv4: false, int_ipv6: true,  int_ipv6_unnum: false },
+  ipv6unnum:     { int_ipv4: false, int_ipv6: false, int_ipv6_unnum: true  },
+  ipv4ipv6:      { int_ipv4: true,  int_ipv6: true,  int_ipv6_unnum: false },
+  ipv4ipv6unnum: { int_ipv4: true,  int_ipv6: false, int_ipv6_unnum: true  }
+};
+
 function getCurrentTechState() {
   const getChk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
-  const intRadio = document.querySelector('input[name="intIpv6Mode"]:checked');
-  const intMode = intRadio ? intRadio.value : 'ipv4';
+  const p2pRadio = document.querySelector('input[name="p2pMode"]:checked');
+  const p2pMode  = p2pRadio ? p2pRadio.value : 'ipv4';
+  const flags    = P2P_MODE_FLAGS[p2pMode] || P2P_MODE_FLAGS.ipv4;
   return JSON.stringify({
-    int_ipv6:        intMode === 'ipv6',
-    int_ipv6_unnum:  intMode === 'ipv6unnum',
+    int_ipv4:        flags.int_ipv4,
+    int_ipv6:        flags.int_ipv6,
+    int_ipv6_unnum:  flags.int_ipv6_unnum,
+    gw_ipv4:         getChk('chkGwIpv4'),
+    gw_ipv6:         getChk('chkGwIpv6'),
     bgp_ipv4:        getChk('chkBgpIpv4'),
     bgp_ipv6:        getChk('chkBgpIpv6'),
     bgp_ipv6_unnum:  getChk('chkBgpIpv6Unnum'),
@@ -4030,21 +4042,50 @@ function checkTechDirty() {
   const currentState = getCurrentTechState();
   const isDirty = (currentState !== initialTechState);
 
-  // Selector targets the specific button inside the tech modal
-  updateDirtyButton("#techModal .btn-success-mono", isDirty, "Save & Close");
+  // Cross-validation: show errors and block save if invalid
+  const errors = validateTechSettings();
+  const banner = document.getElementById('techValidationErrors');
+  const saveBtn = document.querySelector('#techModal .btn-success-mono');
+  if (banner) {
+    if (errors.length > 0) {
+      banner.innerHTML = errors.map(e => `&#x26A0;&#xFE0F; ${e}`).join('<br>');
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+  if (saveBtn) saveBtn.disabled = errors.length > 0;
+
+  updateDirtyButton("#techModal .btn-success-mono", isDirty && errors.length === 0, "Save & Close");
 }
 
-/* --- TECH COMPAT: which checkboxes are valid per interface mode --- */
+/* --- TECH COMPAT: protocol checkboxes valid per P2P interface mode --- */
 const TECH_COMPAT = {
-  ipv4:     new Set(['chkBgpIpv4', 'chkOspfIpv4', 'chkVxlanIpv4', 'chkEvpnIpv4']),
-  ipv6:     new Set(['chkBgpIpv4','chkBgpIpv6','chkBgpRfc5549',
-                     'chkOspfIpv4','chkOspfIpv6',
-                     'chkVxlanIpv4','chkVxlanIpv6',
-                     'chkEvpnIpv4','chkEvpnIpv6']),
-  ipv6unnum:new Set(['chkBgpIpv6Unnum','chkBgpRfc5549',
-                     'chkOspfIpv6','chkOspfIpv6Unnum',
-                     'chkVxlanIpv6',
-                     'chkEvpnIpv6'])
+  // IPv4 only — no IPv6 on P2P links
+  ipv4:          new Set(['chkBgpIpv4',
+                          'chkOspfIpv4',
+                          'chkVxlanIpv4',
+                          'chkEvpnIpv4']),
+  // IPv6 explicit only — no IPv4 on P2P links
+  ipv6:          new Set(['chkBgpIpv6','chkBgpRfc5549',
+                          'chkOspfIpv6',
+                          'chkVxlanIpv6',
+                          'chkEvpnIpv6']),
+  // IPv6 unnumbered only — no IPv4, no explicit IPv6 addresses
+  ipv6unnum:     new Set(['chkBgpIpv6Unnum','chkBgpRfc5549',
+                          'chkOspfIpv6','chkOspfIpv6Unnum',
+                          'chkVxlanIpv6',
+                          'chkEvpnIpv6']),
+  // IPv4 + IPv6 explicit
+  ipv4ipv6:      new Set(['chkBgpIpv4','chkBgpIpv6','chkBgpRfc5549',
+                          'chkOspfIpv4','chkOspfIpv6',
+                          'chkVxlanIpv4','chkVxlanIpv6',
+                          'chkEvpnIpv4','chkEvpnIpv6']),
+  // IPv4 + IPv6 unnumbered
+  ipv4ipv6unnum: new Set(['chkBgpIpv4','chkBgpIpv6Unnum','chkBgpRfc5549',
+                          'chkOspfIpv4','chkOspfIpv6Unnum',
+                          'chkVxlanIpv4','chkVxlanIpv6',
+                          'chkEvpnIpv4','chkEvpnIpv6'])
 };
 const TECH_ALL_CHKS = ['chkBgpIpv4','chkBgpIpv6','chkBgpIpv6Unnum','chkBgpRfc5549',
                        'chkOspfIpv4','chkOspfIpv6','chkOspfIpv6Unnum',
@@ -4065,26 +4106,68 @@ function applyTechCompat(mode) {
   });
 }
 
+/* --- TECH CROSS-VALIDATION: returns array of error strings (empty = valid) --- */
+function validateTechSettings() {
+  const getChk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  const errors = [];
+
+  // Rule 1: IPv6 GW needs at least one IPv6 routing protocol
+  if (getChk('chkGwIpv6') &&
+      !getChk('chkBgpIpv6') && !getChk('chkBgpRfc5549') && !getChk('chkBgpIpv6Unnum') &&
+      !getChk('chkOspfIpv6') && !getChk('chkOspfIpv6Unnum') &&
+      !getChk('chkEvpnIpv4') && !getChk('chkEvpnIpv6')) {
+    errors.push("IPv6 GW requires an IPv6 routing protocol — enable BGP IPv6, RFC5549, BGP Unnum, OSPFv3, or EVPN.");
+  }
+
+  // Rule 2: VXLAN IPv4 VTEP needs IPv4 underlay reachability
+  // (BGP Unnum and RFC5549 can carry ipv4 unicast AF even over IPv6 sessions)
+  if (getChk('chkVxlanIpv4') &&
+      !getChk('chkBgpIpv4') && !getChk('chkBgpIpv6Unnum') && !getChk('chkBgpRfc5549') &&
+      !getChk('chkOspfIpv4')) {
+    errors.push("VXLAN IPv4 VTEP requires an IPv4 routing protocol — enable BGP IPv4, RFC5549, BGP Unnum, or OSPFv2.");
+  }
+
+  // Rule 3: VXLAN IPv6 VTEP needs IPv6 underlay reachability
+  if (getChk('chkVxlanIpv6') &&
+      !getChk('chkBgpIpv6') && !getChk('chkBgpIpv6Unnum') && !getChk('chkBgpRfc5549') &&
+      !getChk('chkOspfIpv6') && !getChk('chkOspfIpv6Unnum')) {
+    errors.push("VXLAN IPv6 VTEP requires an IPv6 routing protocol — enable BGP IPv6, RFC5549, BGP Unnum, or OSPFv3.");
+  }
+
+  // Rule 4: EVPN is a BGP address-family — requires at least one BGP variant
+  if ((getChk('chkEvpnIpv4') || getChk('chkEvpnIpv6')) &&
+      !getChk('chkBgpIpv4') && !getChk('chkBgpIpv6') && !getChk('chkBgpIpv6Unnum') && !getChk('chkBgpRfc5549')) {
+    errors.push("EVPN requires BGP — enable BGP IPv4, BGP IPv6, RFC5549, or BGP Unnumbered.");
+  }
+
+  return errors;
+}
+
 /* --- TECHNOLOGY MODAL LOGIC --- */
 function openTechModal() {
-  console.log("🚀 [Debug] openTechModal: Triggered");
   showGlobalLoading("Fetching Tech Stack...");
 
   google.script.run
     .withSuccessHandler(settings => {
       hideGlobalLoading();
-      console.log("✓ [Debug] Settings Received from Server:", settings);
 
-      // 1. Set interface IPv6 mode radio
-      const intMode = settings.int_ipv6_unnum ? 'ipv6unnum' : settings.int_ipv6 ? 'ipv6' : 'ipv4';
-      const intRadio = document.querySelector(`input[name="intIpv6Mode"][value="${intMode}"]`);
-      if (intRadio) intRadio.checked = true;
+      // 1. Derive P2P mode from stored flags (5-mode)
+      let p2pMode;
+      if (settings.int_ipv6_unnum && !settings.int_ipv4) p2pMode = 'ipv6unnum';
+      else if (settings.int_ipv6_unnum)                   p2pMode = 'ipv4ipv6unnum';
+      else if (settings.int_ipv6 && !settings.int_ipv4)   p2pMode = 'ipv6';
+      else if (settings.int_ipv6)                         p2pMode = 'ipv4ipv6';
+      else                                                p2pMode = 'ipv4';
 
-      // 2. Set all checkboxes
-      const setChk = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.checked = !!val;
-      };
+      const p2pRadio = document.querySelector(`input[name="p2pMode"][value="${p2pMode}"]`);
+      if (p2pRadio) p2pRadio.checked = true;
+
+      // 2. Set GW checkboxes (default true for gw_ipv4)
+      const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+      setChk('chkGwIpv4', settings.gw_ipv4 !== false);
+      setChk('chkGwIpv6', settings.gw_ipv6);
+
+      // 3. Set protocol checkboxes
       setChk('chkBgpIpv4',       settings.bgp_ipv4);
       setChk('chkBgpIpv6',       settings.bgp_ipv6);
       setChk('chkBgpIpv6Unnum',  settings.bgp_ipv6_unnum);
@@ -4097,52 +4180,30 @@ function openTechModal() {
       setChk('chkEvpnIpv4',      settings.evpn_ipv4);
       setChk('chkEvpnIpv6',      settings.evpn_ipv6);
 
-      // 3. Apply compatibility filter (dims + unchecks options incompatible with interface)
-      applyTechCompat(intMode);
+      // 4. Apply compat filter (dims + unchecks options incompatible with P2P mode)
+      applyTechCompat(p2pMode);
 
-      // 4. Attach handlers: radios update compat then dirty; checkboxes just dirty
-      document.querySelectorAll('#techModal input[type="radio"]').forEach(el => {
+      // 5. Attach handlers: P2P radios update compat then dirty; checkboxes just dirty
+      document.querySelectorAll('#techModal input[name="p2pMode"]').forEach(el => {
         el.onchange = function() { applyTechCompat(this.value); checkTechDirty(); };
       });
       document.querySelectorAll('#techModal input[type="checkbox"]').forEach(el => {
         el.onchange = checkTechDirty;
       });
 
-      // 5. Capture State
-      if (typeof getCurrentTechState === 'function') {
-        initialTechState = getCurrentTechState();
-        checkTechDirty();
-      }
+      // 6. Capture initial state + run first validation
+      initialTechState = getCurrentTechState();
+      checkTechDirty();
 
-      // 6. FORCE UI VISIBILITY
+      // 7. Show modal
       const overlay = document.getElementById('editOverlay');
-      const modal = document.getElementById('techModal');
-
-      console.log("🔍 [Debug] DOM Elements found?", {
-        overlay: !!overlay,
-        modal: !!modal,
-        overlayDisplay: overlay ? overlay.style.display : 'N/A',
-        modalDisplay: modal ? modal.style.display : 'N/A'
-      });
-
-      if (overlay) {
-        overlay.style.display = 'block';
-        overlay.style.zIndex = '29999'; // FORCE HIGH
-      }
-
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.style.zIndex = '30000'; // FORCE HIGHEST
-        // Force opacity/visibility reset in case it was hidden by animation
-        modal.style.opacity = '1';
-        modal.style.visibility = 'visible';
-      }
-
-      console.log("🎨 [Debug] UI Forced Visible.");
+      const modal   = document.getElementById('techModal');
+      if (overlay) { overlay.style.display = 'block'; overlay.style.zIndex = '29999'; }
+      if (modal)   { modal.style.display = 'flex';   modal.style.zIndex = '30000';
+                     modal.style.opacity = '1'; modal.style.visibility = 'visible'; }
     })
     .withFailureHandler(err => {
       hideGlobalLoading();
-      console.error("✗ [Debug] Server Failure:", err);
       alert("Server Error: " + err.message);
     })
     .getNetworkSettings();
@@ -4246,13 +4307,21 @@ function saveGlobalCfgFromSidebar() {
 * - Refreshes Active Device immediately
 */
 function saveTechSettings() {
+  // Guard: block if validation errors exist
+  const errors = validateTechSettings();
+  if (errors.length > 0) return;
+
   const getChk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
-  const intRadio = document.querySelector('input[name="intIpv6Mode"]:checked');
-  const intMode = intRadio ? intRadio.value : 'ipv4';
+  const p2pRadio = document.querySelector('input[name="p2pMode"]:checked');
+  const p2pMode  = p2pRadio ? p2pRadio.value : 'ipv4';
+  const flags    = P2P_MODE_FLAGS[p2pMode] || P2P_MODE_FLAGS.ipv4;
 
   const settings = {
-    int_ipv6:        intMode === 'ipv6',
-    int_ipv6_unnum:  intMode === 'ipv6unnum',
+    int_ipv4:        flags.int_ipv4,
+    int_ipv6:        flags.int_ipv6,
+    int_ipv6_unnum:  flags.int_ipv6_unnum,
+    gw_ipv4:         getChk('chkGwIpv4'),
+    gw_ipv6:         getChk('chkGwIpv6'),
     bgp_ipv4:        getChk('chkBgpIpv4'),
     bgp_ipv6:        getChk('chkBgpIpv6'),
     bgp_ipv6_unnum:  getChk('chkBgpIpv6Unnum'),
