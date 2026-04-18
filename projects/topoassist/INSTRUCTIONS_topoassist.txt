@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-18 (Review fixes: getSheetViewSviFilter() migrates stale 'yes'→'active' in saved SHEET_VIEW_SVI_FILTER on read+persist; applyCustomView() dead ScriptProperty writes removed (SHEET_VIEW_MODE, CUSTOM_VIEW_PREFIXES — never read). File: Code.gs)
+  Last updated: 2026-04-18 (OSPF expanded: generateComplexL3Block() now emits ip ospf commands on ALL P2P interface modes (L2+SVI, sub-interfaces, L3 routed) — previously only l3-et-int/l3-po-int; !d.vrf_ guard removed from all branches — VRF interfaces now covered by per-VRF OSPF processes; generateOSPF() refactored to group P2P interfaces by VRF and emit one router ospf 1 block for DEFAULT VRF plus router ospf 1 vrf <name> blocks for each non-default VRF; router-id is shared across all VRF instances. Files: Code.gs)
+  Previous: 2026-04-18 (Review fixes: getSheetViewSviFilter() migrates stale 'yes'→'active' in saved SHEET_VIEW_SVI_FILTER on read+persist; applyCustomView() dead ScriptProperty writes removed (SHEET_VIEW_MODE, CUSTOM_VIEW_PREFIXES — never read). File: Code.gs)
   Previous: 2026-04-18 (svi_→svi_vlan_ rename stragglers: SheetAssistPanel.html SVI_FILTER_ITEMS val 'yes'→'active' and initSviFilter default ['yes','blank']→['active','blank']; Sidebar.html dev-vis filter label 'svi'→'svi_vlan'. Files: SheetAssistPanel.html, Sidebar.html)
   Previous: 2026-04-17 (SVI alias: added 'active' to svi_vlan_ standardization aliases in validateAndCleanData() — typing 'active' in the svi_vlan_ sheet column is now accepted and auto-converted to 'all' (same as legacy 'yes'/'true'/'1'/'y'). File: Code.gs)
   Previous: 2026-04-17 (Custom View: getViewPreferences() migrates stale 'svi'→'svi_vlan' in saved CUSTOM_VIEW_PREFS on first read and persists the fix; KEY_MIGRATIONS map is the pattern for future renames. vlan preset now includes 'svi_vlan'. Files: Code.gs, Sidebar-js.html)
@@ -766,24 +767,24 @@ INVALID CONFIG GUARD:
   generateComplexL3Block() also guards: returns "" for all l3-* modes with MLAG.
 
 OSPF UNDERLAY (generateOSPF(deviceSheetIndex, bgpNeighbors)):
-  - Generates router ospf 1 process block (area 0, single-area leaf-spine)
-  - router-id: <id>.<id>.<id>.<id> (same loopback pattern as BGP)
-  - passive-interface default + no passive-interface per P2P interface
-    (interface names collected from bgpNeighbors[peer].peerParams[i].interface)
-  - Vlan4093 is always added to p2pInterfaces (no passive-interface Vlan4093) when
-    an MLAG peer exists — OSPF must be active on the L3 peer-link for loopback
-    reachability and core isolation failover (Winnow/EOS manual confirmed)
-  - bfd default, max-lsa 12000
+  - Generates OSPF process blocks for all VRFs (area 0, single-area leaf-spine).
+  - router-id: <id>.<id>.<id>.<id> (same loopback pattern as BGP); shared across
+    all VRF OSPF instances (EOS leaf-spine convention).
+  - VRF grouping: non-MLAG P2P interfaces are grouped by p.vrf from peerParams.
+    DEFAULT VRF → router ospf 1
+    Non-default VRF → router ospf 1 vrf <name>  (one block per VRF, sorted)
+    All blocks use: passive-interface default + no passive-interface per interface,
+    bfd default, max-lsa 12000. All emitted in a single 090_OSPF_UNDERLAY string.
+  - Vlan4093 always added to the DEFAULT VRF set when an MLAG peer exists —
+    OSPF must be active on the L3 peer-link for loopback reachability.
   - Per-interface OSPF commands added by generateComplexL3Block() when
-    underlayProtocol='ospf' on l3-et-int / l3-po-int modes:
-    ip ospf network point-to-point, ip ospf area 0.0.0.0, ip ospf neighbor bfd
-    VRF GUARD: these commands are only emitted when !d.vrf_ — VRF interfaces are
-    routed via BGP VRF sections (already correct), not the global OSPF underlay.
-    OSPF underlay is always default VRF only.
-  - VRF interface filter in generateOSPF(): p2pInterfaces only collects interfaces
-    where !p.vrf — VRF P2P links are excluded from the global router ospf 1
-    no passive-interface list. Without this, VRF interfaces would appear in the
-    OSPF process but have no matching ip ospf commands, producing an inconsistent config.
+    underlayProtocol includes 'ospf'. Applied to ALL P2P interface modes:
+      l2-* with svi_vlan_: ip ospf commands on each generated Vlan<x> SVI
+      -sub-int modes:       ip ospf commands on each generated <port>.<vlan> sub-int
+      l3-et-int / l3-po-int: ip ospf commands on the routed interface
+    Commands: ip ospf network point-to-point, ip ospf area 0.0.0.0, ip ospf neighbor bfd
+    No VRF guard — VRF interfaces get ip ospf commands and are covered by the
+    corresponding router ospf 1 vrf <name> process block.
   - Guard: generateOSPF() is only called when at least one bgpNeighbors entry has
     a non-MLAG peerParam (hasP2pForOspf check). MLAG-only devices (no P2P uplinks)
     skip OSPF entirely — otherwise passive-interface default with no active interfaces

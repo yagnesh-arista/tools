@@ -3952,24 +3952,35 @@ function generateComplexL3Block(portName, d, ipPrefs, underlayProtocol) {
 
   let block = "";
 
+  const addOspf = !!(underlayProtocol && underlayProtocol.includes('ospf'));
+
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
   if (mode.startsWith("l2-") && sviVlans.length > 0) {
     sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+      if (addOspf) {
+        block += " ip ospf network point-to-point\n";
+        block += " ip ospf area 0.0.0.0\n";
+        block += " ip ospf neighbor bfd\n";
+      }
     });
   }
   // 2. Sub-Interfaces (Router on a Stick)
   else if (mode.includes("-sub-int")) {
     vlans.forEach(v => {
       block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+      if (addOspf) {
+        block += " ip ospf network point-to-point\n";
+        block += " ip ospf area 0.0.0.0\n";
+        block += " ip ospf neighbor bfd\n";
+      }
     });
   }
   // 3. L3 Routed Interfaces (No Sub-Int)
   else if (mode === "l3-et-int" || mode === "l3-po-int") {
     if (vlans.length > 0) block += getIpBlock(vlans[0]) + "\n no shutdown\n";
-    // OSPF per-interface commands only for default VRF — VRF interfaces use BGP, not OSPF underlay
-    if (underlayProtocol && underlayProtocol.includes('ospf') && !d.vrf_) {
+    if (addOspf) {
       block += " ip ospf network point-to-point\n";
       block += " ip ospf area 0.0.0.0\n";
       block += " ip ospf neighbor bfd\n";
@@ -4555,30 +4566,41 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
  */
 function generateOSPF(deviceSheetIndex, bgpNeighbors) {
   const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
-  const lines = [];
 
-  // Collect P2P interface names from neighbor params for 'no passive-interface'
-  const p2pInterfaces = new Set();
+  // Group non-MLAG P2P interfaces by VRF ("DEFAULT" = default VRF)
+  const vrfIntfMap = {};
   let hasMlagPeer = false;
   Object.values(bgpNeighbors).forEach(peerData => {
     if (!peerData || !peerData.peerParams) return;
     peerData.peerParams.forEach(p => {
-      // Only default-VRF interfaces belong in router ospf 1; VRF interfaces use BGP
-      if (p.interface && !p.isMlag && !p.vrf) p2pInterfaces.add(p.interface);
-      if (p.isMlag) hasMlagPeer = true;
+      if (p.isMlag) { hasMlagPeer = true; return; }
+      if (!p.interface) return;
+      const vrf = (p.vrf && p.vrf.trim() !== "") ? p.vrf : "DEFAULT";
+      if (!vrfIntfMap[vrf]) vrfIntfMap[vrf] = new Set();
+      vrfIntfMap[vrf].add(p.interface);
     });
   });
-  if (hasMlagPeer) p2pInterfaces.add("Vlan4093");
+  if (hasMlagPeer) {
+    if (!vrfIntfMap["DEFAULT"]) vrfIntfMap["DEFAULT"] = new Set();
+    vrfIntfMap["DEFAULT"].add("Vlan4093");
+  }
 
-  lines.push("router ospf 1");
-  lines.push(` router-id ${routerId}`);
-  lines.push(" passive-interface default");
-  p2pInterfaces.forEach(intf => lines.push(` no passive-interface ${intf}`));
-  lines.push(" bfd default");
-  lines.push(" max-lsa 12000");
-  lines.push("!");
+  const buildBlock = (header, intfs) => {
+    const lines = [header, ` router-id ${routerId}`, " passive-interface default"];
+    intfs.forEach(intf => lines.push(` no passive-interface ${intf}`));
+    lines.push(" bfd default", " max-lsa 12000", "!");
+    return lines.join("\n");
+  };
 
-  return lines.join("\n");
+  const parts = [];
+  if (vrfIntfMap["DEFAULT"]) {
+    parts.push(buildBlock("router ospf 1", vrfIntfMap["DEFAULT"]));
+  }
+  Object.keys(vrfIntfMap).filter(v => v !== "DEFAULT").sort().forEach(vrf => {
+    parts.push(buildBlock(`router ospf 1 vrf ${vrf}`, vrfIntfMap[vrf]));
+  });
+
+  return parts.join("\n");
 }
 
 /**
