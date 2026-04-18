@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-18 (svi_→svi_vlan_ rename stragglers: SheetAssistPanel.html SVI_FILTER_ITEMS val 'yes'→'active' and initSviFilter default ['yes','blank']→['active','blank']; Sidebar.html dev-vis filter label 'svi'→'svi_vlan'. Files: SheetAssistPanel.html, Sidebar.html)
+  Last updated: 2026-04-18 (Review fixes: getSheetViewSviFilter() migrates stale 'yes'→'active' in saved SHEET_VIEW_SVI_FILTER on read+persist; applyCustomView() dead ScriptProperty writes removed (SHEET_VIEW_MODE, CUSTOM_VIEW_PREFIXES — never read). File: Code.gs)
+  Previous: 2026-04-18 (svi_→svi_vlan_ rename stragglers: SheetAssistPanel.html SVI_FILTER_ITEMS val 'yes'→'active' and initSviFilter default ['yes','blank']→['active','blank']; Sidebar.html dev-vis filter label 'svi'→'svi_vlan'. Files: SheetAssistPanel.html, Sidebar.html)
   Previous: 2026-04-17 (SVI alias: added 'active' to svi_vlan_ standardization aliases in validateAndCleanData() — typing 'active' in the svi_vlan_ sheet column is now accepted and auto-converted to 'all' (same as legacy 'yes'/'true'/'1'/'y'). File: Code.gs)
   Previous: 2026-04-17 (Custom View: getViewPreferences() migrates stale 'svi'→'svi_vlan' in saved CUSTOM_VIEW_PREFS on first read and persists the fix; KEY_MIGRATIONS map is the pattern for future renames. vlan preset now includes 'svi_vlan'. Files: Code.gs, Sidebar-js.html)
   Previous: 2026-04-17 (Fix stale 'yes' references from svi→svi_vlan rename: topoSviFilter default+reset ['yes','blank']→['active','blank'] in Sidebar-js.html (topology SVI filter was broken); Code.gs sheet-view SVI filter check sviVal==='yes'?'yes':'blank' → sviVal?'active':'blank' (always evaluated 'active' rows as 'blank'); Code.gs validateAndCleanData() fallback 'yes'→'all'. Files: Sidebar-js.html, Code.gs)

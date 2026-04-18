@@ -1640,12 +1640,8 @@ function applyCustomView(selectedKeys) {
   const lastCol = sheet.getLastColumn();
   if (lastCol < 2) return;
 
-  // A. Save the preference for next time + mark mode as CUSTOM
+  // A. Save the preference for next time
   PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', JSON.stringify(selectedKeys));
-  PropertiesService.getScriptProperties().setProperties({
-    'SHEET_VIEW_MODE': 'CUSTOM',
-    'CUSTOM_VIEW_PREFIXES': JSON.stringify(selectedKeys)
-  });
 
   // B. Compute target visibility for every column (type filter + device filter combined)
   const prefixes = selectedKeys.map(k => k + '_');
@@ -2504,8 +2500,18 @@ function applySheetIntModeFilter(filters) {
 // ── Sheet View svi filter ──
 // Values: 'active' (svi_vlan_ has any value), 'blank' (svi_vlan_ empty). Default both active.
 function getSheetViewSviFilter() {
+  // Key migrations: old val → new val (matches the UI filter item values)
+  const SVI_FILTER_MIGRATIONS = { 'yes': 'active' };
   const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_SVI_FILTER');
-  return v ? JSON.parse(v) : ['active', 'blank'];
+  if (!v) return ['active', 'blank'];
+  try {
+    const filters = JSON.parse(v);
+    if (!Array.isArray(filters)) return ['active', 'blank'];
+    const migrated = filters.map(function(f) { return SVI_FILTER_MIGRATIONS[f] || f; });
+    const changed = migrated.some(function(f, i) { return f !== filters[i]; });
+    if (changed) PropertiesService.getUserProperties().setProperty('SHEET_VIEW_SVI_FILTER', JSON.stringify(migrated));
+    return migrated;
+  } catch (e) { return ['active', 'blank']; }
 }
 function saveSheetViewSviFilter(filters) {
   PropertiesService.getUserProperties().setProperty('SHEET_VIEW_SVI_FILTER', JSON.stringify(filters));
