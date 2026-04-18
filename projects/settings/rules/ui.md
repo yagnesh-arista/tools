@@ -33,6 +33,13 @@ Apply `user-select: none; -webkit-user-select: none` to all non-editable UI elem
 - For clipboard copy: use `navigator.clipboard.writeText()` with `execCommand` fallback.
 - If a modal shows read-only content the user might copy (diff, config): leave that element selectable.
 
+## Modal Default Background
+All modals must use a white background (`#ffffff`) by default. Dark mode overrides the
+background via a dedicated `--bg-modal` CSS variable or a dark-mode theme selector.
+Never hardcode a dark background on a modal outside of a dark-mode rule.
+In projects with CSS variables: set `--bg-modal: #ffffff` as the base, and override with
+the dark card color only under the dark-mode selector.
+
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
