@@ -1992,6 +1992,12 @@ function calculateGlobalTopology(data, headers) {
       if (!isValidPort(primaryRaw)) continue;
       const primaryPort = canonicalizeInterface(primaryRaw);
       const snakePort = canonicalizeInterface(snakeRaw);
+      // Guard: only register self-loop if neither port is already a regular peer link
+      // (protects against a port appearing in both a regular row and a snake row)
+      const existingPrimary = globalLinkMap.get(devName + ":" + primaryPort);
+      const existingSnake = globalLinkMap.get(devName + ":" + snakePort);
+      if (existingPrimary && !existingPrimary.isSelfLoop) continue;
+      if (existingSnake && !existingSnake.isSelfLoop) continue;
       globalLinkMap.set(devName + ":" + primaryPort, { dev: devName, port: snakePort, isSelfLoop: true });
       globalLinkMap.set(devName + ":" + snakePort, { dev: devName, port: primaryPort, isSelfLoop: true });
     }
