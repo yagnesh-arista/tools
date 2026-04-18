@@ -620,6 +620,7 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'xcvr_speed', label: 'Xcvr Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
   { key: 'encoding', label: 'FEC', options: ['fire-code', 'reed-solomon'] },
   { key: 'xcvr', label: 'Transceiver', options: [] },
+  { key: 'snake_int', label: 'Snake Port', options: [] },
   { key: 'desc', label: 'Description', options: [] },
   { key: 'sd', label: 'SD', options: [] },
   { key: 'dp-pp-mp', label: 'DP-PP-MP', options: [] }
@@ -3020,21 +3021,16 @@ function addSnakePair(dev, portA, portB, attrs) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_DATA);
-    const lastCol = sheet.getLastColumn();
-    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    const headers = sheet.getDataRange().getValues()[1];
     const nextRow = sheet.getLastRow() + 1;
     const fieldMap = getFieldMap();
 
     const intColIdx = headers.indexOf("int_" + dev);
     if (intColIdx === -1) return { error: "Device " + dev + " not found in sheet headers" };
 
-    // Ensure snake_int_ column exists; append at end if not
-    const snakeColName = "snake_int_" + dev;
-    let snakeColIdx = headers.indexOf(snakeColName);
-    if (snakeColIdx === -1) {
-      snakeColIdx = lastCol; // 0-indexed position of new column
-      sheet.getRange(2, lastCol + 1).setValue(snakeColName);
-    }
+    // snake_int_ column is part of the schema (DEFAULT_SCHEMA_ARRAY) and always pre-created
+    const snakeColIdx = headers.indexOf("snake_int_" + dev);
+    if (snakeColIdx === -1) return { error: "snake_int_" + dev + " column not found — re-add device to rebuild schema columns" };
 
     const setVal = (r, c, v) => { if (c >= 0) sheet.getRange(r, c + 1).setValue(v); };
     setVal(nextRow, intColIdx, portA);

@@ -5229,8 +5229,8 @@ function buildFormFields(d, prefix, isReadOnly) {
 
   // Iterate over Global Schema
   globalSchema.forEach(item => {
-    // Skip 'int' as it is handled in the top section of the modal
-    if (item.key === 'int') return;
+    // Skip 'int' (handled in top section) and 'snake_int' (set internally by addSnakePair, not user-editable)
+    if (item.key === 'int' || item.key === 'snake_int') return;
 
     let val = d[item.key + "_"]; // Access data (e.g. d.po_)
 
@@ -5517,7 +5517,7 @@ function saveEdit() {
   // [NEW] Dynamically get IDs from Schema
   // We filter out 'int' because it is handled separately (portA_name / portB_name)
   let dynamicIds = globalSchema
-    .filter(item => item.key !== 'int')
+    .filter(item => item.key !== 'int' && item.key !== 'snake_int')
     .map(item => item.key);
 
   // 1. CONNECT MODE
