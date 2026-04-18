@@ -1915,11 +1915,13 @@ function calculateGlobalTopology(data, headers) {
   // --- 1. MAPPING HEADERS ---
   const allIntCols = {};
   const allPoCols = {};
+  const allSnakeIntCols = {};
 
   headers.forEach((h, i) => {
     // Preserve case for Device Names from headers
     if (h.startsWith("int_")) allIntCols[h.substring(4)] = i;
     if (h.startsWith("po_")) allPoCols[h.substring(3)] = i;
+    if (h.startsWith("snake_int_")) allSnakeIntCols[h.substring(10)] = i;
   });
 
   const poMap = {};
@@ -1948,6 +1950,15 @@ function calculateGlobalTopology(data, headers) {
         po: poVal
       });
     }
+    // Also collect snake_int_ ports (same-device self-loop pairs)
+    for (const [devName, snakeColIdx] of Object.entries(allSnakeIntCols)) {
+      const snakeRaw = row[snakeColIdx];
+      if (!isValidPort(snakeRaw)) continue;
+      const intColIdx = allIntCols[devName];
+      if (intColIdx === undefined) continue;
+      if (!isValidPort(row[intColIdx])) continue; // primary must also be present
+      rowNodes.push({ dev: devName, port: canonicalizeInterface(snakeRaw), po: null, isSnakeSecondary: true });
+    }
 
     // Step B: Connect the gathered nodes (Strict Pairs)
     // We iterate by 2 to enforce physical cabling logic: A<->B, C<->D
@@ -1955,9 +1966,19 @@ function calculateGlobalTopology(data, headers) {
       const nodeA = rowNodes[i];
       const nodeB = rowNodes[i + 1];
 
-      // Register global link lookups (used for config descriptions & BGP neighbor discovery)
-      globalLinkMap.set(nodeA.dev + ":" + nodeA.port, { dev: nodeB.dev, port: nodeB.port });
-      globalLinkMap.set(nodeB.dev + ":" + nodeB.port, { dev: nodeA.dev, port: nodeA.port });
+      if (nodeA.dev === nodeB.dev) {
+        // Self-loop (snake test): guard — skip if either port is already a regular peer link
+        const existingA = globalLinkMap.get(nodeA.dev + ":" + nodeA.port);
+        const existingB = globalLinkMap.get(nodeB.dev + ":" + nodeB.port);
+        if (existingA && !existingA.isSelfLoop) continue;
+        if (existingB && !existingB.isSelfLoop) continue;
+        globalLinkMap.set(nodeA.dev + ":" + nodeA.port, { dev: nodeB.dev, port: nodeB.port, isSelfLoop: true });
+        globalLinkMap.set(nodeB.dev + ":" + nodeB.port, { dev: nodeA.dev, port: nodeA.port, isSelfLoop: true });
+      } else {
+        // Register global link lookups (used for config descriptions & BGP neighbor discovery)
+        globalLinkMap.set(nodeA.dev + ":" + nodeA.port, { dev: nodeB.dev, port: nodeB.port });
+        globalLinkMap.set(nodeB.dev + ":" + nodeB.port, { dev: nodeA.dev, port: nodeA.port });
+      }
     }
 
     // Step C: PO Grouping for MLAG (Must scan all nodes to find splitters)
@@ -1974,33 +1995,6 @@ function calculateGlobalTopology(data, headers) {
           poMap[src.po][src.dev].add(rowNodes[k].dev);
         }
       }
-    }
-  }
-
-  // STEP D: Snake self-loop detection — scan snake_int_ columns and register self-loop entries
-  const allSnakeIntCols = {};
-  headers.forEach((h, i) => {
-    if (String(h).startsWith("snake_int_")) allSnakeIntCols[h.substring(10)] = i;
-  });
-  for (let r = 2; r < data.length; r++) {
-    const row = data[r];
-    for (const [devName, snakeColIdx] of Object.entries(allSnakeIntCols)) {
-      const snakeRaw = row[snakeColIdx];
-      if (!isValidPort(snakeRaw)) continue;
-      const intColIdx = allIntCols[devName];
-      if (intColIdx === undefined) continue;
-      const primaryRaw = row[intColIdx];
-      if (!isValidPort(primaryRaw)) continue;
-      const primaryPort = canonicalizeInterface(primaryRaw);
-      const snakePort = canonicalizeInterface(snakeRaw);
-      // Guard: only register self-loop if neither port is already a regular peer link
-      // (protects against a port appearing in both a regular row and a snake row)
-      const existingPrimary = globalLinkMap.get(devName + ":" + primaryPort);
-      const existingSnake = globalLinkMap.get(devName + ":" + snakePort);
-      if (existingPrimary && !existingPrimary.isSelfLoop) continue;
-      if (existingSnake && !existingSnake.isSelfLoop) continue;
-      globalLinkMap.set(devName + ":" + primaryPort, { dev: devName, port: snakePort, isSelfLoop: true });
-      globalLinkMap.set(devName + ":" + snakePort, { dev: devName, port: primaryPort, isSelfLoop: true });
     }
   }
 
