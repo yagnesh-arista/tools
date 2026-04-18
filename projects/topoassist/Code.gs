@@ -4259,7 +4259,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
-  if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakeSecondary) {
+  if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakePrimary && !d.isSnakeSecondary) {
     sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
       if (addOspfV4) {
