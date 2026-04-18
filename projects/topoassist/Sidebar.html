@@ -284,99 +284,90 @@
   <!-- 4. ALL MODALS (Paste them ALL here, OUTSIDE app-topology) -->
 
   <!-- Tech Modal -->
-  <div id="techModal" class="modal-std" style="width: 420px;">
+  <div id="techModal" class="modal-std" style="width: 560px;">
     <div class="modal-header">
       <div class="modal-header-title">Network Tech Stack</div>
       <button onclick="closeTechModal()" class="btn-mono">Close</button>
     </div>
-    <div style="padding: 14px 20px; display: flex; flex-direction: column; gap: 2px; max-height: 72vh; overflow-y: auto; font-family: 'JetBrains Mono', monospace;">
-      <!-- INTERFACE SECTION -->
-      <div class="tech-section-label">INTERFACE</div>
-      <div class="tech-stack-row">
-        <input type="radio" name="intIpv6Mode" id="intModeIpv4" value="ipv4" class="chk-input">
-        <label for="intModeIpv4" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4 only</label>
-        <span class="tech-tag">no IPv6 on interfaces</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="radio" name="intIpv6Mode" id="intModeIpv6" value="ipv6" class="chk-input">
-        <label for="intModeIpv6" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4 + IPv6</label>
-        <span class="tech-tag">explicit /128 P2P + SVI</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="radio" name="intIpv6Mode" id="intModeIpv6Unnum" value="ipv6unnum" class="chk-input">
-        <label for="intModeIpv6Unnum" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4 + IPv6 Unnumbered</label>
-        <span class="tech-tag">borrows Loopback0</span>
+    <div style="padding: 16px 20px; font-family: 'JetBrains Mono', monospace;">
+
+      <!-- INTERFACE: full-width radio row -->
+      <div class="tech-section-label" style="margin-bottom: 8px;">INTERFACE</div>
+      <div style="display:flex; gap:20px; margin-bottom:16px;">
+        <label class="tech-radio-label">
+          <input type="radio" name="intIpv6Mode" id="intModeIpv4" value="ipv4" class="chk-input">
+          IPv4 Only
+        </label>
+        <label class="tech-radio-label">
+          <input type="radio" name="intIpv6Mode" id="intModeIpv6" value="ipv6" class="chk-input">
+          IPv4 + IPv6
+        </label>
+        <label class="tech-radio-label">
+          <input type="radio" name="intIpv6Mode" id="intModeIpv6Unnum" value="ipv6unnum" class="chk-input">
+          IPv6 Unnumbered
+        </label>
       </div>
 
-      <!-- BGP UNDERLAY SECTION -->
-      <div class="tech-section-label" style="margin-top: 10px;">BGP UNDERLAY</div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkBgpIpv4" class="chk-input">
-        <label for="chkBgpIpv4" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4</label>
-        <span class="tech-tag">IPv4 P2P peers</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkBgpIpv6" class="chk-input">
-        <label for="chkBgpIpv6" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv6</label>
-        <span class="tech-tag">IPv6 P2P peers</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input">
-        <label for="chkBgpIpv6Unnum" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv6 Unnumbered</label>
-        <span class="tech-tag">link-local peers</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkBgpRfc5549" class="chk-input">
-        <label for="chkBgpRfc5549" class="chk-label" style="user-select:none;-webkit-user-select:none;">RFC 5549</label>
-        <span class="tech-tag">neighbor interface EtX</span>
+      <!-- PROTOCOL GRID: 4 columns -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border-light); border-radius:6px; overflow:hidden;">
+
+        <!-- BGP -->
+        <div class="tech-proto-col">
+          <div class="tech-proto-header">BGP</div>
+          <label id="row-chkBgpIpv4" class="tech-proto-row">
+            <input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4
+          </label>
+          <label id="row-chkBgpIpv6" class="tech-proto-row">
+            <input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6
+          </label>
+          <label id="row-chkBgpIpv6Unnum" class="tech-proto-row">
+            <input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnum
+          </label>
+          <label id="row-chkBgpRfc5549" class="tech-proto-row" style="border-bottom:none;">
+            <input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549
+          </label>
+        </div>
+
+        <!-- OSPF -->
+        <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
+          <div class="tech-proto-header">OSPF</div>
+          <label id="row-chkOspfIpv4" class="tech-proto-row">
+            <input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4
+          </label>
+          <label id="row-chkOspfIpv6" class="tech-proto-row">
+            <input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6
+          </label>
+          <label id="row-chkOspfIpv6Unnum" class="tech-proto-row" style="border-bottom:none;">
+            <input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnum
+          </label>
+        </div>
+
+        <!-- VXLAN -->
+        <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
+          <div class="tech-proto-header">VXLAN</div>
+          <label id="row-chkVxlanIpv4" class="tech-proto-row">
+            <input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP
+          </label>
+          <label id="row-chkVxlanIpv6" class="tech-proto-row" style="border-bottom:none;">
+            <input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP
+          </label>
+        </div>
+
+        <!-- EVPN -->
+        <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
+          <div class="tech-proto-header">EVPN</div>
+          <label id="row-chkEvpnIpv4" class="tech-proto-row">
+            <input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4
+          </label>
+          <label id="row-chkEvpnIpv6" class="tech-proto-row" style="border-bottom:none;">
+            <input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6
+          </label>
+        </div>
+
       </div>
 
-      <!-- OSPF UNDERLAY SECTION -->
-      <div class="tech-section-label" style="margin-top: 10px;">OSPF UNDERLAY</div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkOspfIpv4" class="chk-input">
-        <label for="chkOspfIpv4" class="chk-label" style="user-select:none;-webkit-user-select:none;">OSPFv2 (IPv4)</label>
-        <span class="tech-tag">router ospf 1</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkOspfIpv6" class="chk-input">
-        <label for="chkOspfIpv6" class="chk-label" style="user-select:none;-webkit-user-select:none;">OSPFv3 (IPv6)</label>
-        <span class="tech-tag">router ospf3 1</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input">
-        <label for="chkOspfIpv6Unnum" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv6 Unnumbered</label>
-        <span class="tech-tag">link-local OSPF</span>
-      </div>
-
-      <!-- VXLAN SECTION -->
-      <div class="tech-section-label" style="margin-top: 10px;">VXLAN</div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkVxlanIpv4" class="chk-input">
-        <label for="chkVxlanIpv4" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4 VTEP</label>
-        <span class="tech-tag">Loopback0/1 IPv4</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkVxlanIpv6" class="chk-input">
-        <label for="chkVxlanIpv6" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv6 VTEP</label>
-        <span class="tech-tag">Loopback0/1 IPv6</span>
-      </div>
-
-      <!-- EVPN SECTION -->
-      <div class="tech-section-label" style="margin-top: 10px;">EVPN</div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkEvpnIpv4" class="chk-input">
-        <label for="chkEvpnIpv4" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv4 Overlay</label>
-        <span class="tech-tag">Lo0-to-Lo0 BGP v4</span>
-      </div>
-      <div class="tech-stack-row">
-        <input type="checkbox" id="chkEvpnIpv6" class="chk-input">
-        <label for="chkEvpnIpv6" class="chk-label" style="user-select:none;-webkit-user-select:none;">IPv6 Overlay</label>
-        <span class="tech-tag">Lo0-to-Lo0 BGP v6</span>
-      </div>
-
-      <div style="font-size: 10px; color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-style: italic; margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 10px; user-select:none; -webkit-user-select:none;">
-        * Enable any option to activate the protocol. Sections are independent — no parent gate required.
+      <div style="font-size:10px; color:#94a3b8; font-style:italic; margin-top:10px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
+        Greyed options are not compatible with the selected interface type.
       </div>
     </div>
     <div class="modal-actions right-align">

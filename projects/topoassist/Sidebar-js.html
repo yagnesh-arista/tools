@@ -4032,6 +4032,37 @@ function checkTechDirty() {
   updateDirtyButton("#techModal .btn-success-mono", isDirty, "Save & Close");
 }
 
+/* --- TECH COMPAT: which checkboxes are valid per interface mode --- */
+const TECH_COMPAT = {
+  ipv4:     new Set(['chkBgpIpv4', 'chkOspfIpv4', 'chkVxlanIpv4', 'chkEvpnIpv4']),
+  ipv6:     new Set(['chkBgpIpv4','chkBgpIpv6','chkBgpRfc5549',
+                     'chkOspfIpv4','chkOspfIpv6',
+                     'chkVxlanIpv4','chkVxlanIpv6',
+                     'chkEvpnIpv4','chkEvpnIpv6']),
+  ipv6unnum:new Set(['chkBgpIpv6Unnum','chkBgpRfc5549',
+                     'chkOspfIpv6','chkOspfIpv6Unnum',
+                     'chkVxlanIpv6',
+                     'chkEvpnIpv6'])
+};
+const TECH_ALL_CHKS = ['chkBgpIpv4','chkBgpIpv6','chkBgpIpv6Unnum','chkBgpRfc5549',
+                       'chkOspfIpv4','chkOspfIpv6','chkOspfIpv6Unnum',
+                       'chkVxlanIpv4','chkVxlanIpv6',
+                       'chkEvpnIpv4','chkEvpnIpv6'];
+
+function applyTechCompat(mode) {
+  const allowed = TECH_COMPAT[mode] || TECH_COMPAT.ipv4;
+  TECH_ALL_CHKS.forEach(id => {
+    const el  = document.getElementById(id);
+    const row = document.getElementById('row-' + id);
+    if (!el || !row) return;
+    const ok = allowed.has(id);
+    if (!ok) el.checked = false;
+    el.disabled = !ok;
+    row.style.opacity       = ok ? '' : '0.35';
+    row.style.pointerEvents = ok ? '' : 'none';
+  });
+}
+
 /* --- TECHNOLOGY MODAL LOGIC --- */
 function openTechModal() {
   console.log("🚀 [Debug] openTechModal: Triggered");
@@ -4064,18 +4095,24 @@ function openTechModal() {
       setChk('chkEvpnIpv4',      settings.evpn_ipv4);
       setChk('chkEvpnIpv6',      settings.evpn_ipv6);
 
-      // 3. Attach dirty-check handlers to all inputs
-      document.querySelectorAll('#techModal input').forEach(el => {
+      // 3. Apply compatibility filter (dims + unchecks options incompatible with interface)
+      applyTechCompat(intMode);
+
+      // 4. Attach handlers: radios update compat then dirty; checkboxes just dirty
+      document.querySelectorAll('#techModal input[type="radio"]').forEach(el => {
+        el.onchange = function() { applyTechCompat(this.value); checkTechDirty(); };
+      });
+      document.querySelectorAll('#techModal input[type="checkbox"]').forEach(el => {
         el.onchange = checkTechDirty;
       });
 
-      // 4. Capture State
+      // 5. Capture State
       if (typeof getCurrentTechState === 'function') {
         initialTechState = getCurrentTechState();
         checkTechDirty();
       }
 
-      // 5. FORCE UI VISIBILITY
+      // 6. FORCE UI VISIBILITY
       const overlay = document.getElementById('editOverlay');
       const modal = document.getElementById('techModal');
 
