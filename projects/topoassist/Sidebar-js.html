@@ -725,7 +725,7 @@ function buildLabelEditorHTML(index) {
   let customChips = '';
   current.forEach(lbl => {
     const c = ROLE_COLORS[lbl] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
-    customChips += `<span style="display:inline-flex;align-items:center;gap:2px;background:${c.bg};color:${c.text};border:1px solid ${c.border};border-radius:3px;padding:1px 4px;font-size:9px;font-weight:700;letter-spacing:0.3px;">${lbl}<button onclick="toggleDeviceLabel(${index},'${lbl}')" title="Remove ${lbl}" style="background:none;border:none;cursor:pointer;color:${c.text};font-size:11px;padding:0 0 0 2px;line-height:1;font-family:'JetBrains Mono',monospace;">×</button></span>`;
+    customChips += `<span style="display:inline-flex;align-items:center;gap:2px;background:${c.bg};color:${c.text};border:1px solid ${c.border};border-radius:3px;padding:1px 4px;font-size:10px;font-weight:700;letter-spacing:0.3px;">${lbl}<button onclick="toggleDeviceLabel(${index},'${lbl}')" title="Remove ${lbl}" style="background:none;border:none;cursor:pointer;color:${c.text};font-size:11px;padding:0 0 0 2px;line-height:1;font-family:'JetBrains Mono',monospace;">×</button></span>`;
   });
 
   const customDisabled = maxReached ? 'disabled' : '';
@@ -735,11 +735,11 @@ function buildLabelEditorHTML(index) {
     <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1;">${customChips}</div>
     <input id="customLabelInput_${index}" type="text" maxlength="16" placeholder="${customPlaceholder}"
       ${customDisabled}
-      style="font-size:9px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;width:90px;height:20px;font-family:'JetBrains Mono',monospace;${maxReached ? 'opacity:0.4;' : ''}"
+      style="font-size:10px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;width:90px;height:20px;font-family:'JetBrains Mono',monospace;${maxReached ? 'opacity:0.4;' : ''}"
       onkeydown="if(event.key==='Enter'){addCustomLabel(${index})}"
       onclick="event.stopPropagation()">
     <button onclick="addCustomLabel(${index})" ${customDisabled}
-      style="font-size:9px;padding:2px 6px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:${maxReached ? 'not-allowed' : 'pointer'};height:20px;font-family:'JetBrains Mono',monospace;${maxReached ? 'opacity:0.4;' : ''}">Add</button>
+      style="font-size:10px;padding:2px 6px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:${maxReached ? 'not-allowed' : 'pointer'};height:20px;font-family:'JetBrains Mono',monospace;${maxReached ? 'opacity:0.4;' : ''}">Add</button>
     <button onclick="closeLabelPicker()" class="label-editor-done">✕</button>
   </div>`;
 }
@@ -11398,7 +11398,7 @@ function renderVlanSummaryTable(sorted, vlanMap) {
     const info = vlanMap[vid];
     const typeColor = info.type === 'L3' ? '#f59e0b' : '#60a5fa';
     const portsSummary = info.ports.map(p => p.device + ':' + p.port).join(', ');
-    const rowBg = i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-secondary)';
+    const rowBg = i % 2 === 0 ? 'var(--bg-modal, #ffffff)' : 'var(--bg-secondary)';
     html += '<tr data-vid="' + vid + '" style="background:' + rowBg + ';cursor:pointer;"'
       + ' onclick="closeVlanSummaryModal();setTimeout(function(){traceVlan(\'' + vid + '\');},80);"'
       + ' onmouseover="this.style.background=\'var(--hover-bg,#1e293b)\'"'

@@ -650,7 +650,7 @@
       <div class="modal-header-title">⌨ Shortcuts</div>
       <button onclick="closeHelpModal()" class="btn-mono">Close</button>
     </div>
-    <div style="background: var(--bg-card); overflow-y: auto;">
+    <div style="background: var(--bg-modal, #ffffff); overflow-y: auto;">
       <div class="shortcut-legend">
 
         <div class="shortcut-section">
@@ -832,7 +832,7 @@
       <div class="modal-header-title">Generate All Configs</div>
       <button onclick="closeGenerateAllModal()" class="btn-mono">Close</button>
     </div>
-    <div id="generateAllBody" style="padding:20px;overflow-y:auto;max-height:55vh;background:var(--bg-card);">
+    <div id="generateAllBody" style="padding:20px;overflow-y:auto;max-height:55vh;background:var(--bg-modal, #ffffff);">
       <div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">
         Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.
       </div>
@@ -850,12 +850,12 @@
       <div class="modal-header-title">VLAN Summary</div>
       <button onclick="closeVlanSummaryModal()" class="btn-mono">Close</button>
     </div>
-    <div style="padding:12px 16px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);">
+    <div style="padding:12px 16px 8px;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
       <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN ID or device…"
         oninput="filterVlanSummary()"
         style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-main);font-family:'JetBrains Mono',monospace;font-size:12px;">
     </div>
-    <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;background:var(--bg-card);font-family:'JetBrains Mono',monospace;font-size:12px;">
+    <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;background:var(--bg-modal, #ffffff);font-family:'JetBrains Mono',monospace;font-size:12px;">
     </div>
     <div class="modal-actions right-align">
       <div id="vlanSummaryCount" style="color:var(--text-muted);font-size:11px;margin-right:auto;padding-left:4px;font-family:'JetBrains Mono',monospace;"></div>
