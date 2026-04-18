@@ -3902,7 +3902,7 @@ function checkIpDirty() {
 
 // --- UPDATED OPEN FUNCTION ---
 function openIpConfigModal(btn) {
-  showGlobalLoading("Loading Auto Config...");
+  showModalLoading("ipConfigModal");
 
   google.script.run.withSuccessHandler(prefs => {
     // 1. Populate Fields
@@ -4148,7 +4148,7 @@ function validateTechSettings() {
 
 /* --- TECHNOLOGY MODAL LOGIC --- */
 function openTechModal() {
-  showGlobalLoading("Fetching Tech Stack...");
+  showModalLoading("techModal");
 
   google.script.run
     .withSuccessHandler(settings => {
@@ -4380,6 +4380,13 @@ function saveTechSettings() {
       alert("Error saving: " + err.message);
     })
     .saveNetworkSettings(settings);
+}
+
+// Reads the modal's own .modal-header-title so loading messages never go stale on rename.
+function showModalLoading(modalId) {
+  const titleEl = document.querySelector('#' + modalId + ' .modal-header-title');
+  const title = titleEl ? titleEl.textContent.trim() : 'Loading';
+  showGlobalLoading('Loading ' + title + '...');
 }
 
 function showGlobalLoading(msg) {
