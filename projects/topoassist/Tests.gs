@@ -206,6 +206,14 @@ function test_breakoutSides() {
 
     t("auto speed treated as empty → slash fallback",
       _breakoutSides(grp("auto", "auto", 4, true, false)),         { a: false, b: true }),
+
+    // 1.6t-8 (OSFP-RHS / 1.6 Tbps, 8×200G) — old g-only regex missed this
+    t("1.6t-8 QSFP aggregate (A), 200g SFP lanes (B), 8 links → a=false, b=true",
+      _breakoutSides(grp("1.6t-8", "200g", 8, true, false)),       { a: false, b: true }),
+    t("1.6t-8 QSFP aggregate (B), 200g SFP lanes (A), 8 links → a=true, b=false",
+      _breakoutSides(grp("200g", "1.6t-8", 8, false, true)),       { a: true, b: false }),
+    t("1.6t-8 both sides Scenario A → both false (neither is Breakout label)",
+      _breakoutSides(grp("1.6t-8", "1.6t-8", 8, true, true)),     { a: false, b: false }),
   ];
 }
 
@@ -372,6 +380,23 @@ function test_buildCableGroupsForTest() {
     results.push(t("Scenario C (B is QSFP) — isBreakoutB true",  g[keys[0]].isBreakoutB, true));
     results.push(t("Scenario C (B is QSFP) — phyB is Et48",      g[keys[0]].phyB, "Et48"));
     results.push(t("Scenario C (B is QSFP) — 4 links in group",  g[keys[0]].links.length, 4));
+  })();
+
+  // ── 1.6t-8: OSFP-RHS 8-lane transceiver (old g-only regex missed this) ──────
+  (function() {
+    const links = [1,2,3,4,5,6,7,8].map(i => ({ u: `leaf1:Et14/${i}`, v: `server1:Et${i}` }));
+    const nodes = {};
+    [1,2,3,4,5,6,7,8].forEach(i => {
+      nodes[`leaf1:Et14/${i}`] = { device: "leaf1",   name: `Et14/${i}`, details: { xcvr_speed_: "1.6t-8" } };
+      nodes[`server1:Et${i}`]  = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "200g" } };
+    });
+    const devs = { leaf1: { type: "arista" }, server1: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("1.6t-8 Scenario C — collapsed to 1 group",   keys.length, 1));
+    results.push(t("1.6t-8 Scenario C — key uses phyPortA",       keys[0], "leaf1:Et14 <-> server1"));
+    results.push(t("1.6t-8 Scenario C — isBreakoutA true",        g[keys[0]].isBreakoutA, true));
+    results.push(t("1.6t-8 Scenario C — 8 links in group",        g[keys[0]].links.length, 8));
   })();
 
   // ── Missing node (link.u or link.v not in nodesData) → skipped silently ──────

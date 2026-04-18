@@ -9997,8 +9997,8 @@ function buildCableGroups() {
     // Breakout grouping requires xcvr_speed_ in aggregate format (e.g. "100g-4").
     // Slash notation alone is not sufficient — devices like tuf317 use card/port slash
     // (Et3/1, Et3/2...) for individual ports that are NOT QSFP-DD breakout lanes.
-    const aggA = speedA_raw.match(/^(\d+)g-(\d+)$/i);
-    const aggB = speedB_raw.match(/^(\d+)g-(\d+)$/i);
+    const aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+    const aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
 
     let groupKey;
     if (isBreakoutA && !isBreakoutB && aggA) {
@@ -10046,12 +10046,14 @@ function _breakoutSides(g) {
   if (count <= 1) return { a: false, b: false };
   const sA = (g.speedA || "").trim().toLowerCase() === 'auto' ? '' : (g.speedA || "").trim();
   const sB = (g.speedB || "").trim().toLowerCase() === 'auto' ? '' : (g.speedB || "").trim();
-  const lA = sA.match(/^(\d+)g-(\d+)$/i);
-  const lB = sB.match(/^(\d+)g-(\d+)$/i);
+  const lA = sA.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+  const lB = sB.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
   if (lA && !lB && parseInt(lA[2]) === count) return { a: false, b: true }; // A is QSFP aggregate
   if (lB && !lA && parseInt(lB[2]) === count) return { a: true, b: false }; // B is QSFP aggregate
-  const sAn = parseInt(sA.match(/^(\d+)/)?.[1] || "0");
-  const sBn = parseInt(sB.match(/^(\d+)/)?.[1] || "0");
+  // Convert speed string to Gbps for ratio comparison — handles both g (Gbps) and t (Tbps) suffixes.
+  const _gbps = s => { const m = s.match(/^(\d+(?:\.\d+)?)(g|t)/i); return m ? Math.round(parseFloat(m[1]) * (/t/i.test(m[2]) ? 1000 : 1)) : 0; };
+  const sAn = _gbps(sA);
+  const sBn = _gbps(sB);
   if (sAn > 0 && sBn > 0 && sAn !== sBn) {
     if (sAn * count === sBn) return { a: true, b: false };  // A is SFP lane
     if (sBn * count === sAn) return { a: false, b: true };  // B is SFP lane
@@ -10217,8 +10219,8 @@ function downloadCablingReport(mode) {
     // Scenario C: one QSFP aggregate side (e.g. "100g-4") vs N SFP lane sides (e.g. "25g").
     // Scenario A: both sides breakout-to-breakout — both have slash, same per-lane speed.
     if (count > 1) {
-      const lL = sL.match(/^(\d+)g-(\d+)$/i);
-      const lR = sR.match(/^(\d+)g-(\d+)$/i);
+      const lL = sL.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+      const lR = sR.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
       if ((lL && !lR && parseInt(lL[2]) === count) || (lR && !lL && parseInt(lR[2]) === count)) {
         // One side carries aggregate speed → definitively mixed breakout
         isMixedBreakout = true;
@@ -10226,8 +10228,9 @@ function downloadCablingReport(mode) {
         if (lL && !lR) leftIsQSFP = true;
         else if (lR && !lL) leftIsQSFP = false;
       } else {
-        const sLn = parseInt((sL.match(/^(\d+)/) || [])[1] || "0");
-        const sRn = parseInt((sR.match(/^(\d+)/) || [])[1] || "0");
+        const _gbps = s => { const m = s.match(/^(\d+(?:\.\d+)?)(g|t)/i); return m ? Math.round(parseFloat(m[1]) * (/t/i.test(m[2]) ? 1000 : 1)) : 0; };
+        const sLn = _gbps(sL);
+        const sRn = _gbps(sR);
         if (sLn > 0 && sRn > 0 && sLn !== sRn && (sLn * count === sRn || sRn * count === sLn)) {
           // Speed ratio matches lane count → mixed breakout; higher speed = QSFP side
           isMixedBreakout = true;
@@ -10429,6 +10432,7 @@ function downloadCablingReport(mode) {
 // --- HELPER: Identify Physical Container ---
 // Returns "Et1/1" for input "Et1/4". Returns "Et5" for "Et5".
 // DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
+// Speed regex: /^(\d+(?:\.\d+)?)[gt]-(\d+)$/i — matches both "100g-4" and "1.6t-8".
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
   // Strip the lane suffix: Et14/4 → Et14, Et1/1/2 → Et1/1

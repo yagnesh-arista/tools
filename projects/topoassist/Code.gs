@@ -6026,12 +6026,13 @@ function _breakoutSides(g) {
   if (count <= 1) return { a: false, b: false };
   var sA = (g.speedA || "").trim().toLowerCase() === 'auto' ? '' : (g.speedA || "").trim();
   var sB = (g.speedB || "").trim().toLowerCase() === 'auto' ? '' : (g.speedB || "").trim();
-  var lA = sA.match(/^(\d+)g-(\d+)$/i);
-  var lB = sB.match(/^(\d+)g-(\d+)$/i);
+  var lA = sA.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+  var lB = sB.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
   if (lA && !lB && parseInt(lA[2]) === count) return { a: false, b: true };
   if (lB && !lA && parseInt(lB[2]) === count) return { a: true, b: false };
-  var sAn = parseInt((sA.match(/^(\d+)/) || [])[1] || "0");
-  var sBn = parseInt((sB.match(/^(\d+)/) || [])[1] || "0");
+  var _gbps = function(s) { var m = s.match(/^(\d+(?:\.\d+)?)(g|t)/i); return m ? Math.round(parseFloat(m[1]) * (/t/i.test(m[2]) ? 1000 : 1)) : 0; };
+  var sAn = _gbps(sA);
+  var sBn = _gbps(sB);
   if (sAn > 0 && sBn > 0 && sAn !== sBn) {
     if (sAn * count === sBn) return { a: true, b: false };
     if (sBn * count === sAn) return { a: false, b: true };
@@ -6075,8 +6076,8 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
     if (speedA_raw.toLowerCase() === 'auto') speedA_raw = '';
     if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
 
-    var aggA = speedA_raw.match(/^(\d+)g-(\d+)$/i);
-    var aggB = speedB_raw.match(/^(\d+)g-(\d+)$/i);
+    var aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+    var aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
 
     var groupKey;
     if      (isBreakoutA && !isBreakoutB && aggA)          groupKey = first.device + ':' + phyPortA + ' <-> ' + second.device;
