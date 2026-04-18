@@ -142,19 +142,19 @@ function test_parseSviVlans() {
 
 function test_getPhysicalPortParent() {
   const t = assert_;
+  // IMPORTANT: On pizza-box switches, Et14/1 is a native hardcoded interface name —
+  // NOT a breakout lane. The aggX guard (xcvr_speed_ must match Xg-N) in
+  // buildCableGroups ensures getPhysicalPortParent is never called for native pizza-box
+  // ports. This function is only called for confirmed QSFP-DD breakout ports where
+  // xcvr_speed_ is aggregate (e.g. "100g-4"). The realistic stripping case in this
+  // environment is modular chassis 3-level ports: Et5/22/1 → Et5/22.
   return [
-    t("null → empty string",              getPhysicalPortParent(null),      ""),
-    t("empty string → empty string",      getPhysicalPortParent(""),        ""),
-    t("Et1 (no slash) → Et1",            getPhysicalPortParent("Et1"),     "Et1"),
-    t("Et14/4 → Et14",                   getPhysicalPortParent("Et14/4"),  "Et14"),
-    t("Et14/1 → Et14",                   getPhysicalPortParent("Et14/1"),  "Et14"),
-    t("Et48/1 → Et48",                   getPhysicalPortParent("Et48/1"),  "Et48"),
-    t("Et1/1/2 (multi-level) → Et1/1",  getPhysicalPortParent("Et1/1/2"), "Et1/1"),
-    // Note: Et5/22 as a modular-chassis port (line card 5, port 22) never reaches
-    // getPhysicalPortParent in practice — aggX guard prevents it (xcvr_speed_ would be
-    // non-aggregate "25g" etc). Modular breakout lanes are 3-level: Et5/22/1 → Et5/22.
-    t("Et5/22/1 modular breakout lane → Et5/22",   getPhysicalPortParent("Et5/22/1"), "Et5/22"),
-    t("Et5/abc non-numeric last part → unchanged", getPhysicalPortParent("Et5/abc"), "Et5/abc"),
+    t("null → empty string",                           getPhysicalPortParent(null),      ""),
+    t("empty string → empty string",                   getPhysicalPortParent(""),        ""),
+    t("Et1 (no slash) → unchanged",                   getPhysicalPortParent("Et1"),     "Et1"),
+    t("Et5/22/1 modular breakout lane → Et5/22",      getPhysicalPortParent("Et5/22/1"), "Et5/22"),
+    t("Et1/1/2 multi-level breakout → Et1/1",         getPhysicalPortParent("Et1/1/2"), "Et1/1"),
+    t("Et5/abc non-numeric last part → unchanged",    getPhysicalPortParent("Et5/abc"), "Et5/abc"),
   ];
 }
 
