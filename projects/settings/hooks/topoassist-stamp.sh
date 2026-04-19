@@ -31,9 +31,9 @@ COMMIT=$(git -C ~/claude rev-parse --short HEAD 2>/dev/null || echo "no-git")
 
 # Build stamp line
 if [[ "$f" == *.gs ]]; then
-  NEW_LINE="// TopoAssist v${VERSION} | ${DATETIME} | ${COMMIT}"
+  NEW_LINE="// TopoAssist v${VERSION} | ${DATETIME} | git commit: ${COMMIT}"
 else
-  NEW_LINE="<!-- TopoAssist v${VERSION} | ${DATETIME} | ${COMMIT} -->"
+  NEW_LINE="<!-- TopoAssist v${VERSION} | ${DATETIME} | git commit: ${COMMIT} -->"
 fi
 
 # Only replace if line 1 already has the marker (guards against stampng wrong files)
