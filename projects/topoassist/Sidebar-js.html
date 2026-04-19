@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.29 | 2026-04-20 01:52:41 | git commit: c9679ca -->
+<!-- TopoAssist v260420.34 | 2026-04-20 02:19:57 | git commit: e4144e5 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.29";  // keep in sync with Code.gs
+const APP_VERSION = "260420.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1322,6 +1322,18 @@ function addNewField() {
   if (!key) key = label.toLowerCase().replace(/[^a-z0-9]/g, "_");
 
   if (currentSchemaList.some(i => i.key === key)) { alert("Field ID already exists."); return; }
+
+  // Prefix collision guard: reject keys where one is a prefix of another (e.g. "xcvr" vs "xcvr_speed").
+  // Such pairs cause silent data loss in rebuildSheet — the shorter key overwrites the longer one during backup.
+  const newKeySuf = key + "_";
+  const collision = currentSchemaList.find(item => {
+    const existing = item.key + "_";
+    return existing !== newKeySuf && (newKeySuf.startsWith(existing) || existing.startsWith(newKeySuf));
+  });
+  if (collision) {
+    alert(`Field ID "${key}" conflicts with existing field "${collision.key}": one is a prefix of the other.\n\nThis would silently corrupt column data during schema sync. Choose a different name.`);
+    return;
+  }
 
   currentSchemaList.push({ key: key, label: label, options: [] });
 

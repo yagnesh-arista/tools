@@ -1,10 +1,10 @@
-// TopoAssist v260420.33 | 2026-04-20 02:08:23 | git commit: 801713e
+// TopoAssist v260420.34 | 2026-04-20 02:18:49 | git commit: e4144e5
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.33";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.34";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -656,6 +656,17 @@ function getSchemaConfig() {
 }
 
 function saveSchemaConfig(newArray) {
+  // Server-side prefix collision guard: reject schema where one key is a prefix of another.
+  // Such pairs cause silent data loss in rebuildSheet (xcvr_ is a prefix of xcvr_speed_, etc.).
+  const keys = newArray.map(i => i.key + "_");
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = 0; j < keys.length; j++) {
+      if (i !== j && keys[j].startsWith(keys[i])) {
+        return { error: `Schema key "${newArray[i].key}" is a prefix of "${newArray[j].key}". ` +
+                        `This causes silent data loss during sync. Rename one of them.` };
+      }
+    }
+  }
   PropertiesService.getDocumentProperties().setProperty('SCHEMA_CONFIG_ARRAY', JSON.stringify(newArray));
   return { success: true };
 }
@@ -977,6 +988,25 @@ function parseAndExpandDevices(inputStr) {
  REBUILD ENGINE (FIXED: MERGE ALWAYS, COLOR OPTIONAL, TEXT FORMATTING)
  ================================================== */
 
+/**
+ * Returns the most specific (longest) schema key that is a prefix of `header`.
+ * Falls back to extracting the underscore-bounded prefix from the header itself.
+ *
+ * Longest-match is required because some schema keys share a prefix
+ * (e.g. "xcvr_" is a prefix of "xcvr_speed_"). Last-match or first-match both
+ * produce silent data loss when the schema contains such pairs.
+ *
+ * @param {string}        header     Column header, e.g. "xcvr_speed_leaf1"
+ * @param {Array<string>} schemaKeys Schema keys with trailing _, e.g. ["xcvr_","xcvr_speed_"]
+ * @returns {string} Matched schema key, extracted prefix, or "" if no underscore in header
+ */
+function findAttrKey(header, schemaKeys) {
+  let attrKey = "";
+  schemaKeys.forEach(k => { if (header.startsWith(k) && k.length > attrKey.length) attrKey = k; });
+  if (!attrKey && header.includes("_")) attrKey = header.substring(0, header.lastIndexOf("_") + 1);
+  return attrKey;
+}
+
 
 /**
  * Rebuilds the PortMapping sheet from scratch using current device/schema config.
@@ -1066,10 +1096,7 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
         if (currentDev) {
           if (!memory[currentDev]) memory[currentDev] = {};
           let header = String(r2[c]).trim();
-          // Pick the longest matching schema key — 'xcvr_speed_' must win over 'xcvr_'.
-          let attrKey = "";
-          schemaObj.keys.forEach(k => { if (header.startsWith(k) && k.length > attrKey.length) attrKey = k; });
-          if (!attrKey && header.includes("_")) attrKey = header.substring(0, header.lastIndexOf("_") + 1);
+          const attrKey = findAttrKey(header, schemaObj.keys);
 
           if (attrKey) {
             for (let rowIdx = 2; rowIdx < backupValues.length; rowIdx++) {
@@ -1143,6 +1170,44 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
     if (backupValues && backupValues.length > 2 && (!bodyData || bodyData.length === 0)) {
       console.error("rebuildSheet: Safety Block Triggered. Source had rows, New has 0.");
       throw new Error("Internal Error: Generated data is empty. Operation cancelled to protect your data.");
+    }
+
+    // --- PRE-WRITE OCCUPANCY DIFF ---
+    // Compare non-empty cell counts per attrKey before (raw backupValues) vs after (bodyData).
+    // Pre-counts are derived from the raw sheet data — independent of memory keying bugs.
+    // If any schema column that had data would become empty → throw before touching the sheet.
+    if (backupValues && backupValues.length > 2) {
+      const r2raw = backupValues[1];
+      const preNonEmpty = {};
+      for (let c = 0; c < r2raw.length; c++) {
+        const key = findAttrKey(String(r2raw[c]).trim(), schemaObj.keys);
+        if (!key) continue;
+        for (let r = 2; r < backupValues.length; r++) {
+          const v = backupValues[r][c];
+          if (v !== "" && v !== null && v !== undefined) preNonEmpty[key] = (preNonEmpty[key] || 0) + 1;
+        }
+      }
+      const postNonEmpty = {};
+      let cur = 0;
+      devicesToProcess.forEach(devObj => {
+        const attrs = devObj.type === 'non-arista' ? ['int_'] : globalAttributes;
+        attrs.forEach(attr => {
+          bodyData.forEach(row => {
+            if (row[cur] !== "" && row[cur] !== null && row[cur] !== undefined)
+              postNonEmpty[attr] = (postNonEmpty[attr] || 0) + 1;
+          });
+          cur++;
+        });
+      });
+      const wiped = globalAttributes.filter(
+        k => (preNonEmpty[k] || 0) > 0 && (postNonEmpty[k] || 0) === 0
+      );
+      if (wiped.length > 0) {
+        throw new Error(
+          `Safety block: column(s) [${wiped.map(k => k.replace(/_$/, '')).join(', ')}] had data ` +
+          `before sync but would be empty after. Aborting to protect your data.`
+        );
+      }
     }
 
     // --- STAGE 2: COMMIT DATA (ALWAYS RUNS) ---

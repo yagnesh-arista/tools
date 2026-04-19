@@ -1,4 +1,4 @@
-// TopoAssist v260420.31 | 2026-04-20 01:59:36 | git commit: bb15f3e
+// TopoAssist v260420.34 | 2026-04-20 02:19:42 | git commit: e4144e5
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -823,6 +823,35 @@ function test_generateSnakeStaticConfig() {
 }
 
 
+// ── findAttrKey ────────────────────────────────────────────────────────────────
+
+function test_findAttrKey() {
+  const t = assert_;
+  const results = [];
+  const keys = ['int_', 'xcvr_', 'xcvr_speed_', 'et_speed_', 'svi_vlan_', 'vlan_'];
+
+  // Basic exact-prefix matches
+  results.push(t("findAttrKey — int_ match",               findAttrKey("int_leaf1",       keys), "int_"));
+  results.push(t("findAttrKey — vlan_ match",              findAttrKey("vlan_leaf1",      keys), "vlan_"));
+  results.push(t("findAttrKey — et_speed_ match",          findAttrKey("et_speed_leaf1",  keys), "et_speed_"));
+
+  // Longest-match: xcvr_speed_ must win over xcvr_ (the P1 bug case)
+  results.push(t("findAttrKey — xcvr_speed_ wins over xcvr_",  findAttrKey("xcvr_speed_leaf1", keys), "xcvr_speed_"));
+  results.push(t("findAttrKey — xcvr_ resolves when alone",    findAttrKey("xcvr_leaf1",       keys), "xcvr_"));
+
+  // Longest-match: svi_vlan_ must win over vlan_
+  results.push(t("findAttrKey — svi_vlan_ wins over vlan_",    findAttrKey("svi_vlan_leaf1",   keys), "svi_vlan_"));
+
+  // Fallback: header has underscore but no schema key matches
+  results.push(t("findAttrKey — fallback extracts prefix",  findAttrKey("custom_col_leaf1", keys), "custom_col_"));
+
+  // Edge cases
+  results.push(t("findAttrKey — empty header → ''",         findAttrKey("",              keys), ""));
+  results.push(t("findAttrKey — no underscore → ''",        findAttrKey("nounderscore",  keys), ""));
+
+  return results;
+}
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -838,6 +867,7 @@ function runAllTests() {
     { name: "_breakoutSides",            fn: test_breakoutSides },
     { name: "_buildCableGroupsForTest",       fn: test_buildCableGroupsForTest },
     { name: "generateSnakeStaticConfig",      fn: test_generateSnakeStaticConfig },
+    { name: "findAttrKey",                    fn: test_findAttrKey },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);
