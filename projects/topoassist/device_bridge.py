@@ -19,7 +19,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260420.2","port":8765}
+  GET  /health      → {"status":"ok","version":"260420.3","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -28,7 +28,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260420.2"
+VERSION = "260420.3"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -141,6 +141,37 @@ def _parse_internal_vlans(ivlans):
     if not ivlans:
         return []
     return sorted(int(vid) for vid in ivlans.get("vlans", {}).keys())
+
+
+def _build_devstatus_ssh(ver, ifs, ivlans):
+    """Build devstatus response dict from raw _run_cmds results (any may be None on failure).
+
+    Each argument corresponds to one SSH/eAPI command result:
+      ver    — 'show version'              (None if command failed)
+      ifs    — 'show interfaces status'    (None if command failed)
+      ivlans — 'show vlan internal usage'  (None if command failed)
+
+    A failed command contributes empty data but never causes ok:False — the
+    other commands' data is still returned intact.
+    """
+    ver = ver or {}
+    ifs = ifs or {}
+    raw_ver = ver.get("version", "")
+    if raw_ver.startswith("Software image version: "):
+        raw_ver = raw_ver[len("Software image version: "):]
+    raw_ver = raw_ver.split(" (")[0].strip()
+    return {
+        "ok":          True,
+        "hostname":    ver.get("hostname", ""),
+        "version":     raw_ver,
+        "platform":    ver.get("modelName", "").lstrip("DCS-"),
+        "bridgeMac":   ver.get("systemMacAddress", ""),
+        "interfaces":  {
+            k: {"linkStatus": v.get("linkStatus", "")}
+            for k, v in ifs.get("interfaceStatuses", {}).items()
+        },
+        "internalVlans": _parse_internal_vlans(ivlans),
+    }
 
 
 def _extract_session_diff(output):
@@ -553,24 +584,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             ver, ifs, ivlans = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
-            ver = ver or {}
-            ifs = ifs or {}
-            raw_ver  = ver.get("version", "")
-            if raw_ver.startswith("Software image version: "):
-                raw_ver = raw_ver[len("Software image version: "):]
-            raw_ver = raw_ver.split(" (")[0].strip()
-            return {
-                "ok":           True,
-                "hostname":     ver.get("hostname", ""),
-                "version":      raw_ver,
-                "platform":     ver.get("modelName", "").lstrip("DCS-"),
-                "bridgeMac":    ver.get("systemMacAddress", ""),
-                "interfaces":   {
-                    k: {"linkStatus": v.get("linkStatus", "")}
-                    for k, v in ifs.get("interfaceStatuses", {}).items()
-                },
-                "internalVlans": _parse_internal_vlans(ivlans),
-            }
+            return _build_devstatus_ssh(ver, ifs, ivlans)
 
         if METHOD == "rest":
             plat_raw  = self._rest_get(ip, "openconfig-platform:components")

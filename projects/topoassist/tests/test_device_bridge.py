@@ -278,6 +278,96 @@ class TestParseInternalVlans:
         })
         assert result == [1025, 1026]
 
+    def test_none_returns_empty(self):
+        # SSH thread failure leaves result as None — must not crash
+        assert db._parse_internal_vlans(None) == []
+
+
+# ── _build_devstatus_ssh ───────────────────────────────────────────────────────
+
+_VER = {
+    "hostname": "spine1",
+    "version": "4.32.1F",
+    "modelName": "DCS-7050TX3-48C8",
+    "systemMacAddress": "aa:bb:cc:dd:ee:ff",
+}
+_IFS = {
+    "interfaceStatuses": {
+        "Ethernet1": {"linkStatus": "connected"},
+        "Ethernet2": {"linkStatus": "notconnect"},
+    }
+}
+_IVLANS = {"vlans": {"1025": {}, "1026": {}}}
+
+
+class TestBuildDevstatusSsh:
+    def _run(self, ver=_VER, ifs=_IFS, ivlans=_IVLANS):
+        return db._build_devstatus_ssh(ver, ifs, ivlans)
+
+    def test_happy_path(self):
+        r = self._run()
+        assert r["ok"] is True
+        assert r["hostname"] == "spine1"
+        assert r["version"] == "4.32.1F"
+        assert r["platform"] == "7050TX3-48C8"   # DCS- prefix stripped
+        assert r["bridgeMac"] == "aa:bb:cc:dd:ee:ff"
+        assert r["interfaces"]["Ethernet1"] == {"linkStatus": "connected"}
+        assert r["interfaces"]["Ethernet2"] == {"linkStatus": "notconnect"}
+        assert r["internalVlans"] == [1025, 1026]
+
+    def test_version_software_image_prefix_stripped(self):
+        ver = dict(_VER, version="Software image version: 4.30.0F (engineering build)")
+        r = self._run(ver=ver)
+        assert r["version"] == "4.30.0F"
+
+    def test_version_build_suffix_stripped(self):
+        ver = dict(_VER, version="4.29.2F (release version)")
+        r = self._run(ver=ver)
+        assert r["version"] == "4.29.2F"
+
+    # ── partial failure: show version fails ────────────────────────────────────
+
+    def test_ver_none_still_returns_ok(self):
+        # show version thread failed — version/platform/mac blank, rest intact
+        r = self._run(ver=None)
+        assert r["ok"] is True
+        assert r["version"] == ""
+        assert r["platform"] == ""
+        assert r["hostname"] == ""
+        assert r["bridgeMac"] == ""
+        assert r["interfaces"]["Ethernet1"]["linkStatus"] == "connected"
+        assert r["internalVlans"] == [1025, 1026]
+
+    # ── partial failure: show interfaces status fails ──────────────────────────
+
+    def test_ifs_none_still_returns_ok(self):
+        # show interfaces status thread failed — interfaces empty, rest intact
+        r = self._run(ifs=None)
+        assert r["ok"] is True
+        assert r["version"] == "4.32.1F"
+        assert r["interfaces"] == {}
+        assert r["internalVlans"] == [1025, 1026]
+
+    # ── partial failure: show vlan internal usage fails ────────────────────────
+
+    def test_ivlans_none_still_returns_ok(self):
+        # show vlan internal usage thread failed — internalVlans empty, rest intact
+        r = self._run(ivlans=None)
+        assert r["ok"] is True
+        assert r["version"] == "4.32.1F"
+        assert r["interfaces"]["Ethernet1"]["linkStatus"] == "connected"
+        assert r["internalVlans"] == []
+
+    # ── all three fail ─────────────────────────────────────────────────────────
+
+    def test_all_none_returns_ok_with_empty_data(self):
+        # All three SSH threads failed — ok:True with all-empty fields
+        r = self._run(ver=None, ifs=None, ivlans=None)
+        assert r["ok"] is True
+        assert r["version"] == ""
+        assert r["interfaces"] == {}
+        assert r["internalVlans"] == []
+
 
 # ── _prepend_section_cleaners ──────────────────────────────────────────────────
 
