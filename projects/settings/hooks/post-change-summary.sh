@@ -71,6 +71,6 @@ else
 fi
 
 # ── Build summary ─────────────────────────────────────────────────────────────
-SUMMARY="[CHANGE SUMMARY] ${COMMIT_HASH} — \"${COMMIT_MSG}\"\nFiles:${file_lines}\nGit:   ${git_status}\nClasp: ${clasp_status}"
+SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — \"${COMMIT_MSG}\"\nFiles:${file_lines}\nGit:   ${git_status}\nClasp: ${clasp_status}"
 
 echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"${SUMMARY}\"}}"
