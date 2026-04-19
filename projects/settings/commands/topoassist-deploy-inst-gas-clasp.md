@@ -1,20 +1,17 @@
-Deploy TopoAssist GAS files to Google Apps Script via clasp. Run on bus-home:
+Re-authenticate clasp for TopoAssist GAS deployment. Run on bus-home:
 
-```bash
-cd ~/claude/projects/topoassist && clasp push --force
-```
+1. Log in to Google via clasp:
+   ```bash
+   clasp login
+   ```
+   This opens a browser — complete the OAuth flow, then credentials are saved to `~/.clasprc.json`.
 
-To authenticate clasp if needed:
-```bash
-clasp login
-```
+2. Verify authentication succeeded:
+   ```bash
+   ls ~/.clasprc.json && echo "✓ authenticated"
+   ```
 
-Files pushed (8 total):
-- `appsscript.json`
-- `Code.gs`
-- `SheetAssistPanel.html`
-- `Sidebar-css.html`
-- `Sidebar-js.html`
-- `Sidebar.html`
-- `Tests.gs`
-- `UserGuide.html`
+3. Test with a dry push:
+   ```bash
+   cd ~/claude/projects/topoassist && clasp push --force
+   ```

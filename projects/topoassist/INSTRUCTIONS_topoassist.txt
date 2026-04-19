@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Switch APP_VERSION to date-based format YYMMDD.N — YYMMDD=today, N=committed topoassist changes today+1. Hook topoassist-stamp.sh auto-calculates version on every edit, updates APP_VERSION in Code.gs+Sidebar-js.html if changed, stamps line 1 of edited file + any APP_VERSION-updated files. Example: 260420.23. All 7 GAS files re-stamped. Files: Code.gs, Sidebar-js.html, all GAS files, topoassist-stamp.sh)
+  Last updated: 2026-04-20 (Refactored skill naming: project commands now use unprefixed names, global ~/.claude/commands/ gets topoassist- prefix via auto-sync hook. deploy-inst-gas-clasp updated to be clasp re-auth guide only.)
   Previous: 2026-04-20 (Bump APP_VERSION 4.4→4.5 (Code.gs, Sidebar-js.html). Update stamp format: "git commit: <hash>" instead of bare hash. All 7 GAS files re-stamped. Hook topoassist-stamp.sh updated to use new format. Files: Code.gs, Sidebar-js.html, all GAS files, topoassist-stamp.sh)
   Previous: 2026-04-19 (Sheet View panel: increase width 490→620px to accommodate full column names. Files: Code.gs)
   Previous: 2026-04-19 (Fix SyntaxError: APP_VERSION redeclared in Tests.gs — all .gs files share one global scope; const only in Code.gs. Tests.gs now has a comment instead. CLAUDE.md updated with constraint. Files: Tests.gs, CLAUDE.md)
