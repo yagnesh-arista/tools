@@ -41,4 +41,4 @@ elif [ -n "$NEW_FNS" ]; then
   MSG="${MSG} | ✓ new functions covered: ${NEW_FNS}"
 fi
 
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"${MSG}\"}}"
+jq -n --arg ctx "$MSG" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'

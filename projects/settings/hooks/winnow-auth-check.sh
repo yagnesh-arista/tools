@@ -34,6 +34,6 @@ if [ "$is_empty" -eq 1 ] || [ "$is_auth_err" -eq 1 ]; then
     msg+="Your session has likely expired. "
     msg+="Please open https://winnow.infra.corp.arista.io in your browser to re-authenticate, "
     msg+="then tell me to 'retry' and I will resume the pending work."
-    printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' \
-        "$(echo "$msg" | sed 's/"/\\"/g')"
+    jq -n --arg ctx "$msg" \
+        '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
 fi

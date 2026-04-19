@@ -63,4 +63,5 @@ ROLLBACK_FILE="$REPO/ROLLBACKS.md"
   printf "\n"
 } >> "$ROLLBACK_FILE"
 
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"[ROLLBACK LOG] Entry added → ~/claude/ROLLBACKS.md ($project | $label)\"}}"
+jq -n --arg ctx "[ROLLBACK LOG] Entry added → ~/claude/ROLLBACKS.md ($project | $label)" \
+  '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'

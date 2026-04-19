@@ -42,4 +42,4 @@ else
   MSG="[TESTS] Code.gs changed — if you added/changed a pure function, add cases to Tests.gs and run runAllTests() in Apps Script editor"
 fi
 
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"${MSG}\"}}"
+jq -n --arg ctx "$MSG" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'

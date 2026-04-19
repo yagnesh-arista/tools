@@ -17,5 +17,6 @@ if echo "$f" | grep -qP '/claude/projects/[^/]+/\.claude/commands/[^/]+\.md$'; t
   mkdir -p "$(dirname "$bkp")"
   cp "$f" "$bkp"
 
-  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"[CMD SYNC] ${name} → global as ${proj}-${name}\"}}"
+  jq -n --arg ctx "[CMD SYNC] ${name} → global as ${proj}-${name}" \
+    '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
 fi 2>/dev/null || true

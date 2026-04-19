@@ -59,5 +59,6 @@ if [ -n "$local_list" ]; then
 fi
 
 if [ -n "$msg" ]; then
-  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"$(echo $msg | sed 's/"/\\"/g')\"}}"
+  jq -n --arg ctx "$msg" \
+    '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
 fi

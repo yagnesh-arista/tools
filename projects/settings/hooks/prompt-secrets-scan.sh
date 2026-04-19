@@ -28,6 +28,6 @@ if [ -n "$issues" ]; then
     msg="[PROMPT SECRETS SCAN]$issues — the user's message may contain sensitive credentials. "
     msg+="Stop immediately and alert the user: tell them to check their message for accidentally pasted secrets "
     msg+="before any of this information is used or referenced further."
-    printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}' \
-        "$(echo "$msg" | sed 's/"/\\"/g')"
+    jq -n --arg ctx "$msg" \
+        '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":$ctx}}'
 fi

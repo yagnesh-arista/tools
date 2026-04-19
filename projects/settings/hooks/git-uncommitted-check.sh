@@ -32,5 +32,5 @@ fi
 
 if [ -n "$summary" ]; then
     msg="[GIT] Uncommitted changes detected in:$summary. Remind the user to commit and push before ending the session."
-    printf '{"systemMessage":"%s"}' "$(echo "$msg" | sed 's/"/\\"/g')"
+    jq -n --arg msg "$msg" '{"systemMessage": $msg}'
 fi
