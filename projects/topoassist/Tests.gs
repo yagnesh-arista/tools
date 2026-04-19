@@ -1,4 +1,4 @@
-// TopoAssist v260420.29 | 2026-04-20 01:53:07 | git commit: c9679ca
+// TopoAssist v260420.31 | 2026-04-20 01:59:36 | git commit: bb15f3e
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -497,6 +497,24 @@ function test_buildCableGroupsForTest() {
     results.push(t("QSFP100 4x25G — isBreakoutA true",              g[keys[0]].isBreakoutA, true));
     results.push(t("QSFP100 4x25G — isBreakoutB false (SFP25)",     g[keys[0]].isBreakoutB, false));
     results.push(t("QSFP100 4x25G — 4 links in group",              g[keys[0]].links.length, 4));
+  })();
+
+  // ── QSFP100 4x25G breakout: xcvr_speed_ absent (blank sheet col) + xcvr_=QSFP100 ──
+  // Real-world case: xcvr_speed_ column not filled in; xcvr_ alone must trigger grouping.
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `gd435:Et1/${i}`, v: `cal423:Et${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_: "QSFP100" } }; // xcvr_speed_ missing
+      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_: "SFP25"   } };
+    });
+    const devs = { gd435: { type: "arista" }, cal423: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("QSFP100 no xcvr_speed_ — grouped into 1 split cable", keys.length, 1));
+    results.push(t("QSFP100 no xcvr_speed_ — isBreakoutA true",           g[keys[0]].isBreakoutA, true));
+    results.push(t("QSFP100 no xcvr_speed_ — isBreakoutB false (SFP25)",  g[keys[0]].isBreakoutB, false));
+    results.push(t("QSFP100 no xcvr_speed_ — 4 links in group",           g[keys[0]].links.length, 4));
   })();
 
   // ── Modular chassis QSFP breakout (3-level, aggX) → Et{slot}/{port}/1 anchor ──
