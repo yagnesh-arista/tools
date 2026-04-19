@@ -580,10 +580,10 @@
       <tr><td><b>Bridge MAC</b></td><td>Yes</td><td>System MAC of the switch under test (<code>show version | grep "System MAC"</code> on EOS, or auto-detected by Device Bridge).</td><td>Static ARP entries — <code>arp vrf SNAKE_* {remoteIp} {bridgeMac} arpa</code> on every VRF pair. Without it, the <code>080_SNAKE</code> block is replaced by a warning comment.</td></tr>
       <tr><td><b>EP1 NH IP</b></td><td>Soft</td><td>IP of the traffic generator's EP1 port. Must be in the same /24 subnet as the TRAFFIC_SNAKE_EP1_L3 interface (e.g. if EP1 port has <code>200.5.0.1/24</code>, this is <code>200.5.0.2</code>).</td><td>Next-hop for the reverse-chain terminal route at the first primary VRF. If omitted, a placeholder comment is emitted instead and direct-connect is assumed.</td></tr>
       <tr><td><b>EP1 MAC</b></td><td>Indirect only</td><td>MAC address of the traffic generator's EP1 port interface.</td><td>Static ARP at the first primary VRF — <code>arp vrf SNAKE_{firstPrimary} {ep1_nh} {ep1_mac} arpa</code>. Only emitted if this field is set. Leave blank if EP1 is directly connected (the switch ARPs dynamically).</td></tr>
-      <tr><td><b>EP1 Subnet</b></td><td>No</td><td>Three-octet prefix of the EP1 connected subnet (e.g., <code>10.100.1</code>). Reverse test destination becomes <code>{prefix}.99/32</code>; connected subnet route is <code>{prefix}.0/24</code>.</td><td>All reverse static routes — each VRF gets both <code>ip route vrf SNAKE_* {prefix}.99/32 …</code> and <code>ip route vrf SNAKE_* {prefix}.0/24 …</code>. Defaults to <code>10.99.99.99/32</code> only (no /24) if left empty.</td></tr>
+      <tr><td><b>EP1 Subnet</b></td><td>No</td><td>Three-octet prefix of the EP1 connected subnet (e.g., <code>10.100.1</code>).</td><td>When set: all reverse static routes use <code>{prefix}.0/24</code> (covers the full EP1 subnet). The header shows the specific test host <code>{prefix}.99/32</code> for traffic gen reference. When empty: routes use the default <code>10.99.99.99/32</code> host route.</td></tr>
       <tr><td><b>EP2 NH IP</b></td><td>Soft</td><td>IP of the traffic generator's EP2 port. Must be in the same /24 subnet as the TRAFFIC_SNAKE_EP2_L3 interface.</td><td>Next-hop for the forward-chain terminal route at the last secondary VRF. If omitted, a placeholder comment is emitted and direct-connect is assumed.</td></tr>
       <tr><td><b>EP2 MAC</b></td><td>Indirect only</td><td>MAC address of the traffic generator's EP2 port interface.</td><td>Static ARP at the last secondary VRF — <code>arp vrf SNAKE_{lastSecondary} {ep2_nh} {ep2_mac} arpa</code>. Leave blank if EP2 is directly connected.</td></tr>
-      <tr><td><b>EP2 Subnet</b></td><td>No</td><td>Three-octet prefix of the EP2 connected subnet (e.g., <code>172.16.1</code>). Forward test destination becomes <code>{prefix}.98/32</code>; connected subnet route is <code>{prefix}.0/24</code>.</td><td>All forward static routes — each VRF gets both <code>ip route vrf SNAKE_* {prefix}.98/32 …</code> and <code>ip route vrf SNAKE_* {prefix}.0/24 …</code>. Defaults to <code>10.99.99.98/32</code> only (no /24) if left empty.</td></tr>
+      <tr><td><b>EP2 Subnet</b></td><td>No</td><td>Three-octet prefix of the EP2 connected subnet (e.g., <code>172.16.1</code>).</td><td>When set: all forward static routes use <code>{prefix}.0/24</code> (covers the full EP2 subnet). The header shows the specific test host <code>{prefix}.98/32</code> for traffic gen reference. When empty: routes use the default <code>10.99.99.98/32</code> host route.</td></tr>
     </table>
     <p style="font-size:13px;">A soft <b>yellow warning</b> appears when snake pairs are detected but EP1/EP2 NH fields are empty — a reminder in case the endpoints are not directly connected. This does not block config generation.</p>
 
@@ -593,38 +593,30 @@
       <li><b>001_SYSTEM</b> — <code>vrf instance SNAKE_Et2</code> + <code>ip routing vrf SNAKE_Et2</code> (one entry per port; no <code>ipv6 unicast-routing</code> in snake VRFs).</li>
       <li><b>050_EtX</b> — interface block per port: <code>vrf SNAKE_EtX</code>, <code>ip address {base}.oct2.oct3.1/24</code>, <code>no shutdown</code>. No OSPF (cannot form adjacency with yourself). Both the primary and secondary get their own <code>050_</code> block.</li>
       <li><b>050_TRAFFIC_SNAKE_EP1_L3 / 050_TRAFFIC_SNAKE_EP2_L3</b> — regular P2P interface blocks, placed in the first/last snake VRF respectively (auto-assigned from <code>desc_</code>).</li>
-      <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Each VRF gets 2 routes (forward + reverse) when subnets are not set, or <b>4 routes</b> when EP1/EP2 subnet prefixes are configured — a <code>/32</code> specific host route and a <code>/24</code> connected-subnet route per direction. This allows both targeted test traffic and full subnet reachability through the chain.</li>
+      <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Each VRF always gets exactly <b>2 static routes</b>: one forward, one reverse. The route prefix is <code>/32</code> (default, specific test host) or <code>/24</code> when an EP subnet prefix is configured — covering the full connected subnet. No redundant routes.</li>
     </ul>
 
     <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px; white-space:pre-wrap;">! Snake VRF Chain — Bidirectional Static ARP + Routing
-! Forward: 172.16.1.98/32 + 172.16.1.0/24  (EP1 → chain → EP2)   ← ep2_subnet=172.16.1
-! Reverse: 10.100.1.99/32 + 10.100.1.0/24  (EP2 → chain → EP1)   ← ep1_subnet=10.100.1
+! Forward: 172.16.1.0/24  (EP1 → chain → EP2)  test host: 172.16.1.98/32
+! Reverse: 10.100.1.0/24  (EP2 → chain → EP1)  test host: 10.100.1.99/32
 !
 ! Pair 1: Et2 &lt;-&gt; Et3 (VLAN 200, subnet 200.2.0.0/24)
 arp vrf SNAKE_Et2   200.2.0.2 001c.7300.abcd arpa
 arp vrf SNAKE_Et3 200.2.0.2 001c.7300.abcd arpa
-ip route vrf SNAKE_Et2 172.16.1.98/32 200.2.0.2             ← fwd /32: primary exits into cable
-ip route vrf SNAKE_Et2 172.16.1.0/24 200.2.0.2              ← fwd /24: full EP2 subnet
+ip route vrf SNAKE_Et2 172.16.1.0/24 200.2.0.2              ← fwd: primary exits into cable
 arp vrf SNAKE_Et2 192.168.1.1 0000.1111.aaaa arpa           ← EP1 static ARP (indirect only)
-ip route vrf SNAKE_Et2 10.100.1.99/32 192.168.1.1           ← rev /32 terminal: exit to EP1
-ip route vrf SNAKE_Et2 10.100.1.0/24 192.168.1.1            ← rev /24: full EP1 subnet
-ip route vrf SNAKE_Et3 172.16.1.98/32 egress-vrf SNAKE_Et4 200.4.0.2  ← fwd /32 chain
-ip route vrf SNAKE_Et3 172.16.1.0/24 egress-vrf SNAKE_Et4 200.4.0.2   ← fwd /24 chain
-ip route vrf SNAKE_Et3 10.100.1.99/32 200.2.0.2             ← rev /32: secondary exits into cable
-ip route vrf SNAKE_Et3 10.100.1.0/24 200.2.0.2              ← rev /24: full EP1 subnet
+ip route vrf SNAKE_Et2 10.100.1.0/24 192.168.1.1            ← rev terminal: exit to EP1
+ip route vrf SNAKE_Et3 172.16.1.0/24 egress-vrf SNAKE_Et4 200.4.0.2   ← fwd chain
+ip route vrf SNAKE_Et3 10.100.1.0/24 200.2.0.2              ← rev: secondary exits into cable
 !
 ! Pair 2: Et4 &lt;-&gt; Et5 (VLAN 400, subnet 200.4.0.0/24)
 arp vrf SNAKE_Et4   200.4.0.2 001c.7300.abcd arpa
 arp vrf SNAKE_Et5 200.4.0.2 001c.7300.abcd arpa
-ip route vrf SNAKE_Et4 172.16.1.98/32 200.4.0.2             ← fwd /32: primary exits into cable
-ip route vrf SNAKE_Et4 172.16.1.0/24 200.4.0.2              ← fwd /24: full EP2 subnet
-ip route vrf SNAKE_Et4 10.100.1.99/32 egress-vrf SNAKE_Et3 200.2.0.2  ← rev /32 chain
-ip route vrf SNAKE_Et4 10.100.1.0/24 egress-vrf SNAKE_Et3 200.2.0.2   ← rev /24 chain
+ip route vrf SNAKE_Et4 172.16.1.0/24 200.4.0.2              ← fwd: primary exits into cable
+ip route vrf SNAKE_Et4 10.100.1.0/24 egress-vrf SNAKE_Et3 200.2.0.2   ← rev chain
 arp vrf SNAKE_Et5 200.15.0.2 0000.aaaa.bbbb arpa            ← EP2 static ARP (indirect only)
-ip route vrf SNAKE_Et5 172.16.1.98/32 200.15.0.2            ← fwd /32 terminal: exit to EP2
-ip route vrf SNAKE_Et5 172.16.1.0/24 200.15.0.2             ← fwd /24: full EP2 subnet
-ip route vrf SNAKE_Et5 10.100.1.99/32 200.4.0.2             ← rev /32: secondary exits into cable
-ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev /24: full EP1 subnet
+ip route vrf SNAKE_Et5 172.16.1.0/24 200.15.0.2             ← fwd terminal: exit to EP2
+ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary exits into cable
 !</p>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">End-to-End Traffic Path (L3)</h4>
