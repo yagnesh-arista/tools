@@ -2330,8 +2330,8 @@ function getTopologyData(forceSync, isColorEnabled) {
       scriptProps.setProperty('DATA_VERSION', new Date().getTime().toString());
     }
 
-    const snakeTrafficHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_IN_L3');
-    const snakeTrafficHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_OUT_L3');
+    const snakeTrafficHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_SNAKE_EP1_L3');
+    const snakeTrafficHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_SNAKE_EP2_L3');
 
     const result = {
       nodes: nodes,
@@ -2444,9 +2444,12 @@ function getIpPreferences() {
     vni_base: '10000',
     bgp_asn_base: '65000',
     bridge_mac: '',
-    ixia_mac: '',
-    ixia_nh: '',
-    ixia_subnet: ''
+    ep1_nh: '',
+    ep1_mac: '',
+    ep1_subnet: '',
+    ep2_nh: '',
+    ep2_mac: '',
+    ep2_subnet: ''
   };
 
   const prefs = {};
@@ -3758,7 +3761,7 @@ function getDeviceConfig(deviceName) {
     }
     const snakeFirstPrimary = snakePairsForStatic.length > 0 ? snakePairsForStatic[0].primaryPort : '';
     const snakeLastSecondary = snakePairsForStatic.length > 0 ? snakePairsForStatic[snakePairsForStatic.length - 1].secondaryPort : '';
-    let foundTrafficIn = false, foundTrafficOut = false;
+    let foundEP1 = false, foundEP2 = false;
 
     rows.forEach(row => {
       const portName = row[targetColIndex];
@@ -3770,16 +3773,16 @@ function getDeviceConfig(deviceName) {
         const details = extractDetails(row, indices);
         details.sheetIndex = deviceSheetIndex;
 
-        // TRAFFIC_IN/OUT detection via description field
+        // EP1/EP2 detection via description field
         const desc = (details.desc_ || '').trim();
-        if (desc === 'TRAFFIC_IN_L3' && snakeFirstPrimary) {
+        if (desc === 'TRAFFIC_SNAKE_EP1_L3' && snakeFirstPrimary) {
           details.ixiaRole = 'in';
           details.snakeFirstPrimary = snakeFirstPrimary;
-          foundTrafficIn = true;
-        } else if (desc === 'TRAFFIC_OUT_L3' && snakeLastSecondary) {
+          foundEP1 = true;
+        } else if (desc === 'TRAFFIC_SNAKE_EP2_L3' && snakeLastSecondary) {
           details.ixiaRole = 'out';
           details.snakeLastSecondary = snakeLastSecondary;
-          foundTrafficOut = true;
+          foundEP2 = true;
         }
         const poVal = normalizePo(details.po_);
 
@@ -3843,12 +3846,15 @@ function getDeviceConfig(deviceName) {
     if (snakePairsForStatic.length > 0) {
       const missing = [];
       if (!ipPrefs.bridge_mac) missing.push('Bridge MAC');
-      if (!ipPrefs.ixia_mac || !ipPrefs.ixia_nh || !ipPrefs.ixia_subnet) missing.push('IXIA config');
-      if (!foundTrafficIn) missing.push('TRAFFIC_IN_L3 desc');
-      if (!foundTrafficOut) missing.push('TRAFFIC_OUT_L3 desc');
+      if (!foundEP1) missing.push('TRAFFIC_SNAKE_EP1_L3 desc');
+      if (!foundEP2) missing.push('TRAFFIC_SNAKE_EP2_L3 desc');
+      const nhWarn = (!ipPrefs.ep1_nh || !ipPrefs.ep2_nh)
+        ? ' [EP1/EP2 NH not set — direct-connect assumed; fill in if not directly connected]' : '';
       configMap["080_SNAKE"] = {
         full: generateSnakeStaticConfig(snakePairsForStatic, ipPrefs),
-        blockStatus: missing.length ? `Snake VRF Chain (${missing.join(', ')} missing)` : "Snake VRF Chain"
+        blockStatus: missing.length
+          ? `Snake VRF Chain (${missing.join(', ')} missing)`
+          : `Snake VRF Chain${nhWarn}`
       };
     }
 
@@ -4474,23 +4480,31 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
 }
 
 /**
- * Generates static ARP entries + egress-vrf route chain for L3 snake test.
- * Each snake pair gets: SNAKE_{primary} and SNAKE_{secondary} VRFs, each with
- * ip address {base}.oct2.oct3.1/24 and a static ARP mapping .2 → bridge-mac.
- * Chain: primary routes to .2 in own subnet (exits via loopback cable);
- * secondary routes via egress-vrf to next pair's primary VRF (or terminates if last).
- * Destination: 10.99.99.98/32 (standard snake test target address).
- * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}] sorted ascending by primary Et#
- * @param {Object} ipPrefs — from getIpPreferences()
- * @param {string} bridgeMac — switch bridge MAC (e.g. "001c.7300.abcd")
+ * Generates bidirectional static ARP + egress-vrf route chain for L3 snake test.
+ *
+ * Forward chain (TRAFFIC_SNAKE_EP1_L3 → EP2): fwdDest routed through each pair
+ *   via the bridge-MAC trick on loopback cables; terminates at ep2_nh in last secondary VRF.
+ * Reverse chain (TRAFFIC_SNAKE_EP2_L3 → EP1): revDest routed backwards through
+ *   the same VRFs in reverse order; terminates at ep1_nh in first primary VRF.
+ *
+ * bridge_mac is required (static ARP for all interior VRF hops).
+ * ep1_nh / ep2_nh are soft — comment placeholders emitted if missing (direct-connect assumed).
+ * ep1_mac / ep2_mac are optional — only emit static ARP at terminals if set (indirect case).
+ *
+ * @param {Array}  snakePairs — [{primaryPort, secondaryPort, vlan}] sorted ascending by primary Et#
+ * @param {Object} ipPrefs    — from getIpPreferences()
  */
 function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   if (!snakePairs || snakePairs.length === 0) return "";
-  const base = ipPrefs.p2p_v4_first || '200';
-  const bridgeMac = ipPrefs.bridge_mac || '';
-  const ixiaMac = ipPrefs.ixia_mac || '';
-  const ixiaNh  = ipPrefs.ixia_nh  || '';
-  const dest = ipPrefs.ixia_subnet ? `${ipPrefs.ixia_subnet}.98/32` : '10.99.99.98/32';
+
+  const base      = ipPrefs.p2p_v4_first || '200';
+  const bridgeMac = ipPrefs.bridge_mac   || '';
+  const ep1Nh     = ipPrefs.ep1_nh       || '';
+  const ep1Mac    = ipPrefs.ep1_mac      || '';
+  const ep2Nh     = ipPrefs.ep2_nh       || '';
+  const ep2Mac    = ipPrefs.ep2_mac      || '';
+  const fwdDest   = ipPrefs.ep2_subnet   ? `${ipPrefs.ep2_subnet}.98/32` : '10.99.99.98/32';
+  const revDest   = ipPrefs.ep1_subnet   ? `${ipPrefs.ep1_subnet}.99/32` : '10.99.99.99/32';
 
   if (!bridgeMac) {
     return [
@@ -4500,36 +4514,67 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
     ].join("\n");
   }
 
-  const lines = ['! Snake VRF Chain - Static ARP + Routing'];
+  const lines = ['! Snake VRF Chain — Bidirectional Static ARP + Routing'];
+  lines.push(`! Forward dest: ${fwdDest}  (EP1 → chain → EP2)`);
+  lines.push(`! Reverse dest: ${revDest}  (EP2 → chain → EP1)`);
+
   snakePairs.forEach((pair, idx) => {
     const { primaryPort, secondaryPort, vlan } = pair;
-    const oct2 = Math.floor(vlan / 100);
-    const oct3 = vlan % 100;
-    const subnet = `${base}.${oct2}.${oct3}`;
+    const oct2     = Math.floor(vlan / 100);
+    const oct3     = vlan % 100;
+    const subnet   = `${base}.${oct2}.${oct3}`;
     const remoteIp = `${subnet}.2`;
+    const isFirst  = idx === 0;
+    const isLast   = idx === snakePairs.length - 1;
 
     lines.push(`!`);
     lines.push(`! Pair ${idx + 1}: ${primaryPort} <-> ${secondaryPort} (VLAN ${vlan}, subnet ${subnet}.0/24)`);
-    lines.push(`arp vrf SNAKE_${primaryPort} ${remoteIp} ${bridgeMac} arpa`);
+
+    // Static ARP — bridge-mac trick, used by both forward and reverse chains
+    lines.push(`arp vrf SNAKE_${primaryPort}   ${remoteIp} ${bridgeMac} arpa`);
     lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
-    // Primary: exits via loopback cable (bridge-mac ARP trick)
-    lines.push(`ip route vrf SNAKE_${primaryPort} ${dest} ${remoteIp}`);
-    // Secondary: chain to next pair, or terminate via TRAFFIC_OUT if last
-    const isLastPair = (idx === snakePairs.length - 1);
-    if (!isLastPair) {
-      const nextPair = snakePairs[idx + 1];
-      const nextOct2 = Math.floor(nextPair.vlan / 100);
-      const nextOct3 = nextPair.vlan % 100;
-      const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
-      lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} egress-vrf SNAKE_${nextPair.primaryPort} ${nextRemote}`);
-    } else if (ixiaMac && ixiaNh) {
-      // Last secondary: TRAFFIC_OUT port is in this VRF; route to traffic gen via static ARP
-      lines.push(`arp vrf SNAKE_${secondaryPort} ${ixiaNh} ${ixiaMac} arpa`);
-      lines.push(`ip route vrf SNAKE_${secondaryPort} ${dest} ${ixiaNh}`);
+
+    // PRIMARY port routes
+    // Forward: always exits primary → loopback cable → secondary
+    lines.push(`ip route vrf SNAKE_${primaryPort} ${fwdDest} ${remoteIp}`);
+    // Reverse terminal (first pair): exit to EP1 traffic gen
+    if (isFirst) {
+      if (ep1Mac && ep1Nh) lines.push(`arp vrf SNAKE_${primaryPort} ${ep1Nh} ${ep1Mac} arpa`);
+      if (ep1Nh) {
+        lines.push(`ip route vrf SNAKE_${primaryPort} ${revDest} ${ep1Nh}`);
+      } else {
+        lines.push(`! SNAKE_${primaryPort}: EP1 NH not set — fill in if EP1 not directly connected`);
+      }
     } else {
-      lines.push(`! SNAKE_${secondaryPort}: last secondary (TRAFFIC_OUT) - Traffic MAC/NH not configured`);
+      // Reverse chain: jump backward to previous secondary VRF
+      const prev       = snakePairs[idx - 1];
+      const prevOct2   = Math.floor(prev.vlan / 100);
+      const prevOct3   = prev.vlan % 100;
+      const prevRemote = `${base}.${prevOct2}.${prevOct3}.2`;
+      lines.push(`ip route vrf SNAKE_${primaryPort} ${revDest} egress-vrf SNAKE_${prev.secondaryPort} ${prevRemote}`);
     }
+
+    // SECONDARY port routes
+    // Forward terminal (last pair): exit to EP2 traffic gen
+    if (isLast) {
+      if (ep2Mac && ep2Nh) lines.push(`arp vrf SNAKE_${secondaryPort} ${ep2Nh} ${ep2Mac} arpa`);
+      if (ep2Nh) {
+        lines.push(`ip route vrf SNAKE_${secondaryPort} ${fwdDest} ${ep2Nh}`);
+      } else {
+        lines.push(`! SNAKE_${secondaryPort}: EP2 NH not set — fill in if EP2 not directly connected`);
+      }
+    } else {
+      // Forward chain: jump forward to next primary VRF
+      const next       = snakePairs[idx + 1];
+      const nextOct2   = Math.floor(next.vlan / 100);
+      const nextOct3   = next.vlan % 100;
+      const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
+      lines.push(`ip route vrf SNAKE_${secondaryPort} ${fwdDest} egress-vrf SNAKE_${next.primaryPort} ${nextRemote}`);
+    }
+    // Reverse: always exits secondary → loopback cable → primary (reverse direction)
+    lines.push(`ip route vrf SNAKE_${secondaryPort} ${revDest} ${remoteIp}`);
   });
+
   lines.push(`!`);
   return lines.join('\n');
 }

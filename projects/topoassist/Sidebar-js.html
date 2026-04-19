@@ -2240,6 +2240,12 @@ function runValidation() {
       configErrors.push(`Stale IP Type: Mode is '${d.sp_mode_}' with no SVI but IP Type is '${d.ip_type_}' — should be blank.`);
     }
 
+    // J. NATIVE VLAN TOKEN ON NON-TRUNK PORT
+    const _pvAuditJ = parseVlanWithNative(d.vlan_);
+    if (_pvAuditJ.native && !mode.includes("trunk")) {
+      configErrors.push(`Native VLAN: nv${_pvAuditJ.native} in VLANs column is only valid on trunk ports — current mode is '${d.sp_mode_ || "blank"}'. Token will be ignored.`);
+    }
+
     // Apply Errors
     if (configErrors.length > 0) {
       connectedLinks.forEach(linkId => {
@@ -3933,12 +3939,14 @@ function checkSnakeTrafficWarning() {
   if (!hasSnake) { warn.style.display = 'none'; return; }
 
   const msgs = [];
-  const missingFields = ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet']
-    .filter(id => { const el = document.getElementById(id); return !el || !el.value.trim(); })
-    .map(id => ({ ip_ixia_mac: 'IXIA MAC', ip_ixia_nh: 'IXIA NH', ip_ixia_subnet: 'IXIA Subnet' }[id]));
-  if (missingFields.length) msgs.push(missingFields.join(', ') + ' required');
-  if (!_snakeTrafficFlags.hasIn) msgs.push("set TRAFFIC_IN port description to 'TRAFFIC_IN_L3'");
-  if (!_snakeTrafficFlags.hasOut) msgs.push("set TRAFFIC_OUT port description to 'TRAFFIC_OUT_L3'");
+  // Soft NH warning — only shown if traffic gen may not be directly connected
+  const ep1NhEl = document.getElementById("ip_ep1_nh");
+  const ep2NhEl = document.getElementById("ip_ep2_nh");
+  if ((!ep1NhEl || !ep1NhEl.value.trim()) || (!ep2NhEl || !ep2NhEl.value.trim())) {
+    msgs.push("fill in EP1/EP2 NH IP if traffic gen is not directly connected");
+  }
+  if (!_snakeTrafficFlags.hasIn) msgs.push("set EP1 port description to 'TRAFFIC_SNAKE_EP1_L3'");
+  if (!_snakeTrafficFlags.hasOut) msgs.push("set EP2 port description to 'TRAFFIC_SNAKE_EP2_L3'");
 
   if (msgs.length === 0) { warn.style.display = 'none'; return; }
   warn.textContent = 'Snake detected — ' + msgs.join('; ') + '.';
@@ -3970,9 +3978,12 @@ function openIpConfigModal(btn) {
     if (!prefs.bridge_mac && _detectedBridgeMac) {
       document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
     }
-    document.getElementById("ip_ixia_mac").value = prefs.ixia_mac || "";
-    document.getElementById("ip_ixia_nh").value = prefs.ixia_nh || "";
-    document.getElementById("ip_ixia_subnet").value = prefs.ixia_subnet || "";
+    document.getElementById("ip_ep1_nh").value     = prefs.ep1_nh     || "";
+    document.getElementById("ip_ep1_mac").value    = prefs.ep1_mac    || "";
+    document.getElementById("ip_ep1_subnet").value = prefs.ep1_subnet || "";
+    document.getElementById("ip_ep2_nh").value     = prefs.ep2_nh     || "";
+    document.getElementById("ip_ep2_mac").value    = prefs.ep2_mac    || "";
+    document.getElementById("ip_ep2_subnet").value = prefs.ep2_subnet || "";
 
     // 2. Capture Snapshot
     initialIpState = getCurrentIpState();
@@ -3980,8 +3991,8 @@ function openIpConfigModal(btn) {
     // 3. Bind Listeners to ALL inputs
     const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
     inputs.forEach(el => el.oninput = checkIpDirty);
-    // IXIA fields also trigger snake warning re-check
-    ['ip_ixia_mac', 'ip_ixia_nh', 'ip_ixia_subnet'].forEach(id => {
+    // EP NH fields also trigger snake warning re-check
+    ['ip_ep1_nh', 'ip_ep2_nh'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.oninput = () => { checkIpDirty(); checkSnakeTrafficWarning(); };
     });
@@ -4030,10 +4041,13 @@ function saveIpConfig() {
     gw_v6_mask: document.getElementById("ip_gw_v6_mask").value || '/64',
     vni_base: document.getElementById("ip_vni_base").value || '10000',
     bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000',
-    bridge_mac: (document.getElementById("ip_bridge_mac").value || '').trim(),
-    ixia_mac: (document.getElementById("ip_ixia_mac").value || '').trim(),
-    ixia_nh: (document.getElementById("ip_ixia_nh").value || '').trim(),
-    ixia_subnet: (document.getElementById("ip_ixia_subnet").value || '').trim()
+    bridge_mac:  (document.getElementById("ip_bridge_mac").value  || '').trim(),
+    ep1_nh:      (document.getElementById("ip_ep1_nh").value      || '').trim(),
+    ep1_mac:     (document.getElementById("ip_ep1_mac").value     || '').trim(),
+    ep1_subnet:  (document.getElementById("ip_ep1_subnet").value  || '').trim(),
+    ep2_nh:      (document.getElementById("ip_ep2_nh").value      || '').trim(),
+    ep2_mac:     (document.getElementById("ip_ep2_mac").value     || '').trim(),
+    ep2_subnet:  (document.getElementById("ip_ep2_subnet").value  || '').trim()
   };
 
   showGlobalLoading("Saving & Applying IPs...");
@@ -10509,10 +10523,13 @@ function resetIpConfig() {
   document.getElementById("ip_gw_v6_mask").value = "/64";
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
-  document.getElementById("ip_bridge_mac").value = "";
-  document.getElementById("ip_ixia_mac").value = "";
-  document.getElementById("ip_ixia_nh").value = "";
-  document.getElementById("ip_ixia_subnet").value = "";
+  document.getElementById("ip_bridge_mac").value  = "";
+  document.getElementById("ip_ep1_nh").value      = "";
+  document.getElementById("ip_ep1_mac").value     = "";
+  document.getElementById("ip_ep1_subnet").value  = "";
+  document.getElementById("ip_ep2_nh").value      = "";
+  document.getElementById("ip_ep2_mac").value     = "";
+  document.getElementById("ip_ep2_subnet").value  = "";
   checkSnakeTrafficWarning();
 }
 
