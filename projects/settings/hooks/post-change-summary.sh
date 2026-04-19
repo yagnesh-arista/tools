@@ -92,6 +92,46 @@ else
   clasp_status="N/A (no GAS files changed)"
 fi
 
+# ── Patch GAS stamp lines with correct commit hash ────────────────────────────
+# The stamp hook fires at edit time (before git commit exists), so line 1
+# always shows the previous commit hash. Fix it here with a tiny fixup commit.
+# Guard: skip if this IS a stamp commit (prevents infinite loop).
+if ! echo "$COMMIT_MSG" | grep -qE '^stamp:'; then
+  PATCHED_FILES=""
+  while IFS= read -r rel; do
+    [ -z "$rel" ] && continue
+    full="$REPO/$rel"
+    fname=$(basename "$rel")
+    [ -f "$full" ] || continue
+    if echo "$rel" | grep -q 'topoassist/' && echo "$GAS_NAMES" | grep -qw "$fname"; then
+      line1=$(head -1 "$full" 2>/dev/null)
+      if echo "$line1" | grep -qE 'TopoAssist.*git commit:'; then
+        patched=$(python3 - "$full" "$COMMIT_HASH" <<'PYEOF'
+import sys, re
+path, h = sys.argv[1], sys.argv[2]
+with open(path) as fh: lines = fh.readlines()
+if lines:
+    new = re.sub(r'git commit: [0-9a-f]+', f'git commit: {h}', lines[0])
+    if new != lines[0]:
+        lines[0] = new
+        with open(path, 'w') as fh: fh.writelines(lines)
+        print('patched')
+PYEOF
+)
+        [ "$patched" = "patched" ] && PATCHED_FILES="$PATCHED_FILES $full"
+      fi
+    fi
+  done <<< "$CHANGED_FILES"
+
+  if [ -n "$PATCHED_FILES" ]; then
+    git -C "$REPO" add $PATCHED_FILES 2>/dev/null
+    git -C "$REPO" commit -m "stamp: fix line-1 commit hash → ${COMMIT_HASH}" 2>/dev/null
+    if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
+      git -C "$REPO" push 2>/dev/null
+    fi
+  fi
+fi
+
 # ── Build summary ─────────────────────────────────────────────────────────────
 SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — ${COMMIT_MSG}
 Files:${file_lines}
