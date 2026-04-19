@@ -400,6 +400,49 @@ function test_buildCableGroupsForTest() {
     results.push(t("1.6t-8 Scenario C — 8 links in group",        g[keys[0]].links.length, 8));
   })();
 
+  // ── Modular chassis native SFP (2-level slash, no aggX) → Scenario B ───────────
+  // Et{slot}/{port} with plain speed (no -N suffix) must NOT trigger breakout grouping.
+  // Each link stays as its own Scenario B group with raw port names.
+  (function() {
+    const links = [
+      { u: "leaf1:Et3/1", v: "server1:Et1" },
+      { u: "leaf1:Et3/2", v: "server2:Et1" },
+    ];
+    const nodes = {
+      "leaf1:Et3/1":   { device: "leaf1",   name: "Et3/1", details: { xcvr_speed_: "25g" } },
+      "leaf1:Et3/2":   { device: "leaf1",   name: "Et3/2", details: { xcvr_speed_: "25g" } },
+      "server1:Et1":   { device: "server1", name: "Et1",   details: { xcvr_speed_: "25g" } },
+      "server2:Et1":   { device: "server2", name: "Et1",   details: { xcvr_speed_: "25g" } },
+    };
+    const devs = { leaf1: { type: "arista" }, server1: { type: "arista" }, server2: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("Chassis native SFP (2-level, no aggX) — 2 separate Scenario B groups", keys.length, 2));
+    results.push(t("Chassis native SFP — key preserves raw slot/port notation",
+      keys.includes("leaf1:Et3/1 <-> server1:Et1"), true));
+    results.push(t("Chassis native SFP — isBreakoutA false (no aggX, no grouping)",
+      g["leaf1:Et3/1 <-> server1:Et1"].isBreakoutA, false));
+  })();
+
+  // ── Modular chassis QSFP breakout (3-level, aggX) → Et{slot}/{port}/1 anchor ──
+  // Et5/22/1..4 with aggX xcvr_speed_ must collapse to Et5/22/1 (3-level anchor).
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `leaf1:Et5/22/${i}`, v: `server1:Et${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`leaf1:Et5/22/${i}`] = { device: "leaf1",   name: `Et5/22/${i}`, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" } };
+      nodes[`server1:Et${i}`]    = { device: "server1", name: `Et${i}`,      details: { xcvr_speed_: "25g",    xcvr_: "SFP" } };
+    });
+    const devs = { leaf1: { type: "arista" }, server1: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("Chassis QSFP 3-level — collapsed into 1 group",          keys.length, 1));
+    results.push(t("Chassis QSFP 3-level — key uses Et5/22/1 anchor",        keys[0], "leaf1:Et5/22/1 <-> server1"));
+    results.push(t("Chassis QSFP 3-level — isBreakoutA true",                g[keys[0]].isBreakoutA, true));
+    results.push(t("Chassis QSFP 3-level — phyA normalized to Et5/22/1",     g[keys[0]].phyA, "Et5/22/1"));
+    results.push(t("Chassis QSFP 3-level — 4 links in group",                g[keys[0]].links.length, 4));
+  })();
+
   // ── Missing node (link.u or link.v not in nodesData) → skipped silently ──────
   (function() {
     const links = [{ u: "leaf1:Et1", v: "ghost1:Et99" }];
