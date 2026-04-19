@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # notify.sh
 # Notification hook: route Claude Code notifications to the system.
 # Tries notify-send (Linux desktop), then tmux display-message, then silent.

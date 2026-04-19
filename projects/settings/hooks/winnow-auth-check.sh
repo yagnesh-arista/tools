@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # winnow-auth-check.sh
 # PostToolUse hook: detect Winnow auth failures and prompt re-authentication.
 # Fires after any mcp__winnow__* tool call. Outputs a hookSpecificOutput message

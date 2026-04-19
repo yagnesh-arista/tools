@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # Commit guard — runs as PreToolUse hook on git commit.
 # Scans staged diff for secrets (all files) and debug code (code files only).
 # Outputs JSON to block commit or pass with summary.

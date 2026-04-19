@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # prompt-secrets-scan.sh
 # UserPromptSubmit hook: scan user prompts for accidentally pasted secrets.
 # Outputs hookSpecificOutput so Claude immediately warns the user in-chat.

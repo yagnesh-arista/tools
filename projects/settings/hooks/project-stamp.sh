@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # project-stamp.sh
 # Global stamp hook for all ~/claude/projects/ files.
 # Stamps with: # <project> vYYMMDD.N | YYYY-MM-DD HH:MM:SS | git commit: <hash>
@@ -18,18 +19,23 @@ input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
 
 PROJECTS_DIR="$HOME/claude/projects"
-
-# Only process files inside ~/claude/projects/
-case "$f" in
-  $PROJECTS_DIR/*) ;;
-  *) exit 0 ;;
-esac
+CLAUDE_CFG="$HOME/.claude"
 
 [ -f "$f" ] || exit 0
 
-# Extract project name
-proj_rel="${f#$PROJECTS_DIR/}"
-project=$(echo "$proj_rel" | cut -d'/' -f1)
+# Determine project name and insert-mode based on path
+insert_if_missing=0
+case "$f" in
+  $CLAUDE_CFG/hooks/*|$CLAUDE_CFG/rules/*|$CLAUDE_CFG/commands/*)
+    project="settings"
+    insert_if_missing=1
+    ;;
+  $PROJECTS_DIR/*)
+    proj_rel="${f#$PROJECTS_DIR/}"
+    project=$(echo "$proj_rel" | cut -d'/' -f1)
+    ;;
+  *) exit 0 ;;
+esac
 
 # Skip INSTRUCTIONS, CLAUDE.md, metadata, and non-source files
 fname=$(basename "$f")
@@ -68,10 +74,11 @@ COMMIT=$(git -C "$HOME/claude" rev-parse --short HEAD 2>/dev/null || echo "no-gi
 
 NEW_LINE="${PREFIX} ${project} v${VERSION} | ${DATETIME} | git commit: ${COMMIT}${SUFFIX}"
 
-# ── Determine stamp line (1 or 2) and update if marker present ──────────────
-python3 - "$f" "$NEW_LINE" "$MARKER_PAT" <<'PYEOF'
+# ── Determine stamp line (1 or 2) and update/insert ─────────────────────────
+python3 - "$f" "$NEW_LINE" "$MARKER_PAT" "$insert_if_missing" <<'PYEOF'
 import sys
-path, new_line, marker = sys.argv[1], sys.argv[2], sys.argv[3]
+path, new_line, marker, insert_mode = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+insert_if_missing = insert_mode == '1'
 try:
     with open(path, 'r') as fh:
         lines = fh.readlines()
@@ -81,12 +88,16 @@ try:
     # Determine target line index: 0 normally, 1 if shebang on line 0
     idx = 1 if lines[0].startswith('#!') else 0
 
-    # Only update if the target line already has the stamp marker
     target = lines[idx] if idx < len(lines) else ''
-    if not target.strip().startswith(marker.strip()):
+    if target.strip().startswith(marker.strip()):
+        # Update existing stamp
+        lines[idx] = new_line + '\n'
+    elif insert_if_missing:
+        # Insert stamp at target index (after shebang if present)
+        lines.insert(idx, new_line + '\n')
+    else:
         sys.exit(0)
 
-    lines[idx] = new_line + '\n'
     with open(path, 'w') as fh:
         fh.writelines(lines)
 except Exception:

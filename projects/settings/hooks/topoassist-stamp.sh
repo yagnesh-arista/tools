@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # topoassist-stamp.sh
 # On every Edit/Write of a TopoAssist GAS file:
 #   1. Auto-calculates date-based version: YYMMDD.N

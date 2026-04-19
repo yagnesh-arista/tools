@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -32,9 +33,14 @@ while IFS= read -r rel; do
   fname=$(basename "$rel")
   [ -f "$full" ] || continue
 
-  # Extract version token (vYYMMDD.N or vX.Y)
+  # Extract version token — shebang files stamp on line 2
   line1=$(head -1 "$full" 2>/dev/null)
-  ver=$(echo "$line1" | grep -oE 'v[0-9]+\.[0-9]+' | head -1)
+  if echo "$line1" | grep -q '^#!'; then
+    stamp_line=$(sed -n '2p' "$full" 2>/dev/null)
+  else
+    stamp_line="$line1"
+  fi
+  ver=$(echo "$stamp_line" | grep -oE 'v[0-9]+\.[0-9]+' | head -1)
   [ -z "$ver" ] && ver="(no stamp)"
 
   file_lines="${file_lines}"$'\n'"  ${fname}  ${ver}"
