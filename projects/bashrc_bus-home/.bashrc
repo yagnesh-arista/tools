@@ -1,4 +1,4 @@
-# ~/.bashrc — bus-home
+# bashrc_bus-home v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 

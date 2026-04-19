@@ -13,6 +13,11 @@
           },
           {
             "type": "command",
+            "command": "bash ~/.claude/hooks/project-stamp.sh",
+            "statusMessage": "Stamping project file with version/date/commit..."
+          },
+          {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); if [ -n \"$proj\" ] && ! echo \"$f\" | grep -q 'INSTRUCTIONS_' && ! echo \"$f\" | grep -q 'CLAUDE.md'; then proj_name=$(basename \"$proj\"); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You just modified a file in the $proj_name project. You MUST now update $proj/INSTRUCTIONS_${proj_name}.txt (every change) and bump its Last updated date. If you changed any design constraints, invariants, or key rules, ALSO update $proj/CLAUDE.md.\\\"}}\"; fi",
             "statusMessage": "Checking project INSTRUCTIONS + CLAUDE.md sync..."
           },
@@ -50,6 +55,11 @@
             "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); SETTINGS_BACKUP=$HOME/claude/projects/settings; changed=0; case \"$f\" in $HOME/.claude/hooks/*.sh) mkdir -p \"$SETTINGS_BACKUP/hooks\"; cp \"$f\" \"$SETTINGS_BACKUP/hooks/\" && chmod +x \"$SETTINGS_BACKUP/hooks/$(basename $f)\" && changed=1 ;; $HOME/.claude/rules/*.md) mkdir -p \"$SETTINGS_BACKUP/rules\"; cp \"$f\" \"$SETTINGS_BACKUP/rules/\" && changed=1 ;; $HOME/.claude/commands/*.md) mkdir -p \"$SETTINGS_BACKUP/commands\"; cp \"$f\" \"$SETTINGS_BACKUP/commands/\" && changed=1 ;; $HOME/.claude/settings.json) sed \"s|$HOME|\\$HOME|g\" \"$f\" > \"$SETTINGS_BACKUP/settings.json.template\" && changed=1 ;; $HOME/claude/CLAUDE.md) mkdir -p \"$SETTINGS_BACKUP/global-rules\"; cp \"$f\" \"$SETTINGS_BACKUP/global-rules/CLAUDE.md\" && changed=1 ;; esac; if [ \"$changed\" -eq 1 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SETTINGS BACKUP] $(basename $f) auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude.\\\"}}\"; fi 2>/dev/null || true",
             "statusMessage": "Syncing to settings backup..."
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/project-commands-sync.sh",
+            "statusMessage": "Syncing project command to global..."
           },
           {
             "type": "command",

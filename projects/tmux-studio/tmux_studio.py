@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+# tmux-studio v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
 Tmux Studio - Final Production Build
 --------------------------------------------
 Features:

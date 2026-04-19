@@ -1,4 +1,4 @@
-# ~/.zshrc — macbook (yagnes76D0W4m)
+# zshrc_macbook v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
 # Managed via ~/claude/projects/zshrc_macbook/ on bus-home
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
