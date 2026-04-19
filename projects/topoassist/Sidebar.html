@@ -506,26 +506,41 @@
 
       <div class="section-header">Snake Test</div>
       <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
-        Snake pairs detected — IXIA MAC, NH, and Subnet required for complete config generation.
+        Snake pairs detected — fill in EP1/EP2 NH and MAC if traffic gen ports are not directly connected to this switch.
       </div>
       <div class="ip-row"><span class="ip-label">Bridge MAC</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Switch Bridge MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">IXIA MAC</span>
+      <div class="ip-row"><span class="ip-label">EP1 NH IP</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>IXIA Device MAC</label><input type="text" id="ip_ixia_mac" placeholder="0000.0000.0000"></div>
+          <div class="input-wrapper"><label>EP1 Next-Hop IP (traffic gen port)</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">IXIA NH</span>
+      <div class="ip-row"><span class="ip-label">EP1 MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>Traffic Port P2P IP</label><input type="text" id="ip_ixia_nh" placeholder="200.15.0.2"></div>
+          <div class="input-wrapper"><label>EP1 MAC (indirect only)</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">IXIA Subnet</span>
+      <div class="ip-row"><span class="ip-label">EP1 Subnet</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>IXIA Subnet Prefix</label><input type="text" id="ip_ixia_subnet" placeholder="10.99.99"></div>
+          <div class="input-wrapper"><label>EP1 Subnet Prefix (rev dest)</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">EP2 NH IP</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>EP2 Next-Hop IP (traffic gen port)</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">EP2 MAC</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>EP2 MAC (indirect only)</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000"></div>
+        </div>
+      </div>
+      <div class="ip-row"><span class="ip-label">EP2 Subnet</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>EP2 Subnet Prefix (fwd dest)</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99"></div>
         </div>
       </div>
 
