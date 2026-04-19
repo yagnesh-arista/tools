@@ -238,7 +238,7 @@ function showSheetAssistPanel() {
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
-    .setWidth(490)
+    .setWidth(580)
     .setHeight(550);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
 }
