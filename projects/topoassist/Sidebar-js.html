@@ -2516,7 +2516,7 @@ function runValidation() {
   });
 
   // UPDATE UI
-  if (statusEl && !statusEl.innerText.includes("✗ MLAG Peer-Link Missing")) {
+  if (statusEl && !statusEl.innerText.includes("MLAG Peer-Link Missing")) {
     statusEl.innerText = portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`;
     if (portErrorCount > 0) statusEl.classList.add("status-error");
     else statusEl.classList.remove("status-error");
@@ -5861,7 +5861,7 @@ ${conflicts.map(c => `
   if (missing.length === 0 && extra.length === 0 && conflicts.length === 0) {
     html += `
 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 20px; text-align:center; background:var(--success-bg); border:1px solid var(--success); border-radius:8px; min-height:100px;">
-<div style="font-size:32px; margin-bottom:10px;">✓</div>
+<div style="margin-bottom:10px;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
 <div style="font-weight:800; font-size:16px; color:var(--success); margin-bottom:5px;">All Systems Go</div>
 <div style="font-size:12px; color:var(--text-muted);">No configuration conflicts detected.</div>
 </div>`;
