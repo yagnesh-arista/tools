@@ -19,7 +19,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"2.11","port":8765}
+  GET  /health      → {"status":"ok","version":"2.12","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -28,7 +28,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.11"
+VERSION = "2.12"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -136,8 +136,10 @@ def _parse_internal_vlans(ivlans):
     """Parse 'show vlan internal' JSON response into a sorted int list.
 
     EOS returns: {"vlans": {"1025": {...}, "1026": {...}}}
-    Returns [] when the response is empty or the key is absent.
+    Returns [] when the response is empty, None (command failed), or the key is absent.
     """
+    if not ivlans:
+        return []
     return sorted(int(vid) for vid in ivlans.get("vlans", {}).keys())
 
 
