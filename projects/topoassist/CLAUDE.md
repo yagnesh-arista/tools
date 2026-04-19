@@ -25,7 +25,7 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **hasKey(setObj, key)** must be used instead of `.has()` for all device name lookups. Device names in Sets are lowercase; sheet names are original-cased — `.has()` will silently miss them.
 
-**APP_VERSION must stay in sync**: `const APP_VERSION` exists in both `Code.gs` (canonical) and `Sidebar-js.html` (client-side, marked DUPLICATED). Bump both on every release. All HTML files carry a matching `<!-- TopoAssist vX.Y -->` comment at line 1. `TESTS_VERSION` in `Tests.gs` is separate — bump it when tests change.
+**APP_VERSION must stay in sync**: `const APP_VERSION` exists in `Code.gs` (canonical), `Sidebar-js.html`, and `Tests.gs`. All HTML files carry a matching `<!-- TopoAssist vX.Y -->` comment at line 1. Bump ALL on every release — Tests.gs inclusion is a deliberate reminder to check/add tests when the version changes.
 
 **VERSION must stay in sync**: after any `device_bridge.py` change, bump VERSION in both `device_bridge.py` AND the embedded template inside `downloadBridgeScript()` in `Sidebar-js.html`. The `/health` docstring line must also match.
 
