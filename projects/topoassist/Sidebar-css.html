@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.28 | 2026-04-20 01:44:14 | git commit: b9c8b23 -->
+<!-- TopoAssist v260420.38 | 2026-04-20 02:33:57 | git commit: bec1e2c -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================= */
   .icon-btn,
@@ -3103,9 +3103,10 @@
 
   .input-wrapper {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0
   }
 
   .input-wrapper label {
@@ -3113,14 +3114,14 @@
     font-family: "JetBrains Mono", monospace;
     color: #64748b;
     font-weight: 600;
+    white-space: nowrap;
     user-select: none;
     -webkit-user-select: none;
   }
 
   .input-wrapper input {
-    width: 100%;
     box-sizing: border-box;
-    padding: 7px 9px;
+    padding: 5px 7px;
     border: 1px solid var(--border);
     border-radius: 4px;
     font-family: "JetBrains Mono", monospace;
@@ -3280,9 +3281,38 @@
     margin: 2px 0;
   }
 
-  .ip-ex-sub .ip-ex-key {
+  .ip-ex-key.ip-ex-sub {
     color: #94a3b8;
     font-weight: 500;
+  }
+
+  /* Two-peer example grid (3 columns: label | Dev1 | Dev2) */
+  .ip-example-peer-grid {
+    display: grid;
+    grid-template-columns: 88px 1fr 1fr;
+    gap: 3px 10px;
+    margin-top: 8px;
+    border-top: 1px dashed var(--border-light);
+    padding-top: 8px;
+    align-items: center;
+  }
+
+  .ip-ex-peer-hdr {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+    -webkit-user-select: none;
+    padding-bottom: 2px;
+  }
+
+  .ip-ex-peer-sep {
+    grid-column: 1 / 4;
+    border-top: 1px dashed var(--border-light);
+    margin: 2px 0;
   }
 
   .ip-ex-result {

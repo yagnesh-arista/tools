@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.23 | 2026-04-20 01:27:30 | git commit: 743e89a -->
+<!-- TopoAssist v260420.38 | 2026-04-20 02:35:25 | git commit: bec1e2c -->
 <!DOCTYPE html>
 <html>
 
@@ -407,23 +407,50 @@
     </div>
     <div class="ip-modal-body">
 
-      <!-- 1. EXAMPLE (top, linear) -->
+      <!-- 1. EXAMPLE (top, two-peer grid) -->
       <div class="info-box info-box--dim">
-        <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1520</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">20</span> &middot; Device ID <span class="f-dyn">2</span></div>
-        <div class="ip-example-linear">
-          <div class="ip-ex-row"><span class="ip-ex-key">P2P IPv4</span><span class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">2</span>/24</span></div>
-          <div class="ip-ex-row"><span class="ip-ex-key">P2P IPv6</span><span class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">2</span>/64</span></div>
-          <div class="ip-ex-sep"></div>
-          <div class="ip-ex-row"><span class="ip-ex-key">GW IPv4</span><span class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">(standalone)</span></span></div>
-          <div class="ip-ex-row ip-ex-sub"><span class="ip-ex-key">&#x21b3; MLAG phy</span><span class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">3</span>/24 <span class="ip-ex-note">(last <span class="f-var">1</span> + id <span class="f-dyn">2</span>)</span></span></div>
-          <div class="ip-ex-row ip-ex-sub"><span class="ip-ex-key">&#x21b3; MLAG vip</span><span class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span> <span class="ip-ex-note">(ip virtual-router address)</span></span></div>
-          <div class="ip-ex-sep"></div>
-          <div class="ip-ex-row"><span class="ip-ex-key">GW IPv6</span><span class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span>/64 <span class="ip-ex-note">(standalone)</span></span></div>
-          <div class="ip-ex-row ip-ex-sub"><span class="ip-ex-key">&#x21b3; MLAG phy</span><span class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">3</span>/64 <span class="ip-ex-note">(last <span class="f-var">1</span> + id <span class="f-dyn">2</span>)</span></span></div>
-          <div class="ip-ex-row ip-ex-sub"><span class="ip-ex-key">&#x21b3; MLAG vip</span><span class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span> <span class="ip-ex-note">(ipv6 virtual-router address)</span></span></div>
-          <div class="ip-ex-sep"></div>
-          <div class="ip-ex-row"><span class="ip-ex-key">VNI</span><span class="ip-ex-val"><span class="f-var">10000</span> + <span class="f-dyn">1520</span> = <span class="ip-ex-result">11520</span></span></div>
-          <div class="ip-ex-row"><span class="ip-ex-key">ASN</span><span class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span class="ip-ex-result">65002</span></span></div>
+        <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1520</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">20</span></div>
+        <div class="ip-example-peer-grid">
+          <div></div>
+          <div class="ip-ex-peer-hdr">Device <span class="f-dyn">1</span></div>
+          <div class="ip-ex-peer-hdr">Device <span class="f-dyn">2</span></div>
+
+          <div class="ip-ex-key">P2P IPv4</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">1</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">2</span>/24</div>
+
+          <div class="ip-ex-key">P2P IPv6</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">1</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">2</span>/64</div>
+
+          <div class="ip-ex-peer-sep"></div>
+
+          <div class="ip-ex-key">GW IPv4</div>
+          <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">(standalone)</span></div>
+          <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG phy</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">2</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">3</span>/24</div>
+          <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG vip</div>
+          <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span> <span class="ip-ex-note">(ip virtual-router address)</span></div>
+
+          <div class="ip-ex-peer-sep"></div>
+
+          <div class="ip-ex-key">GW IPv6</div>
+          <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span>/64 <span class="ip-ex-note">(standalone)</span></div>
+          <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG phy</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">2</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">3</span>/64</div>
+          <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG vip</div>
+          <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span> <span class="ip-ex-note">(ipv6 virtual-router address)</span></div>
+
+          <div class="ip-ex-peer-sep"></div>
+
+          <div class="ip-ex-key">VNI</div>
+          <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">10000</span> + <span class="f-dyn">1520</span> = <span class="ip-ex-result">11520</span></div>
+
+          <div class="ip-ex-key">ASN</div>
+          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">1</span> = <span class="ip-ex-result">65001</span></div>
+          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span class="ip-ex-result">65002</span></div>
         </div>
       </div>
 
@@ -467,14 +494,14 @@
       <div class="ip-section-rows">
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24"></div>
+            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200" style="width:56px"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24" style="width:46px"></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_p2p_v6_first" placeholder="200"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64"></div>
+            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_p2p_v6_first" placeholder="200" style="width:56px"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64" style="width:46px"></div>
           </div>
         </div>
       </div>
@@ -483,16 +510,16 @@
       <div class="ip-section-rows">
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100"></div>
-            <div class="input-wrapper"><label>Last Octet (GW)</label><input type="text" id="ip_gw_v4_last" placeholder="1"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24"></div>
+            <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100" style="width:56px"></div>
+            <div class="input-wrapper"><label>Last Octet (GW)</label><input type="text" id="ip_gw_v4_last" placeholder="1" style="width:40px"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24" style="width:46px"></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_gw_v6_first" placeholder="100"></div>
-            <div class="input-wrapper"><label>Last Hextet</label><input type="text" id="ip_gw_v6_last" placeholder="1"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64"></div>
+            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_gw_v6_first" placeholder="100" style="width:56px"></div>
+            <div class="input-wrapper"><label>Last Hextet</label><input type="text" id="ip_gw_v6_last" placeholder="1" style="width:40px"></div>
+            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64" style="width:46px"></div>
           </div>
         </div>
       </div>
@@ -500,14 +527,14 @@
       <div class="section-header">VXLAN VNI Mapping</div>
       <div class="ip-row"><span class="ip-label">VNI Base</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>Base Offset</label><input type="text" id="ip_vni_base" placeholder="10000"></div>
+          <div class="input-wrapper"><label>Base Offset</label><input type="text" id="ip_vni_base" placeholder="10000" style="width:64px"></div>
         </div>
       </div>
 
       <div class="section-header">BGP ASN</div>
       <div class="ip-row"><span class="ip-label">ASN Base</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_bgp_asn_base" placeholder="65000"></div>
+          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_bgp_asn_base" placeholder="65000" style="width:64px"></div>
         </div>
       </div>
 
@@ -517,37 +544,37 @@
       </div>
       <div class="ip-row"><span class="ip-label">Bridge MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>Switch Bridge MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000"></div>
+          <div class="input-wrapper"><label>Switch Bridge MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP1 NH IP</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 Next-Hop IP (traffic gen port)</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2"></div>
+          <div class="input-wrapper"><label>EP1 Next-Hop IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP1 MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 MAC (indirect only)</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000"></div>
+          <div class="input-wrapper"><label>EP1 MAC (indirect)</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP1 Subnet</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 Subnet Prefix (rev dest)</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99"></div>
+          <div class="input-wrapper"><label>EP1 Subnet (rev dest)</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99" style="width:90px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP2 NH IP</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 Next-Hop IP (traffic gen port)</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2"></div>
+          <div class="input-wrapper"><label>EP2 Next-Hop IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP2 MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 MAC (indirect only)</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000"></div>
+          <div class="input-wrapper"><label>EP2 MAC (indirect)</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
         </div>
       </div>
       <div class="ip-row"><span class="ip-label">EP2 Subnet</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 Subnet Prefix (fwd dest)</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99"></div>
+          <div class="input-wrapper"><label>EP2 Subnet (fwd dest)</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99" style="width:90px"></div>
         </div>
       </div>
 
