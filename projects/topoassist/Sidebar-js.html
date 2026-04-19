@@ -10548,8 +10548,8 @@ function initCustomViewManager() {
   // 5. SHOW LOADING SPINNER
   body.innerHTML = `
 <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8;">
-<div style="font-size:32px; margin-bottom:15px; animation:spin 1s linear infinite;">⏳</div>
-<div style="font-weight:600; font-size:13px;">Loading preferences...</div>
+<svg width="32" height="32" viewBox="0 0 32 32" style="margin-bottom:15px; animation:spin 1s linear infinite;"><circle cx="16" cy="16" r="12" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="56 20" stroke-linecap="round"/></svg>
+<div style="font-weight:600; font-size:13px; font-family:'JetBrains Mono',monospace;">Loading preferences...</div>
 </div>`;
 
   // 6. FETCH DATA
@@ -10627,29 +10627,50 @@ function renderCustomViewOptions(schema, visibleKeys) {
     div.appendChild(label);
     body.appendChild(div);
   });
+
+  // Highlight preset button matching the currently saved view (if any)
+  setActivePresetBtn(detectActivePreset(activeKeys));
 }
 
 function toggleAllView(state) {
-  const chks = document.querySelectorAll(".view-chk");
-  chks.forEach(c => {
+  document.querySelectorAll(".view-chk").forEach(c => {
     if (!c.disabled) c.checked = state;
   });
+  setActivePresetBtn(null);
+}
+
+const VIEW_PRESETS = {
+  cabling:     ['int'],
+  transceiver: ['int', 'xcvr'],
+  speed:       ['int', 'xcvr', 'et_speed', 'xcvr_speed'],
+  po:          ['int', 'po'],
+  mode:        ['int', 'po', 'sp_mode'],
+  vlan:        ['int', 'po', 'sp_mode', 'vlan'],
+};
+
+function setActivePresetBtn(name) {
+  document.querySelectorAll('.view-preset-btn[data-preset]').forEach(b => b.classList.remove('active'));
+  if (name) {
+    const btn = document.querySelector(`.view-preset-btn[data-preset="${name}"]`);
+    if (btn) btn.classList.add('active');
+  }
+}
+
+function detectActivePreset(visibleKeys) {
+  for (const [name, keys] of Object.entries(VIEW_PRESETS)) {
+    if (keys.length === visibleKeys.length && keys.every(k => visibleKeys.includes(k))) return name;
+  }
+  return null;
 }
 
 function loadViewPreset(name) {
-  const presets = {
-    cabling:     ['int'],
-    transceiver: ['int', 'xcvr'],
-    speed:       ['int', 'xcvr', 'et_speed', 'xcvr_speed'],
-    po:          ['int', 'po'],
-    mode:        ['int', 'po', 'sp_mode'],
-    vlan:        ['int', 'po', 'sp_mode', 'vlan'],
-  };
-  const keys = presets[name];
+  const keys = VIEW_PRESETS[name];
   if (!keys) return;
   document.querySelectorAll('.view-chk').forEach(chk => {
     if (!chk.disabled) chk.checked = keys.includes(chk.value);
   });
+  setActivePresetBtn(name);
+  submitCustomView();
 }
 
 function submitCustomView() {
@@ -10658,11 +10679,6 @@ function submitCustomView() {
   document.querySelectorAll(".view-chk").forEach(c => {
     if (c.checked) selected.push(c.value);
   });
-  if (selected.length <= 1) {
-    if (!confirm("△ You have only selected the mandatory 'Interface' column. Most device data will be hidden on the spreadsheet. Proceed?")) {
-      return;
-    }
-  }
   setBtnLoading(btn, true, "Applying...");
   google.script.run
     .withSuccessHandler(() => {

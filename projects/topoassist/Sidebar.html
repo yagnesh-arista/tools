@@ -977,11 +977,12 @@
     </div>
     <div class="view-toolbar">
       <span class="view-label">Presets:</span>
-      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('cabling')">Cabling</button>
-      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('po')">Po</button>
-      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('mode')">Mode</button>
-      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('vlan')">VLAN</button>
-      <button class="btn-mono view-preset-btn" onclick="loadViewPreset('xcvr')">Xcvr</button>
+      <button class="btn-mono view-preset-btn" data-preset="cabling"     onclick="loadViewPreset('cabling')">Cabling</button>
+      <button class="btn-mono view-preset-btn" data-preset="transceiver" onclick="loadViewPreset('transceiver')">Transceiver</button>
+      <button class="btn-mono view-preset-btn" data-preset="speed"       onclick="loadViewPreset('speed')">Speed</button>
+      <button class="btn-mono view-preset-btn" data-preset="po"          onclick="loadViewPreset('po')">Po</button>
+      <button class="btn-mono view-preset-btn" data-preset="mode"        onclick="loadViewPreset('mode')">Mode</button>
+      <button class="btn-mono view-preset-btn" data-preset="vlan"        onclick="loadViewPreset('vlan')">Vlan</button>
       <span class="view-toolbar-sep"></span>
       <button class="btn-mono view-preset-btn" onclick="toggleAllView(true)">All</button>
       <button class="btn-mono view-preset-btn" onclick="toggleAllView(false)">None</button>
