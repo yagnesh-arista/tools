@@ -38,8 +38,8 @@
           },
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then result=$(cd $HOME/claude/projects/topoassist && python3 -m pytest tests/ -q 2>&1 | tail -1); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[PYTEST] $result \u2014 Deploy to Mac: scp bus-home:~/claude/projects/topoassist/device_bridge.py ~/device_bridge.py\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Running TopoAssist pytest..."
+            "command": "bash ~/.claude/hooks/topoassist-pytest-check.sh",
+            "statusMessage": "Running TopoAssist pytest + checking test coverage..."
           },
           {
             "type": "command",
@@ -48,7 +48,7 @@
           },
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -q '/topoassist/Code\\.gs'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[TESTS] If you added or changed a pure function in Code.gs, add cases to Tests.gs and run runAllTests() in the Apps Script editor.\\\"}}\"; fi 2>/dev/null || true",
+            "command": "bash ~/.claude/hooks/topoassist-gas-test-check.sh",
             "statusMessage": "Checking TopoAssist GAS test coverage..."
           },
           {
