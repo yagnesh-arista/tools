@@ -31,8 +31,6 @@ if [ -n "$status" ]; then
 fi
 
 if [ -n "$summary" ]; then
-    msg="[GIT] Uncommitted changes detected in:$summary. "
-    msg+="Remind the user to commit and push before ending the session to avoid losing work."
-    printf '{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"%s"}}' \
-        "$(echo "$msg" | sed 's/"/\\"/g')"
+    msg="[GIT] Uncommitted changes detected in:$summary. Remind the user to commit and push before ending the session."
+    printf '{"systemMessage":"%s"}' "$(echo "$msg" | sed 's/"/\\"/g')"
 fi
