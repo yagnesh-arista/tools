@@ -1,10 +1,10 @@
-// TopoAssist v260420.47 | 2026-04-20 03:15:15 | git commit: a0494fb
+// TopoAssist v260420.49 | 2026-04-20 03:23:04 | git commit: 8804d9f
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.47";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.49";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -765,9 +765,10 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
 
   // Build the complete set of expected row-2 headers from schema × devices.
   // Any column NOT in this set is an orphan — regardless of its header format.
+  const deviceNames = devices.map(function(d) { return d.name; });
   const expectedHeaders = new Set([DUMMY_VIS_HEADER]);
-  devices.forEach(function(d) {
-    targetKeys.forEach(function(k) { expectedHeaders.add(k + d); });
+  deviceNames.forEach(function(name) {
+    targetKeys.forEach(function(k) { expectedHeaders.add(k + name); });
   });
 
   const lastRow = mappingSheet.getLastRow();
@@ -793,9 +794,9 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
 
     // Display key: strip device-name suffix if present, else show raw header
     let displayKey = header;
-    for (let di = 0; di < devices.length; di++) {
-      if (header.endsWith(devices[di])) {
-        displayKey = header.slice(0, header.length - devices[di].length);
+    for (let di = 0; di < deviceNames.length; di++) {
+      if (header.endsWith(deviceNames[di])) {
+        displayKey = header.slice(0, header.length - deviceNames[di].length);
         break;
       }
     }

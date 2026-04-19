@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Conditional formatting Rule 5: pale-yellow xcvr_speed_ when empty AND xcvr_type native speed ≠ et_speed (breakout detected, fill in xcvr_speed for cable-group detection). QSFP28/QSFP100/DSFP→100g, QSFP56→200g, QSFP-DD/OSFP→400g/800g, QSFP+→40g, SFP28→25g, SFP+→10g/1g. Files: Code.gs)
+  Last updated: 2026-04-20 (Fix getOrphanedColumnsInfo: devices array holds objects; use d.name when building expectedHeaders and stripping suffix — previously k+d produced "int_[object Object]" causing all schema columns to appear as orphans. Files: Code.gs)
+  Previous: 2026-04-20 (Conditional formatting Rule 5: pale-yellow xcvr_speed_ when empty AND xcvr_type native speed ≠ et_speed (breakout detected, fill in xcvr_speed for cable-group detection). QSFP28/QSFP100/DSFP→100g, QSFP56→200g, QSFP-DD/OSFP→400g/800g, QSFP+→40g, SFP28→25g, SFP+→10g/1g. Files: Code.gs)
   Previous: 2026-04-20 (Migrate all getExistingAttributes callers to _getOrphanAttrKeys: syncSchemaPreservingOrder + saveDeviceConfiguration now use header-based orphan detection (schema×devices expected set). getExistingAttributes marked @deprecated. Files: Code.gs)
   Previous: 2026-04-20 (xcvr_type color rules: add QSFP100 → green-100 #dcfce7. Files: Code.gs)
   Previous: 2026-04-20 (Fix getOrphanedColumnsInfo: switch from key-extraction (getExistingAttributes) to header-based detection (schema×devices expected set). Old approach missed xcvr_-style orphans silently deleted by rebuildSheet. Files: Code.gs)
