@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
+# settings v260420.24 | 2026-04-20 03:58:46 | git commit: c1aadd1
 # topoassist-stamp.sh
 # On every Edit/Write of a TopoAssist GAS file:
 #   1. Auto-calculates date-based version: YYMMDD.N
@@ -36,7 +36,6 @@ N=$((COUNT + 1))
 VERSION="${YYMMDD}.${N}"
 
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
-COMMIT=$(git -C "$HOME/claude" rev-parse --short HEAD 2>/dev/null || echo "no-git")
 
 # ── Update APP_VERSION in Code.gs + Sidebar-js.html if it changed ───────────
 CURRENT_VER=$(grep 'const APP_VERSION' "$TOPODIR/Code.gs" 2>/dev/null \
@@ -64,9 +63,9 @@ fi
 make_stamp() {
   local path="$1"
   if [[ "$path" == *.gs ]]; then
-    echo "// TopoAssist v${VERSION} | ${DATETIME} | git commit: ${COMMIT}"
+    echo "// TopoAssist v${VERSION} | ${DATETIME}"
   else
-    echo "<!-- TopoAssist v${VERSION} | ${DATETIME} | git commit: ${COMMIT} -->"
+    echo "<!-- TopoAssist v${VERSION} | ${DATETIME} -->"
   fi
 }
 
