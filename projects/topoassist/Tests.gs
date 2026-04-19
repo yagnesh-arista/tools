@@ -22,6 +22,8 @@
  *   parseVlanWithNative      — split nv<N> native-VLAN token out of vlan_ field
  */
 
+const TESTS_VERSION = "1.1";  // bump when tests are added or changed
+
 
 // ── Test assertion helper ──────────────────────────────────────────────────────
 
@@ -798,6 +800,8 @@ function runAllTests() {
     { name: "generateSnakeStaticConfig",      fn: test_generateSnakeStaticConfig },
   ];
 
+  Logger.log(`TopoAssist Tests v${TESTS_VERSION}`);
+
   let totalPass = 0;
   let totalFail = 0;
   const failLines = [];
@@ -829,6 +833,7 @@ function runAllTests() {
   if (failLines.length > 0) {
     alertMsg += "\n\nFailed:\n" + failLines.join("\n\n");
   }
-  SpreadsheetApp.getUi().alert(totalFail === 0 ? "All tests passed" : "Tests FAILED", alertMsg,
-    SpreadsheetApp.getUi().ButtonSet.OK);
+  SpreadsheetApp.getUi().alert(
+    `${totalFail === 0 ? "All tests passed" : "Tests FAILED"} (v${TESTS_VERSION})`,
+    alertMsg, SpreadsheetApp.getUi().ButtonSet.OK);
 }
