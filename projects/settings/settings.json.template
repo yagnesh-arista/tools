@@ -149,6 +149,39 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/prompt-secrets-scan.sh",
+            "statusMessage": "Scanning prompt for secrets..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/git-uncommitted-check.sh",
+            "statusMessage": "Checking for uncommitted changes..."
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/notify.sh",
+            "async": true
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {},
