@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.38 | 2026-04-20 02:35:25 | git commit: bec1e2c -->
+<!-- TopoAssist v260420.42 | 2026-04-20 02:50:23 | git commit: 7605abd -->
 <!DOCTYPE html>
 <html>
 
@@ -408,28 +408,28 @@
     <div class="ip-modal-body">
 
       <!-- 1. EXAMPLE (top, two-peer grid) -->
-      <div class="info-box info-box--dim">
-        <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1520</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">20</span></div>
+      <div class="info-box info-box--dim info-box--keep-colors">
+        <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1520</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">20</span> &nbsp;|&nbsp; <span style="color:#2563eb">blue</span>=configurable &nbsp;<span style="color:#d97706">amber</span>=VLAN &nbsp;<span style="color:#0891b2">teal</span>=device ID &nbsp;<span style="color:#16a34a">green</span>=computed</div>
         <div class="ip-example-peer-grid">
           <div></div>
-          <div class="ip-ex-peer-hdr">Device <span class="f-dyn">1</span></div>
-          <div class="ip-ex-peer-hdr">Device <span class="f-dyn">2</span></div>
+          <div class="ip-ex-peer-hdr">Device <span class="f-id">1</span></div>
+          <div class="ip-ex-peer-hdr">Device <span class="f-id">2</span></div>
 
           <div class="ip-ex-key">P2P IPv4</div>
-          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">1</span>/24</div>
-          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">2</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-id">1</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-id">2</span>/24</div>
 
           <div class="ip-ex-key">P2P IPv6</div>
-          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">1</span>/64</div>
-          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">2</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-id">1</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">200</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-id">2</span>/64</div>
 
           <div class="ip-ex-peer-sep"></div>
 
           <div class="ip-ex-key">GW IPv4</div>
           <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">(standalone)</span></div>
           <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG phy</div>
-          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">2</span>/24</div>
-          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-dyn">3</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">2</span>/24</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">3</span>/24</div>
           <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG vip</div>
           <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span> <span class="ip-ex-note">(ip virtual-router address)</span></div>
 
@@ -438,8 +438,8 @@
           <div class="ip-ex-key">GW IPv6</div>
           <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span>/64 <span class="ip-ex-note">(standalone)</span></div>
           <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG phy</div>
-          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">2</span>/64</div>
-          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-dyn">3</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">2</span>/64</div>
+          <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">3</span>/64</div>
           <div class="ip-ex-key ip-ex-sub">&#x21b3; MLAG vip</div>
           <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span> <span class="ip-ex-note">(ipv6 virtual-router address)</span></div>
 
@@ -449,8 +449,8 @@
           <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">10000</span> + <span class="f-dyn">1520</span> = <span class="ip-ex-result">11520</span></div>
 
           <div class="ip-ex-key">ASN</div>
-          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">1</span> = <span class="ip-ex-result">65001</span></div>
-          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-dyn">2</span> = <span class="ip-ex-result">65002</span></div>
+          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-id">1</span> = <span class="ip-ex-result">65001</span></div>
+          <div class="ip-ex-val"><span class="f-var">65000</span> + <span class="f-id">2</span> = <span class="ip-ex-result">65002</span></div>
         </div>
       </div>
 

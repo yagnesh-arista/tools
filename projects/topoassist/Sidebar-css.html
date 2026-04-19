@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.38 | 2026-04-20 02:33:57 | git commit: bec1e2c -->
+<!-- TopoAssist v260420.42 | 2026-04-20 02:49:42 | git commit: 7605abd -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================= */
   .icon-btn,
@@ -3015,12 +3015,14 @@
   }
   /* Dim all colored text elements */
   .info-box--dim .f-var,
-  .info-box--dim .f-dyn {
+  .info-box--dim .f-dyn,
+  .info-box--dim .f-id {
     color: #94a3b8;
     font-weight: normal;
   }
   .info-box--dim .ip-ex-note .f-var,
-  .info-box--dim .ip-ex-note .f-dyn {
+  .info-box--dim .ip-ex-note .f-dyn,
+  .info-box--dim .ip-ex-note .f-id {
     color: #b0bec5;
     font-weight: normal;
   }
@@ -3030,9 +3032,11 @@
   /* Formula key box */
   .info-box--dim .legend-label,
   .info-box--dim .legend-octet { color: #94a3b8; font-weight: 500; }
-  /* Keep-colors variant: restore f-var/f-dyn for the formula key legend */
+  /* Keep-colors variant: restore f-var/f-dyn/f-id for the formula key legend + example box */
   .info-box--dim.info-box--keep-colors .f-var { color: #2563eb; font-weight: bold; }
   .info-box--dim.info-box--keep-colors .f-dyn { color: #d97706; font-weight: bold; }
+  .info-box--dim.info-box--keep-colors .f-id { color: #0891b2; font-weight: bold; }
+  .info-box--dim.info-box--keep-colors .ip-ex-result { color: #16a34a; font-weight: 700; }
   /* Example box: compact row sizing */
   .info-box--dim .ip-example-linear {
     gap: 3px;
@@ -3085,11 +3089,14 @@
   }
 
   .ip-label {
-    width: 44px;
+    width: 80px;
     font-size: 12px;
     font-weight: 700;
     color: #64748b;
     flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: "JetBrains Mono", monospace;
     user-select: none;
     -webkit-user-select: none;
@@ -3354,6 +3361,12 @@
 
   .f-dyn {
     color: #d97706;
+    font-weight: bold
+  }
+
+  /* Device-ID color (teal): used in example to distinguish device ID from VLAN-derived values */
+  .f-id {
+    color: #0891b2;
     font-weight: bold
   }
 

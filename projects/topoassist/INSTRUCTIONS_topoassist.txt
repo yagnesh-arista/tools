@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (device_bridge.py: extract _build_devstatus_ssh() pure fn; add 8 tests covering partial SSH command failures (ver/ifs/ivlans each None, all None). VERSION 260420.2→260420.3. Files: device_bridge.py, Sidebar-js.html, tests/test_device_bridge.py)
+  Last updated: 2026-04-20 (Auto Config modal: add f-id (teal) color for device IDs in example; widen ip-label 44→80px; keep-colors on example box; MLAG phy computed octets use ip-ex-result. Files: Sidebar.html, Sidebar-css.html)
+  Previous: 2026-04-20 (device_bridge.py: extract _build_devstatus_ssh() pure fn; add 8 tests covering partial SSH command failures (ver/ifs/ivlans each None, all None). VERSION 260420.2→260420.3. Files: device_bridge.py, Sidebar-js.html, tests/test_device_bridge.py)
   Previous: 2026-04-20 (Force Sync orphan dialog: replace confirm() with _showOrphanConfirm() — explicit "Keep Columns" / "Delete Columns" inline modal, data-loss warning highlighted. Files: Sidebar-js.html)
   Previous: 2026-04-20 (device_bridge.py: guard ver/ifs None in _check_devstatus — failed SSH thread for one command no longer crashes others. VERSION 260420.1→260420.2. Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-19 (Auto Config modal: replace single-device example with two-peer CSS grid (Device 1 + Device 2 columns, P2P/GW/VNI/ASN rows); change .input-wrapper to flex-row so label is inline-left of input with explicit per-input widths. Files: Sidebar.html, Sidebar-css.html)
