@@ -6165,18 +6165,21 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
     var devAIsNonArista = ((devicesData[first.device]  || {}).type === 'non-arista');
     var devBIsNonArista = ((devicesData[second.device] || {}).type === 'non-arista');
 
-    var isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/');
-    var isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/');
-    var phyPortA    = (devAIsNonArista || !isBreakoutA) ? first.name  : getPhysicalPortParent(first.name);
-    var phyPortB    = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
-
     var speedA_raw = (first.details.xcvr_speed_  || first.details.et_speed_  || "").trim();
     var speedB_raw = (second.details.xcvr_speed_ || second.details.et_speed_ || "").trim();
     if (speedA_raw.toLowerCase() === 'auto') speedA_raw = '';
     if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
 
+    // Breakout grouping requires aggregate speed suffix (e.g. "100g-4").
+    // Slash alone is not sufficient — chassis native SFP ports (e.g. Et3/1) use
+    // slot/port notation but are NOT QSFP-DD breakout lanes.
     var aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     var aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+
+    var isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && !!aggA;
+    var isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && !!aggB;
+    var phyPortA    = (devAIsNonArista || !isBreakoutA) ? first.name  : getPhysicalPortParent(first.name);
+    var phyPortB    = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
 
     var groupKey;
     if      (isBreakoutA && !isBreakoutB && aggA)          groupKey = first.device + ':' + phyPortA + ' <-> ' + second.device;

@@ -10103,11 +10103,6 @@ function buildCableGroups() {
     // that is NOT a QSFP-DD breakout — suppress breakout detection for their side.
     const devAIsNonArista = allDevicesData[first.device]?.type === 'non-arista';
     const devBIsNonArista = allDevicesData[second.device]?.type === 'non-arista';
-    let isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/');
-    let isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/');
-    let phyPortA = (devAIsNonArista || !isBreakoutA) ? first.name : getPhysicalPortParent(first.name);
-    let phyPortB = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
-
     // xcvr_speed_ holds the physical transceiver speed (e.g. "100g-4" for QSFP-DD).
     // Fall back to et_speed_ if xcvr_speed_ is not set.
     let speedA_raw = (first.details.xcvr_speed_ || first.details.et_speed_ || "").trim();
@@ -10116,10 +10111,15 @@ function buildCableGroups() {
     if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
 
     // Breakout grouping requires xcvr_speed_ in aggregate format (e.g. "100g-4").
-    // Slash notation alone is not sufficient — devices like tuf317 use card/port slash
-    // (Et3/1, Et3/2...) for individual ports that are NOT QSFP-DD breakout lanes.
+    // Slash notation alone is not sufficient — chassis native SFP ports (e.g. Et3/1) use
+    // slot/port notation but are NOT QSFP-DD breakout lanes.
     const aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     const aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+
+    let isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && !!aggA;
+    let isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && !!aggB;
+    let phyPortA = (devAIsNonArista || !isBreakoutA) ? first.name : getPhysicalPortParent(first.name);
+    let phyPortB = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
 
     let groupKey;
     if (isBreakoutA && !isBreakoutB && aggA) {

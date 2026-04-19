@@ -616,7 +616,7 @@ function test_generateSnakeStaticConfig() {
     results.push(t("full single — no NH placeholder comments",
       out.includes('NH not set'), false));
     results.push(t("full single — no /32 routes emitted",
-      out.includes('ip route vrf SNAKE_Et2 10.') || out.includes('ip route vrf SNAKE_Et3 10.'), false));
+      /ip route vrf SNAKE_\S+ \S+\/32/.test(out), false));
   })();
 
   // ── T7: custom ep2_subnet only → fwdRoute is /24, no reverse routes ──────
