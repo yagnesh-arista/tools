@@ -238,7 +238,7 @@ function showSheetAssistPanel() {
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
-    .setWidth(580)
+    .setWidth(490)
     .setHeight(550);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
 }
@@ -577,7 +577,7 @@ function showDeviceManagerUi() {
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
 
-  const html = template.evaluate().setWidth(800).setHeight(800).setTitle('Device Manager');
+  const html = template.evaluate().setWidth(950).setHeight(800).setTitle('Device Manager');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Device Manager');
 }
 

@@ -10,3 +10,7 @@ Files: projects/topoassist/Sidebar.html, projects/topoassist/Sidebar-js.html, pr
 
 **Why it failed:** GAS dialogs have a hard ~1050px width cap and the iframe sandbox blocks the native browser Fullscreen API (`allowfullscreen` attribute not set by GAS). `google.script.host.setWidth/setHeight` cannot exceed these limits. Do not attempt fullscreen again for GAS-hosted projects.
 
+
+## 2026-04-19 | topoassist | ac18352
+**Reverted SheetAssistPanel.html width changes (dialog 490→580, col-left 230→280) — wrong target; user wanted Device Manager widened, not Sheet View.**
+Files: Code.gs (setWidth 580→490), SheetAssistPanel.html (col-left 280→230)
