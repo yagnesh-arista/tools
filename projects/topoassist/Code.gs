@@ -3,6 +3,8 @@
  * CONFIGURATION CONSTANTS
  * -------------------
  */
+const APP_VERSION = "4.4";  // bump on every release; keep in sync with Sidebar-js.html
+
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
   const custom = PropertiesService.getScriptProperties().getProperty('TARGET_SHEET_NAME');
@@ -561,7 +563,7 @@ function showTopologyWindow() {
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
 
-  const html = template.evaluate().setWidth(1600).setHeight(900).setTitle('Live Network Topology v4.4');
+  const html = template.evaluate().setWidth(1600).setHeight(900).setTitle(`Live Network Topology v${APP_VERSION}`);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
 }
 
