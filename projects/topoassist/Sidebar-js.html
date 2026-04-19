@@ -172,8 +172,13 @@ function debounce(func, wait) {
 * 2. APP LIFECYCLE
 * ==========================================
 */
+// Debug toggle: run localStorage.setItem('topoassist_debug','1') in browser console + reload to enable.
+// Run localStorage.removeItem('topoassist_debug') + reload to disable.
+function dbg(...a) { if (localStorage.getItem('topoassist_debug') === '1') console.log(...a); }
+
 // 1. Safe Mode Capture
 const currentMode = (typeof START_MODE !== 'undefined') ? START_MODE : "topology";
+dbg("Starting Mode:", currentMode);
 
 // 2. Apply CSS Class Immediately
 // Clear any existing modes first to be safe
@@ -296,6 +301,7 @@ function initApp() {
   initToolbarCollapse();
   applyValidationState();
   applyBoldTextPref();
+  dbg("Initializing App in mode:", currentMode);
 
   if (currentMode === 'manager') {
     openDeviceManager();
@@ -324,11 +330,13 @@ function initApp() {
     // This populates 'savedNodePositions' so the first render sees the X/Y coords
     loadStateFromStorage(currentViewMode);
     loadGroupRects();
+    dbg("Loaded positions for mode:", currentViewMode, Object.keys(savedNodePositions).length + " nodes.");
 
     // 3. Try Instant Restore from Session Storage (Data Cache)
     const cachedData = loadFromSession();
 
     if (cachedData) {
+      dbg("Instant Restore from Session");
 
       // Render based on the saved mode
       if (currentViewMode === 'holistic') {
@@ -407,6 +415,7 @@ function startSmartPolling() {
     google.script.run
       .withSuccessHandler(serverVersion => {
         if (serverVersion && serverVersion !== localDataVersion) {
+          dbg("Change detected (v" + serverVersion + ")! Refreshing...");
           localDataVersion = serverVersion;
           fetchData(false);
         }
@@ -1022,6 +1031,7 @@ function saveDeviceChanges() {
       renderManagerList(); // Will now render Blue IDs (e.g. "2")
 
       // 2. TRIGGER REFRESH
+      dbg("Triggering Auto-Refresh...");
       if (typeof showGlobalLoading === 'function') showGlobalLoading("Updating Topology...");
       if (typeof fetchData === "function") fetchData(true);
 
@@ -1086,6 +1096,7 @@ function saveDeviceChanges() {
     // If hostnames were saved after the version bump, a poller-triggered fetch
     // could read stale (empty) hostname data and cache it, then block the
     // forced refresh in handleSuccess via the isFetching guard.
+    dbg("Fast Path: Saving hostnames then visibility + labels...");
     btn.innerText = "Saving...";
 
     google.script.run
@@ -1102,6 +1113,7 @@ function saveDeviceChanges() {
     // 🐢 SLOW PATH (Reorder/Rename + Visibility + Labels)
     // Pass hostnamesMap to processDeviceBatch so it saves hostnames BEFORE
     // bumping DATA_VERSION — same race-condition fix as the fast path.
+    dbg("Slow Path: Rebuilding sheet...");
     btn.innerText = "Reordering Sheet...";
     showGlobalLoading('🔍 Preparing sheet rebuild...');
     const rebuildPollTimer = setInterval(() => {
@@ -5760,6 +5772,7 @@ AUDIT LOGIC (Copy & Paste this block)
 
 function runSchemaAudit() {
   const btn = document.getElementById("btnAudit");
+  dbg("runSchemaAudit triggered");
 
   // Safety check
   if (!btn) { console.error("Audit button not found"); return; }
@@ -5773,6 +5786,7 @@ function runSchemaAudit() {
 
   google.script.run
     .withSuccessHandler(res => {
+      dbg("Schema audit: server responded", res);
       setUiBusy(false);
       btn.innerHTML = origHtml; // Restore button
 
@@ -7784,6 +7798,7 @@ function startBackgroundPrefetch() {
   prefetchTotal = prefetchQueue.length;
 
   if (prefetchTotal === 0) return;
+  dbg(`Starting background pre-fetch for ${prefetchTotal} devices...`);
 
   let st = document.getElementById("status");
 
@@ -7792,6 +7807,7 @@ function startBackgroundPrefetch() {
     // Stop if queue is empty
     if (prefetchQueue.length === 0) {
       stopBackgroundPrefetch();
+      dbg("Background pre-fetching complete.");
 
       // Show subtle completion message in status bar
       if (st) {
@@ -7876,6 +7892,11 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
     });
 
     invalidate.forEach(name => { delete configCache[name]; });
+    if (invalidate.size > 0) {
+      dbg(`Config cache: invalidated ${invalidate.size} device(s):`, [...invalidate]);
+    } else {
+      dbg('Config cache: all devices unchanged.');
+    }
   } catch (e) {
     // Safety net — full clear on any unexpected error
     console.warn('_selectiveConfigInvalidate failed, falling back to full clear:', e);
@@ -7940,6 +7961,7 @@ function fetchData(force, autoVerify, silent) {
     // Exception: force=true (manual refresh) clears configCache entirely so fresh configs are fetched.
     if (force) {
       configCache = {};
+      dbg('Manual refresh: config cache cleared');
     }
     if (!silent) {
       for (let key in allNodesData) delete allNodesData[key];
@@ -7983,6 +8005,7 @@ function fetchData(force, autoVerify, silent) {
         console.warn("Session Storage Full or Disabled", e);
       }
 
+      dbg("Topology Data Received:", data);
       if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
 
       if (data.error) {
@@ -8812,9 +8835,11 @@ function _getLinkSig() {
 // Fires only after fetchData() sets _topologyReady=true; never on stale session-restored data.
 function _autoRunLldp() {
   if (!_topologyReady || !currentData || !currentData.nodes) {
+    dbg('Auto-LLDP: skipped — topology not ready yet');
     return;
   }
   const autoIps = _getLldpMgmtIps();
+  dbg('Auto-LLDP: triggered — running LLDP + device status check');
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
   if (st)  { st.innerHTML = 'Running LLDP check\u2026'; st.style.color = '#0369a1'; }
@@ -8836,11 +8861,15 @@ function _autoRunLldp() {
   ]).then(([lldpResult, devResult]) => {
     _done();
     if (lldpResult.status === 'fulfilled') {
+      dbg('Auto-LLDP: LLDP results received');
       const { results, orphans } = _compareLldpData(lldpResult.value);
       _renderLldpResults(results, orphans);
       applyLldpIndicators();
+    } else {
+      dbg('Auto-LLDP: LLDP fetch failed —', lldpResult.reason);
     }
     if (devResult.status === 'fulfilled') {
+      dbg('Auto-LLDP: device status received');
       devStatusMap = devResult.value;
       deviceInternalVlans = {};
       Object.entries(devStatusMap).forEach(([devId, ds]) => {
@@ -8850,10 +8879,12 @@ function _autoRunLldp() {
       _autoDetectBridgeMac(devStatusMap);
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
+    } else {
+      dbg('Auto-LLDP: device status fetch failed —', devResult.reason);
     }
     if (isValidationMode) runValidation();
     if (st) { st.innerHTML = '<b>LLDP check complete</b>'; st.style.color = '#15803d'; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 3000); }
-  }).catch(err => { _done(); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
+  }).catch(err => { _done(); dbg('Auto-LLDP: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
 }
 
 function toggleLldpMinimize() {
@@ -10614,10 +10645,13 @@ function initCustomViewManager() {
 </div>`;
 
   // 6. FETCH DATA
+  dbg("Custom View: requesting schema...");
   google.script.run
     .withSuccessHandler(function (schema) {
+      dbg("Custom View: schema received", schema.length, "items");
       google.script.run
         .withSuccessHandler(function (savedKeys) {
+          dbg("Custom View: prefs received", savedKeys);
           renderCustomViewOptions(schema, savedKeys);
         })
         .withFailureHandler(function (err) {
