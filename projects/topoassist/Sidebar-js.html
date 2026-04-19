@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.23 | 2026-04-20 01:27:30 | git commit: 743e89a -->
+<!-- TopoAssist v260420.28 | 2026-04-20 01:44:37 | git commit: b9c8b23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-19
-const APP_VERSION = "260420.23";  // keep in sync with Code.gs
+const APP_VERSION = "260420.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2965,21 +2965,12 @@ function handleCopy(text, btnId) {
   const btn = document.getElementById(btnId);
   const wrapper = btn ? btn.closest('.split-btn') : null;
 
-  // 1. Perform Copy
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  document.body.appendChild(textArea);
-  textArea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textArea);
-
-  // 2. Visual Feedback: Copy button → "✔ Copied", wrapper → blue
-  if (btn) {
+  // 1. Visual Feedback helper
+  const doFeedback = () => {
+    if (!btn) return;
     const originalLabel = btn.innerText;
     btn.innerText = "✔ Copied";
     if (wrapper) wrapper.style.background = "#3b82f6";
-
-    // 3. Revert after 2 seconds
     setTimeout(() => {
       btn.innerText = originalLabel;
       if (wrapper) {
@@ -2988,6 +2979,21 @@ function handleCopy(text, btnId) {
         wrapper.style.background = isReady ? "#10b981" : "#f59e0b";
       }
     }, 2000);
+  };
+
+  // 2. Perform Copy — navigator.clipboard primary, execCommand fallback
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(() => {
+      alert("Copy failed. Please select and copy manually.");
+    });
+  } else {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); doFeedback(); } catch(e) { alert("Copy failed."); }
+    document.body.removeChild(ta);
   }
 }
 
