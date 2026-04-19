@@ -1,10 +1,10 @@
-// TopoAssist v260420.45 | 2026-04-20 03:08:35 | git commit: a011115
+// TopoAssist v260420.46 | 2026-04-20 03:11:16 | git commit: 742f256
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.45";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.46";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -824,9 +824,9 @@ function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, delete
   const schemaArray = optionalForcedSchema || getSchemaConfig();
   let targetKeys = schemaArray.map(item => item.key + "_");
 
-  // 2. Identify "Orphaned" Columns
-  let currentKeys = getExistingAttributes(mappingSheet);
-  const orphanedCols = currentKeys.filter(k => !targetKeys.includes(k));
+  // 2. Identify "Orphaned" Columns — header-based (schema×devices expected set)
+  const currentDevices = getExistingDevices();
+  const orphanedCols = _getOrphanAttrKeys(mappingSheet, targetKeys, currentDevices.map(d => d.name));
 
   if (orphanedCols.length > 0) {
     let shouldDelete;
@@ -852,8 +852,7 @@ function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, delete
     }
   }
 
-  // 3. Get Devices
-  const currentDevices = getExistingDevices();
+  // 3. Verify Devices
   if (currentDevices.length === 0) {
     ui.alert("Schema Saved", "No devices found.", ui.ButtonSet.OK);
     return;
@@ -900,8 +899,7 @@ function saveDeviceConfiguration(finalDeviceList) {
     let targetKeys = schemaArray.map(item => item.key + "_");
 
     if (mappingSheet) {
-      let currentKeys = getExistingAttributes(mappingSheet);
-      const orphanedCols = currentKeys.filter(k => !targetKeys.includes(k));
+      const orphanedCols = _getOrphanAttrKeys(mappingSheet, targetKeys, currentList.map(d => d.name));
 
       // During Device Reorder, we ALWAYS Keep orphans.
       // We don't ask, because the user is focused on Devices, not Schema.

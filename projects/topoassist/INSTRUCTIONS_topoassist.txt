@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (xcvr_type color rules: add QSFP100 → green-100 #dcfce7. Files: Code.gs)
+  Last updated: 2026-04-20 (Migrate all getExistingAttributes callers to _getOrphanAttrKeys: syncSchemaPreservingOrder + saveDeviceConfiguration now use header-based orphan detection (schema×devices expected set). getExistingAttributes marked @deprecated. Files: Code.gs)
+  Previous: 2026-04-20 (xcvr_type color rules: add QSFP100 → green-100 #dcfce7. Files: Code.gs)
   Previous: 2026-04-20 (Fix getOrphanedColumnsInfo: switch from key-extraction (getExistingAttributes) to header-based detection (schema×devices expected set). Old approach missed xcvr_-style orphans silently deleted by rebuildSheet. Files: Code.gs)
   Previous: 2026-04-20 (Conditional formatting: fix dead 'speed' rule → 'et_speed'+'xcvr_speed' via shared _SPEED_COLOR_RULES; add Rule 4 — amber xcvr_speed_ when et_speed==xcvr_speed (lane-split attention). Files: Code.gs)
   Previous: 2026-04-20 (Auto Config modal: add f-id (teal) color for device IDs in example; widen ip-label 44→80px; keep-colors on example box; MLAG phy computed octets use ip-ex-result. Files: Sidebar.html, Sidebar-css.html)
