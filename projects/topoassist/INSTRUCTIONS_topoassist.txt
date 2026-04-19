@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-19 (Rename ip-info-box → info-box (generic): ip-info-box/ip-info-box--dim/ip-info-box--keep-colors → info-box/info-box--dim/info-box--keep-colors across Sidebar.html + Sidebar-css.html; class is now a universal pattern not tied to IP config feature. Files: Sidebar.html, Sidebar-css.html)
+  Last updated: 2026-04-19 (clasp deploy: documented login process (--no-localhost) + auto-push hook. Section 3 rewritten with clasp workflow, re-auth steps, script ID. topoassist-deploy-tracker.sh now runs clasp push automatically after GAS file edits; reports OK/FAILED with error. check-deploy.md updated to reflect clasp workflow. Files: INSTRUCTIONS_topoassist.txt, .claude/commands/check-deploy.md, ~/.claude/hooks/topoassist-deploy-tracker.sh)
+  Previous: 2026-04-19 (Rename ip-info-box → info-box (generic): ip-info-box/ip-info-box--dim/ip-info-box--keep-colors → info-box/info-box--dim/info-box--keep-colors across Sidebar.html + Sidebar-css.html; class is now a universal pattern not tied to IP config feature. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-19 (Auto Config info boxes: dim all static reference boxes — auto-derived (info-box--dim) and formula key (info-box--dim info-box--keep-colors); CSS extended: .auto-fixed-label/.auto-fixed-formula → #94a3b8; .legend-label/.legend-octet → #94a3b8; keep-colors variant restores f-var/#2563eb + f-dyn/#d97706 for formula key color legend. Warning banners intentionally excluded. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-19 (Network Tech Stack modal label renames: "GATEWAY" → "GATEWAY (GW) INTERFACE"; "P2P INTERFACE" → "POINT-TO-POINT (P2P) INTERFACE"; removed "SVI · Sub-Int · L3 Port" italic hint span from gateway row. File: Sidebar.html)
   Previous: 2026-04-19 (Debug Logging UI toggle: added "Debug Logging" checkbox to Schema Manager footer (Sidebar.html left footer-group). toggleDebugLogging(on) sets/removes localStorage 'topoassist_debug' key; dbg() reads on every call so toggle is live — no reload needed. initSchemaManager() syncs checkbox to current localStorage state on open. Files: Sidebar.html, Sidebar-js.html)
@@ -426,7 +427,34 @@ All files live in: ~/claude/projects/topoassist/
 SECTION 3: GOOGLE APPS SCRIPT DEPLOYMENT
 --------------------------------------------------------------------------------
 
-SETUP STEPS:
+DEPLOY METHOD (bus-home, 2026-04-19+):
+  clasp is configured for direct push from bus-home. No manual copy-paste needed.
+
+  Files:
+    ~/claude/projects/topoassist/.clasp.json   — script ID + rootDir (committed)
+    ~/claude/projects/topoassist/appsscript.json — GAS manifest (committed)
+
+  Push all 7 GAS files:
+    cd ~/claude/projects/topoassist && clasp push
+
+  The PostToolUse hook auto-runs clasp push after every GAS file edit.
+
+  Script ID: 1NL5x7CnPy2Rceet87qUTWlYxfqWaRC19pk5f1zpQR6k5FWf53BQ2JfDJ
+  GAS Editor: https://script.google.com/u/0/home/projects/1NL5x7CnPy2Rceet87qUTWlYxfqWaRC19pk5f1zpQR6k5FWf53BQ2JfDJ/edit
+
+CLASP AUTH (headless server — run once per machine):
+  clasp login --no-localhost
+  → Prints an OAuth URL. Open it in any browser.
+  → After authorizing, Google redirects to localhost:8888/?code=... (browser shows "This site can't be reached").
+  → Copy the full URL from the browser address bar and paste it back in the terminal.
+  → Credentials saved to ~/.clasprc.json. No expiry — persists until revoked.
+
+  Re-auth needed if: ~/.clasprc.json deleted, token revoked, or "Error: 401" on clasp push.
+
+  Enable Apps Script API first (required): https://script.google.com/home/usersettings
+    → Toggle "Google Apps Script API" ON.
+
+INITIAL SETUP STEPS (new spreadsheet):
   1. Create a new Google Spreadsheet.
   2. Open Extensions > Apps Script.
   3. Create 5 files matching the names above (Code.gs already exists by default).
