@@ -135,6 +135,14 @@ function test_parseSviVlans() {
       _parseSviVlans('all', [10, 20]),              [10, 20]),
     t("whitespace in svi_vlan_ value",
       _parseSviVlans(' 10 , 20 ', ['10', '20']),   ['10', '20']),
+    t("nv<N> token in svi_vlan_ → resolves to N, returns if in vlans array",
+      _parseSviVlans('nv100', ['10', '20', '100']), ['100']),
+    t("nv<N> token not in vlans array → empty",
+      _parseSviVlans('nv100', ['10', '20']),        []),
+    t("nv<N> mixed with regular VLANs",
+      _parseSviVlans('10,nv100', ['10', '20', '100']), ['10', '100']),
+    t("all includes native VLAN when caller passes it",
+      _parseSviVlans('all', ['10', '20', '100']),  ['10', '20', '100']),
   ];
 }
 

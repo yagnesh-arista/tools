@@ -3477,10 +3477,11 @@ function compressVlanRanges(numberSet) {
 
 /**
  * Returns the subset of vlans that should get SVIs, based on svi_vlan_ value.
- * svi_vlan_ = 'all' (or blank with any truthy alias) → all vlans
+ * svi_vlan_ = 'all' → all vlans (including native VLAN if present in vlans array)
  * svi_vlan_ = '10' or '10,20' → only those VLAN IDs that exist in vlans
+ * svi_vlan_ = 'nv100' → VLAN 100 (native VLAN shorthand), if 100 is in vlans
  * svi_vlan_ = '' / undefined → [] (no SVIs)
- * vlans: Array of VLAN IDs (numbers or numeric strings) from vlan_ column.
+ * vlans: Array of VLAN IDs (numbers or numeric strings) — caller must include native VLAN if desired.
  * Returns an array of the same element type as vlans.
  */
 function _parseSviVlans(sviVlanVal, vlans) {
@@ -3489,7 +3490,11 @@ function _parseSviVlans(sviVlanVal, vlans) {
   const arr = Array.isArray(vlans) ? vlans : Array.from(vlans);
   if (v === 'all') return arr;
   const requested = new Set(
-    String(sviVlanVal).split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+    String(sviVlanVal).split(',').map(function(s) {
+      s = s.trim();
+      const nv = s.match(/^nv(\d+)$/i);  // nv<N> → VLAN N
+      return nv ? parseInt(nv[1], 10) : parseInt(s, 10);
+    }).filter(function(n) { return !isNaN(n); })
   );
   return arr.filter(x => requested.has(parseInt(x, 10)));
 }
@@ -3700,7 +3705,9 @@ function getDeviceConfig(deviceName) {
       const cfg2 = ipPrefs || getIpPreferences();
       const sviLines = [];
       vx1Entries.forEach(d => {
-        const apVlans = expandVlanString(String(d.vlan_ || ""));
+        const _pvAp = parseVlanWithNative(d.vlan_);
+        const apVlans = expandVlanString(String(_pvAp.vlans || ""));
+        if (_pvAp.native) apVlans.add(parseInt(_pvAp.native));
         const apSviVlans = _parseSviVlans(d.svi_vlan_, Array.from(apVlans));
         if (apSviVlans.length > 0) {
           apSviVlans.forEach(v => {
@@ -4207,10 +4214,13 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   // Use provided prefs or fetch defaults
   const cfg = ipPrefs || getIpPreferences();
 
-  // PARSING: Filter for valid numbers only
-  let vlans = String(d.vlan_).split(",")
+  // PARSING: Filter for valid numbers only (strip nv<N> token)
+  const _pvL3 = parseVlanWithNative(d.vlan_);
+  let vlans = String(_pvL3.vlans || "").split(",")
     .map(s => s.trim())
     .filter(s => s !== "" && !isNaN(parseInt(s)));
+  // vlansForSvi includes native VLAN so it can receive an SVI too
+  const vlansForSvi = _pvL3.native ? vlans.concat([_pvL3.native]) : vlans;
 
   // ERROR HANDLING
   if (vlans.length === 0) {
@@ -4326,7 +4336,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   let block = "";
 
   // 1. SVI (Vlan Interface)
-  const sviVlans = _parseSviVlans(d.svi_vlan_, vlans);
+  const sviVlans = _parseSviVlans(d.svi_vlan_, vlansForSvi);
   if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakePrimary && !d.isSnakeSecondary) {
     sviVlans.forEach(v => {
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
@@ -4549,6 +4559,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   const mode = (String(details.sp_mode_ || "")).toLowerCase();
   const _pv = parseVlanWithNative(details.vlan_);
   const vlans = Array.from(expandVlanString(String(_pv.vlans || "")));
+  const vlansForSvi = _pv.native ? vlans.concat([_pv.native]) : vlans;
   const l3IntNames = [];
   const poVal = normalizePo(details.po_);
 
@@ -4557,7 +4568,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   else if (mode.includes("l3-et-sub-int")) vlans.forEach(v => l3IntNames.push(`${pName}.${v}`));
   else if (mode.includes("l3-po-int") && poVal) l3IntNames.push(poVal);
   else if (mode.includes("l3-et-int")) l3IntNames.push(pName);
-  else if (mode.startsWith("l2-")) _parseSviVlans(details.svi_vlan_, vlans).forEach(v => l3IntNames.push(`Vlan${v}`));
+  else if (mode.startsWith("l2-")) _parseSviVlans(details.svi_vlan_, vlansForSvi).forEach(v => l3IntNames.push(`Vlan${v}`));
 
   // Calculate IPs
   let val = 0;
