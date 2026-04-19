@@ -10433,18 +10433,22 @@ function downloadCablingReport(mode) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
-// --- HELPER: Identify Physical Container ---
-// Returns "Et1/1" for input "Et1/4". Returns "Et5" for "Et5".
+// --- HELPER: Normalize breakout port to lane-1 anchor ---
+// Normalizes the lane suffix to /1 so all lanes of the same physical transceiver
+// collapse to one key. Returns a valid EOS port name:
+//   Et14/4  → Et14/1  (pizza-box QSFP-DD lane 4 → lane-1 anchor)
+//   Et5/22/3 → Et5/22/1 (modular chassis lane 3 → lane-1 anchor)
+//   Et14/1  → Et14/1  (already lane 1, unchanged)
+//   Et5     → Et5     (no slash, returned as-is)
 // DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
 // Speed regex: /^(\d+(?:\.\d+)?)[gt]-(\d+)$/i — matches both "100g-4" and "1.6t-8".
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
-  // Strip the lane suffix: Et14/4 → Et14, Et1/1/2 → Et1/1
   const parts = portName.split('/');
   if (parts.length > 1) {
     const last = parts[parts.length - 1];
     if (!isNaN(parseInt(last))) {
-      parts.pop();
+      parts[parts.length - 1] = '1';
       return parts.join('/');
     }
   }

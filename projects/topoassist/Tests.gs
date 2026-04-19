@@ -142,19 +142,20 @@ function test_parseSviVlans() {
 
 function test_getPhysicalPortParent() {
   const t = assert_;
-  // IMPORTANT: On pizza-box switches, Et14/1 is a native hardcoded interface name —
-  // NOT a breakout lane. The aggX guard (xcvr_speed_ must match Xg-N) in
-  // buildCableGroups ensures getPhysicalPortParent is never called for native pizza-box
-  // ports. This function is only called for confirmed QSFP-DD breakout ports where
-  // xcvr_speed_ is aggregate (e.g. "100g-4"). The realistic stripping case in this
-  // environment is modular chassis 3-level ports: Et5/22/1 → Et5/22.
+  // Normalizes the lane suffix to /1 so all breakout lanes of the same physical
+  // transceiver collapse to a single lane-1 anchor (a valid EOS port name).
+  // The aggX guard in buildCableGroups ensures this is only called for confirmed
+  // QSFP-DD breakout ports (xcvr_speed_ matches Xg-N or Xt-N format).
   return [
-    t("null → empty string",                           getPhysicalPortParent(null),      ""),
-    t("empty string → empty string",                   getPhysicalPortParent(""),        ""),
-    t("Et1 (no slash) → unchanged",                   getPhysicalPortParent("Et1"),     "Et1"),
-    t("Et5/22/1 modular breakout lane → Et5/22",      getPhysicalPortParent("Et5/22/1"), "Et5/22"),
-    t("Et1/1/2 multi-level breakout → Et1/1",         getPhysicalPortParent("Et1/1/2"), "Et1/1"),
-    t("Et5/abc non-numeric last part → unchanged",    getPhysicalPortParent("Et5/abc"), "Et5/abc"),
+    t("null → empty string",                              getPhysicalPortParent(null),       ""),
+    t("empty string → empty string",                      getPhysicalPortParent(""),         ""),
+    t("Et1 (no slash) → unchanged",                      getPhysicalPortParent("Et1"),      "Et1"),
+    t("Et14/1 pizza-box lane 1 → unchanged",             getPhysicalPortParent("Et14/1"),   "Et14/1"),
+    t("Et14/4 pizza-box lane 4 → Et14/1",                getPhysicalPortParent("Et14/4"),   "Et14/1"),
+    t("Et5/22/1 modular lane 1 → unchanged",             getPhysicalPortParent("Et5/22/1"), "Et5/22/1"),
+    t("Et5/22/3 modular lane 3 → Et5/22/1",             getPhysicalPortParent("Et5/22/3"), "Et5/22/1"),
+    t("Et1/1/2 multi-level → Et1/1/1",                   getPhysicalPortParent("Et1/1/2"),  "Et1/1/1"),
+    t("Et5/abc non-numeric last part → unchanged",       getPhysicalPortParent("Et5/abc"),  "Et5/abc"),
   ];
 }
 
@@ -258,11 +259,11 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("Scenario A — collapsed into 1 group",     keys.length, 1));
-    results.push(t("Scenario A — key uses phyPort on both",   keys[0], "leaf1:Et14 <-> spine1:Et48"));
+    results.push(t("Scenario A — key uses phyPort on both",   keys[0], "leaf1:Et14/1 <-> spine1:Et48/1"));
     results.push(t("Scenario A — isBreakoutA true",           g[keys[0]].isBreakoutA, true));
     results.push(t("Scenario A — isBreakoutB true",           g[keys[0]].isBreakoutB, true));
-    results.push(t("Scenario A — phyA is Et14",               g[keys[0]].phyA, "Et14"));
-    results.push(t("Scenario A — phyB is Et48",               g[keys[0]].phyB, "Et48"));
+    results.push(t("Scenario A — phyA is Et14/1",             g[keys[0]].phyA, "Et14/1"));
+    results.push(t("Scenario A — phyB is Et48/1",             g[keys[0]].phyB, "Et48/1"));
     results.push(t("Scenario A — 4 links in group",           g[keys[0]].links.length, 4));
   })();
 
@@ -278,10 +279,10 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("Scenario C — collapsed into 1 group",     keys.length, 1));
-    results.push(t("Scenario C — key uses phyPortA, plain B", keys[0], "leaf1:Et14 <-> server1"));
+    results.push(t("Scenario C — key uses phyPortA, plain B", keys[0], "leaf1:Et14/1 <-> server1"));
     results.push(t("Scenario C — isBreakoutA true",           g[keys[0]].isBreakoutA, true));
     results.push(t("Scenario C — isBreakoutB false",          g[keys[0]].isBreakoutB, false));
-    results.push(t("Scenario C — phyA is Et14",               g[keys[0]].phyA, "Et14"));
+    results.push(t("Scenario C — phyA is Et14/1",             g[keys[0]].phyA, "Et14/1"));
     results.push(t("Scenario C — 4 links in group",           g[keys[0]].links.length, 4));
   })();
 
@@ -335,10 +336,10 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("Case 3 (both slash, only A agg) — 1 group", keys.length, 1));
-    results.push(t("Case 3 — key uses phyA, plain devB",         keys[0], "leaf1:Et14 <-> spine1"));
+    results.push(t("Case 3 — key uses phyA, plain devB",         keys[0], "leaf1:Et14/1 <-> spine1"));
     results.push(t("Case 3 — isBreakoutA true",                  g[keys[0]].isBreakoutA, true));
     results.push(t("Case 3 — isBreakoutB true",                  g[keys[0]].isBreakoutB, true));
-    results.push(t("Case 3 — phyA is Et14",                      g[keys[0]].phyA, "Et14"));
+    results.push(t("Case 3 — phyA is Et14/1",                    g[keys[0]].phyA, "Et14/1"));
     results.push(t("Case 3 — 4 links in group",                  g[keys[0]].links.length, 4));
   })();
 
@@ -355,10 +356,10 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("Case 4 (both slash, only B agg) — 1 group", keys.length, 1));
-    results.push(t("Case 4 — key uses plain devA, phyB",         keys[0], "leaf1 <-> spine1:Et48"));
+    results.push(t("Case 4 — key uses plain devA, phyB",         keys[0], "leaf1 <-> spine1:Et48/1"));
     results.push(t("Case 4 — isBreakoutA true",                  g[keys[0]].isBreakoutA, true));
     results.push(t("Case 4 — isBreakoutB true",                  g[keys[0]].isBreakoutB, true));
-    results.push(t("Case 4 — phyB is Et48",                      g[keys[0]].phyB, "Et48"));
+    results.push(t("Case 4 — phyB is Et48/1",                    g[keys[0]].phyB, "Et48/1"));
     results.push(t("Case 4 — 4 links in group",                  g[keys[0]].links.length, 4));
   })();
 
@@ -375,10 +376,10 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("Scenario C (B is QSFP) — 1 group",     keys.length, 1));
-    results.push(t("Scenario C (B is QSFP) — key plain A, phyB", keys[0], "server1 <-> spine1:Et48"));
+    results.push(t("Scenario C (B is QSFP) — key plain A, phyB", keys[0], "server1 <-> spine1:Et48/1"));
     results.push(t("Scenario C (B is QSFP) — isBreakoutA false", g[keys[0]].isBreakoutA, false));
     results.push(t("Scenario C (B is QSFP) — isBreakoutB true",  g[keys[0]].isBreakoutB, true));
-    results.push(t("Scenario C (B is QSFP) — phyB is Et48",      g[keys[0]].phyB, "Et48"));
+    results.push(t("Scenario C (B is QSFP) — phyB is Et48/1",    g[keys[0]].phyB, "Et48/1"));
     results.push(t("Scenario C (B is QSFP) — 4 links in group",  g[keys[0]].links.length, 4));
   })();
 
@@ -394,7 +395,7 @@ function test_buildCableGroupsForTest() {
     const g = _buildCableGroupsForTest(links, nodes, devs);
     const keys = Object.keys(g);
     results.push(t("1.6t-8 Scenario C — collapsed to 1 group",   keys.length, 1));
-    results.push(t("1.6t-8 Scenario C — key uses phyPortA",       keys[0], "leaf1:Et14 <-> server1"));
+    results.push(t("1.6t-8 Scenario C — key uses phyPortA",       keys[0], "leaf1:Et14/1 <-> server1"));
     results.push(t("1.6t-8 Scenario C — isBreakoutA true",        g[keys[0]].isBreakoutA, true));
     results.push(t("1.6t-8 Scenario C — 8 links in group",        g[keys[0]].links.length, 8));
   })();

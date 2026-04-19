@@ -5998,9 +5998,10 @@ function activateRow(rowNum) {
 // ─────────────────────────────────────────────────────────────────
 
 /**
- * DUPLICATED in Sidebar-js.html. Strips the lane suffix from a breakout port name.
+ * DUPLICATED in Sidebar-js.html. Normalizes a breakout port to its lane-1 anchor.
  * Only called for confirmed QSFP-DD breakout ports (aggX guard in buildCableGroups).
- * Modular chassis: Et5/22/1 → Et5/22, Et1/1/2 → Et1/1. No slash: Et1 → Et1.
+ * Et14/4 → Et14/1, Et5/22/3 → Et5/22/1, Et14/1 → Et14/1, Et5 → Et5.
+ * Last synced: 2026-04-19
  */
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
@@ -6008,7 +6009,7 @@ function getPhysicalPortParent(portName) {
   if (parts.length > 1) {
     var last = parts[parts.length - 1];
     if (!isNaN(parseInt(last))) {
-      parts.pop();
+      parts[parts.length - 1] = '1';
       return parts.join('/');
     }
   }
