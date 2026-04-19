@@ -132,6 +132,15 @@ def _gnmi_val(response):
         return {}
 
 
+def _parse_internal_vlans(ivlans):
+    """Parse 'show vlan internal' JSON response into a sorted int list.
+
+    EOS returns: {"vlans": {"1025": {...}, "1026": {...}}}
+    Returns [] when the response is empty or the key is absent.
+    """
+    return sorted(int(vid) for vid in ivlans.get("vlans", {}).keys())
+
+
 def _extract_session_diff(output):
     """Extract 'show session-config diffs' text from raw SSH stdout.
 
@@ -556,9 +565,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     k: {"linkStatus": v.get("linkStatus", "")}
                     for k, v in ifs.get("interfaceStatuses", {}).items()
                 },
-                "internalVlans": sorted(
-                    int(vid) for vid in ivlans.get("vlans", {}).keys()
-                ),
+                "internalVlans": _parse_internal_vlans(ivlans),
             }
 
         if METHOD == "rest":

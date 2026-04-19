@@ -246,6 +246,39 @@ class TestGnmiVal:
         assert db._gnmi_val({"notification": [{"update": []}]}) == {}
 
 
+# ── _parse_internal_vlans ─────────────────────────────────────────────────────
+
+class TestParseInternalVlans:
+    def test_empty_dict(self):
+        # No vlans key at all → empty list
+        assert db._parse_internal_vlans({}) == []
+
+    def test_vlans_key_present_but_empty(self):
+        assert db._parse_internal_vlans({"vlans": {}}) == []
+
+    def test_single_vlan(self):
+        assert db._parse_internal_vlans({"vlans": {"1025": {}}}) == [1025]
+
+    def test_multiple_vlans_returned_sorted(self):
+        # EOS JSON key order is not guaranteed — must come back sorted
+        result = db._parse_internal_vlans({"vlans": {"1026": {}, "1024": {}, "1025": {}}})
+        assert result == [1024, 1025, 1026]
+
+    def test_string_keys_converted_to_int(self):
+        # JSON keys are always strings; must be integers in the output
+        result = db._parse_internal_vlans({"vlans": {"1025": {"name": "Ethernet1.100"}}})
+        assert result == [1025]
+        assert all(isinstance(v, int) for v in result)
+
+    def test_extra_top_level_keys_ignored(self):
+        # EOS may return other keys alongside "vlans"
+        result = db._parse_internal_vlans({
+            "vlans": {"1025": {}, "1026": {}},
+            "internalMaxVlan": 4094,
+        })
+        assert result == [1025, 1026]
+
+
 # ── _prepend_section_cleaners ──────────────────────────────────────────────────
 
 class TestPrependSectionCleaners:
