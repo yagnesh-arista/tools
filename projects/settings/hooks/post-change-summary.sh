@@ -35,7 +35,7 @@ while IFS= read -r rel; do
   ver=$(echo "$line1" | grep -oE 'v[0-9]+\.[0-9]+' | head -1)
   [ -z "$ver" ] && ver="(no stamp)"
 
-  file_lines="${file_lines}\n  ${fname}  ${ver}"
+  file_lines="${file_lines}"$'\n'"  ${fname}  ${ver}"
 
   # Track GAS files for clasp check
   if echo "$rel" | grep -q 'topoassist/' && echo "$GAS_NAMES" | grep -qw "$fname"; then
@@ -71,6 +71,9 @@ else
 fi
 
 # ── Build summary ─────────────────────────────────────────────────────────────
-SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — \"${COMMIT_MSG}\"\nFiles:${file_lines}\nGit:   ${git_status}\nClasp: ${clasp_status}"
+SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — ${COMMIT_MSG}
+Files:${file_lines}
+Git:   ${git_status}
+Clasp: ${clasp_status}"
 
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"${SUMMARY}\"}}"
+jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
