@@ -1,10 +1,10 @@
-// TopoAssist v260420.51 | 2026-04-20 03:36:56 | git commit: bad71cd
+// TopoAssist v260420.54 | 2026-04-20 03:49:54 | git commit: 4148999
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.51";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.54";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -792,15 +792,19 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
       }
     }
 
-    // Display key: strip device-name suffix if present, else show raw header
+    // Display key: strip device-name suffix if present, else show raw header.
+    // If no current device matched, this column belongs to a removed device —
+    // mark it so the dialog can show it as always-deleted (can't be kept).
     let displayKey = header;
+    let removedDevice = true;
     for (let di = 0; di < deviceNames.length; di++) {
       if (header.endsWith(deviceNames[di])) {
         displayKey = header.slice(0, header.length - deviceNames[di].length);
+        removedDevice = false;
         break;
       }
     }
-    orphans.push({ key: displayKey || '(blank)', hasData: hasData });
+    orphans.push({ key: displayKey || '(blank)', hasData: hasData, removedDevice: removedDevice });
   }
   return orphans;
 }
@@ -1722,7 +1726,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
       ].join('');
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(formula)
-        .setBackground("#fef9c3")  // pale-yellow: "fill in xcvr_speed for breakout"
+        .setBackground("#fed7aa")  // orange-200: "fill in xcvr_speed for breakout" (distinct from speed-tier #fef9c3=40g)
         .setRanges([range]).build());
     }
 
@@ -1982,8 +1986,10 @@ function _getOrphanAttrKeys(mappingSheet, targetKeys, deviceNames) {
     const header = String(row2[c]).trim();
     if (!header || expectedHeaders.has(header)) continue;
 
-    // Strip device-name suffix (longest match wins) to recover the attr key
-    let key = header;
+    // Strip device-name suffix (longest match wins) to recover the attr key.
+    // If no current device name matches, the column belongs to a removed device —
+    // skip it here (rebuildSheet can't preserve per-device data for missing devices).
+    let key = null;
     let matchLen = 0;
     for (let di = 0; di < deviceNames.length; di++) {
       const d = deviceNames[di];
