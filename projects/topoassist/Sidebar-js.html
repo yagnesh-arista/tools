@@ -2246,6 +2246,20 @@ function runValidation() {
       configErrors.push(`Native VLAN: nv${_pvAuditJ.native} in VLANs column is only valid on trunk ports — current mode is '${d.sp_mode_ || "blank"}'. Token will be ignored.`);
     }
 
+    // K. VLAN CONFLICTS WITH EOS INTERNAL VLANS (requires bridge check data)
+    const _intVlansForDev = deviceInternalVlans[(node.device || "").toLowerCase()] || [];
+    if (_intVlansForDev.length) {
+      const _vlanStr = [_pvAuditJ.vlans, _pvAuditJ.native].filter(Boolean).join(',');
+      if (_vlanStr) {
+        const _portVlans = [...parseVlanInput(_vlanStr)].map(v => parseInt(v)).filter(v => !isNaN(v));
+        const _conflicts = _portVlans.filter(v => _intVlansForDev.includes(v));
+        if (_conflicts.length) {
+          const pl = _conflicts.length > 1;
+          configErrors.push(`Internal VLAN Conflict: VLAN${pl ? 's' : ''} ${_conflicts.join(', ')} ${pl ? 'are' : 'is'} auto-allocated by EOS on this device — conflicts with internal VLAN allocation.`);
+        }
+      }
+    }
+
     // Apply Errors
     if (configErrors.length > 0) {
       connectedLinks.forEach(linkId => {

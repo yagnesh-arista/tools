@@ -663,6 +663,7 @@ ip route vrf SNAKE_Et5 10.99.99.99/32 200.4.0.2             ← rev: secondary e
       <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
+      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS.</li>
     </ul>
     <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
 
