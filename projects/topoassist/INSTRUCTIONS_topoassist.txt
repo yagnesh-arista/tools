@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Fix QSFP100 4x25G breakout detection in _buildCableGroupsForTest (Code.gs) and buildCableGroups (Sidebar-js.html): add xcvr_ QSFP/OSFP prefix check alongside aggregate speed format. QSFP100 in 4x25G mode stores xcvr_speed_="25g" per-lane (not aggregate), so xcvr_ prefix is required discriminator. Chassis native SFP excluded correctly. Tests.gs: add QSFP100 4x25G regression test (5 assertions). Files: Code.gs, Sidebar-js.html, Tests.gs)
+  Last updated: 2026-04-20 (Tests.gs: add QSFP100 no-xcvr_speed_ test — covers real-world case where xcvr_speed_ column is blank but xcvr_=QSFP100; xcvr_ prefix alone must trigger breakout grouping. 4 assertions. Files: Tests.gs)
+  Previous: 2026-04-20 (syncSchemaPreservingOrder() now calls ensureDummyColumn() at start — _sys_ guaranteed before any rebuild work, including the no-devices early-exit path. Files: Code.gs)
   Previous: 2026-04-20 (Fix onStructuralChange() in Code.gs: toast was shown on ANY column deletion, not just when _sys_ was actually gone. Now checks sysGone before toasting.)
   Previous: 2026-04-20 (Bump APP_VERSION 4.4→4.5 (Code.gs, Sidebar-js.html). Update stamp format: "git commit: <hash>" instead of bare hash. All 7 GAS files re-stamped. Hook topoassist-stamp.sh updated to use new format. Files: Code.gs, Sidebar-js.html, all GAS files, topoassist-stamp.sh)
   Previous: 2026-04-19 (Sheet View panel: increase width 490→620px to accommodate full column names. Files: Code.gs)

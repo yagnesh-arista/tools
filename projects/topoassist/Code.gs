@@ -1,10 +1,10 @@
-// TopoAssist v260420.29 | 2026-04-20 01:52:38 | git commit: c9679ca
+// TopoAssist v260420.31 | 2026-04-20 01:59:26 | git commit: bb15f3e
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.29";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.31";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -785,6 +785,10 @@ function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, delete
   const mappingSheet = ss.getSheetByName(SHEET_DATA);
 
   if (!mappingSheet) return;
+
+  // Always guarantee _sys_ is at col A before any other work — even if rebuild
+  // is skipped (no devices) or fails partway through.
+  ensureDummyColumn(mappingSheet);
 
   safeCachePut(CacheService.getUserCache(), 'SYNC_STATUS', '🔍 Analyzing schema...', 60);
 
