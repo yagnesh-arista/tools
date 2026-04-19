@@ -3314,11 +3314,14 @@ function filterTopology() {
   nodes.forEach(function (n) {
     let deviceName = (n.querySelector(".node-header-title")?.innerText || "").toLowerCase();
     const deviceRoles = n.dataset.roles || "";
+    const intVlans = deviceInternalVlans[n.dataset.id?.toLowerCase()] || [];
 
-    // Check if Device Name or Role matches
+    // Check if Device Name, Role, or internal VLAN matches
     let deviceMatch = rawTerms.some(t => {
       if (isStrict) return deviceName === t;
-      return deviceName.includes(t) || deviceRoles.includes(t);
+      if (deviceName.includes(t) || deviceRoles.includes(t)) return true;
+      const tNum = parseInt(t);
+      return !isNaN(tNum) && intVlans.includes(tNum);
     });
 
     let hasVisiblePorts = false;
@@ -3759,6 +3762,29 @@ function traceVlan(vlanStr) {
 
   // 5. RENDER LEGEND & VIEW
   updateVlanLegend(activeVlanData);
+
+  // Annotate internal VLANs — show which devices have the traced VLAN as EOS-allocated
+  (function() {
+    const legend = document.getElementById('vlan-legend');
+    if (!legend || !Object.keys(deviceInternalVlans).length) return;
+    const intAnnotations = [];
+    targetVlans.forEach(vid => {
+      const vidN = parseInt(vid);
+      if (isNaN(vidN)) return;
+      const onDevices = Object.entries(deviceInternalVlans)
+        .filter(([, vlans]) => vlans.includes(vidN))
+        .map(([devId]) => devId);
+      if (onDevices.length) intAnnotations.push({ vid: vidN, onDevices });
+    });
+    if (intAnnotations.length) {
+      let html = intAnnotations.map(({ vid, onDevices }) =>
+        `<div class="legend-internal-note">VLAN ${vid} — EOS internal on:<br>${onDevices.join(', ')}</div>`
+      ).join('');
+      legend.innerHTML += html;
+      legend.classList.add('visible');
+    }
+  })();
+
   requestAnimationFrame(redrawLinks);
 
   // Green only when VLAN is actually found in topology
@@ -8143,7 +8169,8 @@ function toggleMinimize() {
 const LLDP_BRIDGE_URL = 'http://localhost:8765';
 let lldpPortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let lldpAuditFlagMissing = localStorage.getItem('lldpAuditFlagMissing') === 'true';
-let devStatusMap = {};    // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}}
+let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
+let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _snakeTrafficFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeTrafficWarning()
 let _pushLeftDev   = null; // device name for the left split-btn push action
@@ -8192,7 +8219,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.10"
+VERSION = "2.11"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -8550,7 +8577,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if METHOD in ("ssh", "eapi"):
-            ver, ifs = self._run_cmds(ip, "show version", "show interfaces status")
+            ver, ifs, ivlans = self._run_cmds(
+                ip, "show version", "show interfaces status", "show vlan internal"
+            )
             raw_ver  = ver.get("version", "")
             if raw_ver.startswith("Software image version: "):
                 raw_ver = raw_ver[len("Software image version: "):]
@@ -8560,6 +8589,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "platform": ver.get("modelName", "").lstrip("DCS-"),
                 "bridgeMac": ver.get("systemMacAddress", ""),
                 "interfaces": {k: {"linkStatus": v.get("linkStatus", "")} for k, v in ifs.get("interfaceStatuses", {}).items()},
+                "internalVlans": sorted(int(vid) for vid in ivlans.get("vlans", {}).keys()),
             }
         if METHOD == "rest":
             plat  = self._rest_get(ip, "openconfig-platform:components")
@@ -8829,6 +8859,11 @@ function _autoRunLldp() {
     if (devResult.status === 'fulfilled') {
       console.log('🔍 Auto-LLDP: device status received');
       devStatusMap = devResult.value;
+      deviceInternalVlans = {};
+      Object.entries(devStatusMap).forEach(([devId, ds]) => {
+        if (ds.ok && ds.internalVlans && ds.internalVlans.length)
+          deviceInternalVlans[devId.toLowerCase()] = ds.internalVlans;
+      });
       _autoDetectBridgeMac(devStatusMap);
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
@@ -9114,6 +9149,11 @@ function runLldpCheck() {
 
       if (dsData) {
         devStatusMap = dsData;
+        deviceInternalVlans = {};
+        Object.entries(devStatusMap).forEach(([devId, ds]) => {
+          if (ds.ok && ds.internalVlans && ds.internalVlans.length)
+            deviceInternalVlans[devId.toLowerCase()] = ds.internalVlans;
+        });
         _autoDetectBridgeMac(devStatusMap);
         _applyHostnameIndicators(devices);
         applyDevStatusToCards();

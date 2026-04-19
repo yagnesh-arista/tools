@@ -19,7 +19,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"2.9","port":8765}
+  GET  /health      → {"status":"ok","version":"2.10","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -28,7 +28,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.9"
+VERSION = "2.11"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -539,20 +539,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if METHOD in ("ssh", "eapi"):
-            ver, ifs = self._run_cmds(ip, "show version", "show interfaces status")
+            ver, ifs, ivlans = self._run_cmds(
+                ip, "show version", "show interfaces status", "show vlan internal"
+            )
             raw_ver  = ver.get("version", "")
             if raw_ver.startswith("Software image version: "):
                 raw_ver = raw_ver[len("Software image version: "):]
             raw_ver = raw_ver.split(" (")[0].strip()
             return {
-                "ok":         True,
-                "hostname":   ver.get("hostname", ""),
-                "version":    raw_ver,
-                "platform":   ver.get("modelName", "").lstrip("DCS-"),
-                "interfaces": {
+                "ok":           True,
+                "hostname":     ver.get("hostname", ""),
+                "version":      raw_ver,
+                "platform":     ver.get("modelName", "").lstrip("DCS-"),
+                "bridgeMac":    ver.get("systemMacAddress", ""),
+                "interfaces":   {
                     k: {"linkStatus": v.get("linkStatus", "")}
                     for k, v in ifs.get("interfaceStatuses", {}).items()
                 },
+                "internalVlans": sorted(
+                    int(vid) for vid in ivlans.get("vlans", {}).keys()
+                ),
             }
 
         if METHOD == "rest":
