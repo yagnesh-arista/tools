@@ -1,10 +1,10 @@
-// TopoAssist v260420.28 | 2026-04-20 01:43:55 | git commit: b9c8b23
+// TopoAssist v260420.29 | 2026-04-20 01:52:38 | git commit: c9679ca
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.28";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.29";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3370,8 +3370,11 @@ function onStructuralChange(e) {
   const ss = e.source;
   const sheet = ss.getActiveSheet();
   if (sheet.getName() !== SHEET_DATA) return;
+  const sysGone = sheet.getLastColumn() < 1 || String(sheet.getRange(2, 1).getValue()) !== DUMMY_VIS_HEADER;
   ensureDummyColumn(sheet);
-  ss.toast('Column A (_sys_) was deleted and has been automatically restored. Do not delete this column — TopoAssist needs it to track row visibility.', '⚠ Column Restored', 8);
+  if (sysGone) {
+    ss.toast('Column A (_sys_) was deleted and has been automatically restored. Do not delete this column — TopoAssist needs it to track row visibility.', '⚠ Column Restored', 8);
+  }
 }
 
 // Installs the onChange installable trigger if it isn't already present.
@@ -6174,14 +6177,22 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
     if (speedA_raw.toLowerCase() === 'auto') speedA_raw = '';
     if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
 
-    // Breakout grouping requires aggregate speed suffix (e.g. "100g-4").
-    // Slash alone is not sufficient — chassis native SFP ports (e.g. Et3/1) use
-    // slot/port notation but are NOT QSFP-DD breakout lanes.
+    // Breakout detection: port has slash AND is a multi-lane transceiver.
+    // Two signals for multi-lane:
+    //   1. xcvr_speed_ in aggregate format (e.g. "100g-4") — explicit lane count
+    //   2. xcvr_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
+    //      stores xcvr_speed_="25g" per lane, not aggregate)
+    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_="SFP25" (no QSFP
+    // prefix) and no aggregate speed — correctly excluded.
     var aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     var aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+    var xcvrA = (first.details.xcvr_  || "").trim();
+    var xcvrB = (second.details.xcvr_ || "").trim();
+    var isMultiLaneA = !!aggA || /^[OQ]SFP/i.test(xcvrA);
+    var isMultiLaneB = !!aggB || /^[OQ]SFP/i.test(xcvrB);
 
-    var isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && !!aggA;
-    var isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && !!aggB;
+    var isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && isMultiLaneA;
+    var isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && isMultiLaneB;
     var phyPortA    = (devAIsNonArista || !isBreakoutA) ? first.name  : getPhysicalPortParent(first.name);
     var phyPortB    = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
 
