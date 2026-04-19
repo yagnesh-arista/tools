@@ -1,10 +1,10 @@
-// TopoAssist v260420.31 | 2026-04-20 01:59:26 | git commit: bb15f3e
+// TopoAssist v260420.33 | 2026-04-20 02:08:23 | git commit: 801713e
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.31";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.33";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1066,8 +1066,9 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
         if (currentDev) {
           if (!memory[currentDev]) memory[currentDev] = {};
           let header = String(r2[c]).trim();
+          // Pick the longest matching schema key — 'xcvr_speed_' must win over 'xcvr_'.
           let attrKey = "";
-          schemaObj.keys.forEach(k => { if (header.startsWith(k)) attrKey = k; });
+          schemaObj.keys.forEach(k => { if (header.startsWith(k) && k.length > attrKey.length) attrKey = k; });
           if (!attrKey && header.includes("_")) attrKey = header.substring(0, header.lastIndexOf("_") + 1);
 
           if (attrKey) {
