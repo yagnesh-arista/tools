@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.47 | 2026-04-20 03:14:42 | git commit: a0494fb -->
+<!-- TopoAssist v260420.50 | 2026-04-20 03:25:49 | git commit: 3b4f0f3 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.47";  // keep in sync with Code.gs
+const APP_VERSION = "260420.50";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1644,6 +1644,9 @@ function _updateForceSyncBadge(orphans) {
     badge.style.display = 'none';
     badge.innerHTML = '';
     btn.title = '';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
     return;
   }
   const warnSvg = '<svg width="10" height="10" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0" fill="#92400e"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="#fff"/></svg>';
@@ -1651,6 +1654,9 @@ function _updateForceSyncBadge(orphans) {
   badge.style.display = 'inline-flex';
   const names = orphans.map(function(o) { return o.key.replace(/_$/, '') + (o.hasData ? ' (has data)' : ''); }).join('\n  ');
   btn.title = orphans.length + ' column(s) not in schema — will prompt for deletion on Force Sync:\n  ' + names;
+  btn.style.background = '#fef3c7';
+  btn.style.borderColor = '#f59e0b';
+  btn.style.color = '#92400e';
 }
 
 /**
@@ -4578,12 +4584,15 @@ function _showOrphanConfirm(orphans, callback) {
     'background:rgba(15,23,42,0.55)'
   ].join(';');
   dlg.innerHTML = `
-    <div style="background:#fff;border-radius:8px;padding:20px;max-width:320px;width:90%;
+    <div style="background:#fff;border-radius:8px;padding:20px;max-width:380px;width:90%;
                 box-shadow:0 8px 32px rgba(0,0,0,.25);font-family:'JetBrains Mono',monospace">
       <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px;user-select:none">
         Columns not in schema
       </div>
-      <ul style="margin:0 0 10px 14px;padding:0;font-size:11px;list-style:disc">${colList}</ul>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:4px;
+                  padding:6px 8px;margin-bottom:10px;background:#f8fafc">
+        <ul style="margin:0 0 0 14px;padding:0;font-size:11px;list-style:disc">${colList}</ul>
+      </div>
       ${hasDataWarning ? `<div style="font-size:11px;color:#b45309;background:#fef3c7;
           border:1px solid #fcd34d;border-radius:4px;padding:6px 8px;margin-bottom:12px;user-select:none">
           ⚠ Deleting will permanently lose the highlighted data.
