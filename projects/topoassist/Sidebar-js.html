@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.38 | 2026-04-20 02:33:37 | git commit: bec1e2c -->
+<!-- TopoAssist v260420.39 | 2026-04-20 02:38:45 | git commit: 21b3304 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.38";  // keep in sync with Code.gs
+const APP_VERSION = "260420.39";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1668,19 +1668,15 @@ function triggerSyncOnly() {
   // Step 1: detect orphaned columns (sheet cols not in schema) with data flags
   google.script.run
     .withSuccessHandler(orphans => {
-      let deleteOrphans = false; // default: keep — pre-check is authoritative, never reach server-side ui.alert
       if (orphans.length > 0) {
-        const withData = orphans.filter(o => o.hasData);
-        let msg = `${orphans.length} sheet column(s) are not in the current schema:\n`;
-        orphans.forEach(o => { msg += `  \u2022 ${o.key.replace(/_$/, '')}${o.hasData ? '  \u26a0 contains data' : ''}\n`; });
-        if (withData.length > 0) {
-          msg += `\n\u26a0 ${withData.length} column(s) have data that will be permanently lost if deleted.\n`;
-        }
-        msg += '\nDelete these columns? Cancel = keep them.';
-        deleteOrphans = confirm(msg);
+        // Always show explicit modal — never use confirm() (OK/Cancel is confusing for keep/delete)
+        _showOrphanConfirm(orphans, deleteOrphans => {
+          _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans);
+        });
+      } else {
+        // No orphans — proceed immediately
+        _runForceSyncNow(btn, origHtml, applyFormatting, false);
       }
-      // Step 2: run the actual sync with explicit delete decision
-      _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans);
     })
     .withFailureHandler(err => {
       setUiBusy(false);
@@ -4556,6 +4552,61 @@ function showModalLoading(modalId) {
   const titleEl = document.querySelector('#' + modalId + ' .modal-header-title');
   const title = titleEl ? titleEl.textContent.trim() : 'Loading';
   showGlobalLoading('Loading ' + title + '...');
+}
+
+/**
+ * Shows an inline orphan-column confirmation dialog with explicit Keep/Delete buttons.
+ * Replaces the browser confirm() which has confusing OK=delete / Cancel=keep semantics.
+ * Calls callback(true) if user chooses Delete, callback(false) if Keep or dismiss.
+ */
+function _showOrphanConfirm(orphans, callback) {
+  const withData = orphans.filter(o => o.hasData);
+  const hasDataWarning = withData.length > 0;
+
+  let colList = orphans.map(o => {
+    const name = o.key.replace(/_$/, '');
+    const tag  = o.hasData
+      ? `<span style="color:#b45309;font-weight:600">⚠ ${name} (has data)</span>`
+      : `<span style="color:#475569">${name}</span>`;
+    return `<li style="margin:2px 0">${tag}</li>`;
+  }).join('');
+
+  const dlg = document.createElement('div');
+  dlg.style.cssText = [
+    'position:fixed','inset:0','z-index:30000','display:flex',
+    'align-items:center','justify-content:center',
+    'background:rgba(15,23,42,0.55)'
+  ].join(';');
+  dlg.innerHTML = `
+    <div style="background:#fff;border-radius:8px;padding:20px;max-width:320px;width:90%;
+                box-shadow:0 8px 32px rgba(0,0,0,.25);font-family:'JetBrains Mono',monospace">
+      <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px;user-select:none">
+        Columns not in schema
+      </div>
+      <ul style="margin:0 0 10px 14px;padding:0;font-size:11px;list-style:disc">${colList}</ul>
+      ${hasDataWarning ? `<div style="font-size:11px;color:#b45309;background:#fef3c7;
+          border:1px solid #fcd34d;border-radius:4px;padding:6px 8px;margin-bottom:12px;user-select:none">
+          ⚠ Deleting will permanently lose the highlighted data.
+        </div>` : ''}
+      <div style="font-size:11px;color:#475569;margin-bottom:14px;user-select:none">
+        Keep or delete these columns?
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="_orphanKeep" style="font-family:'JetBrains Mono',monospace;font-size:12px;
+          padding:6px 14px;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;
+          color:#0f172a;cursor:pointer">Keep Columns</button>
+        <button id="_orphanDelete" style="font-family:'JetBrains Mono',monospace;font-size:12px;
+          padding:6px 14px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;
+          color:#b91c1c;cursor:pointer">Delete Columns</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(dlg);
+
+  const cleanup = choice => { document.body.removeChild(dlg); callback(choice); };
+  dlg.querySelector('#_orphanKeep').onclick   = () => cleanup(false);
+  dlg.querySelector('#_orphanDelete').onclick = () => cleanup(true);
+  dlg.addEventListener('keydown', e => { if (e.key === 'Escape') cleanup(false); });
 }
 
 function showGlobalLoading(msg) {
@@ -8272,7 +8323,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260420.1"
+VERSION = "260420.2"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -8644,6 +8695,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             ver, ifs, ivlans = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
+            ver = ver or {}
+            ifs = ifs or {}
             raw_ver  = ver.get("version", "")
             if raw_ver.startswith("Software image version: "):
                 raw_ver = raw_ver[len("Software image version: "):]
