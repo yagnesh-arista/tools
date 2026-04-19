@@ -1,3 +1,4 @@
+// TopoAssist v4.4
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -838,69 +839,3 @@ function runAllTests() {
     alertMsg, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-/**
- * Headless runner for clasp run — no UI calls.
- * Returns a result object; all output also written to Logger.
- * Usage: clasp run runAllTestsCli
- */
-function runAllTestsCli() {
-  const suites = [
-    { name: "canonicalizeInterface",     fn: test_canonicalizeInterface },
-    { name: "hasKey",                    fn: test_hasKey },
-    { name: "normalizePo",               fn: test_normalizePo },
-    { name: "isValidPort",               fn: test_isValidPort },
-    { name: "_parseSviVlans",            fn: test_parseSviVlans },
-    { name: "parseVlanWithNative",       fn: test_parseVlanWithNative },
-    { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
-    { name: "compressPortList",          fn: test_compressPortList },
-    { name: "_breakoutSides",            fn: test_breakoutSides },
-    { name: "_buildCableGroupsForTest",  fn: test_buildCableGroupsForTest },
-    { name: "generateSnakeStaticConfig", fn: test_generateSnakeStaticConfig },
-  ];
-
-  Logger.log(`TopoAssist Tests v${APP_VERSION} [CLI]`);
-
-  let totalPass = 0;
-  let totalFail = 0;
-  const failLines = [];
-
-  for (const suite of suites) {
-    const results = suite.fn();
-    let suitePass = 0;
-    let suiteFail = 0;
-
-    for (const r of results) {
-      if (r.pass) {
-        suitePass++;
-        totalPass++;
-      } else {
-        suiteFail++;
-        totalFail++;
-        const msg = `  FAIL  ${suite.name} — ${r.label}\n         got: ${r.actual}\n        want: ${r.expected}`;
-        Logger.log(msg);
-        failLines.push(msg);
-      }
-    }
-
-    Logger.log(`${suite.name}: ${suitePass} passed, ${suiteFail} failed`);
-  }
-
-  const summary = totalFail === 0
-    ? `ALL PASSED (${totalPass})`
-    : `FAILED ${totalFail}/${totalPass + totalFail}`;
-  Logger.log(`\n${summary}`);
-
-  return { passed: totalPass, failed: totalFail, summary, failures: failLines };
-}
-
-/**
- * Web App endpoint — returns test results as JSON.
- * Deploy as Web App (Execute as: Me, Access: Only myself) then call with:
- *   curl -L -H "Authorization: Bearer $(gcloud auth print-identity-token)" <url>
- */
-function doGet() {
-  const result = runAllTestsCli();
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
