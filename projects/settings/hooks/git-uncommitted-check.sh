@@ -7,11 +7,15 @@ PROJECTS_DIR="/home/yagnesh/claude/projects"
 CLAUDE_ROOT="/home/yagnesh/claude"
 
 summary=""
+CLAUDE_ROOT_GIT=$(git -C "$CLAUDE_ROOT" rev-parse --absolute-git-dir 2>/dev/null)
 
-# Check each project sub-repo
+# Check each project sub-repo — skip dirs that inherit the root repo
 for repo in "$PROJECTS_DIR"/*/; do
     [ -d "$repo" ] || continue
     git -C "$repo" rev-parse --git-dir > /dev/null 2>&1 || continue
+    repo_git=$(git -C "$repo" rev-parse --absolute-git-dir 2>/dev/null)
+    # Only report standalone sub-repos, not dirs inheriting ~/claude/.git
+    [ "$repo_git" = "$CLAUDE_ROOT_GIT" ] && continue
     status=$(git -C "$repo" status --porcelain 2>/dev/null)
     [ -z "$status" ] && continue
     proj=$(basename "$repo")

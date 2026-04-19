@@ -27,7 +27,10 @@ if echo "$response" | grep -qiE \
 fi
 
 if [ "$is_empty" -eq 1 ] || [ "$is_auth_err" -eq 1 ]; then
-    msg="[WINNOW AUTH] Winnow returned an ${is_empty:+empty }${is_auth_err:+auth-error }response for '${tool_name}'. "
+    label=""
+    [ "$is_empty"    -eq 1 ] && label="${label}empty "
+    [ "$is_auth_err" -eq 1 ] && label="${label}auth-error "
+    msg="[WINNOW AUTH] Winnow returned an ${label}response for '${tool_name}'. "
     msg+="Your session has likely expired. "
     msg+="Please open https://winnow.infra.corp.arista.io in your browser to re-authenticate, "
     msg+="then tell me to 'retry' and I will resume the pending work."
