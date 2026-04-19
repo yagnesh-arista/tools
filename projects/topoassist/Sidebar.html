@@ -865,14 +865,18 @@
   </div>
 
   <!-- Generate All Configs Modal -->
-  <div id="generateAllModal" class="modal-std" style="width:600px;max-width:95vw;">
+  <div id="generateAllModal" class="modal-std" style="width:900px;max-width:95vw;">
     <div class="modal-header">
       <div class="modal-header-title">Generate All Configs</div>
       <button onclick="closeGenerateAllModal()" class="btn-mono">Close</button>
     </div>
-    <div id="generateAllBody" style="padding:20px;overflow-y:auto;max-height:55vh;background:var(--bg-modal, #ffffff);">
-      <div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">
-        Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.
+    <div style="display:flex;max-height:55vh;background:var(--bg-modal,#ffffff);">
+      <div id="generateAllLeft" style="flex:1;padding:20px;overflow-y:auto;border-right:1px solid var(--border);">
+        <div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">
+          Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.
+        </div>
+      </div>
+      <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;">
       </div>
     </div>
     <div class="modal-actions right-align">
