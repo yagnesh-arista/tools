@@ -2852,7 +2852,7 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
   }
 }
 
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-17
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-19
 function canonicalizeInterface(name) {
   if (!name) return "";
 
@@ -4504,11 +4504,8 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   const ep2Nh     = ipPrefs.ep2_nh       || '';
   const ep2Mac    = ipPrefs.ep2_mac      || '';
   // Routes emitted only when subnet is configured; null = no route for that direction.
-  // fwdHost/revHost: test-host reference shown in header comment only, not in routing table.
   const fwdRoute = ipPrefs.ep2_subnet ? `${ipPrefs.ep2_subnet}.0/24` : null;
   const revRoute = ipPrefs.ep1_subnet ? `${ipPrefs.ep1_subnet}.0/24` : null;
-  const fwdHost  = ipPrefs.ep2_subnet ? `${ipPrefs.ep2_subnet}.98`   : null;
-  const revHost  = ipPrefs.ep1_subnet ? `${ipPrefs.ep1_subnet}.99`   : null;
 
   if (!bridgeMac) {
     return [
@@ -4519,8 +4516,8 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   }
 
   const lines = ['! Snake VRF Chain — Bidirectional Static ARP + Routing'];
-  if (fwdRoute) lines.push(`! Forward: ${fwdRoute}  (EP1 → chain → EP2)  test host: ${fwdHost}/32`);
-  if (revRoute) lines.push(`! Reverse: ${revRoute}  (EP2 → chain → EP1)  test host: ${revHost}/32`);
+  if (fwdRoute) lines.push(`! Forward: ${fwdRoute}  (EP1 → chain → EP2)`);
+  if (revRoute) lines.push(`! Reverse: ${revRoute}  (EP2 → chain → EP1)`);
   if (!fwdRoute && !revRoute) lines.push('! No EP subnets configured — ARP skeleton only (configure ep1_subnet/ep2_subnet to enable routing)');
 
   snakePairs.forEach((pair, idx) => {

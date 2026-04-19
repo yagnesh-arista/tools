@@ -630,8 +630,6 @@ function test_generateSnakeStaticConfig() {
       out.includes('ip route vrf SNAKE_Et2 172.16.1.98/32'), false));
     results.push(t("custom ep2_subnet — EP2 terminal fwd /24 route",
       out.includes('ip route vrf SNAKE_Et3 172.16.1.0/24 172.16.1.2'), true));
-    results.push(t("custom ep2_subnet — header shows test host .98",
-      out.includes('172.16.1.98/32'), true));
     results.push(t("custom ep2_subnet — no reverse routes (no ep1_subnet)",
       out.includes('ip route vrf SNAKE_Et3 10.'), false));
   })();
@@ -720,8 +718,6 @@ function test_generateSnakeStaticConfig() {
     const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
     const prefs = prefsBase({ ep1_nh: E1NH, ep1_subnet: '10.100.1' });
     const out = generateSnakeStaticConfig(pairs, prefs);
-    results.push(t("custom ep1_subnet — header shows test host .99",
-      out.includes('10.100.1.99/32'), true));
     results.push(t("custom ep1_subnet — primary rev uses /24 route",
       out.includes(`ip route vrf SNAKE_Et2 10.100.1.0/24 ${E1NH}`), true));
     results.push(t("custom ep1_subnet — no /32 route on primary",
@@ -759,11 +755,6 @@ function test_generateSnakeStaticConfig() {
       out.includes(`ip route vrf SNAKE_Et2 ${E1SUB}.0/24 ${E1NH}`), true));
     results.push(t("T_subnet — Et5 EP2 fwd /24",
       out.includes(`ip route vrf SNAKE_Et5 ${E2SUB}.0/24 ${E2NH}`), true));
-    // Header shows specific test-host addresses
-    results.push(t("T_subnet — header shows EP2 test host",
-      out.includes(`${E2SUB}.98/32`), true));
-    results.push(t("T_subnet — header shows EP1 test host",
-      out.includes(`${E1SUB}.99/32`), true));
   })();
 
   // ── T_no_nh: subnets set but no NH → placeholder comments, no crash ───────
