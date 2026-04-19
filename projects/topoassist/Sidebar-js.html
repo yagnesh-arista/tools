@@ -570,10 +570,10 @@ function renderManagerList() {
 
     const deleteCell = isPendingDelete
       ? `<div class="col-center" style="gap:3px;display:flex;">
-           <button onclick="confirmRemoveDevice()" title="Confirm delete" style="font-size:10px;padding:2px 6px;background:#ef4444;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:700;">✓</button>
-           <button onclick="cancelRemoveDevice()" title="Cancel" style="font-size:10px;padding:2px 5px;background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;">✕</button>
+           <button onclick="confirmRemoveDevice()" title="Confirm delete" style="font-size:10px;padding:2px 6px;background:#ef4444;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:700;display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
+           <button onclick="cancelRemoveDevice()" title="Cancel" style="font-size:10px;padding:2px 5px;background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
          </div>`
-      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})">✕</button></div>`;
+      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
 
     const roleVal = devObj.role || '';
     const roleOptions = ['', ...DEVICE_ROLE_OPTIONS].map(r =>
@@ -587,7 +587,7 @@ function renderManagerList() {
     ].map(n => `<option value="${n}" ${mlagPeerVal === n ? 'selected' : ''}>${n || '—'}</option>`).join('');
 
     li.innerHTML = `
-<div class="col-center"><span class="reorder-handle">☰</span></div>
+<div class="col-center"><span class="reorder-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span></div>
 <div class="col-center" title="Toggle Visibility">
 <input type="checkbox" style="cursor:pointer;" ${isChecked}
 onchange="toggleDeviceVisibility(${index})">
@@ -595,7 +595,7 @@ onchange="toggleDeviceVisibility(${index})">
 <div class="col-center">${tidHtml}</div>
 <div class="col-center">${didHtml}</div>
 <div class="col-left"><div class="dev-name-cell">${nameDisplay}${hostnameHtml}</div></div>
-<div class="col-center"><button class="btn-icon-edit" onclick="promptRenameDevice(${index})">✎</button></div>
+<div class="col-center"><button class="btn-icon-edit" onclick="promptRenameDevice(${index})" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
 <div class="col-center">${typeBadge}</div>
 <div class="dev-role-cell"><select class="role-select" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
 <div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
@@ -725,7 +725,7 @@ function buildLabelEditorHTML(index) {
   let customChips = '';
   current.forEach(lbl => {
     const c = ROLE_COLORS[lbl] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
-    customChips += `<span style="display:inline-flex;align-items:center;gap:2px;background:${c.bg};color:${c.text};border:1px solid ${c.border};border-radius:3px;padding:1px 4px;font-size:10px;font-weight:700;letter-spacing:0.3px;">${lbl}<button onclick="toggleDeviceLabel(${index},'${lbl}')" title="Remove ${lbl}" style="background:none;border:none;cursor:pointer;color:${c.text};font-size:11px;padding:0 0 0 2px;line-height:1;font-family:'JetBrains Mono',monospace;">×</button></span>`;
+    customChips += `<span style="display:inline-flex;align-items:center;gap:2px;background:${c.bg};color:${c.text};border:1px solid ${c.border};border-radius:3px;padding:1px 4px;font-size:10px;font-weight:700;letter-spacing:0.3px;">${lbl}<button onclick="toggleDeviceLabel(${index},'${lbl}')" title="Remove ${lbl}" style="background:none;border:none;cursor:pointer;color:${c.text};padding:0 0 0 2px;line-height:1;display:inline-flex;align-items:center;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span>`;
   });
 
   const customDisabled = maxReached ? 'disabled' : '';
@@ -740,7 +740,7 @@ function buildLabelEditorHTML(index) {
       onclick="event.stopPropagation()">
     <button onclick="addCustomLabel(${index})" ${customDisabled}
       style="font-size:10px;padding:2px 6px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:${maxReached ? 'not-allowed' : 'pointer'};height:20px;font-family:'JetBrains Mono',monospace;${maxReached ? 'opacity:0.4;' : ''}">Add</button>
-    <button onclick="closeLabelPicker()" class="label-editor-done">✕</button>
+    <button onclick="closeLabelPicker()" class="label-editor-done" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>`;
 }
 
@@ -1360,7 +1360,7 @@ function renderSchemaList() {
     row.className = "schema-row";
 
     row.innerHTML = `
-<div class="schema-handle">☰</div>
+<div class="schema-handle" style="display:inline-flex;align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
 <div class="schema-idx">${indexDisplay}</div>
 
 <div class="schema-content" style="flex:1;">
@@ -1378,7 +1378,7 @@ placeholder="Description">
 onchange="updateSchemaOption('${item.key}', this.value, this)">${valStr}</textarea>
 </div>
 
-<button class="schema-del" onclick="deleteField('${item.key}')">✕</button>
+<button class="schema-del" onclick="deleteField('${item.key}')" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 `;
     ul.appendChild(row);
   });
@@ -1659,7 +1659,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
     .withSuccessHandler(() => {
       clearInterval(syncPollTimer);
       hideGlobalLoading();
-      btn.innerHTML = '<span class="btn-icon">✓</span> Synced!';
+      btn.innerHTML = '<span class="btn-icon" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Synced!';
       setUiBusy(false);
       setTimeout(() => {
         btn.innerHTML = origHtml;
@@ -5124,7 +5124,7 @@ function selectLine(id) {
     if (statusEl) {
       if (typeof validationErrors !== 'undefined' && validationErrors[id]) {
         // Found errors! Show them in Red.
-        statusEl.innerHTML = "△ " + validationErrors[id].join(" | ");
+        statusEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> ' + validationErrors[id].join(" | ");
         statusEl.style.color = "#b91c1c"; // Strong Red
         statusEl.style.fontWeight = "bold";
         statusEl.title = validationErrors[id].join("\n");

@@ -538,8 +538,13 @@ function test_generateSnakeStaticConfig() {
       ep2_nh: '', ep2_mac: '', ep2_subnet: '' },
     extra || {}
   );
-  // Full prefs: both EP1 and EP2 NH + MAC set (indirect endpoints, no custom subnet)
-  const prefsFull = () => prefsBase({ ep1_nh: E1NH, ep1_mac: E1MAC, ep2_nh: E2NH, ep2_mac: E2MAC });
+  // Full prefs: both EP1 and EP2 NH + MAC + subnet set (indirect endpoints, full routing)
+  const E1SUB = '10.100.1';
+  const E2SUB = '172.16.1';
+  const prefsFull = () => prefsBase({
+    ep1_nh: E1NH, ep1_mac: E1MAC, ep1_subnet: E1SUB,
+    ep2_nh: E2NH, ep2_mac: E2MAC, ep2_subnet: E2SUB
+  });
 
   // ── T1/T2: empty / null pairs → empty string ──────────────────────────────
   results.push(t("empty pairs → empty string",
@@ -559,35 +564,31 @@ function test_generateSnakeStaticConfig() {
       out.includes('arp vrf'), false));
   })();
 
-  // ── T4: single pair, bridge MAC only, no EP1/EP2 NH ──────────────────────
-  // VLAN 200 → oct2=2, oct3=0 → subnet 200.2.0.x, remoteIp=200.2.0.2
-  // Expects placeholder comments for EP1 and EP2 NH; both directions have bridge-ARP routes
+  // ── T4: single pair, bridge MAC only, no subnets/NH ─────────────────────
+  // No ep1_subnet/ep2_subnet → no static routes; ARP skeleton only
   (function() {
     const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
     const out = generateSnakeStaticConfig(pairs, prefsBase());
     const lines = out.split('\n');
     results.push(t("single pair — header mentions Bidirectional",
       lines[0].includes('Bidirectional'), true));
+    results.push(t("single pair — no subnet comment",
+      out.includes('ARP skeleton only'), true));
     results.push(t("single pair — pair comment",
       out.includes('! Pair 1: Et2 <-> Et3 (VLAN 200, subnet 200.2.0.0/24)'), true));
     results.push(t("single pair — primary ARP (bridge MAC)",
       out.includes('arp vrf SNAKE_Et2') && out.includes('200.2.0.2 001c.7300.abcd arpa'), true));
     results.push(t("single pair — secondary ARP (bridge MAC)",
       out.includes('arp vrf SNAKE_Et3') && out.includes('200.2.0.2 001c.7300.abcd arpa'), true));
-    results.push(t("single pair — primary forward route (default fwdDest)",
-      out.includes('ip route vrf SNAKE_Et2 10.99.99.98/32 200.2.0.2'), true));
-    results.push(t("single pair — secondary reverse route (default revDest)",
-      out.includes('ip route vrf SNAKE_Et3 10.99.99.99/32 200.2.0.2'), true));
-    results.push(t("single pair — EP1 NH placeholder when not set",
-      out.includes('! SNAKE_Et2: EP1 NH not set'), true));
-    results.push(t("single pair — EP2 NH placeholder when not set",
-      out.includes('! SNAKE_Et3: EP2 NH not set'), true));
+    results.push(t("single pair — no static routes emitted",
+      out.includes('ip route vrf'), false));
     results.push(t("single pair — trailing separator",
       lines[lines.length - 1], '!'));
   })();
 
   // ── T5: VLAN 1500 subnet formula ──────────────────────────────────────────
   // floor(1500/100)=15, 1500%100=0 → subnet 200.15.0.x, remoteIp=200.15.0.2
+  // No ep subnets → ARP only, no routes
   (function() {
     const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 1500 }];
     const out = generateSnakeStaticConfig(pairs, prefsBase());
@@ -595,27 +596,27 @@ function test_generateSnakeStaticConfig() {
       out.includes('subnet 200.15.0.0/24'), true));
     results.push(t("VLAN 1500 — ARP target 200.15.0.2",
       out.includes('200.15.0.2 001c.7300.abcd arpa'), true));
-    results.push(t("VLAN 1500 — forward route uses 200.15.0.2",
-      out.includes('ip route vrf SNAKE_Et2 10.99.99.98/32 200.15.0.2'), true));
-    results.push(t("VLAN 1500 — reverse route uses 200.15.0.2",
-      out.includes('ip route vrf SNAKE_Et3 10.99.99.99/32 200.15.0.2'), true));
+    results.push(t("VLAN 1500 — no static routes (no subnets)",
+      out.includes('ip route vrf'), false));
   })();
 
-  // ── T6: single pair, full EP1+EP2 (indirect — both NH+MAC set) ───────────
-  // Both endpoints have static ARP + routes; no placeholder comments
+  // ── T6: single pair, full EP1+EP2 (indirect — both NH+MAC+subnet set) ────
+  // Both endpoints have static ARP + /24 routes; no placeholder comments
   (function() {
     const pairs = [{ primaryPort: 'Et2', secondaryPort: 'Et3', vlan: 200 }];
     const out = generateSnakeStaticConfig(pairs, prefsFull());
     results.push(t("full single — EP2 static ARP at last secondary",
       out.includes(`arp vrf SNAKE_Et3 ${E2NH} ${E2MAC} arpa`), true));
-    results.push(t("full single — EP2 forward route at last secondary",
-      out.includes(`ip route vrf SNAKE_Et3 10.99.99.98/32 ${E2NH}`), true));
+    results.push(t("full single — EP2 forward /24 route at last secondary",
+      out.includes(`ip route vrf SNAKE_Et3 ${E2SUB}.0/24 ${E2NH}`), true));
     results.push(t("full single — EP1 static ARP at first primary",
       out.includes(`arp vrf SNAKE_Et2 ${E1NH} ${E1MAC} arpa`), true));
-    results.push(t("full single — EP1 reverse route at first primary",
-      out.includes(`ip route vrf SNAKE_Et2 10.99.99.99/32 ${E1NH}`), true));
+    results.push(t("full single — EP1 reverse /24 route at first primary",
+      out.includes(`ip route vrf SNAKE_Et2 ${E1SUB}.0/24 ${E1NH}`), true));
     results.push(t("full single — no NH placeholder comments",
       out.includes('NH not set'), false));
+    results.push(t("full single — no /32 routes emitted",
+      out.includes('ip route vrf SNAKE_Et2 10.') || out.includes('ip route vrf SNAKE_Et3 10.'), false));
   })();
 
   // ── T7: custom ep2_subnet → fwdRoute is /24 (no redundant /32) ──────────────

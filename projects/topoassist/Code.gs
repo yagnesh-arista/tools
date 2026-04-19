@@ -4503,14 +4503,12 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   const ep1Mac    = ipPrefs.ep1_mac      || '';
   const ep2Nh     = ipPrefs.ep2_nh       || '';
   const ep2Mac    = ipPrefs.ep2_mac      || '';
-  // fwdRoute: /24 subnet if ep2_subnet configured, else /32 host (default 10.99.99.98/32).
-  // revRoute: /24 subnet if ep1_subnet configured, else /32 host (default 10.99.99.99/32).
-  // Always exactly 2 static routes per VRF (one forward, one reverse).
-  const fwdRoute  = ipPrefs.ep2_subnet   ? `${ipPrefs.ep2_subnet}.0/24`  : '10.99.99.98/32';
-  const revRoute  = ipPrefs.ep1_subnet   ? `${ipPrefs.ep1_subnet}.0/24`  : '10.99.99.99/32';
-  // Header-only: specific test-host addresses for traffic gen configuration reference.
-  const fwdHost   = ipPrefs.ep2_subnet   ? `${ipPrefs.ep2_subnet}.98/32` : fwdRoute;
-  const revHost   = ipPrefs.ep1_subnet   ? `${ipPrefs.ep1_subnet}.99/32` : revRoute;
+  // Routes emitted only when subnet is configured; null = no route for that direction.
+  // fwdHost/revHost: test-host reference shown in header comment only, not in routing table.
+  const fwdRoute = ipPrefs.ep2_subnet ? `${ipPrefs.ep2_subnet}.0/24` : null;
+  const revRoute = ipPrefs.ep1_subnet ? `${ipPrefs.ep1_subnet}.0/24` : null;
+  const fwdHost  = ipPrefs.ep2_subnet ? `${ipPrefs.ep2_subnet}.98`   : null;
+  const revHost  = ipPrefs.ep1_subnet ? `${ipPrefs.ep1_subnet}.99`   : null;
 
   if (!bridgeMac) {
     return [
@@ -4521,8 +4519,9 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   }
 
   const lines = ['! Snake VRF Chain — Bidirectional Static ARP + Routing'];
-  lines.push(`! Forward: ${fwdRoute}  (EP1 → chain → EP2)${fwdHost !== fwdRoute ? '  test host: ' + fwdHost : ''}`);
-  lines.push(`! Reverse: ${revRoute}  (EP2 → chain → EP1)${revHost !== revRoute ? '  test host: ' + revHost : ''}`);
+  if (fwdRoute) lines.push(`! Forward: ${fwdRoute}  (EP1 → chain → EP2)  test host: ${fwdHost}/32`);
+  if (revRoute) lines.push(`! Reverse: ${revRoute}  (EP2 → chain → EP1)  test host: ${revHost}/32`);
+  if (!fwdRoute && !revRoute) lines.push('! No EP subnets configured — ARP skeleton only (configure ep1_subnet/ep2_subnet to enable routing)');
 
   snakePairs.forEach((pair, idx) => {
     const { primaryPort, secondaryPort, vlan } = pair;
@@ -4541,19 +4540,20 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
     lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
 
     // ── PRIMARY port routes ──────────────────────────────────────────────────
-    // Forward: always exits primary → loopback cable → secondary
-    lines.push(`ip route vrf SNAKE_${primaryPort} ${fwdRoute} ${remoteIp}`);
+    // Forward: exits primary → loopback cable → secondary (only if ep2_subnet configured)
+    if (fwdRoute) lines.push(`ip route vrf SNAKE_${primaryPort} ${fwdRoute} ${remoteIp}`);
 
     // Reverse terminal (first pair): exit to EP1 traffic gen
-    if (isFirst) {
+    if (isFirst && revRoute) {
       if (ep1Mac && ep1Nh) lines.push(`arp vrf SNAKE_${primaryPort} ${ep1Nh} ${ep1Mac} arpa`);
       if (ep1Nh) {
         lines.push(`ip route vrf SNAKE_${primaryPort} ${revRoute} ${ep1Nh}`);
       } else {
         lines.push(`! SNAKE_${primaryPort}: EP1 NH not set — fill in if EP1 not directly connected`);
       }
-    } else {
-      // Reverse chain: jump backward to previous secondary VRF
+    }
+    // Reverse chain (idx > 0): jump backward to previous secondary VRF
+    if (!isFirst && revRoute) {
       const prev       = snakePairs[idx - 1];
       const prevOct2   = Math.floor(prev.vlan / 100);
       const prevOct3   = prev.vlan % 100;
@@ -4563,23 +4563,24 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
 
     // ── SECONDARY port routes ────────────────────────────────────────────────
     // Forward terminal (last pair): exit to EP2 traffic gen
-    if (isLast) {
+    if (isLast && fwdRoute) {
       if (ep2Mac && ep2Nh) lines.push(`arp vrf SNAKE_${secondaryPort} ${ep2Nh} ${ep2Mac} arpa`);
       if (ep2Nh) {
         lines.push(`ip route vrf SNAKE_${secondaryPort} ${fwdRoute} ${ep2Nh}`);
       } else {
         lines.push(`! SNAKE_${secondaryPort}: EP2 NH not set — fill in if EP2 not directly connected`);
       }
-    } else {
-      // Forward chain: jump forward to next primary VRF
+    }
+    // Forward chain: jump forward to next primary VRF
+    if (!isLast && fwdRoute) {
       const next       = snakePairs[idx + 1];
       const nextOct2   = Math.floor(next.vlan / 100);
       const nextOct3   = next.vlan % 100;
       const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
       lines.push(`ip route vrf SNAKE_${secondaryPort} ${fwdRoute} egress-vrf SNAKE_${next.primaryPort} ${nextRemote}`);
     }
-    // Reverse: always exits secondary → loopback cable → primary (reverse direction)
-    lines.push(`ip route vrf SNAKE_${secondaryPort} ${revRoute} ${remoteIp}`);
+    // Reverse: exits secondary → loopback cable → primary (only if ep1_subnet configured)
+    if (revRoute) lines.push(`ip route vrf SNAKE_${secondaryPort} ${revRoute} ${remoteIp}`);
   });
 
   lines.push(`!`);
