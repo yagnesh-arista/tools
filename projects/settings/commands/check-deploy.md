@@ -14,8 +14,12 @@ TopoAssist has two deployment targets:
 - device_bridge.py
 
 Steps:
-1. Run: `git log --since=midnight --name-only --pretty=format: -- projects/topoassist/ | sort -u | grep -v '^$'`
-   This lists all topoassist files committed today (since midnight local time).
-2. Cross-reference the list above against the two deployment targets and report which files need deployment.
-3. Remind the user to re-download device_bridge.py from the sidebar if device_bridge.py was changed (the embedded template in Sidebar-js.html must also have been updated).
+1. Run these three commands to get changed topoassist files by time window:
+   - Today:      `git log --since=midnight --name-only --pretty=format: -- projects/topoassist/ | sort -u | grep -v '^$'`
+   - Last week:  `git log --since="7 days ago" --until=midnight --name-only --pretty=format: -- projects/topoassist/ | sort -u | grep -v '^$'`
+   - Last month: `git log --since="30 days ago" --until="7 days ago" --name-only --pretty=format: -- projects/topoassist/ | sort -u | grep -v '^$'`
+
+2. Report three sections — **Today**, **Last Week (1–7 days ago)**, **Last Month (8–30 days ago)** — each listing which files changed and which deployment target they belong to. Omit a section if it has no changes.
+
+3. Remind the user to re-download device_bridge.py from the sidebar if device_bridge.py appears in any section (the embedded template in Sidebar-js.html must also have been updated).
 4. If device_bridge.py was changed, confirm VERSION was bumped (or flag it if not).
