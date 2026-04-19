@@ -1,10 +1,10 @@
-// TopoAssist v260420.42 | 2026-04-20 02:49:03 | git commit: 7605abd
+// TopoAssist v260420.43 | 2026-04-20 03:03:15 | git commit: b640a2d
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.42";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.43";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -760,31 +760,48 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
   if (!mappingSheet) return [];
 
   const schemaArray = optionalTargetSchema || getSchemaConfig();
-  const targetKeys = schemaArray.map(function(item) { return item.key + "_"; });
-  const currentKeys = getExistingAttributes(mappingSheet);
-  const orphanedKeys = currentKeys.filter(function(k) { return !targetKeys.includes(k); });
-  if (orphanedKeys.length === 0) return [];
+  const targetKeys = schemaArray.map(function(item) { return item.key + '_'; });
+  const devices = getExistingDevices();
+
+  // Build the complete set of expected row-2 headers from schema × devices.
+  // Any column NOT in this set is an orphan — regardless of its header format.
+  const expectedHeaders = new Set([DUMMY_VIS_HEADER]);
+  devices.forEach(function(d) {
+    targetKeys.forEach(function(k) { expectedHeaders.add(k + d); });
+  });
 
   const lastRow = mappingSheet.getLastRow();
   const lastCol = mappingSheet.getLastColumn();
+  if (lastCol < 1) return [];
+
   const row2 = mappingSheet.getRange(2, 1, 1, lastCol).getValues()[0];
   const dataValues = lastRow >= 3
     ? mappingSheet.getRange(3, 1, lastRow - 2, lastCol).getValues()
     : [];
 
-  return orphanedKeys.map(function(key) {
+  const orphans = [];
+  for (let c = 0; c < lastCol; c++) {
+    const header = String(row2[c]).trim();
+    if (expectedHeaders.has(header)) continue;
+
     let hasData = false;
-    for (let c = 0; c < lastCol && !hasData; c++) {
-      if (String(row2[c]).startsWith(key)) {
-        for (let r = 0; r < dataValues.length && !hasData; r++) {
-          if (dataValues[r][c] !== '' && dataValues[r][c] !== null && dataValues[r][c] !== undefined) {
-            hasData = true;
-          }
-        }
+    for (let r = 0; r < dataValues.length && !hasData; r++) {
+      if (dataValues[r][c] !== '' && dataValues[r][c] !== null && dataValues[r][c] !== undefined) {
+        hasData = true;
       }
     }
-    return { key: key, hasData: hasData };
-  });
+
+    // Display key: strip device-name suffix if present, else show raw header
+    let displayKey = header;
+    for (let di = 0; di < devices.length; di++) {
+      if (header.endsWith(devices[di])) {
+        displayKey = header.slice(0, header.length - devices[di].length);
+        break;
+      }
+    }
+    orphans.push({ key: displayKey || '(blank)', hasData: hasData });
+  }
+  return orphans;
 }
 
 function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans) {
@@ -1344,6 +1361,22 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
 */
 
 // 1. CONFIGURATION: Define Colors & Rules
+// Shared speed-tier color table — applied to both et_speed_ and xcvr_speed_ columns.
+// et_speed_ = EOS interface speed; xcvr_speed_ = transceiver module speed.
+// Previously keyed as 'speed' (dead — no schema column starts with "speed_").
+const _SPEED_COLOR_RULES = [
+  { text: '1.6t', bg: '#e0e7ff' },
+  { text: '800g', bg: '#fae8ff' },
+  { text: '400g', bg: '#f3e8ff' },
+  { text: '200g', bg: '#dbeafe' },
+  { text: '100g', bg: '#dcfce7' },
+  { text: '50g', bg: '#ccfbf1' },
+  { text: '40g', bg: '#fef9c3' },
+  { text: '25g', bg: '#e0f2fe' },
+  { text: '10g', bg: '#f1f5f9' },
+  { text: '1g', bg: '#f8fafc' }
+];
+
 const FORMAT_CONFIG = {
   colors: {
     orphan: "#ffffff", // White for unconnected (cleaner look)
@@ -1351,18 +1384,8 @@ const FORMAT_CONFIG = {
   },
   // Rules for specific columns (Key = Header Prefix)
   rules: {
-    'speed': [
-      { text: '1.6t', bg: '#e0e7ff' },
-      { text: '800g', bg: '#fae8ff' },
-      { text: '400g', bg: '#f3e8ff' },
-      { text: '200g', bg: '#dbeafe' },
-      { text: '100g', bg: '#dcfce7' },
-      { text: '50g', bg: '#ccfbf1' },
-      { text: '40g', bg: '#fef9c3' },
-      { text: '25g', bg: '#e0f2fe' },
-      { text: '10g', bg: '#f1f5f9' },
-      { text: '1g', bg: '#f8fafc' }
-    ],
+    'et_speed':   _SPEED_COLOR_RULES,
+    'xcvr_speed': _SPEED_COLOR_RULES,
     'xcvr_type': [
       { text: 'OSFP', bg: '#fae8ff' },
       { text: 'QSFP-DD', bg: '#f3e8ff' },
@@ -1602,11 +1625,13 @@ function buildConditionalRules(sheet, headers, lastRow) {
   const deviceNames = new Set(headers.filter(h => h.startsWith('int_')).map(h => h.substring(4)));
 
   deviceNames.forEach(dev => {
-    const intIdx = getColIdx('int_' + dev);
-    const poIdx = getColIdx('po_' + dev);
-    const modeIdx = getColIdx('sp_mode_' + dev);
-    const sviIdx = getColIdx('svi_vlan_' + dev);
-    const ipIdx = getColIdx('ip_type_' + dev);
+    const intIdx      = getColIdx('int_' + dev);
+    const poIdx       = getColIdx('po_' + dev);
+    const modeIdx     = getColIdx('sp_mode_' + dev);
+    const sviIdx      = getColIdx('svi_vlan_' + dev);
+    const ipIdx       = getColIdx('ip_type_' + dev);
+    const etSpeedIdx  = getColIdx('et_speed_' + dev);
+    const xcvrSpeedIdx = getColIdx('xcvr_speed_' + dev);
 
     // Rule 1: "Member Port" logic
     // MODIFIED: We removed setBackground().
@@ -1649,6 +1674,23 @@ function buildConditionalRules(sheet, headers, lastRow) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(formula)
         .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([range]).build());
+    }
+
+    // Rule 4: Amber xcvr_speed_ when et_speed == xcvr_speed (both non-empty).
+    // Signals possible lane-split mismatch: if the port is a breakout lane (e.g. Et1/1
+    // at 25g), xcvr_speed should reflect the full transceiver aggregate (e.g. 100g),
+    // not the per-lane speed. Equal values mean the transceiver speed wasn't adjusted
+    // for the breakout and may need attention.
+    // Priority: added in Section A, so this overrides the standard speed-tier color (Section B).
+    if (etSpeedIdx > 0 && xcvrSpeedIdx > 0) {
+      const range = sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1);
+      const etCol = getColLet(etSpeedIdx);
+      const xsCol = getColLet(xcvrSpeedIdx);
+      const formula = `=AND($${etCol}3<>"",$${xsCol}3<>"",$${etCol}3=$${xsCol}3)`;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setBackground("#fef08a")  // amber-yellow: "check lane split"
         .setRanges([range]).build());
     }
 
