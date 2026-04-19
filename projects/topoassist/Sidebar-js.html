@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.51 | 2026-04-20 03:36:56 | git commit: bad71cd -->
+<!-- TopoAssist v260420.56 | 2026-04-20 03:50:28 | git commit: 1c5ada8 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.51";  // keep in sync with Code.gs
+const APP_VERSION = "260420.56";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4566,16 +4566,24 @@ function showModalLoading(modalId) {
  * Calls callback(true) if user chooses Delete, callback(false) if Keep or dismiss.
  */
 function _showOrphanConfirm(orphans, callback) {
-  const withData = orphans.filter(o => o.hasData);
-  const hasDataWarning = withData.length > 0;
+  // Split: keepable orphans (current device, unknown attr) vs removed-device columns (always deleted)
+  const keepable  = orphans.filter(o => !o.removedDevice);
+  const removedDev = orphans.filter(o => o.removedDevice);
 
-  let colList = orphans.map(o => {
+  const hasDataWarning = keepable.some(o => o.hasData) || removedDev.some(o => o.hasData);
+
+  const makeItem = (o, alwaysDelete) => {
     const name = o.key.replace(/_$/, '');
-    const tag  = o.hasData
-      ? `<span style="color:#b45309;font-weight:600">⚠ ${name} (has data)</span>`
-      : `<span style="color:#475569">${name}</span>`;
-    return `<li style="margin:2px 0">${tag}</li>`;
-  }).join('');
+    if (alwaysDelete) {
+      return `<li style="margin:2px 0"><span style="color:#7c3aed;font-size:10px">${name}${o.hasData ? ' ⚠' : ''}</span></li>`;
+    }
+    return o.hasData
+      ? `<li style="margin:2px 0"><span style="color:#b45309;font-weight:600">⚠ ${name} (has data)</span></li>`
+      : `<li style="margin:2px 0"><span style="color:#475569">${name}</span></li>`;
+  };
+
+  const keepableList  = keepable.map(o => makeItem(o, false)).join('');
+  const removedList   = removedDev.map(o => makeItem(o, true)).join('');
 
   const dlg = document.createElement('div');
   dlg.style.cssText = [
@@ -4584,36 +4592,46 @@ function _showOrphanConfirm(orphans, callback) {
     'background:rgba(15,23,42,0.55)'
   ].join(';');
   dlg.innerHTML = `
-    <div style="background:#fff;border-radius:8px;padding:20px;max-width:380px;width:90%;
+    <div style="background:#fff;border-radius:8px;padding:16px;max-width:380px;width:90%;
+                max-height:90vh;display:flex;flex-direction:column;overflow:hidden;
                 box-shadow:0 8px 32px rgba(0,0,0,.25);font-family:'JetBrains Mono',monospace">
-      <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px;user-select:none">
+      <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;flex-shrink:0;user-select:none">
         Columns not in schema
       </div>
-      <div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:4px;
-                  padding:6px 8px;margin-bottom:10px;background:#f8fafc">
-        <ul style="margin:0 0 0 14px;padding:0;font-size:11px;list-style:disc">${colList}</ul>
-      </div>
-      ${hasDataWarning ? `<div style="font-size:11px;color:#b45309;background:#fef3c7;
-          border:1px solid #fcd34d;border-radius:4px;padding:6px 8px;margin-bottom:12px;user-select:none">
-          ⚠ Deleting will permanently lose the highlighted data.
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        ${keepableList ? `
+        <div style="font-size:10px;color:#64748b;margin-bottom:4px;user-select:none">CAN BE KEPT OR DELETED</div>
+        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:5px 8px;margin-bottom:8px;background:#f8fafc">
+          <ul style="margin:0 0 0 14px;padding:0;font-size:11px;list-style:disc">${keepableList}</ul>
         </div>` : ''}
-      <div style="font-size:11px;color:#475569;margin-bottom:14px;user-select:none">
-        Keep or delete these columns?
+        ${removedList ? `
+        <div style="font-size:10px;color:#7c3aed;margin-bottom:4px;user-select:none">ALWAYS DELETED (device removed)</div>
+        <div style="border:1px solid #ede9fe;border-radius:4px;padding:5px 8px;margin-bottom:8px;background:#faf5ff">
+          <ul style="margin:0 0 0 14px;padding:0;font-size:11px;list-style:disc">${removedList}</ul>
+        </div>` : ''}
+        ${hasDataWarning ? `<div style="font-size:11px;color:#b45309;background:#fef3c7;
+            border:1px solid #fcd34d;border-radius:4px;padding:6px 8px;margin-bottom:8px;user-select:none">
+            ⚠ Columns marked ⚠ have data that will be permanently lost if deleted.
+          </div>` : ''}
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="_orphanKeep" style="font-family:'JetBrains Mono',monospace;font-size:12px;
+      <div style="font-size:11px;color:#475569;margin:8px 0;flex-shrink:0;user-select:none">
+        ${keepableList ? 'Keep or delete the keepable columns?' : 'All columns will be deleted (devices removed).'}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-shrink:0">
+        ${keepableList ? `<button id="_orphanKeep" style="font-family:'JetBrains Mono',monospace;font-size:12px;
           padding:6px 14px;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;
-          color:#0f172a;cursor:pointer">Keep Columns</button>
+          color:#0f172a;cursor:pointer;user-select:none">Keep Columns</button>` : ''}
         <button id="_orphanDelete" style="font-family:'JetBrains Mono',monospace;font-size:12px;
           padding:6px 14px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;
-          color:#b91c1c;cursor:pointer">Delete Columns</button>
+          color:#b91c1c;cursor:pointer;user-select:none">Delete Columns</button>
       </div>
     </div>`;
 
   document.body.appendChild(dlg);
 
   const cleanup = choice => { document.body.removeChild(dlg); callback(choice); };
-  dlg.querySelector('#_orphanKeep').onclick   = () => cleanup(false);
+  const keepBtn = dlg.querySelector('#_orphanKeep');
+  if (keepBtn) keepBtn.onclick = () => cleanup(false);
   dlg.querySelector('#_orphanDelete').onclick = () => cleanup(true);
   dlg.addEventListener('keydown', e => { if (e.key === 'Escape') cleanup(false); });
 }
