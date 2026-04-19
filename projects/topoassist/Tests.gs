@@ -1,4 +1,4 @@
-// TopoAssist v260420.34 | 2026-04-20 02:19:42 | git commit: e4144e5
+// TopoAssist v260420.35 | 2026-04-20 02:26:26 | git commit: 8582192
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -283,8 +283,8 @@ function test_buildCableGroupsForTest() {
   (function() {
     const links = [{ u: "leaf1:Et1", v: "spine1:Et2" }];
     const nodes = {
-      "leaf1:Et1":  { device: "leaf1",  name: "Et1",  details: { xcvr_: "SFP", et_speed_: "10g" } },
-      "spine1:Et2": { device: "spine1", name: "Et2",  details: { xcvr_: "SFP", et_speed_: "10g" } }
+      "leaf1:Et1":  { device: "leaf1",  name: "Et1",  details: { xcvr_type_: "SFP", et_speed_: "10g" } },
+      "spine1:Et2": { device: "spine1", name: "Et2",  details: { xcvr_type_: "SFP", et_speed_: "10g" } }
     };
     const devs = { leaf1: { type: "arista" }, spine1: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);
@@ -301,7 +301,7 @@ function test_buildCableGroupsForTest() {
   // ── Scenario A: breakout-to-breakout (both multi-lane transceivers) ───────────
   (function() {
     const makeNode = (dev, port) => ({
-      device: dev, name: port, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" }
+      device: dev, name: port, details: { xcvr_speed_: "100g-4", xcvr_type_: "QSFP-DD" }
     });
     const links = [1,2,3,4].map(i => ({ u: `leaf1:Et14/${i}`, v: `spine1:Et48/${i}` }));
     const nodes = {};
@@ -326,8 +326,8 @@ function test_buildCableGroupsForTest() {
     const links = [1,2,3,4].map(i => ({ u: `leaf1:Et14/${i}`, v: `server1:Et${i}` }));
     const nodes = {};
     [1,2,3,4].forEach(i => {
-      nodes[`leaf1:Et14/${i}`] = { device: "leaf1",   name: `Et14/${i}`, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" } };
-      nodes[`server1:Et${i}`]  = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "25g",    xcvr_: "SFP" } };
+      nodes[`leaf1:Et14/${i}`] = { device: "leaf1",   name: `Et14/${i}`, details: { xcvr_speed_: "100g-4", xcvr_type_: "QSFP-DD" } };
+      nodes[`server1:Et${i}`]  = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "25g",    xcvr_type_: "SFP" } };
     });
     const devs = { leaf1: { type: "arista" }, server1: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);
@@ -423,8 +423,8 @@ function test_buildCableGroupsForTest() {
     const links = [1,2,3,4].map(i => ({ u: `server1:Et${i}`, v: `spine1:Et48/${i}` }));
     const nodes = {};
     [1,2,3,4].forEach(i => {
-      nodes[`server1:Et${i}`]   = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "25g",    xcvr_: "SFP" } };
-      nodes[`spine1:Et48/${i}`] = { device: "spine1",  name: `Et48/${i}`, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" } };
+      nodes[`server1:Et${i}`]   = { device: "server1", name: `Et${i}`,   details: { xcvr_speed_: "25g",    xcvr_type_: "SFP" } };
+      nodes[`spine1:Et48/${i}`] = { device: "spine1",  name: `Et48/${i}`, details: { xcvr_speed_: "100g-4", xcvr_type_: "QSFP-DD" } };
     });
     const devs = { server1: { type: "arista" }, spine1: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);
@@ -478,16 +478,16 @@ function test_buildCableGroupsForTest() {
       g["leaf1:Et3/1 <-> server1:Et1"].isBreakoutA, false));
   })();
 
-  // ── QSFP100 4x25G breakout: xcvr_speed_=25g (per-lane) + xcvr_=QSFP100 → IS breakout ──
+  // ── QSFP100 4x25G breakout: xcvr_speed_=25g (per-lane) + xcvr_type_=QSFP100 → IS breakout ──
   // Regression: !!aggA alone misses QSFP100 in 4x25G mode where xcvr_speed_ stores
-  // the per-lane speed ("25g"), not the aggregate ("100g-4"). xcvr_ starts with QSFP
+  // the per-lane speed ("25g"), not the aggregate ("100g-4"). xcvr_type_ starts with QSFP
   // so isMultiLaneA=true and the 4 links group correctly.
   (function() {
     const links = [1,2,3,4].map(i => ({ u: `gd435:Et1/${i}`, v: `cal423:Et${i}` }));
     const nodes = {};
     [1,2,3,4].forEach(i => {
-      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_speed_: "25g", xcvr_: "QSFP100" } };
-      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_speed_: "25g", xcvr_: "SFP25"   } };
+      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_speed_: "25g", xcvr_type_: "QSFP100" } };
+      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_speed_: "25g", xcvr_type_: "SFP25"   } };
     });
     const devs = { gd435: { type: "arista" }, cal423: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);
@@ -499,14 +499,14 @@ function test_buildCableGroupsForTest() {
     results.push(t("QSFP100 4x25G — 4 links in group",              g[keys[0]].links.length, 4));
   })();
 
-  // ── QSFP100 4x25G breakout: xcvr_speed_ absent (blank sheet col) + xcvr_=QSFP100 ──
-  // Real-world case: xcvr_speed_ column not filled in; xcvr_ alone must trigger grouping.
+  // ── QSFP100 4x25G breakout: xcvr_speed_ absent (blank sheet col) + xcvr_type_=QSFP100 ──
+  // Real-world case: xcvr_speed_ column not filled in; xcvr_type_ alone must trigger grouping.
   (function() {
     const links = [1,2,3,4].map(i => ({ u: `gd435:Et1/${i}`, v: `cal423:Et${i}` }));
     const nodes = {};
     [1,2,3,4].forEach(i => {
-      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_: "QSFP100" } }; // xcvr_speed_ missing
-      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_: "SFP25"   } };
+      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_type_: "QSFP100" } }; // xcvr_speed_ missing
+      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_type_: "SFP25"   } };
     });
     const devs = { gd435: { type: "arista" }, cal423: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);
@@ -523,8 +523,8 @@ function test_buildCableGroupsForTest() {
     const links = [1,2,3,4].map(i => ({ u: `leaf1:Et5/22/${i}`, v: `server1:Et${i}` }));
     const nodes = {};
     [1,2,3,4].forEach(i => {
-      nodes[`leaf1:Et5/22/${i}`] = { device: "leaf1",   name: `Et5/22/${i}`, details: { xcvr_speed_: "100g-4", xcvr_: "QSFP-DD" } };
-      nodes[`server1:Et${i}`]    = { device: "server1", name: `Et${i}`,      details: { xcvr_speed_: "25g",    xcvr_: "SFP" } };
+      nodes[`leaf1:Et5/22/${i}`] = { device: "leaf1",   name: `Et5/22/${i}`, details: { xcvr_speed_: "100g-4", xcvr_type_: "QSFP-DD" } };
+      nodes[`server1:Et${i}`]    = { device: "server1", name: `Et${i}`,      details: { xcvr_speed_: "25g",    xcvr_type_: "SFP" } };
     });
     const devs = { leaf1: { type: "arista" }, server1: { type: "arista" } };
     const g = _buildCableGroupsForTest(links, nodes, devs);

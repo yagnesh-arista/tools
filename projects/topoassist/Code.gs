@@ -1,10 +1,10 @@
-// TopoAssist v260420.34 | 2026-04-20 02:18:49 | git commit: e4144e5
+// TopoAssist v260420.35 | 2026-04-20 02:23:52 | git commit: 8582192
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.34";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.35";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -172,12 +172,12 @@ function viewCabling() {
 }
 
 function viewTransceiver() {
-  applyCustomView(['int', 'xcvr']);
+  applyCustomView(['int', 'xcvr_type']);
   showSheetAssistPanel();
 }
 
 function viewSpeed() {
-  applyCustomView(['int', 'xcvr', 'et_speed', 'xcvr_speed']);
+  applyCustomView(['int', 'xcvr_type', 'et_speed', 'xcvr_speed']);
   showSheetAssistPanel();
 }
 
@@ -631,7 +631,7 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'et_speed', label: 'Et Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
   { key: 'xcvr_speed', label: 'Xcvr Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
   { key: 'encoding', label: 'FEC', options: ['fire-code', 'reed-solomon'] },
-  { key: 'xcvr', label: 'Transceiver', options: [] },
+  { key: 'xcvr_type', label: 'Xcvr Type', options: [] },
   { key: 'snake_int', label: 'Snake Port', options: [] },
   { key: 'desc', label: 'Description', options: [] },
   { key: 'sd', label: 'SD', options: [] },
@@ -992,12 +992,12 @@ function parseAndExpandDevices(inputStr) {
  * Returns the most specific (longest) schema key that is a prefix of `header`.
  * Falls back to extracting the underscore-bounded prefix from the header itself.
  *
- * Longest-match is required because some schema keys share a prefix
- * (e.g. "xcvr_" is a prefix of "xcvr_speed_"). Last-match or first-match both
+ * Longest-match is required because schema keys can share a prefix
+ * (e.g. if "a_" and "a_b_" both exist). Last-match or first-match both
  * produce silent data loss when the schema contains such pairs.
  *
  * @param {string}        header     Column header, e.g. "xcvr_speed_leaf1"
- * @param {Array<string>} schemaKeys Schema keys with trailing _, e.g. ["xcvr_","xcvr_speed_"]
+ * @param {Array<string>} schemaKeys Schema keys with trailing _, e.g. ["xcvr_type_","xcvr_speed_"]
  * @returns {string} Matched schema key, extracted prefix, or "" if no underscore in header
  */
 function findAttrKey(header, schemaKeys) {
@@ -1363,7 +1363,7 @@ const FORMAT_CONFIG = {
       { text: '10g', bg: '#f1f5f9' },
       { text: '1g', bg: '#f8fafc' }
     ],
-    'xcvr': [
+    'xcvr_type': [
       { text: 'OSFP', bg: '#fae8ff' },
       { text: 'QSFP-DD', bg: '#f3e8ff' },
       { text: 'QSFP56', bg: '#dbeafe' },
@@ -6223,7 +6223,7 @@ function _breakoutSides(g) {
  * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-20
  *
  * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]
- * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_,et_speed_}}}
+ * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_type_,et_speed_}}}
  * @param {Object} devicesData {"dev": {type:"arista"|"non-arista"}}
  * @returns {Object} cableGroups map — same shape as buildCableGroups() returns
  */
@@ -6250,14 +6250,14 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
     // Breakout detection: port has slash AND is a multi-lane transceiver.
     // Two signals for multi-lane:
     //   1. xcvr_speed_ in aggregate format (e.g. "100g-4") — explicit lane count
-    //   2. xcvr_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
+    //   2. xcvr_type_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
     //      stores xcvr_speed_="25g" per lane, not aggregate)
-    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_="SFP25" (no QSFP
+    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_type_="SFP25" (no QSFP
     // prefix) and no aggregate speed — correctly excluded.
     var aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     var aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
-    var xcvrA = (first.details.xcvr_  || "").trim();
-    var xcvrB = (second.details.xcvr_ || "").trim();
+    var xcvrA = (first.details.xcvr_type_  || "").trim();
+    var xcvrB = (second.details.xcvr_type_ || "").trim();
     var isMultiLaneA = !!aggA || /^[OQ]SFP/i.test(xcvrA);
     var isMultiLaneB = !!aggB || /^[OQ]SFP/i.test(xcvrB);
 
@@ -6282,8 +6282,8 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
         links: [],
         speedA: first.details.xcvr_speed_  || first.details.et_speed_  || "",
         speedB: second.details.xcvr_speed_ || second.details.et_speed_ || "",
-        xcvrA:  first.details.xcvr_  || "",
-        xcvrB:  second.details.xcvr_ || ""
+        xcvrA:  first.details.xcvr_type_  || "",
+        xcvrB:  second.details.xcvr_type_ || ""
       };
     }
     cableGroups[groupKey].links.push({ portA: first.name, portB: second.name });

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.34 | 2026-04-20 02:19:57 | git commit: e4144e5 -->
+<!-- TopoAssist v260420.35 | 2026-04-20 02:26:57 | git commit: 8582192 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.34";  // keep in sync with Code.gs
+const APP_VERSION = "260420.35";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8272,7 +8272,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "2.11"
+VERSION = "2.12"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -8362,8 +8362,10 @@ def _parse_internal_vlans(ivlans):
     """Parse 'show vlan internal' JSON response into a sorted int list.
 
     EOS returns: {"vlans": {"1025": {...}, "1026": {...}}}
-    Returns [] when the response is empty or the key is absent.
+    Returns [] when the response is empty, None (command failed), or the key is absent.
     """
+    if not ivlans:
+        return []
     return sorted(int(vid) for vid in ivlans.get("vlans", {}).keys())
 
 
@@ -10136,14 +10138,14 @@ function buildCableGroups() {
     // Breakout detection: port has slash AND is a multi-lane transceiver.
     // Two signals for multi-lane:
     //   1. xcvr_speed_ in aggregate format (e.g. "100g-4") — explicit lane count
-    //   2. xcvr_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
+    //   2. xcvr_type_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
     //      stores xcvr_speed_="25g" per lane, not aggregate)
-    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_="SFP25" (no QSFP
+    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_type_="SFP25" (no QSFP
     // prefix) and no aggregate speed — correctly excluded.
     const aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     const aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
-    const xcvrA = (first.details.xcvr_  || "").trim();
-    const xcvrB = (second.details.xcvr_ || "").trim();
+    const xcvrA = (first.details.xcvr_type_  || "").trim();
+    const xcvrB = (second.details.xcvr_type_ || "").trim();
     const isMultiLaneA = !!aggA || /^[OQ]SFP/i.test(xcvrA);
     const isMultiLaneB = !!aggB || /^[OQ]SFP/i.test(xcvrB);
 
@@ -10180,8 +10182,8 @@ function buildCableGroups() {
         isBreakoutA, isBreakoutB, links: [],
         speedA: first.details.xcvr_speed_ || first.details.et_speed_ || "",
         speedB: second.details.xcvr_speed_ || second.details.et_speed_ || "",
-        xcvrA: first.details.xcvr_ || "",
-        xcvrB: second.details.xcvr_ || ""
+        xcvrA: first.details.xcvr_type_ || "",
+        xcvrB: second.details.xcvr_type_ || ""
       };
     }
     cableGroups[groupKey].links.push({ portA: first.name, portB: second.name });
@@ -10793,8 +10795,8 @@ function toggleAllView(state) {
 
 const VIEW_PRESETS = {
   cabling:     ['int'],
-  transceiver: ['int', 'xcvr'],
-  speed:       ['int', 'xcvr', 'et_speed', 'xcvr_speed'],
+  transceiver: ['int', 'xcvr_type'],
+  speed:       ['int', 'xcvr_type', 'et_speed', 'xcvr_speed'],
   po:          ['int', 'po'],
   mode:        ['int', 'po', 'sp_mode'],
   vlan:        ['int', 'po', 'sp_mode', 'vlan'],
