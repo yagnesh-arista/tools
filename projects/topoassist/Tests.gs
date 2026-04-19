@@ -19,6 +19,7 @@
  *   compressPortList         — sort and join port array as comma-separated string
  *   _breakoutSides           — determine QSFP vs SFP lane side of a cable group
  *   _buildCableGroupsForTest — cabling grouping logic: Scenario A/B/C + snake + non-Arista
+ *   parseVlanWithNative      — split nv<N> native-VLAN token out of vlan_ field
  */
 
 
@@ -134,6 +135,48 @@ function test_parseSviVlans() {
       _parseSviVlans('all', [10, 20]),              [10, 20]),
     t("whitespace in svi_vlan_ value",
       _parseSviVlans(' 10 , 20 ', ['10', '20']),   ['10', '20']),
+  ];
+}
+
+
+// ── parseVlanWithNative ────────────────────────────────────────────────────────
+
+function test_parseVlanWithNative() {
+  const t = assert_;
+  return [
+    t("empty string → no native, no vlans",
+      parseVlanWithNative(''),
+      { native: null, vlans: '' }),
+    t("null → no native, no vlans",
+      parseVlanWithNative(null),
+      { native: null, vlans: '' }),
+    t("plain vlans, no native token",
+      parseVlanWithNative('10,20,30'),
+      { native: null, vlans: '10,20,30' }),
+    t("native token only",
+      parseVlanWithNative('nv100'),
+      { native: '100', vlans: '' }),
+    t("native token at start",
+      parseVlanWithNative('nv100,10,20'),
+      { native: '100', vlans: '10,20' }),
+    t("native token at end",
+      parseVlanWithNative('10,20,nv100'),
+      { native: '100', vlans: '10,20' }),
+    t("native token in middle",
+      parseVlanWithNative('10,nv100,20'),
+      { native: '100', vlans: '10,20' }),
+    t("uppercase NV accepted",
+      parseVlanWithNative('NV200,10'),
+      { native: '200', vlans: '10' }),
+    t("only first nv token used; second treated as invalid token (kept in rest)",
+      parseVlanWithNative('nv10,nv20,30'),
+      { native: '10', vlans: 'nv20,30' }),
+    t("range token preserved alongside native",
+      parseVlanWithNative('10-20,nv100'),
+      { native: '100', vlans: '10-20' }),
+    t("single VLAN no native",
+      parseVlanWithNative('42'),
+      { native: null, vlans: '42' }),
   ];
 }
 
@@ -631,6 +674,7 @@ function runAllTests() {
     { name: "normalizePo",               fn: test_normalizePo },
     { name: "isValidPort",               fn: test_isValidPort },
     { name: "_parseSviVlans",            fn: test_parseSviVlans },
+    { name: "parseVlanWithNative",       fn: test_parseVlanWithNative },
     { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
     { name: "compressPortList",          fn: test_compressPortList },
     { name: "_breakoutSides",            fn: test_breakoutSides },

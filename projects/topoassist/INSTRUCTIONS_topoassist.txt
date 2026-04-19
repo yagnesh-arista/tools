@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-19 (Sheet View panel improvements: preset buttons auto-apply immediately via submitCustomView(); active preset indicator (.active CSS class on clicked button, cleared by toggleAllView(), set on panel open by detectActivePreset()); removed false "only mandatory column" dialog from submitCustomView(); VIEW_PRESETS hoisted to module-level const; loading spinner: emoji ⏳ → inline SVG; data-preset attribute on each preset button. Files: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
+  Last updated: 2026-04-19 (Remove n_vlan column from schema; encode native VLAN as nv<N> token inside vlan_ field. Added parseVlanWithNative(str)→{native,vlans} helper (DUPLICATED in Code.gs + Sidebar-js.html — last synced 2026-04-19). vlan_ validation regex updated to accept nv\d+ token. All n_vlan_ references replaced: trunk config (parseVlanWithNative(d.vlan_)), allVlans collection, processP2pNeighbor IP calc, gateway VLAN collection, VLAN audit, VLAN summary map, search text, getVlanForSublayer. Tests: test_parseVlanWithNative added (11 cases). UserGuide.html: nv<N> syntax documented in Sheet Conditional Dimming section. Files: Code.gs, Sidebar-js.html, Tests.gs, UserGuide.html)
+  Previous: 2026-04-19 (Sheet View panel improvements: preset buttons auto-apply immediately via submitCustomView(); active preset indicator (.active CSS class on clicked button, cleared by toggleAllView(), set on panel open by detectActivePreset()); removed false "only mandatory column" dialog from submitCustomView(); VIEW_PRESETS hoisted to module-level const; loading spinner: emoji ⏳ → inline SVG; data-preset attribute on each preset button. Files: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-04-19 (Tests.gs: add 2 missing _buildCableGroupsForTest coverage gaps — (1) modular chassis native SFP (2-level slash, no aggX) → verifies 2 separate Scenario B groups with raw Et{slot}/{port} names, no breakout grouping; (2) modular chassis QSFP breakout (3-level Et5/22/1..4, aggX=100g-4) → verifies collapse to 1 group keyed by Et5/22/1 anchor and phyA=Et5/22/1. All 6 decision-tree branches now covered. Files: Tests.gs)
   Previous: 2026-04-19 (getPhysicalPortParent: switch from parts.pop() → parts[last]='1' (normalize lane to /1). Rationale: parts.pop() gave Et14 which is not a valid EOS port name; Et14/1 IS valid and is the lane-1 anchor for the physical QSFP transceiver. All breakout lanes of the same QSFP now collapse to the same lane-1 key (Et14/4→Et14/1, Et5/22/3→Et5/22/1). Native ports (Et14/1 already lane 1) are unchanged. Updated in both Sidebar-js.html and Code.gs (keep in sync). Tests.gs: updated all phyA/phyB and groupKey expected values to /1 form (Scenario A: Et14/1 <-> Et48/1, Scenario C: Et14/1, Cases 3/4, 1.6t-8). CLAUDE.md: updated constraint (was "never parts[last]='1'", now "never parts.pop()"). Files: Sidebar-js.html, Code.gs, Tests.gs, CLAUDE.md)
   Previous: 2026-04-19 (Cabling BASE-T display fix: sfp-1000baset in xcvr_speed_ is a transceiver-type descriptor, not a plain speed string. downloadCablingReport: added sL/sR BASE-T normalization → sL='1g' and fills xL='BASE-T' if xcvr_ column was empty (avoids "BASE-T sfp-1000baset" in report). copyCablingCsv + copyCablingMarkdown: cleanSpeed() maps any BASE-T xcvr_speed_ value → '1g'. Code.gs getPhysicalPortParent docstring: removed misleading pizza-box native port examples (Et14/4→Et14, Et48/1→Et48) and replaced with correct modular chassis examples (Et5/22/1→Et5/22). Files: Sidebar-js.html, Code.gs)
@@ -485,8 +486,7 @@ ATTRIBUTE SCHEMA (DEFAULT ORDER):
   po          Port-Channel    (free text: Po10, Po100)
   sp_mode     Mode            l2-et-access, l2-et-trunk, l2-po-access, l2-po-trunk,
                               l3-et-int, l3-et-sub-int, l3-po-int, l3-po-sub-int
-  n_vlan      Native VLAN     (free text)
-  vlan        VLANs           (free text)
+  vlan        VLANs           (free text: 10, 10,20, 10-20; add nv<N> for trunk native VLAN e.g. 10,20,nv100)
   svi_vlan    SVI VLANs       all (all VLANs in vlan_), <id> or <id,id> (specific VLANs only)
   ip_type     IP Type         p2p, gw
   vrf         VRF             (free text)
@@ -1186,7 +1186,7 @@ Custom View (merged into SheetAssistPanel.html right column):
       cabling → ['int']
       po      → ['int', 'po']
       mode    → ['int', 'po', 'sp_mode']
-      vlan    → ['int', 'po', 'n_vlan', 'vlan']
+      vlan    → ['int', 'po', 'vlan']
       xcvr    → ['int', 'xcvr']
   - applyCustomView(selectedKeys):
       A. Saves selectedKeys to CUSTOM_VIEW_PREFS (UserProperties) + SHEET_VIEW_MODE='CUSTOM'.
@@ -1591,7 +1591,7 @@ Client functions (Sidebar-js.html):
   buildVlanSummary()          — iterates allNodesData; classifies each port L2/L3
                                 using same logic as Check Group 6 (mode includes
                                 'l3', hasIp, name starts 'vlan'); expands vlan_ and
-                                n_vlan_ via parseVlanInput(); builds vlanMap and
+                                via parseVlanInput() + parseVlanWithNative(); builds vlanMap and
                                 stores in window._vlanSummaryData
   renderVlanSummaryTable()    — renders sticky-header table (VLAN|Type|VRF|Ports);
                                 row click: closeVlanSummaryModal() then traceVlan(vid)
@@ -2253,8 +2253,9 @@ Sidebar-js.html, UserGuide.html) that:
 SHEET STRUCTURE:
 Row 1 = Device names (merged). Row 2 = Attribute headers (format: <key>_<DeviceName>).
 Rows 3+ = Port data. Default sheet name = 'PortMapping' (stored in ScriptProperties).
-Schema keys: int_, po_, sp_mode_, n_vlan_, vlan_, svi_, ip_type_, vrf_, et_speed_,
-xcvr_speed_, encoding_, xcvr_, desc_, sd_, dp-pp-mp_ (in that order).
+Schema keys: int_, po_, sp_mode_, vlan_, svi_vlan_, ip_type_, vrf_, et_speed_,
+xcvr_speed_, encoding_, xcvr_, snake_int_, desc_, sd_, dp-pp-mp_ (in that order).
+Native VLAN is encoded as nv<N> token inside vlan_ (e.g. "10,20,nv100") — no separate n_vlan_ column.
 et_speed_: EOS interface speed command (e.g. "25g"); used by config gen and audit Check F.
 xcvr_speed_: physical transceiver speed (e.g. "100g-4" for QSFP-DD); used by cabling grouping
   and report. Falls back to et_speed_ if blank.

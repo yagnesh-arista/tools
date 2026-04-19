@@ -621,7 +621,6 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'int', label: 'Interface', options: [] },
   { key: 'po', label: 'Port-Channel', options: [] },
   { key: 'sp_mode', label: 'Mode', options: ['l2-et-access', 'l2-et-trunk', 'l2-po-access', 'l2-po-trunk', 'l3-et-int', 'l3-et-sub-int', 'l3-po-int', 'l3-po-sub-int'] },
-  { key: 'n_vlan', label: 'Native VLAN', options: [] },
   { key: 'vlan', label: 'VLANs', options: [] },
   { key: 'svi_vlan', label: 'SVI VLANs', options: [] },  // free-text: 'all' or VLAN IDs e.g. '10' or '10,20'
   { key: 'ip_type', label: 'IP Type', options: ['p2p', 'gw'] },
@@ -3108,13 +3107,13 @@ function validateAndCleanData(header, value, rowData, headers, activeSviValue) {
 
   // Rules 1, 2, 3 removed — audit flags L3+SVI, L2+ip_type_, ET+Po; user may want to rollback
 
-  // --- RULE 4: VLAN format (numbers, ranges, or comma-separated lists) ---
-  if (header.toLowerCase().startsWith("vlan_") || header.toLowerCase().startsWith("n_vlan_")) {
-    if (!/^(\d+(-\d+)?(,\d+(-\d+)?)*)?$/.test(valStr)) {
+  // --- RULE 4: VLAN format (numbers, ranges, comma-separated lists, or nv<N> native token) ---
+  if (header.toLowerCase().startsWith("vlan_")) {
+    if (!/^((nv\d+|\d+(-\d+)?)(,(nv\d+|\d+(-\d+)?))*)?$/.test(valStr)) {
       return {
         valid: false,
         newValue: "",
-        warning: "Invalid VLAN format. Use: 10, 10,20, or 10-20"
+        warning: "Invalid VLAN format. Use: 10, 10,20, 10-20, or nv100 for native VLAN"
       };
     }
   }
@@ -3418,6 +3417,29 @@ function expandVlanString(str) {
     }
   });
   return result;
+}
+
+// Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-19
+// Returns { native: string|null, vlans: string } where:
+//   native = the native VLAN number as a string (e.g. "100"), or null if absent
+//   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
+// Only the first nv<N> token is used; subsequent ones are treated as regular tokens.
+function parseVlanWithNative(str) {
+  var s = String(str || '').trim();
+  if (!s) return { native: null, vlans: '' };
+  var native = null;
+  var rest = [];
+  s.split(',').forEach(function(p) {
+    var t = p.trim();
+    var m = t.match(/^nv(\d+)$/i);
+    if (m && !native) {
+      native = m[1];
+    } else if (t) {
+      rest.push(t);
+    }
+  });
+  return { native: native, vlans: rest.join(',') };
 }
 
 // 2. OUTPUT GENERATOR: Compresses numbers back into ranges (10,11,12 -> 10-12)
@@ -4163,8 +4185,9 @@ function generateAttributesBlock(d) {
   }
   else if (sp_mode.includes("trunk")) {
     block += " switchport mode trunk\n";
-    if (d.n_vlan_) block += ` switchport trunk native vlan ${d.n_vlan_}\n`;
-    if (d.vlan_) block += ` switchport trunk allowed vlan ${d.vlan_}\n`;
+    const _pv = parseVlanWithNative(d.vlan_);
+    if (_pv.native) block += ` switchport trunk native vlan ${_pv.native}\n`;
+    if (_pv.vlans) block += ` switchport trunk allowed vlan ${_pv.vlans}\n`;
   }
 
   return block;
@@ -4391,8 +4414,9 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
       });
     }
 
-    // Native VLANs are usually infra, but we add to 'all' just in case
-    if (details.n_vlan_) allVlans.add(parseInt(details.n_vlan_));
+    // Native VLAN encoded as nv<N> token inside vlan_ — add to 'all' just in case
+    const _nv = parseVlanWithNative(details.vlan_).native;
+    if (_nv) allVlans.add(parseInt(_nv));
   };
 
   rows.forEach(row => {
@@ -4522,7 +4546,8 @@ function computeVtepNames(allDevices, rows, headers, topo) {
 
 function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowIndex) {
   const mode = (String(details.sp_mode_ || "")).toLowerCase();
-  const vlans = Array.from(expandVlanString(String(details.vlan_ || "")));
+  const _pv = parseVlanWithNative(details.vlan_);
+  const vlans = Array.from(expandVlanString(String(_pv.vlans || "")));
   const l3IntNames = [];
   const poVal = normalizePo(details.po_);
 
@@ -4536,7 +4561,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   // Calculate IPs
   let val = 0;
   if (vlans.length > 0) val = parseInt(vlans[0]);
-  else if (details.n_vlan_) val = parseInt(details.n_vlan_);
+  else if (_pv.native) val = parseInt(_pv.native);
   if (!val || isNaN(val)) val = rowIndex + 1;
 
   let oct2 = Math.floor(val / 100);

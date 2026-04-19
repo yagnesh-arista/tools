@@ -15,6 +15,10 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **Cabling helpers are duplicated** in Code.gs AND Sidebar-js.html for server-side unit testing (Tests.gs is server-side and cannot call client-side JS). Duplicated functions: `getPhysicalPortParent`, `compressPortList`, `_breakoutSides`, `_buildCableGroupsForTest`. All carry `// DUPLICATED in Code.gs ... Last synced: <date>`. Keep in sync when either copy changes. `getPhysicalPortParent` normalizes the lane suffix to `/1` via `parts[parts.length-1]='1'` — never `parts.pop()` (that strips to `Et14` which is not a valid EOS port name). Result is always a valid EOS port: `Et14/4→Et14/1`, `Et5/22/3→Et5/22/1`.
 
+**parseVlanWithNative() is duplicated** in Code.gs AND Sidebar-js.html. Parses the `vlan_` field which may contain an `nv<N>` native-VLAN token (e.g. `10,20,nv100`). Returns `{ native: string|null, vlans: string }`. Keep both copies in sync; both carry `// DUPLICATED ... last synced: <date>`.
+
+**Native VLAN is encoded as `nv<N>` token inside the `vlan_` field** — there is no separate `n_vlan_` column. Example: `10,20,nv100` means allowed VLANs 10,20 with native VLAN 100. Always use `parseVlanWithNative(d.vlan_)` to split the native token before using the VLAN list or generating `switchport trunk native vlan` commands. Never re-introduce a standalone `n_vlan_` column.
+
 **generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 16-flag IP family settings object. Every call site must pass it — omitting silently drops all protocol-family-gated commands. **generateBGP() has 8 params** — `settings` is the 8th; gates peer group emission per flag.
 
 **16 network flags** in `getNetworkSettings()`: P2P (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM) + GW (GW_IPV4, GW_IPV6) + BGP (4) + OSPF (3) + VXLAN (2) + EVPN (2). P2P and GW are fully decoupled in `generateComplexL3Block()` — never use `useIpv6Explicit` to gate GW config. `hasP2pIpv6` gates Lo0 IPv6 / router-id ipv6; `hasAnyIpv6` (adds gw_ipv6) gates VRF `ipv6 unicast-routing`.
