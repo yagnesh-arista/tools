@@ -974,6 +974,10 @@
     <div class="modal-actions">
       <div class="footer-group">
         <button class="btn-std btn-danger ui-equal-size" onclick="resetSchemaToDefaults()">Reset Defaults</button>
+        <div class="chk-container ui-equal-size">
+          <input type="checkbox" id="chkDebugLogging" class="chk-input" onchange="toggleDebugLogging(this.checked)">
+          <label for="chkDebugLogging" class="chk-label" title="Enable debug logging to browser console (F12 → Console)">Debug Logging</label>
+        </div>
       </div>
       <div class="footer-group">
         <div class="chk-container ui-equal-size">

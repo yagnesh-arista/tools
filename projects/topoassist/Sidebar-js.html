@@ -172,9 +172,18 @@ function debounce(func, wait) {
 * 2. APP LIFECYCLE
 * ==========================================
 */
-// Debug toggle: run localStorage.setItem('topoassist_debug','1') in browser console + reload to enable.
-// Run localStorage.removeItem('topoassist_debug') + reload to disable.
+// Debug toggle — controlled via the Schema Manager checkbox or browser console:
+//   Enable:  localStorage.setItem('topoassist_debug','1')
+//   Disable: localStorage.removeItem('topoassist_debug')
+// No reload required; dbg() reads the flag on every call.
 function dbg(...a) { if (localStorage.getItem('topoassist_debug') === '1') console.log(...a); }
+
+function toggleDebugLogging(on) {
+  if (on) localStorage.setItem('topoassist_debug', '1');
+  else localStorage.removeItem('topoassist_debug');
+  const lbl = document.getElementById('chkDebugLogging');
+  if (lbl) lbl.checked = on;
+}
 
 // 1. Safe Mode Capture
 const currentMode = (typeof START_MODE !== 'undefined') ? START_MODE : "topology";
@@ -1201,6 +1210,10 @@ function initSchemaManager() {
 
   // Pre-scan for orphaned columns — updates Force Sync warning badge (read-only, non-blocking)
   google.script.run.withSuccessHandler(_updateForceSyncBadge).withFailureHandler(function() {}).getOrphanedColumnsInfo(null);
+
+  // Sync debug checkbox to current localStorage state
+  const chkDbg = document.getElementById('chkDebugLogging');
+  if (chkDbg) chkDbg.checked = localStorage.getItem('topoassist_debug') === '1';
 }
 
 // 2. HELPER: Prepares data for comparison (removes UI artifacts)
