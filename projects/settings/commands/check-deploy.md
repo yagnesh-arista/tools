@@ -12,7 +12,6 @@ TopoAssist has two deployment targets:
 
 **Local / bus-home** (run directly, no GAS upload needed):
 - device_bridge.py
-- lldp_bridge.py
 
 Steps:
 1. List which of the above files were changed in this session.
