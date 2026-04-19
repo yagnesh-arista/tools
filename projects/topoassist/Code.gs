@@ -1,10 +1,10 @@
-// TopoAssist v260420.56 | 2026-04-20 03:50:28 | git commit: b22ae55
+// TopoAssist v260420.58 | 2026-04-20 04:03:42
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.56";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.58";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -809,10 +809,12 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
   return orphans;
 }
 
-function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans) {
-  // deleteOrphans: undefined/null = prompt via ui.alert (menu/dialog context)
-  //                true  = delete orphaned columns
-  //                false = keep orphaned columns
+function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans, clientOrphanKeys) {
+  // deleteOrphans:    undefined/null = prompt via ui.alert (menu/dialog context)
+  //                   true  = delete orphaned columns
+  //                   false = keep orphaned columns
+  // clientOrphanKeys: Array of attr keys detected by sidebar (e.g. ['xcvr_', 'custom_']).
+  //                   When provided, skip server-side re-detection to avoid divergence.
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const mappingSheet = ss.getSheetByName(SHEET_DATA);
@@ -829,9 +831,12 @@ function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, delete
   const schemaArray = optionalForcedSchema || getSchemaConfig();
   let targetKeys = schemaArray.map(item => item.key + "_");
 
-  // 2. Identify "Orphaned" Columns — header-based (schema×devices expected set)
+  // 2. Identify "Orphaned" Columns — use client-provided keys when available (sidebar flow)
+  //    to avoid double-detection divergence. Fall back to server-side detection for menu calls.
   const currentDevices = getExistingDevices();
-  const orphanedCols = _getOrphanAttrKeys(mappingSheet, targetKeys, currentDevices.map(d => d.name));
+  const orphanedCols = Array.isArray(clientOrphanKeys)
+    ? clientOrphanKeys
+    : _getOrphanAttrKeys(mappingSheet, targetKeys, currentDevices.map(d => d.name));
 
   if (orphanedCols.length > 0) {
     let shouldDelete;
