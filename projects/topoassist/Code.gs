@@ -6144,6 +6144,7 @@ function _breakoutSides(g) {
 /**
  * Testable mirror of buildCableGroups() from Sidebar-js.html.
  * Accepts data as parameters instead of reading client-side globals, so Tests.gs can call it.
+ * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-19
  *
  * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]
  * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_,et_speed_}}}

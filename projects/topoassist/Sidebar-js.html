@@ -10076,6 +10076,7 @@ function openHelpModal() {
 /**
 * Shared grouping logic for cabling export and copy functions.
 * Returns { cableGroups, sheetIndexMap }.
+* DUPLICATED in Code.gs (as _buildCableGroupsForTest) — last synced: 2026-04-19
 */
 function buildCableGroups() {
   if (!currentData || !currentData.nodes) return { cableGroups: {}, sheetIndexMap: {} };
