@@ -1,10 +1,10 @@
-// TopoAssist v260420.43 | 2026-04-20 03:03:15 | git commit: b640a2d
+// TopoAssist v260420.45 | 2026-04-20 03:08:35 | git commit: a011115
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.43";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.45";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1391,6 +1391,7 @@ const FORMAT_CONFIG = {
       { text: 'QSFP-DD', bg: '#f3e8ff' },
       { text: 'QSFP56', bg: '#dbeafe' },
       { text: 'QSFP28', bg: '#dcfce7' },
+      { text: 'QSFP100', bg: '#dcfce7' },
       { text: 'DSFP', bg: '#dcfce7' },
       { text: 'QSFP+', bg: '#fef9c3' },
       { text: 'SFP28', bg: '#e0f2fe' },
@@ -1916,6 +1917,57 @@ function updateSheetDropdownsOnly() {
   ss.toast("Dropdowns Updated", "Success", 2);
 }
 
+/**
+ * Returns unique attribute keys for columns in the sheet that are NOT
+ * accounted for by the schema × devices layout.
+ *
+ * Uses header-based detection: computes the full set of expected row-2
+ * headers (schema key + device name for every combination), then flags
+ * every actual column whose header is outside that set.
+ *
+ * For each orphan header the device-name suffix is stripped (longest
+ * match wins) to recover the attribute key, so callers can add it back
+ * to targetKeys to preserve the column during a rebuild.
+ *
+ * @param {Sheet}          mappingSheet  The PortMapping sheet object.
+ * @param {Array<string>}  targetKeys    Schema keys with trailing _, e.g. ["hostname_","type_"].
+ * @param {Array<string>}  deviceNames   Device names as plain strings, e.g. ["leaf1","spine1"].
+ * @returns {Array<string>} Unique orphan attribute keys.
+ */
+function _getOrphanAttrKeys(mappingSheet, targetKeys, deviceNames) {
+  const lastCol = mappingSheet.getLastColumn();
+  if (lastCol < 1) return [];
+
+  // Build the exact set of expected row-2 headers
+  const expectedHeaders = new Set([DUMMY_VIS_HEADER]);
+  deviceNames.forEach(function(d) {
+    targetKeys.forEach(function(k) { expectedHeaders.add(k + d); });
+  });
+
+  const row2 = mappingSheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  const orphanKeys = new Set();
+
+  for (let c = 0; c < lastCol; c++) {
+    const header = String(row2[c]).trim();
+    if (!header || expectedHeaders.has(header)) continue;
+
+    // Strip device-name suffix (longest match wins) to recover the attr key
+    let key = header;
+    let matchLen = 0;
+    for (let di = 0; di < deviceNames.length; di++) {
+      const d = deviceNames[di];
+      if (d.length > matchLen && header.endsWith(d)) {
+        key = header.slice(0, header.length - d.length);
+        matchLen = d.length;
+      }
+    }
+    if (key) orphanKeys.add(key);
+  }
+
+  return Array.from(orphanKeys);
+}
+
+/** @deprecated Use _getOrphanAttrKeys() instead. Left for reference only. */
 function getExistingAttributes(sheet) {
   const lastCol = sheet.getLastColumn();
   if (lastCol < 1) return [];
