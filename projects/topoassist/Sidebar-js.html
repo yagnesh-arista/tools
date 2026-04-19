@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.28 | 2026-04-20 01:44:37 | git commit: b9c8b23 -->
+<!-- TopoAssist v260420.29 | 2026-04-20 01:52:41 | git commit: c9679ca -->
 <script>
-// DUPLICATED in Code.gs — last synced: 2026-04-19
-const APP_VERSION = "260420.28";  // keep in sync with Code.gs
+// DUPLICATED in Code.gs — last synced: 2026-04-20
+const APP_VERSION = "260420.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3637,7 +3637,7 @@ function parseVlanInput(input) {
 
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Code.gs — last synced: 2026-04-19
+// DUPLICATED in Code.gs — last synced: 2026-04-20
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
@@ -5335,7 +5335,7 @@ function processInterfaceConfig(btnId, deviceName, time) {
 /**
 * Helper: Standardizes interface names (Ethernet1 -> Et1)
 * Required for mapping server config data to UI elements.
-* DUPLICATED in Code.gs — last synced: 2026-04-19
+* DUPLICATED in Code.gs — last synced: 2026-04-20
 */
 function canonicalizeInterface(name) {
   if (!name) return "";
@@ -10086,7 +10086,7 @@ function openHelpModal() {
 /**
 * Shared grouping logic for cabling export and copy functions.
 * Returns { cableGroups, sheetIndexMap }.
-* DUPLICATED in Code.gs (as _buildCableGroupsForTest) — last synced: 2026-04-19
+* DUPLICATED in Code.gs (as _buildCableGroupsForTest) — last synced: 2026-04-20
 */
 function buildCableGroups() {
   if (!currentData || !currentData.nodes) return { cableGroups: {}, sheetIndexMap: {} };
@@ -10121,14 +10121,22 @@ function buildCableGroups() {
     if (speedA_raw.toLowerCase() === 'auto') speedA_raw = '';
     if (speedB_raw.toLowerCase() === 'auto') speedB_raw = '';
 
-    // Breakout grouping requires xcvr_speed_ in aggregate format (e.g. "100g-4").
-    // Slash notation alone is not sufficient — chassis native SFP ports (e.g. Et3/1) use
-    // slot/port notation but are NOT QSFP-DD breakout lanes.
+    // Breakout detection: port has slash AND is a multi-lane transceiver.
+    // Two signals for multi-lane:
+    //   1. xcvr_speed_ in aggregate format (e.g. "100g-4") — explicit lane count
+    //   2. xcvr_ starts with QSFP/OSFP — multi-lane capable (e.g. QSFP100 in 4x25G mode
+    //      stores xcvr_speed_="25g" per lane, not aggregate)
+    // Chassis native SFP ports (e.g. Et3/1 SFP25) have slash but xcvr_="SFP25" (no QSFP
+    // prefix) and no aggregate speed — correctly excluded.
     const aggA = speedA_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
     const aggB = speedB_raw.match(/^(\d+(?:\.\d+)?)[gt]-(\d+)$/i);
+    const xcvrA = (first.details.xcvr_  || "").trim();
+    const xcvrB = (second.details.xcvr_ || "").trim();
+    const isMultiLaneA = !!aggA || /^[OQ]SFP/i.test(xcvrA);
+    const isMultiLaneB = !!aggB || /^[OQ]SFP/i.test(xcvrB);
 
-    let isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && !!aggA;
-    let isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && !!aggB;
+    let isBreakoutA = !isSelfLoop && !devAIsNonArista && first.name.includes('/') && isMultiLaneA;
+    let isBreakoutB = !isSelfLoop && !devBIsNonArista && second.name.includes('/') && isMultiLaneB;
     let phyPortA = (devAIsNonArista || !isBreakoutA) ? first.name : getPhysicalPortParent(first.name);
     let phyPortB = (devBIsNonArista || !isBreakoutB) ? second.name : getPhysicalPortParent(second.name);
 

@@ -2855,7 +2855,7 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
   }
 }
 
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-19
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-20
 function canonicalizeInterface(name) {
   if (!name) return "";
 
@@ -3429,7 +3429,7 @@ function expandVlanString(str) {
 }
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-19
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-20
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
@@ -6150,7 +6150,7 @@ function _breakoutSides(g) {
 /**
  * Testable mirror of buildCableGroups() from Sidebar-js.html.
  * Accepts data as parameters instead of reading client-side globals, so Tests.gs can call it.
- * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-19
+ * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-20
  *
  * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]
  * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_,et_speed_}}}

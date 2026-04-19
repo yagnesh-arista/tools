@@ -1,4 +1,4 @@
-// TopoAssist v260420.23 | 2026-04-20 01:27:30 | git commit: 743e89a
+// TopoAssist v260420.29 | 2026-04-20 01:53:07 | git commit: c9679ca
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -476,6 +476,27 @@ function test_buildCableGroupsForTest() {
       keys.includes("leaf1:Et3/1 <-> server1:Et1"), true));
     results.push(t("Chassis native SFP — isBreakoutA false (no aggX, no grouping)",
       g["leaf1:Et3/1 <-> server1:Et1"].isBreakoutA, false));
+  })();
+
+  // ── QSFP100 4x25G breakout: xcvr_speed_=25g (per-lane) + xcvr_=QSFP100 → IS breakout ──
+  // Regression: !!aggA alone misses QSFP100 in 4x25G mode where xcvr_speed_ stores
+  // the per-lane speed ("25g"), not the aggregate ("100g-4"). xcvr_ starts with QSFP
+  // so isMultiLaneA=true and the 4 links group correctly.
+  (function() {
+    const links = [1,2,3,4].map(i => ({ u: `gd435:Et1/${i}`, v: `cal423:Et${i}` }));
+    const nodes = {};
+    [1,2,3,4].forEach(i => {
+      nodes[`gd435:Et1/${i}`]  = { device: "gd435",  name: `Et1/${i}`, details: { xcvr_speed_: "25g", xcvr_: "QSFP100" } };
+      nodes[`cal423:Et${i}`]   = { device: "cal423", name: `Et${i}`,   details: { xcvr_speed_: "25g", xcvr_: "SFP25"   } };
+    });
+    const devs = { gd435: { type: "arista" }, cal423: { type: "arista" } };
+    const g = _buildCableGroupsForTest(links, nodes, devs);
+    const keys = Object.keys(g);
+    results.push(t("QSFP100 4x25G — grouped into 1 split cable",    keys.length, 1));
+    results.push(t("QSFP100 4x25G — key uses Et1 as parent",        keys[0], "gd435:Et1 <-> cal423"));
+    results.push(t("QSFP100 4x25G — isBreakoutA true",              g[keys[0]].isBreakoutA, true));
+    results.push(t("QSFP100 4x25G — isBreakoutB false (SFP25)",     g[keys[0]].isBreakoutB, false));
+    results.push(t("QSFP100 4x25G — 4 links in group",              g[keys[0]].links.length, 4));
   })();
 
   // ── Modular chassis QSFP breakout (3-level, aggX) → Et{slot}/{port}/1 anchor ──
