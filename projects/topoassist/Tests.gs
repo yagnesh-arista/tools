@@ -1,4 +1,4 @@
-// TopoAssist v4.4 | 2026-04-20 01:00:44 | 4786ccc
+// TopoAssist v4.4 | 2026-04-20 01:14:20 | 1d2d81c
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -23,7 +23,7 @@
  *   parseVlanWithNative      — split nv<N> native-VLAN token out of vlan_ field
  */
 
-const APP_VERSION = "4.4";  // keep in sync with Code.gs and Sidebar-js.html
+// APP_VERSION is declared in Code.gs — all .gs files share the same global scope in GAS
 
 
 // ── Test assertion helper ──────────────────────────────────────────────────────
