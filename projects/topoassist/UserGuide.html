@@ -335,7 +335,14 @@
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg></span></td>
-        <td><b>VLAN Summary</b> — shows all VLANs in the topology with type (L2/L3), VRF, and the ports carrying each VLAN. Click any row to run a VLAN trace for that VLAN. Use the filter box to search by VLAN ID, VRF, or device name.</td>
+        <td><b>VLAN Summary</b> — shows all VLANs in the topology with type (L2/L3/INT), VRF, and the ports carrying each VLAN. Click any row to run a VLAN trace for that VLAN. Use the filter box to search by VLAN ID, VRF, device name, or internal device name.
+          <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;">
+            <li><b>L2</b> (blue) — VLAN carried on one or more trunk/access ports in the topology.</li>
+            <li><b>L3</b> (amber) — VLAN associated with an L3, routed, or SVI port.</li>
+            <li><b>INT</b> (purple) — EOS-internal VLAN auto-allocated by the device (<code>show vlan internal</code>); not user-configured. Only visible after a Device Bridge check.</li>
+            <li><b>[CONFLICT]</b> (red) — a user-configured VLAN also appears as an EOS-internal VLAN on a device. This will cause the port to fail on EOS — change the VLAN to one outside the internal range.</li>
+          </ul>
+        </td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span></td>
