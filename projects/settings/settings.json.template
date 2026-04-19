@@ -1,136 +1,160 @@
 {
   "apiKeyHelper": "~/.claude/api-key-helper.sh",
-  "autoUpdatesChannel": "stable",
-  "enabledPlugins": {},
+  "includeCoAuthoredBy": false,
   "hooks": {
     "PostToolUse": [
       {
+        "matcher": "Write|Edit",
         "hooks": [
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); if [ -n \"$proj\" ] && ! echo \"$f\" | grep -q 'INSTRUCTIONS_' && ! echo \"$f\" | grep -q 'CLAUDE.md'; then proj_name=$(basename \"$proj\"); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You just modified a file in the $proj_name project. You MUST now update $proj/INSTRUCTIONS_${proj_name}.txt (every change) and bump its Last updated date. If you changed any design constraints, invariants, or key rules, ALSO update $proj/CLAUDE.md.\\\"}}\"; fi",
-            "statusMessage": "Checking project INSTRUCTIONS + CLAUDE.md sync...",
-            "type": "command"
+            "statusMessage": "Checking project INSTRUCTIONS + CLAUDE.md sync..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/tmux-studio/tmux_studio.py\" ]; then cp $HOME/claude/projects/tmux-studio/tmux_studio.py $HOME/.tmux-studio/tmux_studio.py; fi 2>/dev/null || true",
-            "statusMessage": "Deploying tmux_studio.py...",
-            "type": "command"
+            "statusMessage": "Deploying tmux_studio.py..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); proj=$HOME/claude/projects/tmux.conf; if echo \"$f\" | grep -q \"$proj/\"; then case \"$f\" in */tmux.conf) cp \"$proj/tmux.conf\" ~/.tmux/tmux.conf && tmux source-file ~/.tmux/tmux.conf ;; */themes/light.conf) mkdir -p ~/.tmux/themes && cp \"$proj/themes/light.conf\" ~/.tmux/themes/light.conf ;; */themes/dark.conf) mkdir -p ~/.tmux/themes && cp \"$proj/themes/dark.conf\" ~/.tmux/themes/dark.conf ;; */tmux_broadcast.sh) cp \"$proj/tmux_broadcast.sh\" ~/.tmux/tmux_broadcast.sh && chmod +x ~/.tmux/tmux_broadcast.sh ;; */tmux_click.sh) cp \"$proj/tmux_click.sh\" ~/.tmux/tmux_click.sh && chmod +x ~/.tmux/tmux_click.sh ;; esac; fi 2>/dev/null || true",
-            "statusMessage": "Deploying tmux.conf project file...",
-            "type": "command"
+            "statusMessage": "Deploying tmux.conf project file..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/bashrc_bus-home/.bashrc\" ]; then cp $HOME/claude/projects/bashrc_bus-home/.bashrc $HOME/.bashrc; fi 2>/dev/null || true",
-            "statusMessage": "Deploying .bashrc...",
-            "type": "command"
+            "statusMessage": "Deploying .bashrc..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then result=$(cd $HOME/claude/projects/topoassist && python3 -m pytest tests/ -q 2>&1 | tail -1); echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[PYTEST] $result — Deploy to Mac: scp bus-home:~/claude/projects/topoassist/device_bridge.py ~/device_bridge.py\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Running TopoAssist pytest...",
-            "type": "command"
+            "statusMessage": "Running TopoAssist pytest..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SYNC] device_bridge.py changed — you MUST also update the embedded template inside downloadBridgeScript() in Sidebar-js.html and do a GAS push. VERSION must match in both files.\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Checking device_bridge.py / Sidebar-js.html template sync...",
-            "type": "command"
+            "statusMessage": "Checking device_bridge.py / Sidebar-js.html template sync..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -q '/topoassist/Code\\.gs'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[TESTS] If you added or changed a pure function in Code.gs, add cases to Tests.gs and run runAllTests() in the Apps Script editor.\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Checking TopoAssist GAS test coverage...",
-            "type": "command"
+            "statusMessage": "Checking TopoAssist GAS test coverage..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); SETTINGS_BACKUP=$HOME/claude/projects/settings; changed=0; case \"$f\" in $HOME/.claude/hooks/*.sh) mkdir -p \"$SETTINGS_BACKUP/hooks\"; cp \"$f\" \"$SETTINGS_BACKUP/hooks/\" && chmod +x \"$SETTINGS_BACKUP/hooks/$(basename $f)\" && changed=1 ;; $HOME/.claude/rules/*.md) mkdir -p \"$SETTINGS_BACKUP/rules\"; cp \"$f\" \"$SETTINGS_BACKUP/rules/\" && changed=1 ;; $HOME/.claude/commands/*.md) mkdir -p \"$SETTINGS_BACKUP/commands\"; cp \"$f\" \"$SETTINGS_BACKUP/commands/\" && changed=1 ;; $HOME/.claude/settings.json) sed \"s|$HOME|\\$HOME|g\" \"$f\" > \"$SETTINGS_BACKUP/settings.json.template\" && changed=1 ;; $HOME/claude/CLAUDE.md) mkdir -p \"$SETTINGS_BACKUP/global-rules\"; cp \"$f\" \"$SETTINGS_BACKUP/global-rules/CLAUDE.md\" && changed=1 ;; esac; if [ \"$changed\" -eq 1 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SETTINGS BACKUP] $(basename $f) auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude.\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Syncing to settings backup...",
-            "type": "command"
+            "statusMessage": "Syncing to settings backup..."
           },
           {
+            "type": "command",
             "command": "bash ~/.claude/hooks/topoassist-userguide-check.sh",
-            "statusMessage": "Checking if UserGuide.html needs updating...",
-            "type": "command"
+            "statusMessage": "Checking if UserGuide.html needs updating..."
           },
           {
+            "type": "command",
             "command": "bash ~/.claude/hooks/topoassist-deploy-tracker.sh",
-            "statusMessage": "Checking TopoAssist deploy status...",
-            "type": "command"
+            "statusMessage": "Checking TopoAssist deploy status..."
           }
-        ],
-        "matcher": "Write|Edit"
+        ]
       },
       {
+        "matcher": "Bash",
         "hooks": [
           {
-            "command": "atuin hook claude-code",
-            "type": "command"
+            "type": "command",
+            "command": "atuin hook claude-code"
           }
-        ],
-        "matcher": "Bash"
+        ]
+      },
+      {
+        "matcher": "mcp__winnow__",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/winnow-auth-check.sh",
+            "statusMessage": "Checking Winnow response for auth failures..."
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
       {
+        "matcher": "Bash",
         "hooks": [
           {
-            "command": "atuin hook claude-code",
-            "type": "command"
+            "type": "command",
+            "command": "atuin hook claude-code"
           }
-        ],
-        "matcher": "Bash"
+        ]
+      },
+      {
+        "matcher": "mcp__winnow__",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/winnow-auth-check.sh",
+            "statusMessage": "Winnow tool failure — checking auth..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
+        "matcher": "Write|Edit",
         "hooks": [
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); content=$(echo \"$input\" | jq -r '.tool_input.content // .tool_input.new_string // \"\"'); if [ -n \"$content\" ]; then ext=\"${f##*.}\"; issues=\"\"; sec=$(echo \"$content\" | grep -icE '(password|secret|api_key|apikey|token|auth_token)\\s*=' 2>/dev/null); [ \"${sec:-0}\" -gt 0 ] && issues=\"$issues [POSSIBLE_SECRETS:$sec]\"; skip_debug=0; case \"$ext\" in md|txt|json|yaml|yml|toml) skip_debug=1 ;; esac; echo \"$f\" | grep -q '/.claude/hooks/' && skip_debug=1; if [ \"$skip_debug\" -eq 0 ]; then dbg=$(echo \"$content\" | grep -cE 'console\\.(log|debug|warn|error)\\(|debugger;|pdb\\.set_trace|breakpoint\\(\\)|var_dump\\(' 2>/dev/null); todo=$(echo \"$content\" | grep -cE '\\b(TODO|FIXME|HACK|XXX)\\b' 2>/dev/null); [ \"${dbg:-0}\" -gt 0 ] && issues=\"$issues [DEBUG_STATEMENTS:$dbg]\"; [ \"${todo:-0}\" -gt 0 ] && issues=\"$issues [UNRESOLVED_TODOS:$todo]\"; fi; if [ -n \"$issues\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"PRE-WRITE SCAN FAILED:$issues — fix these before writing this file.\\\"}}\"; fi; fi",
-            "statusMessage": "Scanning content for debug code, secrets, TODOs...",
-            "type": "command"
+            "statusMessage": "Scanning content for debug code, secrets, TODOs..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -q '/claude/projects/topoassist/' && ! echo \"$f\" | grep -q 'INSTRUCTIONS_' && ! echo \"$f\" | grep -q 'CLAUDE.md'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You are about to modify a TopoAssist file. Before proceeding, confirm you have read INSTRUCTIONS_topoassist.txt (especially Section 24: HARD DESIGN CONSTRAINTS). Key rules: (1) canonicalizeInterface() is duplicated in Code.gs+Sidebar-js.html — keep in sync; (2) generateConfig() needs exactly 5 params; (3) use hasKey() not .has() for device names; (4) bump VERSION in both device_bridge.py AND Sidebar-js.html template.\\\"}}\"; fi",
-            "statusMessage": "Checking TopoAssist pre-edit requirements...",
-            "type": "command"
+            "statusMessage": "Checking TopoAssist pre-edit requirements..."
           },
           {
+            "type": "command",
             "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ -n \"$f\" ] && [ -f \"$f\" ] && echo \"$f\" | grep -q '$HOME/claude/projects/'; then if ! git -C \"$(dirname \"$f\")\" rev-parse --git-dir > /dev/null 2>&1; then proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); bdir=\"$proj/.claude/backups\"; mkdir -p \"$bdir\"; ts=$(date +%Y%m%d_%H%M%S); fname=$(basename \"$f\"); cp \"$f\" \"$bdir/${fname}.${ts}.bak\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"[WARNING] $(basename $proj) has no git repo — this project is unprotected. Run: git init $proj && git -C $proj add -A && git -C $proj commit -m 'Initial commit'. Backup created: .claude/backups/${fname}.${ts}.bak\\\"}}\"; fi; fi",
-            "statusMessage": "Backing up file before edit (non-git project)...",
-            "type": "command"
+            "statusMessage": "Backing up file before edit (non-git project)..."
           }
-        ],
-        "matcher": "Write|Edit"
+        ]
       },
       {
+        "matcher": "Bash",
         "hooks": [
           {
+            "type": "command",
             "command": "bash ~/.claude/hooks/commit-guard.sh",
-            "statusMessage": "Scanning staged diff before commit...",
-            "type": "command"
+            "statusMessage": "Scanning staged diff before commit..."
           }
-        ],
-        "matcher": "Bash"
+        ]
       },
       {
+        "matcher": "Bash",
         "hooks": [
           {
+            "type": "command",
             "command": "bash ~/.claude/hooks/rollback-logger.sh",
-            "statusMessage": "Checking for revert/rollback to log...",
-            "type": "command"
+            "statusMessage": "Checking for revert/rollback to log..."
           }
-        ],
-        "matcher": "Bash"
+        ]
       },
       {
+        "matcher": "Bash",
         "hooks": [
           {
-            "command": "atuin hook claude-code",
-            "type": "command"
+            "type": "command",
+            "command": "atuin hook claude-code"
           }
-        ],
-        "matcher": "Bash"
+        ]
       }
     ]
   },
-  "includeCoAuthoredBy": false
+  "enabledPlugins": {},
+  "autoUpdatesChannel": "stable",
+  "skipAutoPermissionPrompt": true,
+  "permissions": {
+    "defaultMode": "auto"
+  }
 }
