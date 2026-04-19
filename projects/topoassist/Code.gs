@@ -4181,7 +4181,8 @@ function generateAttributesBlock(d) {
   // 3. Standard Mode Configuration
   if (sp_mode.includes("access")) {
     block += " switchport mode access\n";
-    if (d.vlan_) block += ` switchport access vlan ${d.vlan_}\n`;
+    const _pvAccess = parseVlanWithNative(d.vlan_);
+    if (_pvAccess.vlans) block += ` switchport access vlan ${_pvAccess.vlans}\n`;
   }
   else if (sp_mode.includes("trunk")) {
     block += " switchport mode trunk\n";
