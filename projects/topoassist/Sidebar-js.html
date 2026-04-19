@@ -174,7 +174,6 @@ function debounce(func, wait) {
 */
 // 1. Safe Mode Capture
 const currentMode = (typeof START_MODE !== 'undefined') ? START_MODE : "topology";
-console.log("Starting Mode:", currentMode);
 
 // 2. Apply CSS Class Immediately
 // Clear any existing modes first to be safe
@@ -297,7 +296,6 @@ function initApp() {
   initToolbarCollapse();
   applyValidationState();
   applyBoldTextPref();
-  console.log("Initializing App in mode:", currentMode);
 
   if (currentMode === 'manager') {
     openDeviceManager();
@@ -326,13 +324,11 @@ function initApp() {
     // This populates 'savedNodePositions' so the first render sees the X/Y coords
     loadStateFromStorage(currentViewMode);
     loadGroupRects();
-    console.log("📍 Loaded positions for mode:", currentViewMode, Object.keys(savedNodePositions).length + " nodes.");
 
     // 3. Try Instant Restore from Session Storage (Data Cache)
     const cachedData = loadFromSession();
 
     if (cachedData) {
-      console.log("⚡ Instant Restore from Session");
 
       // Render based on the saved mode
       if (currentViewMode === 'holistic') {
@@ -411,7 +407,6 @@ function startSmartPolling() {
     google.script.run
       .withSuccessHandler(serverVersion => {
         if (serverVersion && serverVersion !== localDataVersion) {
-          console.log("⚡ Change detected (v" + serverVersion + ")! Refreshing...");
           localDataVersion = serverVersion;
           fetchData(false);
         }
@@ -1027,7 +1022,6 @@ function saveDeviceChanges() {
       renderManagerList(); // Will now render Blue IDs (e.g. "2")
 
       // 2. TRIGGER REFRESH
-      console.log("🚀 Triggering Auto-Refresh...");
       if (typeof showGlobalLoading === 'function') showGlobalLoading("Updating Topology...");
       if (typeof fetchData === "function") fetchData(true);
 
@@ -1092,7 +1086,6 @@ function saveDeviceChanges() {
     // If hostnames were saved after the version bump, a poller-triggered fetch
     // could read stale (empty) hostname data and cache it, then block the
     // forced refresh in handleSuccess via the isFetching guard.
-    console.log("⚡ Fast Path: Saving hostnames then visibility + labels...");
     btn.innerText = "Saving...";
 
     google.script.run
@@ -1109,7 +1102,6 @@ function saveDeviceChanges() {
     // 🐢 SLOW PATH (Reorder/Rename + Visibility + Labels)
     // Pass hostnamesMap to processDeviceBatch so it saves hostnames BEFORE
     // bumping DATA_VERSION — same race-condition fix as the fast path.
-    console.log("🐢 Slow Path: Rebuilding sheet...");
     btn.innerText = "Reordering Sheet...";
     showGlobalLoading('🔍 Preparing sheet rebuild...');
     const rebuildPollTimer = setInterval(() => {
@@ -2100,7 +2092,7 @@ function runValidation() {
       const poBSet = poB !== '';
       if (poASet && poBSet) {
         if (poA !== poB) {
-          const msg = `✗ Po Mismatch: ${nodeA.device} has ${poA} but ${nodeB.device} has ${poB}`;
+          const msg = `[FAIL] Po Mismatch: ${nodeA.device} has ${poA} but ${nodeB.device} has ${poB}`;
           flagErrorOnPort(link.u, msg);
           flagErrorOnPort(link.v, msg);
         }
@@ -2109,7 +2101,7 @@ function runValidation() {
         const setVal  = poASet ? poA : poB;
         const setPort = poASet ? link.u : link.v;
         const misPort = poASet ? link.v : link.u;
-        const msg = `✗ Po Asymmetry: ${setDev} has ${setVal} but peer has no po_ set`;
+        const msg = `[FAIL] Po Asymmetry: ${setDev} has ${setVal} but peer has no po_ set`;
         flagErrorOnPort(setPort, msg);
         flagErrorOnPort(misPort, msg);
       }
@@ -2294,7 +2286,7 @@ function runValidation() {
         });
 
         if (!hasPhysicalPeerLink) {
-          const msg = `✗ MLAG Peer-Link Missing: No physical connection found between ${deviceId} and ${myPeer}.`;
+          const msg = `[FAIL] MLAG Peer-Link Missing: No physical connection found between ${deviceId} and ${myPeer}.`;
           portErrorCount++;
           if (statusEl) {
             statusEl.innerText = msg;
@@ -2426,7 +2418,7 @@ function runValidation() {
     Object.keys(p2pVlanLogical).forEach(vlan => {
       const logicalMap = p2pVlanLogical[vlan];
       if (logicalMap.size > 1) {
-        const msg = `✗ Duplicate P2P VLAN ${vlan}: Used on ${logicalMap.size} logical links — causes IP conflict in generated config`;
+        const msg = `[FAIL] Duplicate P2P VLAN ${vlan}: Used on ${logicalMap.size} logical links — causes IP conflict in generated config`;
         logicalMap.forEach(linkIds => {
           linkIds.forEach(lid => {
             if (!validationErrors[lid]) validationErrors[lid] = [];
@@ -2489,7 +2481,7 @@ function runValidation() {
           const mlagB = allDevicesData[devB] && allDevicesData[devB].mlagPeer;
           const areDeclaredPeers = (mlagA === devB && mlagB === devA);
           if (!areDeclaredPeers) {
-            const err = `✗ MLAG Peer Required: ${devA} and ${devB} both use ${poOrig} toward ${upstreamOrigDev} — declare as MLAG peers in Device Manager`;
+            const err = `[FAIL] MLAG Peer Required: ${devA} and ${devB} both use ${poOrig} toward ${upstreamOrigDev} — declare as MLAG peers in Device Manager`;
             poUpstreamLinkIds[mapKey].forEach(lid => {
               if (!validationErrors[lid]) validationErrors[lid] = [];
               if (!validationErrors[lid].includes(err)) { validationErrors[lid].push(err); portErrorCount++; }
@@ -2868,7 +2860,7 @@ function saveLayoutPreferences() {
         if (status) status.innerText = "Preferences Saved";
       })
       .withFailureHandler(function (err) {
-        console.error("✗ Prefs Save Failed:", err.message);
+        console.error("Prefs Save Failed:", err.message);
         const status = document.getElementById("status");
         if (status) status.innerText = "⚠ Save Failed";
       })
@@ -5294,7 +5286,7 @@ function processInterfaceConfig(btnId, deviceName, time) {
 /**
 * Helper: Standardizes interface names (Ethernet1 -> Et1)
 * Required for mapping server config data to UI elements.
-* DUPLICATED in Code.gs — last synced: 2026-04-17
+* DUPLICATED in Code.gs — last synced: 2026-04-19
 */
 function canonicalizeInterface(name) {
   if (!name) return "";
@@ -5327,7 +5319,6 @@ function changeSort(val) {
   if (!val) return;
   sortMode = val;
   updateSortButtons(val);
-  console.log("✓ Sorting changed to:", sortMode);
 
   if (currentData) {
     if (typeof toggleViewMode === 'function') {
@@ -5768,7 +5759,6 @@ AUDIT LOGIC (Copy & Paste this block)
 ========================================== */
 
 function runSchemaAudit() {
-  console.log("👉 runSchemaAudit Triggered");
   const btn = document.getElementById("btnAudit");
 
   // Safety check
@@ -5783,7 +5773,6 @@ function runSchemaAudit() {
 
   google.script.run
     .withSuccessHandler(res => {
-      console.log("✓ Server responded", res);
       setUiBusy(false);
       btn.innerHTML = origHtml; // Restore button
 
@@ -5794,7 +5783,7 @@ function runSchemaAudit() {
       showAuditResults(res);
     })
     .withFailureHandler(err => {
-      console.error("✗ Server failure", err);
+      console.error("Server failure:", err);
       setUiBusy(false);
       btn.innerHTML = origHtml;
       alert("Audit Error: " + err.message);
@@ -5803,14 +5792,12 @@ function runSchemaAudit() {
 }
 
 function showAuditResults(data) {
-  console.log("🚀 Showing Audit Results...", data);
-
   const content = document.getElementById("auditContent");
   const modal = document.getElementById("auditModal");
   const overlay = document.getElementById("editOverlay");
 
   if (!content || !modal || !overlay) {
-    console.error("✗ CRITICAL: Modal elements missing from DOM!");
+    console.error("CRITICAL: Modal elements missing from DOM!");
     return;
   }
 
@@ -7694,7 +7681,6 @@ function saveCurrentStateToStorage() {
   // 2. GUARD: Prevent Linear Layout from overwriting custom node positions
   // Linear positions are auto-calculated and should be ephemeral.
   if (currentViewMode === 'detailed' && layoutMode === 'linear') {
-      console.log("🚫 Skipping node save (Linear mode positions are read-only)");
       return;
   }
 
@@ -7798,7 +7784,6 @@ function startBackgroundPrefetch() {
   prefetchTotal = prefetchQueue.length;
 
   if (prefetchTotal === 0) return;
-  console.log(`⏱️ Starting background pre-fetch for ${prefetchTotal} devices...`);
 
   let st = document.getElementById("status");
 
@@ -7807,7 +7792,6 @@ function startBackgroundPrefetch() {
     // Stop if queue is empty
     if (prefetchQueue.length === 0) {
       stopBackgroundPrefetch();
-      console.log("✓ Background pre-fetching complete.");
 
       // Show subtle completion message in status bar
       if (st) {
@@ -7835,8 +7819,6 @@ function startBackgroundPrefetch() {
 
     // Verify it hasn't been cached manually in the meantime
     if (!configCache[nextDev]) {
-      console.log(`🔄 Pre-fetching config for: ${nextDev}`);
-
       // Update the status bar text dynamically (Non-blocking)
       if (st && !st.innerText.includes("△") && !st.innerText.includes("Error")) {
         st.innerText = `🔄 Background caching: ${nextDev} (${currentCount} of ${prefetchTotal})`;
@@ -7894,15 +7876,9 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
     });
 
     invalidate.forEach(name => { delete configCache[name]; });
-
-    if (invalidate.size > 0) {
-      console.log(`♻️ Config cache: invalidated ${invalidate.size} device(s):`, [...invalidate]);
-    } else {
-      console.log('✅ Config cache: all devices unchanged — 0 invalidated');
-    }
   } catch (e) {
     // Safety net — full clear on any unexpected error
-    console.warn('⚠️ _selectiveConfigInvalidate failed, falling back to full clear:', e);
+    console.warn('_selectiveConfigInvalidate failed, falling back to full clear:', e);
     configCache = {};
   }
 }
@@ -7964,7 +7940,6 @@ function fetchData(force, autoVerify, silent) {
     // Exception: force=true (manual refresh) clears configCache entirely so fresh configs are fetched.
     if (force) {
       configCache = {};
-      console.log('🔄 Manual refresh: config cache cleared');
     }
     if (!silent) {
       for (let key in allNodesData) delete allNodesData[key];
@@ -8006,14 +7981,6 @@ function fetchData(force, autoVerify, silent) {
         sessionStorage.setItem('topology_data_cache', JSON.stringify(data));
       } catch (e) {
         console.warn("Session Storage Full or Disabled", e);
-      }
-
-      console.log("Topology Data Received:", data);
-
-      if (data.logs && data.logs.length > 0) {
-        console.groupCollapsed("🔎 MLAG Logic Debug Logs");
-        data.logs.forEach(l => console.log(l));
-        console.groupEnd();
       }
 
       if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
@@ -8845,11 +8812,9 @@ function _getLinkSig() {
 // Fires only after fetchData() sets _topologyReady=true; never on stale session-restored data.
 function _autoRunLldp() {
   if (!_topologyReady || !currentData || !currentData.nodes) {
-    console.log('🔍 Auto-LLDP: skipped — topology not ready yet');
     return;
   }
   const autoIps = _getLldpMgmtIps();
-  console.log('🔍 Auto-LLDP: triggered — running LLDP + device status check');
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
   if (st)  { st.innerHTML = 'Running LLDP check\u2026'; st.style.color = '#0369a1'; }
@@ -8863,7 +8828,6 @@ function _autoRunLldp() {
     if (!ip) { const inp = document.getElementById('lldpIp_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_')); if (inp) ip = inp.value.trim(); }
     if (!ip) ip = n.id; // DNS hostname fallback — device_bridge.py resolves via DNS
     ipMap[n.id] = ip;
-    console.log(`🔍 Auto-LLDP: ${n.id} → ${ip}${autoIps[n.id] ? ' (mgmt IP)' : ip === n.id ? ' (DNS hostname)' : ' (modal input)'}`);
   });
   const postOpts = () => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ipMap }) });
   Promise.allSettled([
@@ -8872,15 +8836,11 @@ function _autoRunLldp() {
   ]).then(([lldpResult, devResult]) => {
     _done();
     if (lldpResult.status === 'fulfilled') {
-      console.log('🔍 Auto-LLDP: LLDP results received');
       const { results, orphans } = _compareLldpData(lldpResult.value);
       _renderLldpResults(results, orphans);
       applyLldpIndicators();
-    } else {
-      console.log('🔍 Auto-LLDP: LLDP fetch failed —', lldpResult.reason);
     }
     if (devResult.status === 'fulfilled') {
-      console.log('🔍 Auto-LLDP: device status received');
       devStatusMap = devResult.value;
       deviceInternalVlans = {};
       Object.entries(devStatusMap).forEach(([devId, ds]) => {
@@ -8890,12 +8850,10 @@ function _autoRunLldp() {
       _autoDetectBridgeMac(devStatusMap);
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
-    } else {
-      console.log('🔍 Auto-LLDP: device status fetch failed —', devResult.reason);
     }
     if (isValidationMode) runValidation();
     if (st) { st.innerHTML = '<b>LLDP check complete</b>'; st.style.color = '#15803d'; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 3000); }
-  }).catch(err => { _done(); console.log('🔍 Auto-LLDP: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
+  }).catch(err => { _done(); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
 }
 
 function toggleLldpMinimize() {
@@ -10037,7 +9995,7 @@ function openCablingModal() {
     modal.style.display = 'block';
     overlay.style.display = 'block';
   } else {
-    console.error("✗ UI Error: Cabling Modal or Overlay elements missing from HTML.");
+    console.error("UI Error: Cabling Modal or Overlay elements missing from HTML.");
   }
 }
 
@@ -10623,13 +10581,11 @@ function setBtnLoading(btn, isLoading, loadingText = "⏳ Working...") {
 }
 
 function initCustomViewManager() {
-  console.log("🚀 [Debug] Init Custom View Manager");
-
   const body = document.getElementById("viewCustomBody");
   const container = document.getElementById("viewCustomContainer");
 
   if (!body || !container) {
-    console.error("✗ [Debug] Missing DOM elements for Custom View");
+    console.error("Missing DOM elements for Custom View");
     return;
   }
 
@@ -10658,14 +10614,10 @@ function initCustomViewManager() {
 </div>`;
 
   // 6. FETCH DATA
-  console.log("📡 [Debug] Requesting Schema...");
   google.script.run
     .withSuccessHandler(function (schema) {
-      console.log("✓ [Debug] Schema received:", schema.length);
-
       google.script.run
         .withSuccessHandler(function (savedKeys) {
-          console.log("✓ [Debug] Prefs received:", savedKeys);
           renderCustomViewOptions(schema, savedKeys);
         })
         .withFailureHandler(function (err) {
@@ -10674,7 +10626,7 @@ function initCustomViewManager() {
         .getViewPreferences();
     })
     .withFailureHandler(function (err) {
-      console.error("✗ [Debug] Server Error:", err);
+      console.error("Server Error:", err);
       body.innerHTML = `<div style="padding:20px; color:#ef4444; text-align:center;">Error: ${err.message}</div>`;
     })
     .getSchemaConfig();
