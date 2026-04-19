@@ -74,16 +74,16 @@
           </button>
           <div class="divider-v"></div>
           <!-- Modals group -->
-          <button class="icon-btn" onclick="openTechModal()" title="Network Tech Stack">
+          <button class="icon-btn" data-modal="techModal" onclick="openTechModal()" title="Network Tech Stack">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg>
           </button>
-          <button class="icon-btn" onclick="openIpConfigModal(this)" title="Auto Config">
+          <button class="icon-btn" data-modal="ipConfigModal" onclick="openIpConfigModal(this)" title="Auto Config">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
           </button>
-          <button class="icon-btn" onclick="openGlobalCfgModal()" title="Global Configuration Template">
+          <button class="icon-btn" data-modal="globalCfgModal" onclick="openGlobalCfgModal()" title="Global Configuration Template">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg>
           </button>
-          <button class="icon-btn" onclick="openVlanSummaryModal()" title="VLAN Summary">
+          <button class="icon-btn" data-modal="vlanSummaryModal" onclick="openVlanSummaryModal()" title="VLAN Summary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
           </button>
           <button class="icon-btn" id="devVisPanelBtn" onclick="toggleDevVisPanelOpen()" title="Device Visibility Panel">
@@ -97,16 +97,16 @@
           <button class="icon-btn" onclick="downloadPNG(this)" title="Topology Snapshot">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
           </button>
-          <button class="icon-btn" onclick="openCablingModal()" title="Export Cabling Report">
+          <button class="icon-btn" data-modal="cablingModal" onclick="openCablingModal()" title="Export Cabling Report">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg>
           </button>
-          <button class="icon-btn" onclick="openGenerateAllModal()" title="Generate All Configs">
+          <button class="icon-btn" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="Generate All Configs">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </button>
           <div class="divider-v"></div>
           <!-- Audit group (outlined box) -->
           <div class="audit-group-box">
-            <button class="icon-btn" id="validateBtn" onclick="toggleValidationMode()" title="Configuration Audit">
+            <button class="icon-btn" data-modal="auditModal" id="validateBtn" onclick="toggleValidationMode()" title="Configuration Audit">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
               <span id="auditBadge" class="audit-badge hidden"></span>
             </button>

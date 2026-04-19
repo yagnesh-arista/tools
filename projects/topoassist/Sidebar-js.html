@@ -296,9 +296,23 @@ function updateThemeIcon() {
 }
 
 // --- APP LIFECYCLE ---
+
+// Auto-sync toolbar button tooltips from their target modal's header title.
+// Modal title (.modal-header-title) is the single source of truth.
+// Add data-modal="<modalId>" to a toolbar button to opt in; omit to keep a custom tooltip.
+function syncToolbarTooltips() {
+  document.querySelectorAll('.icon-btn[data-modal]').forEach(function(btn) {
+    var modal = document.getElementById(btn.dataset.modal);
+    if (!modal) return;
+    var titleEl = modal.querySelector('.modal-header-title');
+    if (titleEl) btn.title = titleEl.textContent.trim();
+  });
+}
+
 function initApp() {
   initTheme();
   initToolbarCollapse();
+  syncToolbarTooltips();
   applyValidationState();
   applyBoldTextPref();
   dbg("Initializing App in mode:", currentMode);
