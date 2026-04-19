@@ -9,8 +9,10 @@
 input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // ""')
 
-# Only fire on relevant commands
-echo "$cmd" | grep -qE 'git\s+(commit|push)|clasp\s+push' || exit 0
+# Only fire on relevant commands — strip quoted strings first so that
+# echo "git commit ..." or grep patterns don't cause false positives.
+cmd_unquoted=$(echo "$cmd" | sed 's/"[^"]*"//g; s/'"'"'[^'"'"']*'"'"'//g')
+echo "$cmd_unquoted" | grep -qE 'git\s+(commit|push)|clasp\s+push' || exit 0
 
 REPO="$HOME/claude"
 
