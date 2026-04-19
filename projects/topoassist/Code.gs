@@ -1,10 +1,10 @@
-// TopoAssist v260420.46 | 2026-04-20 03:11:16 | git commit: 742f256
+// TopoAssist v260420.47 | 2026-04-20 03:15:15 | git commit: a0494fb
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.46";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.47";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1629,8 +1629,9 @@ function buildConditionalRules(sheet, headers, lastRow) {
     const modeIdx     = getColIdx('sp_mode_' + dev);
     const sviIdx      = getColIdx('svi_vlan_' + dev);
     const ipIdx       = getColIdx('ip_type_' + dev);
-    const etSpeedIdx  = getColIdx('et_speed_' + dev);
+    const etSpeedIdx   = getColIdx('et_speed_' + dev);
     const xcvrSpeedIdx = getColIdx('xcvr_speed_' + dev);
+    const xcvrTypeIdx  = getColIdx('xcvr_type_' + dev);
 
     // Rule 1: "Member Port" logic
     // MODIFIED: We removed setBackground().
@@ -1690,6 +1691,37 @@ function buildConditionalRules(sheet, headers, lastRow) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(formula)
         .setBackground("#fef08a")  // amber-yellow: "check lane split"
+        .setRanges([range]).build());
+    }
+
+    // Rule 5: Pale-yellow xcvr_speed_ when it is EMPTY and xcvr_type implies a native
+    // speed that doesn't match et_speed — i.e. the port is in breakout mode but the user
+    // hasn't filled in xcvr_speed_ yet (needed for cable-group breakout detection).
+    // Native speed per form factor:
+    //   QSFP28 / QSFP100 / DSFP → 100g   QSFP56 → 200g
+    //   QSFP-DD / OSFP           → 400g or 800g
+    //   QSFP+                    → 40g    SFP28  → 25g    SFP+ → 10g / 1g
+    // Prefix match on et_speed handles lane suffixes (e.g. "100g-4" starts with "100g").
+    if (etSpeedIdx > 0 && xcvrSpeedIdx > 0 && xcvrTypeIdx > 0) {
+      const range = sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1);
+      const etC = getColLet(etSpeedIdx);
+      const xsC = getColLet(xcvrSpeedIdx);
+      const xtC = getColLet(xcvrTypeIdx);
+      const formula = [
+        `=AND($${xsC}3="",$${xtC}3<>"",$${etC}3<>"",`,
+        `OR(`,
+        `AND(REGEXMATCH($${xtC}3,"QSFP28|QSFP100|DSFP"),NOT(REGEXMATCH($${etC}3,"^100g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"QSFP56"),NOT(REGEXMATCH($${etC}3,"^200g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"QSFP-DD"),NOT(REGEXMATCH($${etC}3,"^400g|^800g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"OSFP"),NOT(REGEXMATCH($${etC}3,"^400g|^800g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"QSFP\\+"),NOT(REGEXMATCH($${etC}3,"^40g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"SFP28"),NOT(REGEXMATCH($${etC}3,"^25g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"SFP\\+"),NOT(REGEXMATCH($${etC}3,"^10g|^1g")))`,
+        `))`
+      ].join('');
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(formula)
+        .setBackground("#fef9c3")  // pale-yellow: "fill in xcvr_speed for breakout"
         .setRanges([range]).build());
     }
 
