@@ -62,10 +62,24 @@ else
 fi
 
 # ── Clasp push status ─────────────────────────────────────────────────────────
+CLASP_MARKER=/tmp/topoassist_clasp_last_push
 if echo "$cmd" | grep -qE 'clasp\s+push'; then
   clasp_status="clasp push ran ✓"
 elif [ "$gas_changed" -eq 1 ]; then
-  clasp_status="GAS files changed — clasp push needed ⚠"
+  # Check if the edit-time hook already pushed recently (within 30 min)
+  if [ -f "$CLASP_MARKER" ]; then
+    last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
+    now=$(date +%s)
+    age=$(( now - ${last_push:-0} ))
+    if [ "$age" -lt 1800 ]; then
+      pushed_at=$(date -d "@${last_push}" '+%H:%M:%S' 2>/dev/null || date -r "${last_push}" '+%H:%M:%S' 2>/dev/null)
+      clasp_status="already pushed by edit hook at ${pushed_at} ✓"
+    else
+      clasp_status="GAS files changed — clasp push needed ⚠ (last push was ${age}s ago)"
+    fi
+  else
+    clasp_status="GAS files changed — clasp push needed ⚠"
+  fi
 else
   clasp_status="N/A (no GAS files changed)"
 fi

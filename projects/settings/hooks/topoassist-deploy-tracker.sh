@@ -45,6 +45,8 @@ if [ "$gas_changed" = "true" ]; then
     if [ $push_exit -eq 0 ]; then
       pushed=$(echo "$push_out" | grep "Pushed" | head -1)
       msg="[DEPLOY] clasp push OK — ${pushed:-GAS files pushed}"
+      # Marker read by post-change-summary.sh to avoid false "clasp push needed" warnings
+      date +%s > /tmp/topoassist_clasp_last_push
     else
       err=$(echo "$push_out" | tail -2 | tr '\n' ' ')
       msg="[DEPLOY] clasp push FAILED: $err — re-auth: cd $TOPODIR && clasp login --no-localhost"
