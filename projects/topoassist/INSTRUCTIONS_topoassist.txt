@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-19 (Fix SyntaxError: APP_VERSION redeclared in Tests.gs — all .gs files share one global scope; const only in Code.gs. Tests.gs now has a comment instead. CLAUDE.md updated with constraint. Files: Tests.gs, CLAUDE.md)
+  Last updated: 2026-04-19 (Sheet View panel: increase width 490→620px to accommodate full column names. Files: Code.gs)
+  Previous: 2026-04-19 (Fix SyntaxError: APP_VERSION redeclared in Tests.gs — all .gs files share one global scope; const only in Code.gs. Tests.gs now has a comment instead. CLAUDE.md updated with constraint. Files: Tests.gs, CLAUDE.md)
   Previous: 2026-04-19 (Tests.gs: remove runAllTestsCli + doGet — clasp run/web app auth not viable without gcloud; tests run manually via runAllTests() in Apps Script editor. Files: Tests.gs)
   Previous: 2026-04-20 (Add version comment as first line of all GAS files: Code.gs and Tests.gs get "// TopoAssist v4.4"; Sidebar-js.html gets "<!-- TopoAssist v4.4 -->". HTML files already had it. All files now show version on line 1. Files: Code.gs, Tests.gs, Sidebar-js.html)
   Previous: 2026-04-19 (Versioning: unified APP_VERSION="4.4" across ALL files — Code.gs (canonical), Sidebar-js.html, Tests.gs (replaces TESTS_VERSION); HTML files carry matching comment. Bump all on every release. Files: Code.gs, Sidebar-js.html, Sidebar.html, Sidebar-css.html, UserGuide.html, SheetAssistPanel.html, Tests.gs)

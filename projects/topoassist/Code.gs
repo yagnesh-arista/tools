@@ -1,4 +1,4 @@
-// TopoAssist v4.4 | 2026-04-20 01:00:44 | 4786ccc
+// TopoAssist v4.4 | 2026-04-20 01:19:13 | 3d9a855
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
@@ -241,7 +241,7 @@ function showSheetAssistPanel() {
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
-    .setWidth(490)
+    .setWidth(620)
     .setHeight(550);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
 }
