@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
+# settings v260420.22 | 2026-04-20 03:35:06 | git commit: 6bc8413
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -124,10 +124,10 @@ PYEOF
   done <<< "$CHANGED_FILES"
 
   if [ -n "$PATCHED_FILES" ]; then
-    git -C "$REPO" add $PATCHED_FILES 2>/dev/null
-    git -C "$REPO" commit -m "stamp: fix line-1 commit hash → ${COMMIT_HASH}" 2>/dev/null
+    git -C "$REPO" add $PATCHED_FILES &>/dev/null
+    git -C "$REPO" commit -m "stamp: fix line-1 commit hash → ${COMMIT_HASH}" &>/dev/null
     if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
-      git -C "$REPO" push 2>/dev/null
+      git -C "$REPO" push &>/dev/null
     fi
   fi
 fi
