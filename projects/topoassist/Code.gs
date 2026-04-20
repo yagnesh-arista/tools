@@ -1,10 +1,10 @@
-// TopoAssist v260420.100 | 2026-04-20 16:12:29
+// TopoAssist v260420.101 | 2026-04-20 16:16:11
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.100";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.101";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2669,6 +2669,22 @@ function saveIpPreferences(prefs) {
   return { success: true };
 }
 
+const NOTEBOOK_LM_QUESTIONS_DEFAULT =
+  '1. Are all transceiver types (xcvr) compatible with their port speeds?\n' +
+  '2. Do speeds on both sides of each cable match or are they compatible (accounting for breakout)?\n' +
+  '3. Are breakout cables consistent — does the QSFP/OSFP side match the lane count on the SFP side?\n' +
+  '4. Are any xcvr_type fields missing where a speed is set?\n' +
+  '5. Are there any obvious mismatches or risks in the cabling?';
+
+function getNotebookLMQuestions() {
+  const saved = PropertiesService.getUserProperties().getProperty('notebooklm_questions');
+  return { questions: saved !== null ? saved : NOTEBOOK_LM_QUESTIONS_DEFAULT };
+}
+
+function saveNotebookLMQuestions(text) {
+  PropertiesService.getUserProperties().setProperty('notebooklm_questions', text);
+  return { success: true };
+}
 
 /**
 * HELPER: Called by Frontend to peek at current progress

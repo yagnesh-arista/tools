@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.100 | 2026-04-20 16:12:29 -->
+<!-- TopoAssist v260420.101 | 2026-04-20 16:15:40 -->
 <!DOCTYPE html>
 <html>
 
@@ -719,8 +719,9 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
         AI Validate
       </div>
-      <div class="export-desc" style="user-select:none;-webkit-user-select:none;">Copies cabling table to clipboard and opens NotebookLM — paste in the chat to validate.</div>
-      <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()">Ask NotebookLM</button>
+      <div class="export-desc" style="user-select:none;-webkit-user-select:none;">Questions + cabling table copied to clipboard; opens NotebookLM — paste in chat.</div>
+      <textarea id="notebookLMQuestions" rows="5" onblur="saveNotebookLMQuestions()" style="width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;" placeholder="Loading…"></textarea>
+      <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()" style="margin-top:6px;">Ask NotebookLM</button>
       <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;user-select:none;-webkit-user-select:none;"></div>
     </div>
   </div>

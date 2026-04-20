@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.100 | 2026-04-20 16:12:29 -->
+<!-- TopoAssist v260420.101 | 2026-04-20 16:16:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.100";  // keep in sync with Code.gs
+const APP_VERSION = "260420.101";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10222,6 +10222,7 @@ function openCablingModal() {
   if (modal && overlay) {
     modal.style.display = 'block';
     overlay.style.display = 'block';
+    loadNotebookLMQuestions();
     // Lazily load device metadata if not already populated (Device Manager may not have been opened)
     if (Object.keys(deviceMetadata).length === 0) {
       google.script.run
@@ -10457,11 +10458,27 @@ function copyCablingMarkdown() {
   handleCopy(_buildCablingMarkdownStr(), 'btnCablingMd');
 }
 
+function loadNotebookLMQuestions() {
+  var ta = document.getElementById('notebookLMQuestions');
+  if (!ta) return;
+  ta.value = 'Loading\u2026';
+  google.script.run
+    .withSuccessHandler(function(res) { ta.value = res.questions; })
+    .withFailureHandler(function() { ta.value = ''; })
+    .getNotebookLMQuestions();
+}
+
+function saveNotebookLMQuestions() {
+  var ta = document.getElementById('notebookLMQuestions');
+  if (!ta) return;
+  google.script.run.saveNotebookLMQuestions(ta.value);
+}
+
 function askNotebookLM() {
   const md = _buildCablingMarkdownStr();
   if (!md) { alert('No cabling data found. Please refresh.'); return; }
-  const prompt =
-    'Check this cabling table for issues (xcvr compatibility, speed mismatches, breakout consistency):\n\n' + md;
+  const questions = (document.getElementById('notebookLMQuestions').value || '').trim();
+  const prompt = (questions ? questions + '\n\n' : '') + 'Cabling table:\n\n' + md;
   const btn = document.getElementById('btnAskNotebookLM');
   const statusEl = document.getElementById('notebookLMStatus');
   btn.disabled = true;
