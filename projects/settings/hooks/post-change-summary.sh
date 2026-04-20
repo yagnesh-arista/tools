@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.31 | 2026-04-20 12:00:14
+# settings v260420.42 | 2026-04-20 16:33:06
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -68,6 +68,7 @@ Files:${file_lines}
 Git:   uncommitted — run: git add <files> && git commit && git push
 Clasp: ${clasp_note}"
 
+  echo "$SUMMARY" >&2
   jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":$ctx}}'
   exit 0
 fi
@@ -197,4 +198,5 @@ Files:${file_lines}
 Git:   ${git_status}
 Clasp: ${clasp_status}"
 
+echo "$SUMMARY" >&2
 jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
