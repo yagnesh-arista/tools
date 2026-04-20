@@ -1,9 +1,12 @@
 #!/bin/bash
-# settings v260420.24 | 2026-04-20 03:59:11 | git commit: c1aadd1
+# settings v260420.29 | 2026-04-20 11:41:22
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
-#   - Files changed in last commit with their version stamps
+#   - Files changed:
+#       git commit (no push) → last commit only (HEAD~1..HEAD)
+#       git push             → ALL pushed commits via reflog (origin/main prev..HEAD)
+#       git commit && push   → same reflog approach (correct for the 1 new commit)
 #   - Git push status (pushed / ahead / not attempted)
 #   - Clasp push status (done / needed / not applicable)
 
@@ -20,7 +23,27 @@ REPO="$HOME/claude"
 # ── Last commit details ───────────────────────────────────────────────────────
 COMMIT_HASH=$(git -C "$REPO" log -1 --format="%h" 2>/dev/null)
 COMMIT_MSG=$(git -C "$REPO" log -1 --format="%s" 2>/dev/null | cut -c1-60)
-CHANGED_FILES=$(git -C "$REPO" diff HEAD~1 HEAD --name-only 2>/dev/null | grep -v 'CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|\.template$')
+
+# ── Determine which files to show ────────────────────────────────────────────
+# git push → show ALL files across every pushed commit via reflog.
+# git commit only, or clasp push → show last commit's files (HEAD~1..HEAD).
+FILE_FILTER='CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|INSTRUCTIONS_\|\.template$'
+
+if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
+  # Get the SHA origin/main pointed to before this push
+  prev_remote=$(git -C "$REPO" reflog show --format='%H' origin/main 2>/dev/null | sed -n '2p')
+  if [ -n "$prev_remote" ]; then
+    CHANGED_FILES=$(git -C "$REPO" diff "$prev_remote"..HEAD --name-only 2>/dev/null \
+      | grep -v "$FILE_FILTER")
+  else
+    # First-ever push or reflog not available — fall back to last commit
+    CHANGED_FILES=$(git -C "$REPO" diff HEAD~1 HEAD --name-only 2>/dev/null \
+      | grep -v "$FILE_FILTER")
+  fi
+else
+  CHANGED_FILES=$(git -C "$REPO" diff HEAD~1 HEAD --name-only 2>/dev/null \
+    | grep -v "$FILE_FILTER")
+fi
 
 # ── Extract version stamp from line 1 of each changed file ───────────────────
 GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
@@ -55,7 +78,7 @@ done <<< "$CHANGED_FILES"
 
 # ── Git push status ───────────────────────────────────────────────────────────
 unpushed=$(git -C "$REPO" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
-if echo "$cmd" | grep -qE 'git\s+push'; then
+if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
   if [ "$unpushed" -eq 0 ]; then
     git_status="pushed to origin/main ✓"
   else
@@ -71,10 +94,9 @@ fi
 
 # ── Clasp push status ─────────────────────────────────────────────────────────
 CLASP_MARKER=/tmp/topoassist_clasp_last_push
-if echo "$cmd" | grep -qE 'clasp\s+push'; then
+if echo "$cmd_unquoted" | grep -qE 'clasp\s+push'; then
   clasp_status="clasp push ran ✓"
 elif [ "$gas_changed" -eq 1 ]; then
-  # Check if the edit-time hook already pushed recently (within 30 min)
   if [ -f "$CLASP_MARKER" ]; then
     last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
     now=$(date +%s)
