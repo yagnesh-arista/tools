@@ -1,6 +1,11 @@
 Review changes made in this session and determine if UserGuide.html needs updating.
 
-UserGuide.html must be updated whenever a change affects anything user-facing:
+## Version format
+APP_VERSION is now `YYMMDD.N` (e.g. `260420.73`) — not the old `v4.5` style.
+The h1 in UserGuide.html uses `<?= APP_VERSION ?>` (GAS template tag, injected at runtime via
+`createTemplateFromFile().evaluate()`). Do NOT flag this tag as a missing or wrong version.
+
+## UserGuide.html must be updated whenever a change affects anything user-facing:
 - New UI elements, buttons, panels, or modals
 - Changed button names, labels, or workflows
 - New features or removed features
