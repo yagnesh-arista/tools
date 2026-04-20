@@ -1,10 +1,10 @@
-// TopoAssist v260420.61 | 2026-04-20 10:32:12
+// TopoAssist v260420.62 | 2026-04-20 10:40:07
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.61";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.62";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1398,6 +1398,7 @@ const FORMAT_CONFIG = {
       { text: 'DSFP', bg: '#dcfce7' },
       { text: 'QSFP+', bg: '#fef9c3' },
       { text: 'SFP28', bg: '#e0f2fe' },
+      { text: 'SFP25', bg: '#e0f2fe' },
       { text: 'SFP+', bg: '#f1f5f9' }
     ],
     'sp_mode': [
@@ -1720,7 +1721,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
         `AND(REGEXMATCH($${xtC}3,"QSFP-DD"),NOT(REGEXMATCH($${etC}3,"^400g|^800g"))),`,
         `AND(REGEXMATCH($${xtC}3,"OSFP"),NOT(REGEXMATCH($${etC}3,"^400g|^800g"))),`,
         `AND(REGEXMATCH($${xtC}3,"QSFP\\+"),NOT(REGEXMATCH($${etC}3,"^40g"))),`,
-        `AND(REGEXMATCH($${xtC}3,"SFP28"),NOT(REGEXMATCH($${etC}3,"^25g"))),`,
+        `AND(REGEXMATCH($${xtC}3,"SFP28|SFP25"),NOT(REGEXMATCH($${etC}3,"^25g"))),`,
         `AND(REGEXMATCH($${xtC}3,"SFP\\+"),NOT(REGEXMATCH($${etC}3,"^10g|^1g")))`,
         `))`
       ].join('');

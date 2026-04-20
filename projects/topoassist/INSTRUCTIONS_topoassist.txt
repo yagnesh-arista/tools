@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Drop orphan Keep concept: Force Sync now shows confirm dialog (Delete & Sync / Cancel) — schema is source of truth, no preservation. Removed keepOrphanKeys chain, clientOrphanKeys param, globalAttributes findAttrKey hacks. Files: Sidebar-js.html, Code.gs)
+  Last updated: 2026-04-20 (Add SFP25 color rule (#e0f2fe, same as SFP28) to xcvr_type; add SFP25 to Rule 5 xcvr_speed hint formula (SFP28|SFP25 → expect 25g). Files: Code.gs)
+  Previous: 2026-04-20 (Drop orphan Keep concept: Force Sync now shows confirm dialog (Delete & Sync / Cancel) — schema is source of truth, no preservation. Removed keepOrphanKeys chain, clientOrphanKeys param, globalAttributes findAttrKey hacks. Files: Sidebar-js.html, Code.gs)
   Previous: 2026-04-20 (Force Sync yellow-only on orphans: remove badge span from button, _updateForceSyncBadge now only toggles button color. Files: Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-20 (Fix xcvr_ deletion on Keep: pass client-detected orphan keys through call chain (_showOrphanConfirm → triggerSyncOnly → _runForceSyncNow → syncSchemaPreservingOrder 4th param clientOrphanKeys) so server never re-detects independently. Files: Code.gs, Sidebar-js.html)
   Previous: 2026-04-20 (Orphan dialog fixes: (1) _getOrphanAttrKeys skips removed-device columns (key=header when no device suffix matched — caused garbage headers + data loss on Keep); (2) getOrphanedColumnsInfo adds removedDevice flag; (3) _showOrphanConfirm splits keepable vs removed-device sections, modal uses flex+max-height:90vh so buttons never go off-screen. Files: Code.gs, Sidebar-js.html)
