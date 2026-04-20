@@ -388,6 +388,30 @@ CLIENT INIT (sidebar load):
 SECTION 1: PROJECT OVERVIEW
 --------------------------------------------------------------------------------
 
+── MANAGEMENT SUMMARY ──────────────────────────────────────────────────────────
+
+TopoAssist is an Arista lab day-0 automation tool built into Google Sheets.
+
+It lets engineers go from a blank rack to a fully configured, verified network
+without touching the CLI manually:
+
+  1. Document  — capture physical cabling, transceivers, and port assignments
+                 in a structured sheet
+  2. Visualize — see the live topology diagram and trace VLANs across the network
+  3. Validate  — flag wrong cables, speed mismatches, and config errors before
+                 deployment
+  4. Generate  — produce device configs (interfaces, BGP, OSPF, VXLAN/EVPN,
+                 MLAG) automatically from the sheet data
+  5. Push      — deploy configs directly to Arista EOS devices with dry-run,
+                 commit, and verify phases
+  6. Audit     — confirm post-deploy that every device matches the intended design
+
+Net result: lab bring-up that used to take days of manual CLI work is reduced to
+filling in a spreadsheet and clicking a button. This reduces engineer time on
+day-0 activities by a minimum of 2–5 days and delivers a working base setup.
+
+────────────────────────────────────────────────────────────────────────────────
+
 TopoAssist is a Google Apps Script (GAS) day-0 lab workbench embedded in a
 Google Spreadsheet. It covers the full lifecycle of bringing up an Arista EOS
 lab — from physical cabling verification through config generation, push, and
