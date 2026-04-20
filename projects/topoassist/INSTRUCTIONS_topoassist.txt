@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (L3 Snake: add TTL reset config generation — 081_SNAKE_PBR (ACL + route-map + ip policy per interface) and 082_SNAKE_TRAFFIC_POLICY (traffic-policies block + input/output per interface); added tests; updated UserGuide. Files: Code.gs, Tests.gs, UserGuide.html)
+  Last updated: 2026-04-20 (UserGuide.html: fix 3 stale menu paths — "Topology Manager > Open Visualizer" → "Show Topology", "Column Views" → "Sheet View", "Topology Manager > Global Config" → toolbar button with SVG icon. Files: UserGuide.html)
+  Previous: 2026-04-20 (L3 Snake: add TTL reset config generation — 081_SNAKE_PBR (ACL + route-map + ip policy per interface) and 082_SNAKE_TRAFFIC_POLICY (traffic-policies block + input/output per interface); added tests; updated UserGuide. Files: Code.gs, Tests.gs, UserGuide.html)
   Previous: 2026-04-20 (Add README.md — installation (clasp + manual), Device Bridge setup, features summary. Files: README.md)
   Previous: 2026-04-20 (UserGuide.html: expand Installation — Option A clasp, Option B manual copy-paste (7-file table), Device Bridge section (download, requirements, config). Files: UserGuide.html)
   Previous: 2026-04-20 (UserGuide.html: add Installation section (5 steps: clone repo, create Sheet+script, clasp install/login, update .clasp.json scriptId, push + run onOpen). Files: UserGuide.html)
