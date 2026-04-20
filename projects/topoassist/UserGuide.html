@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.74 | 2026-04-20 12:16:57 -->
+<!-- TopoAssist v260420.76 | 2026-04-20 12:17:54 -->
 <!DOCTYPE html>
 <html>
 
@@ -604,11 +604,11 @@
     <p>The system validates and normalises Arista EOS interface names:</p>
     <ul>
       <li><code>Et</code> — Ethernet &nbsp;|&nbsp; <code>Po</code> — Port-Channel &nbsp;|&nbsp; <code>Vl</code> — Vlan SVI</li>
-      <li><code>Lo</code> — Loopback &nbsp;|&nbsp; <code>Ma</code> — Management</li>
+      <li><code>Lo</code> — Loopback &nbsp;|&nbsp; <code>Ma</code> — Management &nbsp;|&nbsp; <code>Vx</code> — VXLAN (VTEP)</li>
     </ul>
 
-    <h3>2. MLAG Detection (Strict Count = 4)</h3>
-    <p>A Port-Channel is automatically classified as MLAG if it appears on <b>4 or more rows</b> across the full sheet. Physical links between the two MLAG peers are tagged as <b>Peer-Links</b> automatically.</p>
+    <h3>2. MLAG Configuration</h3>
+    <p>MLAG is <b>declared explicitly</b> in <b>Device Manager</b> — select two devices and mark them as an MLAG pair. Physical links between the two MLAG peers are automatically tagged as <b>Peer-Links</b>.</p>
     <div class="info-box slate">
       <b>Guard:</b> MLAG + any L3 mode (<code>l3-*</code>) is invalid on Arista EOS. The config generator outputs an explicit <code>!! ERROR</code> comment block instead of broken config.
     </div>
