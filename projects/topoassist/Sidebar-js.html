@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.92 | 2026-04-20 13:46:47 -->
+<!-- TopoAssist v260420.93 | 2026-04-20 14:11:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.92";  // keep in sync with Code.gs
+const APP_VERSION = "260420.93";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9008,7 +9008,22 @@ function _autoRunLldp() {
       dbg('Auto-LLDP: device status fetch failed —', devResult.reason);
     }
     if (isValidationMode) runValidation();
-    if (st) { st.innerHTML = '<b>LLDP check complete</b>'; st.style.color = '#15803d'; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 3000); }
+    const _dbChkData = (lldpResult.status === 'fulfilled' && lldpResult.value)
+      ? lldpResult.value
+      : (devResult.status === 'fulfilled' && devResult.value) ? devResult.value : null;
+    let _dbChkMsg = 'Device Bridge checks complete';
+    let _dbChkColor = '#15803d';
+    if (_dbChkData) {
+      const _vals = Object.values(_dbChkData).filter(v => v && typeof v === 'object');
+      const _reached = _vals.filter(d => d.ok).length;
+      const _total = _vals.length;
+      const _authFails = _vals.filter(d => !d.ok && d.error &&
+        /auth|expired|permission denied|authentication failed|arista-ssh-agent/i.test(d.error)).length;
+      if (_total > 0) _dbChkMsg += ` \u2014 ${_reached}/${_total} reached`;
+      if (_authFails) { _dbChkMsg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _dbChkColor = '#d97706'; }
+      else if (_reached < _total) _dbChkColor = '#dc2626';
+    }
+    if (st) { st.innerHTML = '<b>' + _dbChkMsg + '</b>'; st.style.color = _dbChkColor; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 4000); }
   }).catch(err => { _done(); dbg('Auto-LLDP: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
 }
 
@@ -9225,8 +9240,11 @@ function runLldpCheck() {
 
   btn.disabled = true;
   btn.textContent = 'Checking…';
+  const _bridgeBtn = document.getElementById('btnBridgeToolbar');
+  if (_bridgeBtn) _bridgeBtn.classList.add('lldp-scanning');
   document.getElementById('lldpResults').style.display = 'none';
   statusEl.style.display = 'block';
+  statusEl.style.color = '';
   statusEl.textContent = 'Bridge is querying devices via SSH…';
 
   const n = devices.length;
@@ -9257,6 +9275,7 @@ function runLldpCheck() {
     .then(([lldpResult, devResult]) => {
       btn.disabled = false;
       btn.textContent = 'Run Checks';
+      if (_bridgeBtn) _bridgeBtn.classList.remove('lldp-scanning');
       const lldpData = lldpResult.status === 'fulfilled' ? lldpResult.value : null;
       const dsData   = devResult.status  === 'fulfilled' ? devResult.value  : null;
 
@@ -9267,7 +9286,6 @@ function runLldpCheck() {
         _checkBridgeHealth();
         return;
       }
-      statusEl.style.display = 'none';
 
       if (lldpData) {
         devices.forEach(n => {
@@ -9298,14 +9316,25 @@ function runLldpCheck() {
 
       if (isValidationMode) runValidation();
 
-      // Show partial warning if one endpoint failed
-      if (lldpResult.status === 'rejected') {
-        statusEl.style.display = 'block';
-        statusEl.textContent = 'LLDP query failed: ' + lldpResult.reason.message;
-      } else if (devResult.status === 'rejected') {
-        statusEl.style.display = 'block';
-        statusEl.textContent = 'Device status failed: ' + devResult.reason.message;
+      // Compute per-device summary with auth error detection
+      const _chkData = lldpData || dsData;
+      let _msg = 'Device Bridge checks complete';
+      let _msgColor = '#15803d';
+      if (_chkData) {
+        const _vals = Object.values(_chkData).filter(v => v && typeof v === 'object');
+        const _reached = _vals.filter(d => d.ok).length;
+        const _total = _vals.length;
+        const _authFails = _vals.filter(d => !d.ok && d.error &&
+          /auth|expired|permission denied|authentication failed|arista-ssh-agent/i.test(d.error)).length;
+        if (_total > 0) _msg += ` \u2014 ${_reached}/${_total} reached`;
+        if (_authFails) { _msg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _msgColor = '#d97706'; }
+        else if (_reached < _total) _msgColor = '#dc2626';
       }
+      if (lldpResult.status === 'rejected') _msg += ' \u2014 LLDP endpoint error: ' + lldpResult.reason.message;
+      else if (devResult.status === 'rejected') _msg += ' \u2014 status endpoint error: ' + devResult.reason.message;
+      statusEl.style.display = 'block';
+      statusEl.style.color = _msgColor;
+      statusEl.textContent = _msg;
     });
 }
 

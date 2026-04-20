@@ -1,10 +1,10 @@
-// TopoAssist v260420.92 | 2026-04-20 13:46:47
+// TopoAssist v260420.93 | 2026-04-20 14:10:57
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.92";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.93";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
