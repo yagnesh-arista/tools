@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.97 | 2026-04-20 15:59:13 -->
+<!-- TopoAssist v260420.98 | 2026-04-20 16:08:07 -->
 <!DOCTYPE html>
 <html>
 
@@ -717,13 +717,25 @@ clasp login</pre>
       <li><code>Lo</code> — Loopback &nbsp;|&nbsp; <code>Ma</code> — Management &nbsp;|&nbsp; <code>Vx</code> — VXLAN (VTEP)</li>
     </ul>
 
-    <h3>2. MLAG Configuration</h3>
+    <h3>2. Device Model &amp; Rack</h3>
+    <p>Each device in <b>Device Manager</b> has optional <b>Model</b> and <b>Rack</b> fields (shown as a compact sub-row below the device name).</p>
+    <ul>
+      <li><b>Model</b> — device platform string (e.g. <code>7050CX3-32S</code>). Auto-populated from Device Bridge when a devstatus check has been run; hover the field to see the auto-detected value as placeholder text. Manual entry overrides it and is persisted.</li>
+      <li><b>Rack</b> — physical rack location (e.g. <code>dm1-rack104-tb38</code>). Manual only — no auto-detection.</li>
+    </ul>
+    <p>Both fields appear in the <b>Cabling Report</b>:</p>
+    <ul>
+      <li><b>CSV / Markdown export</b> — <code>Model A</code>, <code>Rack A</code>, <code>Model B</code>, <code>Rack B</code> columns added adjacent to the device name columns.</li>
+      <li><b>Downloaded text report</b> — a <em>DUTs to be used</em> summary block appears at the top listing <code>device &gt;&gt; rack</code> for all devices that have a rack set. Model appears inline in each per-device section header.</li>
+    </ul>
+
+    <h3>3. MLAG Configuration</h3>
     <p>MLAG is <b>declared explicitly</b> in <b>Device Manager</b> — select two devices and mark them as an MLAG pair. Physical links between the two MLAG peers are automatically tagged as <b>Peer-Links</b>.</p>
     <div class="info-box slate">
       <b>Guard:</b> MLAG + any L3 mode (<code>l3-*</code>) is invalid on Arista EOS. The config generator outputs an explicit <code>!! ERROR</code> comment block instead of broken config.
     </div>
 
-    <h3>3. IP Addressing (VLAN-Derived)</h3>
+    <h3>4. IP Addressing (VLAN-Derived)</h3>
     <p>Middle octets are derived from the VLAN ID:</p>
     <ul>
       <li>VLAN <code>1050</code> → octets <code>.10.50</code></li>
@@ -733,7 +745,7 @@ clasp login</pre>
       IPv6 uses the same pattern as IPv4 for lab convenience — this intentionally deviates from strict Arista EOS syntax.
     </div>
 
-    <h3>4. Auto-Description Logic</h3>
+    <h3>5. Auto-Description Logic</h3>
     <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value:</p>
     <ul>
       <li>Physical standalone: <code>-&gt; PeerDev-PeerPort</code></li>
@@ -743,11 +755,11 @@ clasp login</pre>
       <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2 (MLAG)</code></li>
     </ul>
 
-    <h3>5. Global Config Template</h3>
+    <h3>6. Global Config Template</h3>
     <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg></span> toolbar button (Global Configuration Template)
     <p style="font-size:13px;">Define a base config template (NTP, management, AAA, etc.) that is prepended to every device's generated output.</p>
 
-    <h3>6. Technology Stack</h3>
+    <h3>7. Technology Stack</h3>
     <p style="font-size:13px;">Configure interface types and routing protocols via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
     <ul style="font-size:13px;">
       <li><b>Gateway (top)</b> — two independent checkboxes: <b>IPv4</b> (ip address + VARP) and <b>IPv6</b> (ipv6 address + VARP) on SVI, sub-interface, and L3 routed ports. Both default on.</li>
@@ -764,7 +776,7 @@ clasp login</pre>
       <li><b>Validation errors</b> — the modal blocks Save and shows an error banner if an invalid combination is chosen (e.g. IPv6 GW with no IPv6 routing protocol, VXLAN without an underlay, EVPN without BGP).</li>
     </ul>
 
-    <h3>7. Snake Test (L2 / L3)</h3>
+    <h3>8. Snake Test (L2 / L3)</h3>
     <p style="font-size:13px;">A snake test chains switch ports with external loopback cables to measure forwarding throughput end-to-end. A traffic generator (IXIA, Spirent, etc.) connects two ports to the switch — <b>EP1</b> and <b>EP2</b>. The VRF chain routes traffic <b>bidirectionally</b>: EP1 → chain → EP2 (forward) and EP2 → chain → EP1 (reverse). Both directions use the same loopback cables and the same static ARP trick, so a single wiring is enough to measure full-duplex throughput.</p>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">Supported Modes</h4>

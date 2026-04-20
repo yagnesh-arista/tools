@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.96 | 2026-04-20 15:57:55 -->
+<!-- TopoAssist v260420.98 | 2026-04-20 16:06:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.96";  // keep in sync with Code.gs
+const APP_VERSION = "260420.98";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -494,8 +494,14 @@ function applyDeviceListFromServer(devices) {
       labels: d.labels || [],
       hostname: d.hostname || "",
       role: d.role || "",
-      mlagPeer: d.mlagPeer || ""
+      mlagPeer: d.mlagPeer || "",
+      model: d.model || "",
+      rack: d.rack || ""
     };
+  });
+  // Sync deviceMetadata global so cabling report has model/rack even if Device Manager stays closed
+  currentDeviceList.forEach(d => {
+    if (d.model || d.rack) deviceMetadata[d.name] = { model: d.model || '', rack: d.rack || '' };
   });
   initialDeviceState = JSON.stringify(currentDeviceList);
   isDeviceListDirty = false;
@@ -610,6 +616,9 @@ function renderManagerList() {
     const roleOptions = ['', ...DEVICE_ROLE_OPTIONS].map(r =>
       `<option value="${r}" ${roleVal === r ? 'selected' : ''}>${r || '—'}</option>`
     ).join('');
+    const safeId = devObj.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dsPlat = (devStatusMap[devObj.name] || {}).platform || '';
+    const modelPlaceholder = dsPlat || 'e.g. 7050CX3-32S';
 
     const mlagPeerVal = devObj.mlagPeer || '';
     const mlagPeerOptions = ['', ...currentDeviceList
@@ -632,6 +641,12 @@ onchange="toggleDeviceVisibility(${index})">
 <div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
 <div class="dev-label-cell" data-label-index="${index}">${renderDeviceLabelPills(devObj.labels || [], index)}</div>
 ${deleteCell}
+<div class="dev-meta-row">
+  <span class="dev-meta-label">Model</span>
+  <input class="dev-meta-inp" id="devModel_${safeId}" type="text" value="${escapeHtml(devObj.model || '')}" placeholder="${escapeHtml(modelPlaceholder)}" spellcheck="false" oninput="updateDeviceMeta(${index},'model',this.value)">
+  <span class="dev-meta-label">Rack</span>
+  <input class="dev-meta-inp" id="devRack_${safeId}" type="text" value="${escapeHtml(devObj.rack || '')}" placeholder="e.g. R14" spellcheck="false" oninput="updateDeviceMeta(${index},'rack',this.value)">
+</div>
 `;
     listEl.appendChild(li);
   });
@@ -726,6 +741,23 @@ function setDeviceMlagPeer(index, value) {
   dev.mlagPeer = value || '';
   checkForChanges();
   renderManagerList();
+}
+
+function buildMetadataMap() {
+  const map = {};
+  currentDeviceList.forEach(d => {
+    const model = (d.model || '').trim();
+    const rack  = (d.rack  || '').trim();
+    if (model || rack) map[d.name] = { model, rack };
+  });
+  return map;
+}
+
+function updateDeviceMeta(index, field, value) {
+  const dev = currentDeviceList[index];
+  if (!dev) return;
+  dev[field] = value;
+  checkForChanges();
 }
 
 function openLabelPicker(index) {
@@ -1081,9 +1113,16 @@ function saveDeviceChanges() {
   };
 
   // Helper: save mlag peers → done
+  const saveMetadataAndFinish = () => {
+    google.script.run
+      .withSuccessHandler(() => { deviceMetadata = buildMetadataMap(); handleSuccess(); })
+      .withFailureHandler(handleError)
+      .saveDeviceMetadata(buildMetadataMap());
+  };
+
   const saveMlagPeersAndFinish = () => {
     google.script.run
-      .withSuccessHandler(handleSuccess)
+      .withSuccessHandler(saveMetadataAndFinish)
       .withFailureHandler(handleError)
       .saveDeviceMlagPeers(buildMlagPeersMap());
   };
@@ -8276,6 +8315,7 @@ const LLDP_BRIDGE_URL = 'http://localhost:8765';
 let lldpPortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let lldpAuditFlagMissing = localStorage.getItem('lldpAuditFlagMissing') === 'true';
 let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
+let deviceMetadata = {};        // devName → {model: "", rack: ""} — persisted in DocumentProperties DEVICE_METADATA
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _snakeTrafficFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeTrafficWarning()
@@ -10183,6 +10223,12 @@ function openCablingModal() {
     modal.style.display = 'block';
     overlay.style.display = 'block';
     checkGeminiKeyStatus();
+    // Lazily load device metadata if not already populated (Device Manager may not have been opened)
+    if (Object.keys(deviceMetadata).length === 0) {
+      google.script.run
+        .withSuccessHandler(meta => { if (meta) deviceMetadata = meta; })
+        .getDeviceMetadata();
+    }
   } else {
     console.error("UI Error: Cabling Modal or Overlay elements missing from HTML.");
   }
@@ -10352,7 +10398,9 @@ function copyCablingCsv() {
   const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
-  const rows = ['Device A,Port A,Xcvr A,Speed A,Speed B,Xcvr B,Port B,Device B'];
+  const devModel = name => (deviceMetadata[name] || {}).model || (devStatusMap[name] || {}).platform || '';
+  const devRack  = name => (deviceMetadata[name] || {}).rack || '';
+  const rows = ['Device A,Model A,Rack A,Port A,Xcvr A,Speed A,Speed B,Xcvr B,Port B,Device B,Model B,Rack B'];
   sorted.forEach(g => {
     const bo = _breakoutSides(g);
     const isMulti = g.links.length > 1;
@@ -10365,8 +10413,10 @@ function copyCablingCsv() {
       const portA = (isMulti && !bo.a) ? g.phyA : l.portA;
       const portB = (isMulti && !bo.b) ? g.phyB : l.portB;
       rows.push([
-        q(g.devA), q(portA), q(xcvrLabel(g.xcvrA, bo.a)), q(cleanSpeed(g.speedA)),
-        q(cleanSpeed(g.speedB)), q(xcvrLabel(g.xcvrB, bo.b)), q(portB), q(g.devB)
+        q(g.devA), q(devModel(g.devA)), q(devRack(g.devA)),
+        q(portA), q(xcvrLabel(g.xcvrA, bo.a)), q(cleanSpeed(g.speedA)),
+        q(cleanSpeed(g.speedB)), q(xcvrLabel(g.xcvrB, bo.b)), q(portB),
+        q(g.devB), q(devModel(g.devB)), q(devRack(g.devB))
       ].join(','));
     });
   });
@@ -10380,9 +10430,11 @@ function _buildCablingMarkdownStr() {
   const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const esc = s => String(s).replace(/\|/g, '\\|');
+  const devModel = name => (deviceMetadata[name] || {}).model || (devStatusMap[name] || {}).platform || '';
+  const devRack  = name => (deviceMetadata[name] || {}).rack || '';
   const lines = [
-    '| Device A | Port A | Xcvr A | Speed A | Speed B | Xcvr B | Port B | Device B |',
-    '|---|---|---|---|---|---|---|---|'
+    '| Device A | Model A | Rack A | Port A | Xcvr A | Speed A | Speed B | Xcvr B | Port B | Device B | Model B | Rack B |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|'
   ];
   sorted.forEach(g => {
     const bo = _breakoutSides(g);
@@ -10395,7 +10447,7 @@ function _buildCablingMarkdownStr() {
     linksToRender.forEach(l => {
       const portA = (isMulti && !bo.a) ? g.phyA : l.portA;
       const portB = (isMulti && !bo.b) ? g.phyB : l.portB;
-      lines.push(`| ${esc(g.devA)} | ${esc(portA)} | ${esc(xcvrLabel(g.xcvrA, bo.a))} | ${esc(cleanSpeed(g.speedA))} | ${esc(cleanSpeed(g.speedB))} | ${esc(xcvrLabel(g.xcvrB, bo.b))} | ${esc(portB)} | ${esc(g.devB)} |`);
+      lines.push(`| ${esc(g.devA)} | ${esc(devModel(g.devA))} | ${esc(devRack(g.devA))} | ${esc(portA)} | ${esc(xcvrLabel(g.xcvrA, bo.a))} | ${esc(cleanSpeed(g.speedA))} | ${esc(cleanSpeed(g.speedB))} | ${esc(xcvrLabel(g.xcvrB, bo.b))} | ${esc(portB)} | ${esc(g.devB)} | ${esc(devModel(g.devB))} | ${esc(devRack(g.devB))} |`);
     });
   });
   return lines.join('\n');
@@ -10494,6 +10546,10 @@ function downloadCablingReport(mode) {
   const totalCableGroups = Object.values(cableGroups).length;
   const totalIndividualLinks = Object.values(cableGroups).reduce((sum, g) => sum + g.links.length, 0);
 
+
+  // Model/rack lookup: stored metadata first, devstatus platform as fallback for model
+  const devModel = name => (deviceMetadata[name] || {}).model || (devStatusMap[name] || {}).platform || '';
+  const devRack  = name => (deviceMetadata[name] || {}).rack || '';
 
   // 2. ORGANIZE DATA
   const groupedLines = {};
@@ -10684,6 +10740,17 @@ function downloadCablingReport(mode) {
   lines.push("=".repeat(100));
   lines.push("");
 
+  // DUTs summary: devices that have a rack assigned
+  const dutsWithRack = sheetOrderNames.filter(n => devRack(n));
+  if (dutsWithRack.length > 0) {
+    lines.push("## DUTs to be used:");
+    lines.push("");
+    const maxDevLen = Math.max(...dutsWithRack.map(n => n.length));
+    dutsWithRack.forEach(n => lines.push(`- ${n.padEnd(maxDevLen)}    >>    ${devRack(n)}`));
+    lines.push("");
+    lines.push("");
+  }
+
   sheetOrderNames.forEach(devName => {
     const links = groupedLines[devName];
     if (links && links.length > 0) {
@@ -10705,7 +10772,8 @@ function downloadCablingReport(mode) {
 
       // Header
       lines.push("-".repeat(100));
-      lines.push(`>> ${devName} (${links.length} Cables)`);
+      const _m = devModel(devName);
+      lines.push(`>> ${devName}${_m ? '  [' + _m + ']' : ''}  (${links.length} Cables)`);
       lines.push("-".repeat(100));
       lines.push("");
 

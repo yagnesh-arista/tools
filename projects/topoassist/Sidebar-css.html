@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.97 | 2026-04-20 15:59:13 -->
+<!-- TopoAssist v260420.98 | 2026-04-20 16:06:41 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3647,6 +3647,46 @@
     padding: 1px 6px;
     cursor: pointer;
     white-space: nowrap
+  }
+
+  .dev-meta-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 8px 5px 28px;
+    user-select: none;
+    -webkit-user-select: none
+  }
+
+  .dev-meta-label {
+    font-size: 10px;
+    font-family: "JetBrains Mono", monospace;
+    color: #94a3b8;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none
+  }
+
+  .dev-meta-inp {
+    font-size: 11px;
+    font-family: "JetBrains Mono", monospace;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 6px;
+    width: 160px;
+    outline: none
+  }
+
+  .dev-meta-inp:focus {
+    border-color: #94a3b8;
+    background: #fff
+  }
+
+  .dev-meta-inp::placeholder {
+    color: #94a3b8
   }
 
   .dev-label-add-btn:hover {
