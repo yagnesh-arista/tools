@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Add plain SFP (1G) color rule (#f8fafc) at end of xcvr_type list — safe because all specific rules (SFP+, SFP28, SFP25, QSFP*, OSFP, DSFP) fire first via whenTextContains ordering. Files: Code.gs)
+  Last updated: 2026-04-20 (Add BASE-T color rule (#ffedd5, copper-orange) — whenTextContains catches 2.5GBASE-T, 5GBASE-T, 10GBASE-T; distinct from speed-tier colors since BASE-T speed is negotiated. Files: Code.gs)
+  Previous: 2026-04-20 (Add plain SFP (1G) color rule (#f8fafc) at end of xcvr_type list. Files: Code.gs)
   Previous: 2026-04-20 (Add SFP25 color rule (#e0f2fe, same as SFP28) to xcvr_type; add SFP25 to Rule 5 xcvr_speed hint formula (SFP28|SFP25 → expect 25g). Files: Code.gs)
   Previous: 2026-04-20 (Drop orphan Keep concept: Force Sync now shows confirm dialog (Delete & Sync / Cancel) — schema is source of truth, no preservation. Removed keepOrphanKeys chain, clientOrphanKeys param, globalAttributes findAttrKey hacks. Files: Sidebar-js.html, Code.gs)
   Previous: 2026-04-20 (Force Sync yellow-only on orphans: remove badge span from button, _updateForceSyncBadge now only toggles button color. Files: Sidebar.html, Sidebar-js.html)
