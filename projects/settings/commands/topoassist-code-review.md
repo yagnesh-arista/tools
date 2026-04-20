@@ -1,5 +1,5 @@
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
-and any other UI-bearing files. This supplements the global `/review` — run both.
+Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
 
 ---
@@ -91,7 +91,8 @@ Also check /health docstring in device_bridge.py matches VERSION.
 
 ## Check 7 — canonicalizeInterface Sync
 
-Both copies must be in sync. Check the `// DUPLICATED ... last synced:` comment date.
+Both copies (Code.gs + Sidebar-js.html) must be in sync.
+Check the `// DUPLICATED ... last synced:` comment date.
 
 ✗ FAIL if the two implementations differ in logic (not just whitespace).
 ⚠ WARN if the `last synced` date is stale (older than the most recent edit to either file).
@@ -105,36 +106,54 @@ after any code change was made this session.
 
 ---
 
+## Check 9 — generateConfig() Param Count
+
+Grep for `generateConfig(` in Code.gs. Every call site must pass exactly 5 arguments:
+`(portName, d, ipPrefs, seenPos, netSettings)`. Omitting the 5th silently drops all
+protocol-family-gated commands.
+
+✗ FAIL if any call site has fewer than 5 arguments — cite file and line.
+
+---
+
+## Check 10 — hasKey() vs .has()
+
+Grep for `.has(` in Code.gs. Flag any usage where the Set/Map contains device names —
+those must use `hasKey()` instead. Device names in Sets are lowercase; sheet names are
+original-cased — `.has()` will silently miss them.
+
+✗ FAIL for each `.has(` on a device-name Set that should be `hasKey()` — cite line.
+
+---
+
+## Check 11 — MLAG Explicit Only
+
+Grep Code.gs for any `>= 4` threshold checks or `poGlobalCount` logic that might
+re-introduce the old heuristic. MLAG pairs must be declared exclusively via
+`DEVICE_MLAG_PEERS` in DocumentProperties — no count-based detection.
+
+✗ FAIL if any count-based MLAG heuristic is found — cite file and line.
+
+---
+
 ## Output Format
 
 ```
-TOPOASSIST REVIEW SUMMARY
-=========================
-1 — JetBrains Mono
-  ✓ All UI elements have explicit font-family
-
-2 — SVG Icons
-  ✗ FAIL: Unicode icon "▶" — Sidebar-js.html:3421 (button label)
-
-3 — user-select
-  ✓ No violations found
-
-4 — Canvas Bounds
-  ⚠ WARN: push modal drag handler — no horizontal clamp on resize
-
-5 — UI/UX Symmetry
-  ✓ No obvious asymmetry found
-
-6 — VERSION Sync
-  ✓ device_bridge.py, template, and /health docstring all say 2.7
-
-7 — canonicalizeInterface Sync
-  ✓ Both copies match; last synced 2026-04-07
-
-8 — INSTRUCTIONS Updated
-  ✓ Last updated: 2026-04-17
+TOPOASSIST CODE REVIEW
+======================
+ 1 — JetBrains Mono        ✓ / ✗ / ⚠
+ 2 — SVG Icons             ✓ / ✗ / ⚠
+ 3 — user-select           ✓ / ✗ / ⚠
+ 4 — Canvas Bounds         ✓ / ✗ / ⚠
+ 5 — UI/UX Symmetry        ✓ / ✗ / ⚠
+ 6 — VERSION Sync          ✓ / ✗ / ⚠
+ 7 — canonicalizeInterface ✓ / ✗ / ⚠
+ 8 — INSTRUCTIONS Updated  ✓ / ✗ / ⚠
+ 9 — generateConfig params ✓ / ✗ / ⚠
+10 — hasKey() usage        ✓ / ✗ / ⚠
+11 — MLAG explicit only    ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
-Status: BLOCKED — 1 failure must be resolved before proceeding.
+Status: BLOCKED — N failures must be resolved before proceeding.
         (or: CLEAN — ready to ship.)
 ```

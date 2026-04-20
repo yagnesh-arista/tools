@@ -41,4 +41,4 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
 - If editing `buildConditionalRules` in Code.gs: immediately note that the user must do **Save & Sync** in the sheet for conditional format changes to take effect
-- Use `/topoassist-review-deploy-gas`, `/topoassist-review-code-constraints`, `/topoassist-review-userguide`, `/topoassist-code-review`, `/topoassist-review-code-full` slash commands as needed
+- Use `/topoassist-review-deploy-gas`, `/topoassist-review-userguide`, `/topoassist-code-review`, `/topoassist-review-code-full` slash commands as needed
