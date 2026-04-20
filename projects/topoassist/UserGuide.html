@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.71 | 2026-04-20 11:58:30 -->
+<!-- TopoAssist v260420.72 | 2026-04-20 12:07:50 -->
 <!DOCTYPE html>
 <html>
 
@@ -224,11 +224,83 @@
     .info-box.amber { background: #fff7ed; border: 1px solid #fed7aa; }
     .info-box.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
     .info-box.slate { background: #f8fafc; border: 1px solid #e2e8f0; }
+
+    /* ── Print / Download action bar ─────────────────────────────────────── */
+    .doc-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 28px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .doc-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background 0.15s;
+    }
+
+    .doc-btn-print {
+      color: #1e40af;
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+    .doc-btn-print:hover { background: #dbeafe; }
+
+    .doc-btn-download {
+      color: #166534;
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    .doc-btn-download:hover { background: #dcfce7; }
+
+    /* ── Print layout ─────────────────────────────────────────────────────── */
+    @media print {
+      .doc-actions { display: none !important; }
+      body { background: white; padding: 0; }
+      .container {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 20px 30px !important;
+        max-width: 100% !important;
+      }
+      h2 { break-before: avoid; }
+      .step-box, .card, .info-box, .two-col { break-inside: avoid; }
+      a { text-decoration: none; color: inherit; }
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
+
+    <!-- Print / Download actions -->
+    <div class="doc-actions">
+      <button class="doc-btn doc-btn-print" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print / Save as PDF
+      </button>
+      <button class="doc-btn doc-btn-download" onclick="downloadHTML()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download HTML
+      </button>
+    </div>
+
     <h1>🌐 Network Topology &amp; Config Manager v4.5</h1>
 
     <!-- ================================================================ -->
@@ -852,6 +924,21 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       Arista EOS Automation Suite &bull; Lab Testing Version
     </div>
   </div>
+
+  <script>
+    function downloadHTML() {
+      var html = document.documentElement.outerHTML;
+      var blob = new Blob([html], { type: 'text/html' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'TopoAssist-UserGuide.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
 </body>
 
 </html>

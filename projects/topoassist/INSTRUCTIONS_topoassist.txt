@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Auto Config modal: renamed P2P/GW section headers to "POINT-TO-POINT (P2P) INTERFACE" / "GATEWAY (GW) INTERFACE"; added --label-w CSS custom property to align inputs per section; fixed snake test ip-labels and inner labels to use correct port terminology. Files: Sidebar.html, Sidebar-css.html)
+  Last updated: 2026-04-20 (UserGuide.html: add Print/Save as PDF + Download HTML buttons at top; @media print hides bar, removes box-shadow, sets break-inside:avoid on step-boxes/cards/info-boxes. Files: UserGuide.html)
+  Previous: 2026-04-20 (Auto Config modal: renamed P2P/GW section headers to "POINT-TO-POINT (P2P) INTERFACE" / "GATEWAY (GW) INTERFACE"; added --label-w CSS custom property to align inputs per section; fixed snake test ip-labels and inner labels to use correct port terminology. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-20 (Sheet View panel: balanced 50/50 split — both col-left and col-right use flex:1 min-width:0; dialog width narrowed 620→540px. Files: SheetAssistPanel.html, Code.gs)
   Previous: 2026-04-20 (Section 1 PROJECT OVERVIEW rewritten: full day-0 capability description — Cabling Report, Wrong Cabling Report, Topology Visualization, Auto Config Generation, Config Push, Auditing (11 checks), Topology Search, Device Bridge. Files: INSTRUCTIONS_topoassist.txt)
   Previous: 2026-04-20 (Add plain SFP (1G) color rule (#f8fafc) at end of xcvr_type list. Files: Code.gs)
