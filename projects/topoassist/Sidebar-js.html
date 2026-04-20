@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.101 | 2026-04-20 16:16:56 -->
+<!-- TopoAssist v260420.102 | 2026-04-20 16:22:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.101";  // keep in sync with Code.gs
+const APP_VERSION = "260420.102";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1115,7 +1115,18 @@ function saveDeviceChanges() {
   // Helper: save mlag peers → done
   const saveMetadataAndFinish = () => {
     google.script.run
-      .withSuccessHandler(() => { deviceMetadata = buildMetadataMap(); handleSuccess(); })
+      .withSuccessHandler(() => {
+        deviceMetadata = buildMetadataMap();
+        // Refresh topology card model lines immediately (no bridge re-run needed)
+        document.querySelectorAll('.dev-model-line').forEach(el => {
+          const devId = el.dataset.devId;
+          const ds = devStatusMap[devId];
+          const manualModel    = (deviceMetadata[devId] || {}).model || '';
+          const bridgePlatform = (ds && ds.ok && ds.platform) ? ds.platform : '';
+          el.textContent = manualModel || bridgePlatform;
+        });
+        handleSuccess();
+      })
       .withFailureHandler(handleError)
       .saveDeviceMetadata(buildMetadataMap());
   };
@@ -6906,6 +6917,13 @@ function render(data) {
       verLine.dataset.devId = node.id;
       header.appendChild(verLine);
 
+      const modelLine = document.createElement("div");
+      modelLine.className = "dev-model-line";
+      modelLine.dataset.devId = node.id;
+      const _initModel = (deviceMetadata[node.id] || {}).model || '';
+      if (_initModel) modelLine.textContent = _initModel;
+      header.appendChild(modelLine);
+
       // Card coloring: driven by role (primary), falling back to first matching label color
       if (colorSource && ROLE_COLORS[colorSource]) {
         el.style.background = ROLE_COLORS[colorSource].bg;
@@ -9228,13 +9246,21 @@ function _expandIfaceName(name) {
 // Apply devStatusMap to device cards (version line) and port St dots (op-status).
 // Called after runLldpCheck() and after render().
 function applyDevStatusToCards() {
-  // Version line under device hostname
+  // Version line: EOS version only (platform moved to model line below)
   document.querySelectorAll('.dev-version-line').forEach(el => {
     const devId = el.dataset.devId;
     const ds = devStatusMap[devId];
     if (!ds || !ds.ok) { el.textContent = ''; return; }
-    el.textContent = (ds.version ? 'EOS ' + ds.version : '') +
-                     (ds.platform ? '  ·  ' + ds.platform : '');
+    el.textContent = ds.version ? 'EOS ' + ds.version : '';
+  });
+
+  // Model line: manual model (Device Manager) wins; bridge platform is fallback
+  document.querySelectorAll('.dev-model-line').forEach(el => {
+    const devId = el.dataset.devId;
+    const ds = devStatusMap[devId];
+    const manualModel  = (deviceMetadata[devId] || {}).model || '';
+    const bridgePlatform = (ds && ds.ok && ds.platform) ? ds.platform : '';
+    el.textContent = manualModel || bridgePlatform;
   });
 
   // Port St dots: override with live op-status when available
