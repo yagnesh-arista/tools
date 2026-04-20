@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.24 | 2026-04-20 03:58:55 | git commit: c1aadd1
+# settings v260420.27 | 2026-04-20 10:53:00
 # topoassist-stamp.sh
 # On every Edit/Write of a TopoAssist GAS file:
 #   1. Auto-calculates date-based version: YYMMDD.N
@@ -92,13 +92,14 @@ PYEOF
 # Stamp the edited file
 stamp_file "$f"
 
-# Also stamp Code.gs and Sidebar-js.html if their APP_VERSION was just updated
-# (and they're not the same as $f). Auto-stage side-effect files so they're
-# included in the next git commit and don't linger as uncommitted changes.
-for extra in Code.gs Sidebar-js.html; do
-  extra_path="$TOPODIR/$extra"
-  if [ "$extra_path" != "$f" ] && echo "$UPDATED_FILES" | grep -q "$extra"; then
-    stamp_file "$extra_path"
-    git -C "$HOME/claude" add "$extra_path" &>/dev/null
-  fi
-done
+# When version changes, stamp ALL GAS files and auto-stage them so every file
+# stays in sync — not just Code.gs + Sidebar-js.html.
+if [ "$CURRENT_VER" != "$VERSION" ]; then
+  for gas in Code.gs Tests.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
+    gas_path="$TOPODIR/$gas"
+    if [ "$gas_path" != "$f" ] && [ -f "$gas_path" ]; then
+      stamp_file "$gas_path"
+      git -C "$HOME/claude" add "$gas_path" &>/dev/null
+    fi
+  done
+fi
