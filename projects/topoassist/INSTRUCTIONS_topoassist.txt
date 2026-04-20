@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Force Sync yellow-only on orphans: remove badge span from button, _updateForceSyncBadge now only toggles button color — no content injected into button. Files: Sidebar.html, Sidebar-js.html)
+  Last updated: 2026-04-20 (rebuildSheet read phase now uses findAttrKey(header, globalAttributes) instead of schemaObj.keys — orphan keys like xcvr_ added for Keep are in globalAttributes, so they match via exact prefix not fragile lastIndexOf fallback; pre-write safety check updated the same way. Files: Code.gs)
+  Previous: 2026-04-20 (Force Sync yellow-only on orphans: remove badge span from button, _updateForceSyncBadge now only toggles button color — no content injected into button. Files: Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-20 (Fix xcvr_ deletion on Keep: pass client-detected orphan keys through call chain (_showOrphanConfirm → triggerSyncOnly → _runForceSyncNow → syncSchemaPreservingOrder 4th param clientOrphanKeys) so server never re-detects independently. Files: Code.gs, Sidebar-js.html)
   Previous: 2026-04-20 (Orphan dialog fixes: (1) _getOrphanAttrKeys skips removed-device columns (key=header when no device suffix matched — caused garbage headers + data loss on Keep); (2) getOrphanedColumnsInfo adds removedDevice flag; (3) _showOrphanConfirm splits keepable vs removed-device sections, modal uses flex+max-height:90vh so buttons never go off-screen. Files: Code.gs, Sidebar-js.html)
   Previous: 2026-04-20 (Force Sync button turns yellow when orphan columns detected; orphan confirm dialog list is now scrollable (max-height:220px) in a bordered box; modal widened 320→380px. Files: Sidebar-js.html)

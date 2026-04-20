@@ -1,10 +1,10 @@
-// TopoAssist v260420.58 | 2026-04-20 04:03:42
+// TopoAssist v260420.60 | 2026-04-20 10:14:06
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.58";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.60";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1121,7 +1121,9 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
         if (currentDev) {
           if (!memory[currentDev]) memory[currentDev] = {};
           let header = String(r2[c]).trim();
-          const attrKey = findAttrKey(header, schemaObj.keys);
+          // Use globalAttributes (not just schemaObj.keys) so orphan keys added for Keep
+          // are matched via exact prefix, not the fragile lastIndexOf("_") fallback.
+          const attrKey = findAttrKey(header, globalAttributes);
 
           if (attrKey) {
             for (let rowIdx = 2; rowIdx < backupValues.length; rowIdx++) {
@@ -1205,7 +1207,7 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
       const r2raw = backupValues[1];
       const preNonEmpty = {};
       for (let c = 0; c < r2raw.length; c++) {
-        const key = findAttrKey(String(r2raw[c]).trim(), schemaObj.keys);
+        const key = findAttrKey(String(r2raw[c]).trim(), globalAttributes);
         if (!key) continue;
         for (let r = 2; r < backupValues.length; r++) {
           const v = backupValues[r][c];
