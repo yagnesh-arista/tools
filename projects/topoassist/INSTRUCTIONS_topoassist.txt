@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Add BASE-T color rule (#ffedd5, copper-orange) — whenTextContains catches 2.5GBASE-T, 5GBASE-T, 10GBASE-T; distinct from speed-tier colors since BASE-T speed is negotiated. Files: Code.gs)
+  Last updated: 2026-04-20 (Section 1 PROJECT OVERVIEW rewritten: full day-0 capability description — Cabling Report, Wrong Cabling Report, Topology Visualization, Auto Config Generation, Config Push, Auditing (11 checks), Topology Search, Device Bridge. Files: INSTRUCTIONS_topoassist.txt)
+  Previous: 2026-04-20 (Add BASE-T color rule (#ffedd5, copper-orange) — whenTextContains catches 2.5GBASE-T, 5GBASE-T, 10GBASE-T; distinct from speed-tier colors since BASE-T speed is negotiated. Files: Code.gs)
   Previous: 2026-04-20 (Add plain SFP (1G) color rule (#f8fafc) at end of xcvr_type list. Files: Code.gs)
   Previous: 2026-04-20 (Add SFP25 color rule (#e0f2fe, same as SFP28) to xcvr_type; add SFP25 to Rule 5 xcvr_speed hint formula (SFP28|SFP25 → expect 25g). Files: Code.gs)
   Previous: 2026-04-20 (Drop orphan Keep concept: Force Sync now shows confirm dialog (Delete & Sync / Cancel) — schema is source of truth, no preservation. Removed keepOrphanKeys chain, clientOrphanKeys param, globalAttributes findAttrKey hacks. Files: Sidebar-js.html, Code.gs)
@@ -387,16 +388,92 @@ CLIENT INIT (sidebar load):
 SECTION 1: PROJECT OVERVIEW
 --------------------------------------------------------------------------------
 
-TopoAssist is a Google Apps Script (GAS) tool embedded in a Google Spreadsheet.
-It is a LAB workbench for:
-  - Managing network device cabling data in a structured Google Sheet
-  - Generating Arista EOS device configurations (BGP, MLAG, VXLAN/EVPN)
-  - Visualizing network topology via D3.js in a sidebar/modeless dialog
-  - Validating topology logic (MLAG peer-links, speed mismatches, VLAN conflicts)
-  - Integrating with IXIA/Spirent traffic generators (non-Arista devices)
+TopoAssist is a Google Apps Script (GAS) day-0 lab workbench embedded in a
+Google Spreadsheet. It covers the full lifecycle of bringing up an Arista EOS
+lab — from physical cabling verification through config generation, push, and
+post-deploy auditing.
 
-It is a LAB tool only — not for production. IPv6 syntax intentionally deviates
-from strict Arista EOS syntax to align with IPv4 for lab testing convenience.
+── CORE CAPABILITIES ───────────────────────────────────────────────────────────
+
+  Cabling Report
+    Export the full physical cabling topology from the sheet as a structured
+    table (CSV / Markdown). Includes port, speed, transceiver type, breakout
+    grouping, and cable-group compression (e.g. Et14/1-4 as a single QSFP-DD
+    row). Snake self-loop cables are excluded automatically.
+
+  Wrong Cabling Report / Cabling Audit
+    Flag incorrect or mismatched cables via the Configuration Audit engine:
+    - Speed mismatch between et_speed_ (EOS-reported) and xcvr_speed_ (expected)
+    - xcvr_type ↔ et_speed mismatch (transceiver native speed ≠ actual speed)
+    - Missing xcvr_speed_ when breakout is likely (Rule 5 orange highlight)
+    - MLAG peer-link missing, asymmetric, or wrong port-channel
+    Conditional formatting rules colour the sheet live so mismatches are visible
+    without opening any modal.
+
+  Topology Visualization
+    Interactive canvas diagram rendered with D3.js inside the sidebar. Devices
+    are nodes; cables are edges coloured by layer (underlay, overlay, MLAG,
+    snake). Features: drag-to-reposition, zoom/pan, node search/highlight,
+    VLAN trace (colour-highlights all ports carrying a VLAN), topology filter
+    (by device name, VLAN, internal VLAN), PNG export, dark/light theme toggle.
+
+  Auto Config Generation
+    One-click per-device EOS configuration generation from the sheet data:
+    - Interface config  — switchport (access/trunk), L3, sub-interface, SVI
+    - Underlay          — BGP (eBGP, unnumbered, RFC-5549) / OSPF / OSPFv3
+    - Overlay           — VXLAN (L2/L3 VNI), EVPN (IPv4/IPv6)
+    - MLAG              — peer-link, MLAG domain, keepalive, SVI
+    - Snake Test        — bidirectional L3 VRF chain with static ARP + routes
+                          for traffic-generator connectivity (EP1/EP2 endpoints)
+    IP addressing is formula-driven from configurable base octets (P2P /31s,
+    GW SVIs, Loopback /32s). BGP ASN base is configurable. 16 network-family
+    flags (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM, GW_IPV4, GW_IPV6, BGP×4,
+    OSPF×3, VXLAN×2, EVPN×2) let you mix/match protocol families per topology.
+    Supports IXIA/Spirent traffic generators as non-Arista endpoints.
+
+  Config Push
+    Directly push generated configs to live Arista EOS devices via
+    device_bridge.py (local Python bridge, SSH or eAPI):
+    - 3-phase push: dry-run diff → commit → verify
+    - Idempotent: section cleaners wipe stale BGP/OSPF/interface state first
+    - Single-device push from topology node, or Generate All → Push All
+    - Live phase tracker with elapsed timer; "already in sync" auto-closes
+    - Abort-stale-sessions cleans orphan SSH sessions before each push
+
+  Auditing
+    Post-deploy configuration audit checks across all devices:
+    A. Port-channel link count consistency
+    B. MLAG peer-link symmetry (same PO on both peers)
+    C. Duplicate P2P VLANs across device pairs
+    D. Speed mismatch (et_speed_ ≠ xcvr_speed_ when both set)
+    E. VLAN range validity (1–4094)
+    F. VLAN conflicts across trunk ports on the same PO
+    G. Native VLAN on non-trunk port
+    H. MLAG peer-link missing / required
+    I. Po mismatch / asymmetric link count
+    J. nv<N> native-VLAN token on non-trunk port
+    K. Internal VLAN conflict (EOS-reserved VLANs via device bridge data)
+
+  Topology Search
+    Instant filter across all devices, ports, VLANs, descriptions, and internal
+    VLANs. Matching nodes are highlighted on the canvas; non-matching nodes are
+    dimmed. VLAN trace mode colours all ports carrying a given VLAN (including
+    EOS-internal VLANs surfaced via device bridge). Device bridge search also
+    matches on internal VLAN numbers.
+
+  Device Bridge (live device connectivity)
+    device_bridge.py — local Python HTTP bridge (SSH + eAPI dual path):
+    - LLDP neighbor pull → auto-populates cabling sheet from live topology
+    - Device status check: EOS version, interface list, internal VLANs,
+      bridge MAC (for snake test ARP config)
+    - Config push (3-phase) and push-all workflows
+
+── SCOPE ───────────────────────────────────────────────────────────────────────
+
+  LAB TOOL ONLY — not for production.
+  IPv6 syntax intentionally deviates from strict Arista EOS syntax to align
+  with IPv4 for lab testing convenience.
+  IXIA/Spirent traffic generators appear as non-Arista device rows in the sheet.
 
 --------------------------------------------------------------------------------
 SECTION 2: FILE STRUCTURE
