@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.80 | 2026-04-20 12:35:34 -->
+<!-- TopoAssist v260420.81 | 2026-04-20 12:57:14 -->
 <!DOCTYPE html>
 <html>
 
@@ -301,6 +301,53 @@
     </div>
 
     <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v<?= APP_VERSION ?></h1>
+
+    <!-- ================================================================ -->
+    <h2>📦 Installation</h2>
+
+    <div class="info-box info-box--dim">
+      TopoAssist runs as a Google Apps Script bound to a Google Sheet. These steps install it on any sheet you own.
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 1 — Get the source</span>
+      <p>Clone or download the public repository:</p>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">git clone https://github.com/yagnesh-arista/tools.git
+cd tools/projects/topoassist</pre>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 2 — Create a Google Sheet &amp; Apps Script project</span>
+      <ol style="margin-top:6px;">
+        <li>Open <a href="https://sheets.new" target="_blank">sheets.new</a> to create a new Google Sheet (or use an existing one).</li>
+        <li>Go to <b>Extensions &gt; Apps Script</b> — this opens a bound script project.</li>
+        <li>In the Apps Script editor, click <b>Project Settings</b> (gear icon) and copy your <b>Script ID</b>.</li>
+      </ol>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 3 — Install clasp &amp; authenticate</span>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">npm install -g @google/clasp
+clasp login</pre>
+      <p style="margin-top:6px;">A browser window opens — sign in with the Google account that owns the sheet.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 4 — Point clasp at your script &amp; push</span>
+      <p>Edit <code>.clasp.json</code> in the <code>topoassist/</code> folder — replace the <code>scriptId</code> with yours:</p>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">{"scriptId": "YOUR_SCRIPT_ID_HERE", "rootDir": "."}</pre>
+      <p style="margin-top:6px;">Then push all files:</p>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">clasp push --force</pre>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 5 — Run the initialiser</span>
+      <ol style="margin-top:6px;">
+        <li>Back in the Apps Script editor, select the <code>onOpen</code> function and click <b>Run</b> once to grant permissions.</li>
+        <li>Return to your Google Sheet — a <b>TopoAssist</b> menu will appear in the menu bar.</li>
+        <li>Open <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Open Visualizer</span> to launch the sidebar.</li>
+      </ol>
+    </div>
 
     <!-- ================================================================ -->
     <h2>🚀 Quick Start</h2>

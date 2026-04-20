@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (UserGuide.html: @page width 210mm→260mm for wider print output. Files: UserGuide.html)
+  Last updated: 2026-04-20 (UserGuide.html: add Installation section (5 steps: clone repo, create Sheet+script, clasp install/login, update .clasp.json scriptId, push + run onOpen). Files: UserGuide.html)
+  Previous: 2026-04-20 (UserGuide.html: @page width 210mm→260mm for wider print output. Files: UserGuide.html)
   Previous: 2026-04-20 (UserGuide.html: @page { size: 210mm 5000mm } — single tall page for print, no page breaks. Files: UserGuide.html)
   Previous: 2026-04-20 (UserGuide.html: print CSS — replace per-element break rules with * { break-inside/before/after: avoid !important } to suppress all page breaks. Files: UserGuide.html)
   Previous: 2026-04-20 (UserGuide.html: fix two stale sections — Interface Naming adds Vx (VXLAN/VTEP) prefix; MLAG section rewritten as explicit-only via Device Manager, removes stale count≥4 heuristic text. Files: UserGuide.html)
