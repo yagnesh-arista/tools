@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.102 | 2026-04-20 16:23:11 -->
+<!-- TopoAssist v260420.103 | 2026-04-20 16:30:50 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2146,6 +2146,8 @@
   .node-header:not([style*="background"]) .dev-model-line {
     color: #94a3b8;
   }
+  /* Mismatch: Device Manager model differs from bridge-detected platform */
+  .dev-model-line.model-mismatch { color: #fbbf24 !important; }
 
   /* --- PORT OP-STATUS DOT OVERRIDES (applied by applyDevStatusToCards) --- */
   .dot.op-up          { background-color: #22c55e !important; box-shadow: 0 0 3px rgba(34,197,94,0.5); }
