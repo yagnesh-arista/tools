@@ -1,10 +1,10 @@
-// TopoAssist v260420.94 | 2026-04-20 14:32:47
+// TopoAssist v260420.95 | 2026-04-20 15:19:46
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.94";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.95";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4680,16 +4680,18 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     }
   });
 
-  // Add SNAKE_* VRFs for L3 snake ports (per-port VRF chain)
+  // Add SNAKE_* VRFs only when cabling is complete (both primary + secondary valid).
+  // Matches the gate used in snakePairsForStatic — no VRF emitted for uncabled ports.
   const snakeIntColIdx = headers.indexOf("snake_int_" + deviceName);
   if (snakeIntColIdx !== -1) {
     rows.forEach(row => {
       const primaryRaw = row[targetColIndex];
       const secondaryRaw = row[snakeIntColIdx];
+      if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
       const det = extractDetails(row, indices);
       if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
-      if (isValidPort(primaryRaw)) vrfs.add("SNAKE_" + canonicalizeInterface(primaryRaw));
-      if (isValidPort(secondaryRaw)) vrfs.add("SNAKE_" + canonicalizeInterface(secondaryRaw));
+      vrfs.add("SNAKE_" + canonicalizeInterface(primaryRaw));
+      vrfs.add("SNAKE_" + canonicalizeInterface(secondaryRaw));
     });
   }
 
