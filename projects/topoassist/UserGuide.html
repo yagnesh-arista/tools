@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.84 | 2026-04-20 13:17:09 -->
+<!-- TopoAssist v260420.85 | 2026-04-20 13:20:03 -->
 <!DOCTYPE html>
 <html>
 
@@ -822,7 +822,17 @@ clasp login</pre>
       <li><b>050_EtX</b> — interface block per port: <code>vrf SNAKE_EtX</code>, <code>ip address {base}.oct2.oct3.1/24</code>, <code>no shutdown</code>. No OSPF (cannot form adjacency with yourself). Both the primary and secondary get their own <code>050_</code> block.</li>
       <li><b>050_TRAFFIC_SNAKE_EP1_L3 / 050_TRAFFIC_SNAKE_EP2_L3</b> — regular P2P interface blocks, placed in the first/last snake VRF respectively (auto-assigned from <code>desc_</code>).</li>
       <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Routes only emitted when subnet configured: <code>fwdRoute = ep2_subnet.0/24</code> (forward, EP1→EP2), <code>revRoute = ep1_subnet.0/24</code> (reverse, EP2→EP1). No subnet = no routes for that direction (ARP skeleton only).</li>
+      <li><b>081_SNAKE_PBR</b> — TTL reset via Policy-Based Routing: a shared <code>ip access-list SNAKE_TTL_MATCH</code> (permit ip any any) + <code>route-map SNAKE_SET_TTL permit 10</code> (set ip ttl 64), applied with <code>ip policy route-map SNAKE_SET_TTL</code> on every snake primary and secondary interface.</li>
+      <li><b>082_SNAKE_TRAFFIC_POLICY</b> — TTL reset via Traffic Policy: a <code>traffic-policy SNAKE_TTL_POLICY</code> block matching all IPv4 and setting <code>set ip ttl 64</code>, applied <code>traffic-policy input/output</code> on every snake interface. Use either this or PBR — both reset TTL to 64 so the switch does not drop forwarded frames that have exhausted their hop count.</li>
     </ul>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">TTL Reset — Why It Matters</h4>
+    <p style="font-size:13px;">Each loopback hop in the snake chain decrements the IP TTL by 1. A 64-pair snake test consumes 64 hops — a standard TTL-64 frame would drop at the last pair. Both generated sections reset TTL to 64 on ingress so every hop starts with a full TTL. Choose one method to apply:</p>
+    <ul style="font-size:13px;">
+      <li><b>PBR (<code>081_SNAKE_PBR</code>)</b> — simpler; no license required. Works on all platforms. The route-map fires before the routing decision; all IPv4 traffic entering a snake port gets TTL reset.</li>
+      <li><b>Traffic Policy (<code>082_SNAKE_TRAFFIC_POLICY</code>)</b> — hardware-based; matches at line rate. Preferred for high-rate testing if Traffic Policy is available on the platform.</li>
+    </ul>
+    <div class="info-box slate" style="font-size:12px;">Apply only one method — both generate valid config but deploying both simultaneously is redundant. Paste the preferred section into the device and skip the other.</div>
 
     <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px; white-space:pre-wrap;">! Snake VRF Chain — Bidirectional Static ARP + Routing
 ! Forward: 172.16.1.0/24  (EP1 → chain → EP2)  test host: 172.16.1.98/32
