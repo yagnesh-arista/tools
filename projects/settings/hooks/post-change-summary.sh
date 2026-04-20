@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.23 | 2026-04-20 03:52:55 | git commit: 19f96fb
+# settings v260420.24 | 2026-04-20 03:59:11 | git commit: c1aadd1
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -20,7 +20,7 @@ REPO="$HOME/claude"
 # ── Last commit details ───────────────────────────────────────────────────────
 COMMIT_HASH=$(git -C "$REPO" log -1 --format="%h" 2>/dev/null)
 COMMIT_MSG=$(git -C "$REPO" log -1 --format="%s" 2>/dev/null | cut -c1-60)
-CHANGED_FILES=$(git -C "$REPO" diff HEAD~1 HEAD --name-only 2>/dev/null | grep -v 'INSTRUCTIONS_\|CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|\.template$')
+CHANGED_FILES=$(git -C "$REPO" diff HEAD~1 HEAD --name-only 2>/dev/null | grep -v 'CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|\.template$')
 
 # ── Extract version stamp from line 1 of each changed file ───────────────────
 GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
