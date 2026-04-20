@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.95 | 2026-04-20 15:19:46 -->
+<!-- TopoAssist v260420.96 | 2026-04-20 15:57:02 -->
 <!DOCTYPE html>
 <html>
 
@@ -713,6 +713,26 @@
       <div class="export-title">◻ Device Patching List</div>
       <div class="export-desc">Grouped by local device. Best for field engineers patching one rack at a time.</div>
       <button class="btn-primary-mono btn-block" onclick="downloadCablingReport('device')">Download Device Patching</button>
+
+      <div class="export-divider"></div>
+      <div class="export-title" style="display:flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        AI Validate
+      </div>
+      <!-- Key entry (shown when no key saved) -->
+      <div id="geminiKeySection" style="display:none;">
+        <div class="export-desc">Gemini API key required. Free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#3b82f6;">aistudio.google.com</a></div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <input id="geminiApiKeyInput" type="password" placeholder="Paste API key…" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:4px;outline:none;">
+          <button class="btn-primary-mono" onclick="saveGeminiKey()" style="font-family:'JetBrains Mono',monospace;white-space:nowrap;">Save Key</button>
+        </div>
+      </div>
+      <!-- Validate section (shown when key exists) -->
+      <div id="geminiValidateSection" style="display:none;">
+        <button class="btn-primary-mono btn-block" id="btnValidateGemini" onclick="validateCablingGemini()">Validate with Gemini</button>
+        <div id="geminiResult" style="display:none;margin-top:8px;padding:8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.5;white-space:pre-wrap;max-height:180px;overflow-y:auto;user-select:text;-webkit-user-select:text;border:1px solid #e2e8f0;"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;margin-top:4px;text-align:right;user-select:none;-webkit-user-select:none;"><a href="#" onclick="clearGeminiKey();return false;" style="color:#94a3b8;">change key</a></div>
+      </div>
     </div>
   </div>
 
