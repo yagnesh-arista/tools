@@ -70,9 +70,8 @@ COUNT=$(git -C "$HOME/claude" log --since=midnight --oneline -- "projects/${proj
 N=$((COUNT + 1))
 VERSION="${YYMMDD}.${N}"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
-COMMIT=$(git -C "$HOME/claude" rev-parse --short HEAD 2>/dev/null || echo "no-git")
 
-NEW_LINE="${PREFIX} ${project} v${VERSION} | ${DATETIME} | git commit: ${COMMIT}${SUFFIX}"
+NEW_LINE="${PREFIX} ${project} v${VERSION} | ${DATETIME}${SUFFIX}"
 
 # ── Determine stamp line (1 or 2) and update/insert ─────────────────────────
 python3 - "$f" "$NEW_LINE" "$MARKER_PAT" "$insert_if_missing" <<'PYEOF'
