@@ -1,10 +1,10 @@
-// TopoAssist v260420.98 | 2026-04-20 16:06:41
+// TopoAssist v260420.99 | 2026-04-20 16:11:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.98";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.99";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2669,46 +2669,6 @@ function saveIpPreferences(prefs) {
   return { success: true };
 }
 
-function getGeminiApiKey() {
-  const key = PropertiesService.getUserProperties().getProperty('gemini_api_key') || '';
-  return { hasKey: !!key };
-}
-
-function saveGeminiApiKey(key) {
-  PropertiesService.getUserProperties().setProperty('gemini_api_key', key.trim());
-  return { success: true };
-}
-
-function validateCablingWithGemini(cableMarkdown) {
-  const apiKey = PropertiesService.getUserProperties().getProperty('gemini_api_key') || '';
-  if (!apiKey) return { error: 'Gemini API key not configured.' };
-
-  const prompt =
-    'You are a network hardware expert for Arista EOS labs. ' +
-    'Validate the following cabling table for:\n' +
-    '1. Transceiver type vs port speed compatibility\n' +
-    '2. Speed mismatch between side A and side B\n' +
-    '3. Breakout consistency (if one side is Breakout, the other must support it)\n\n' +
-    'Cabling table:\n' + cableMarkdown + '\n\n' +
-    'List each issue as: "DeviceA PortA \u2194 PortB DeviceB: reason". ' +
-    'If none, reply exactly: "\u2713 All cabling looks compatible."';
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
-  try {
-    const resp = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      muteHttpExceptions: true
-    });
-    const data = JSON.parse(resp.getContentText());
-    if (data.error) return { error: data.error.message || 'Gemini API error' };
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return { result: text };
-  } catch (e) {
-    return { error: e.message };
-  }
-}
 
 /**
 * HELPER: Called by Frontend to peek at current progress
