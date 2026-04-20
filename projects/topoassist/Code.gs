@@ -1,10 +1,10 @@
-// TopoAssist v260420.93 | 2026-04-20 14:10:57
+// TopoAssist v260420.94 | 2026-04-20 14:32:47
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.93";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.94";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -252,13 +252,10 @@ function getSheetDeviceList() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_DATA);
   if (!sheet) return devices.map(function(d) {
-    return { name: d.name, isVisible: !sheetHidden.includes(d.name), colCount: 0, hostname: d.hostname || "" };
+    return { name: d.name, isVisible: !sheetHidden.includes(d.name), isArista: d.type !== 'non-arista', hostname: d.hostname || "" };
   });
-  const lastCol = sheet.getLastColumn();
-  const headers = lastCol > 0 ? sheet.getRange(2, 1, 1, lastCol).getValues()[0] : [];
   return devices.map(function(d) {
-    const colCount = headers.filter(function(h) { return String(h).endsWith('_' + d.name); }).length;
-    return { name: d.name, isVisible: !sheetHidden.includes(d.name), colCount: colCount, hostname: d.hostname || "" };
+    return { name: d.name, isVisible: !sheetHidden.includes(d.name), isArista: d.type !== 'non-arista', hostname: d.hostname || "" };
   });
 }
 

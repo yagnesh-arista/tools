@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.93 | 2026-04-20 14:10:57 -->
+<!-- TopoAssist v260420.94 | 2026-04-20 14:35:33 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -204,17 +204,18 @@
     .item-name.navigable { cursor: pointer; }
     .item-name.navigable:hover { color: #2563eb; text-decoration: underline; }
     .device-item.is-hidden .item-name.navigable:hover { color: #2563eb; text-decoration: underline; }
-    .col-count {
+    .type-badge {
       font-family: "JetBrains Mono", monospace;
       font-size: 9px;
-      color: #64748b;
-      background: #f1f5f9;
       border-radius: 3px;
       padding: 1px 4px;
       flex-shrink: 0;
+      font-weight: 700;
     }
-    .device-item.is-hidden .col-count { opacity: 0.45; }
-    .device-item.is-toggling.is-hidden .col-count { opacity: 1; }
+    .type-badge.eos     { color: #15803d; background: #dcfce7; }
+    .type-badge.non-eos { color: #64748b; background: #f1f5f9; }
+    .device-item.is-hidden .type-badge { opacity: 0.45; }
+    .device-item.is-toggling.is-hidden .type-badge { opacity: 1; }
 
     /* ── selection ── */
     .sel-chk { flex-shrink: 0; width: 12px; height: 12px; cursor: pointer; accent-color: #3b82f6; }
@@ -449,7 +450,7 @@
           '<input type="checkbox" class="sel-chk"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation();toggleDevSel(\'' + safe + '\')" title="Select">' +
           '<svg class="eye-icon" onclick="toggle(\'' + safe + '\')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" title="' + (hidden ? 'Show' : 'Hide') + '">' + (hidden ? EYE_CLOSED : EYE_OPEN) + '</svg>' +
           '<span class="item-name navigable" onclick="navigate(\'' + safe + '\')" title="Jump to column">' + label + '</span>' +
-          '<span class="col-count">' + d.colCount + '</span>' +
+          '<span class="type-badge ' + (d.isArista ? 'eos' : 'non-eos') + '">' + (d.isArista ? 'EOS' : 'non-EOS') + '</span>' +
           '</div>';
       }).join('');
       filterAll();
