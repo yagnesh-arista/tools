@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.78 | 2026-04-20 12:23:48 -->
+<!-- TopoAssist v260420.79 | 2026-04-20 12:32:41 -->
 <!DOCTYPE html>
 <html>
 
@@ -264,6 +264,7 @@
     .doc-btn-download:hover { background: #dcfce7; }
 
     /* ── Print layout ─────────────────────────────────────────────────────── */
+    @page { size: 210mm 5000mm; margin: 15mm; }
     @media print {
       .doc-actions { display: none !important; }
       body { background: white; padding: 0; }
@@ -273,7 +274,6 @@
         padding: 20px 30px !important;
         max-width: 100% !important;
       }
-      * { break-inside: avoid !important; break-before: avoid !important; break-after: avoid !important; }
       a { text-decoration: none; color: inherit; }
     }
   </style>
