@@ -1,10 +1,10 @@
-// TopoAssist v260420.96 | 2026-04-20 15:58:45
+// TopoAssist v260420.97 | 2026-04-20 16:05:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.96";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.97";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2703,7 +2703,7 @@ function validateCablingWithGemini(cableMarkdown) {
     });
     const data = JSON.parse(resp.getContentText());
     if (data.error) return { error: data.error.message || 'Gemini API error' };
-    const text = (((data.candidates || [])[0] || {}).content || {}).parts[0].text || '';
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     return { result: text };
   } catch (e) {
     return { error: e.message };
