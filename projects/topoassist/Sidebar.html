@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.70 | 2026-04-20 11:54:03 -->
+<!-- TopoAssist v260420.71 | 2026-04-20 11:59:40 -->
 <!DOCTYPE html>
 <html>
 
@@ -490,8 +490,8 @@
       </div>
 
       <!-- 4. CONFIGURABLE OPTIONS -->
-      <div class="section-header">Point-to-Point (Underlay/Routing)</div>
-      <div class="ip-section-rows">
+      <div class="section-header">POINT-TO-POINT (P2P) INTERFACE</div>
+      <div class="ip-section-rows" style="--label-w:76px">
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200" style="width:56px"></div>
@@ -506,8 +506,8 @@
         </div>
       </div>
 
-      <div class="section-header">Gateway (SVI/Overlay)</div>
-      <div class="ip-section-rows">
+      <div class="section-header">GATEWAY (GW) INTERFACE</div>
+      <div class="ip-section-rows" style="--label-w:108px">
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100" style="width:56px"></div>
@@ -525,14 +525,14 @@
       </div>
 
       <div class="section-header">VXLAN VNI Mapping</div>
-      <div class="ip-row"><span class="ip-label">VNI Base</span>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">VNI Base</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Base Offset</label><input type="text" id="ip_vni_base" placeholder="10000" style="width:64px"></div>
         </div>
       </div>
 
       <div class="section-header">BGP ASN</div>
-      <div class="ip-row"><span class="ip-label">ASN Base</span>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">ASN Base</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_bgp_asn_base" placeholder="65000" style="width:64px"></div>
         </div>
@@ -540,41 +540,41 @@
 
       <div class="section-header">Snake Test</div>
       <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
-        Snake pairs detected — fill in EP1/EP2 NH and MAC if traffic gen ports are not directly connected to this switch.
+        Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
-      <div class="ip-row"><span class="ip-label">Bridge MAC</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">Bridge MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>Switch Bridge MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
+          <div class="input-wrapper"><label>DUT system MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP1 NH IP</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port IP</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 Next-Hop IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
+          <div class="input-wrapper"><label>EP1 traffic port IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP1 MAC</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 MAC (indirect)</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+          <div class="input-wrapper"><label>EP1 port MAC</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP1 Subnet</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Subnet</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 Subnet (rev dest)</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99" style="width:90px"></div>
+          <div class="input-wrapper"><label>EP1 source subnet</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99" style="width:90px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP2 NH IP</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port IP</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 Next-Hop IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
+          <div class="input-wrapper"><label>EP2 traffic port IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP2 MAC</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port MAC</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 MAC (indirect)</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+          <div class="input-wrapper"><label>EP2 port MAC</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
         </div>
       </div>
-      <div class="ip-row"><span class="ip-label">EP2 Subnet</span>
+      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Subnet</span>
         <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 Subnet (fwd dest)</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99" style="width:90px"></div>
+          <div class="input-wrapper"><label>EP2 dest subnet</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99" style="width:90px"></div>
         </div>
       </div>
 
