@@ -1,10 +1,10 @@
-// TopoAssist v260420.62 | 2026-04-20 10:40:07
+// TopoAssist v260420.63 | 2026-04-20 10:42:54
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.62";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.63";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1399,7 +1399,8 @@ const FORMAT_CONFIG = {
       { text: 'QSFP+', bg: '#fef9c3' },
       { text: 'SFP28', bg: '#e0f2fe' },
       { text: 'SFP25', bg: '#e0f2fe' },
-      { text: 'SFP+', bg: '#f1f5f9' }
+      { text: 'SFP+', bg: '#f1f5f9' },
+      { text: 'SFP', bg: '#f8fafc' }
     ],
     'sp_mode': [
       { text: 'l2-et-access', bg: '#f0fdf4', color: '#15803d', type: 'exact' },
