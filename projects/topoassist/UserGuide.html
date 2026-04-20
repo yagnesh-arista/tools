@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.81 | 2026-04-20 12:57:14 -->
+<!-- TopoAssist v260420.82 | 2026-04-20 13:02:35 -->
 <!DOCTYPE html>
 <html>
 
@@ -306,8 +306,10 @@
     <h2>📦 Installation</h2>
 
     <div class="info-box info-box--dim">
-      TopoAssist runs as a Google Apps Script bound to a Google Sheet. These steps install it on any sheet you own.
+      TopoAssist runs as a Google Apps Script bound to a Google Sheet. Choose the method that suits you — clasp (recommended for developers) or manual copy-paste (no tools required).
     </div>
+
+    <h3>Option A — clasp (recommended)</h3>
 
     <div class="step-box">
       <span class="step-num">Step 1 — Get the source</span>
@@ -347,6 +349,68 @@ clasp login</pre>
         <li>Return to your Google Sheet — a <b>TopoAssist</b> menu will appear in the menu bar.</li>
         <li>Open <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Open Visualizer</span> to launch the sidebar.</li>
       </ol>
+    </div>
+
+    <h3>Option B — Manual (no tools required)</h3>
+
+    <div class="step-box">
+      <span class="step-num">Step 1 — Create a Google Sheet &amp; Apps Script project</span>
+      <ol style="margin-top:6px;">
+        <li>Open <a href="https://sheets.new" target="_blank">sheets.new</a> to create a new Google Sheet.</li>
+        <li>Go to <b>Extensions &gt; Apps Script</b>.</li>
+        <li>Delete the default empty <code>Code.gs</code> content (leave the file).</li>
+      </ol>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 2 — Copy files from GitHub</span>
+      <p>Open <a href="https://github.com/yagnesh-arista/tools/tree/main/projects/topoassist" target="_blank">github.com/yagnesh-arista/tools → projects/topoassist</a>. For each of the 7 files below, click the file, click the copy icon, and paste into the Apps Script editor:</p>
+      <table class="legend-table" style="margin-top:8px;">
+        <tr><th>GitHub file</th><th>Apps Script type</th><th>Action</th></tr>
+        <tr><td><code>Code.gs</code></td><td>Script (.gs)</td><td>Paste into the existing <code>Code.gs</code></td></tr>
+        <tr><td><code>Sidebar.html</code></td><td>HTML file</td><td>+ Add file → HTML → name it <code>Sidebar</code></td></tr>
+        <tr><td><code>Sidebar-js.html</code></td><td>HTML file</td><td>+ Add file → HTML → name it <code>Sidebar-js</code></td></tr>
+        <tr><td><code>Sidebar-css.html</code></td><td>HTML file</td><td>+ Add file → HTML → name it <code>Sidebar-css</code></td></tr>
+        <tr><td><code>SheetAssistPanel.html</code></td><td>HTML file</td><td>+ Add file → HTML → name it <code>SheetAssistPanel</code></td></tr>
+        <tr><td><code>UserGuide.html</code></td><td>HTML file</td><td>+ Add file → HTML → name it <code>UserGuide</code></td></tr>
+        <tr><td><code>Tests.gs</code></td><td>Script (.gs)</td><td>+ Add file → Script → name it <code>Tests</code></td></tr>
+      </table>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 3 — Save &amp; run the initialiser</span>
+      <ol style="margin-top:6px;">
+        <li>Press <b>Ctrl+S</b> (or Cmd+S) to save all files.</li>
+        <li>Select the <code>onOpen</code> function and click <b>Run</b> to grant permissions.</li>
+        <li>Return to your Google Sheet — the <b>TopoAssist</b> menu will appear.</li>
+      </ol>
+    </div>
+
+    <h3>Device Bridge (optional — for live device checks)</h3>
+
+    <div class="step-box">
+      <span class="step-num">Step 1 — Get the bridge script</span>
+      <p>Once TopoAssist is installed, open the sidebar, click the <b>Device Bridge</b> button (shield icon) and click <b>Download Bridge</b>. This saves <code>device_bridge.py</code> to your Downloads folder, always in sync with the installed version.</p>
+      <p style="margin-top:6px;">Alternatively download directly from the repo:</p>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">curl -O https://raw.githubusercontent.com/yagnesh-arista/tools/main/projects/topoassist/device_bridge.py</pre>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 2 — Requirements</span>
+      <p>Python 3.8+ is required. The bridge uses only standard library modules for SSH/eAPI/REST modes — no pip installs needed. For gNMI only:</p>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">pip install pygnmi</pre>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 3 — Configure &amp; run</span>
+      <p>Edit the config block at the top of <code>device_bridge.py</code>:</p>
+      <ul>
+        <li><code>METHOD</code> — <code>"ssh"</code> (default), <code>"eapi"</code>, <code>"rest"</code>, or <code>"gnmi"</code></li>
+        <li><code>JUMP_HOST</code> — SSH jump server hostname; <code>""</code> to reach devices directly</li>
+        <li><code>SSH_USER</code> — device username (default <code>"admin"</code>, passwordless SSH assumed)</li>
+      </ul>
+      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">python3 device_bridge.py</pre>
+      <p style="margin-top:6px;">The bridge listens on <code>http://localhost:8765</code>. The Device Bridge modal shows a green dot when reachable.</p>
     </div>
 
     <!-- ================================================================ -->
