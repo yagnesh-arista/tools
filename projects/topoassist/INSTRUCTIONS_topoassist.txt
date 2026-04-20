@@ -1,8 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-20 (Section 1 PROJECT OVERVIEW rewritten: full day-0 capability description — Cabling Report, Wrong Cabling Report, Topology Visualization, Auto Config Generation, Config Push, Auditing (11 checks), Topology Search, Device Bridge. Files: INSTRUCTIONS_topoassist.txt)
-  Previous: 2026-04-20 (Add BASE-T color rule (#ffedd5, copper-orange) — whenTextContains catches 2.5GBASE-T, 5GBASE-T, 10GBASE-T; distinct from speed-tier colors since BASE-T speed is negotiated. Files: Code.gs)
+  Last updated: 2026-04-20 (Sheet View panel: balanced 50/50 split — both col-left and col-right use flex:1 min-width:0; dialog width narrowed 620→540px. Files: SheetAssistPanel.html, Code.gs)
+  Previous: 2026-04-20 (Section 1 PROJECT OVERVIEW rewritten: full day-0 capability description — Cabling Report, Wrong Cabling Report, Topology Visualization, Auto Config Generation, Config Push, Auditing (11 checks), Topology Search, Device Bridge. Files: INSTRUCTIONS_topoassist.txt)
   Previous: 2026-04-20 (Add plain SFP (1G) color rule (#f8fafc) at end of xcvr_type list. Files: Code.gs)
   Previous: 2026-04-20 (Add SFP25 color rule (#e0f2fe, same as SFP28) to xcvr_type; add SFP25 to Rule 5 xcvr_speed hint formula (SFP28|SFP25 → expect 25g). Files: Code.gs)
   Previous: 2026-04-20 (Drop orphan Keep concept: Force Sync now shows confirm dialog (Delete & Sync / Cancel) — schema is source of truth, no preservation. Removed keepOrphanKeys chain, clientOrphanKeys param, globalAttributes findAttrKey hacks. Files: Sidebar-js.html, Code.gs)
