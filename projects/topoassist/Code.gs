@@ -1,10 +1,10 @@
-// TopoAssist v260420.60 | 2026-04-20 10:14:06
+// TopoAssist v260420.61 | 2026-04-20 10:32:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.60";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.61";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -809,12 +809,10 @@ function getOrphanedColumnsInfo(optionalTargetSchema) {
   return orphans;
 }
 
-function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans, clientOrphanKeys) {
-  // deleteOrphans:    undefined/null = prompt via ui.alert (menu/dialog context)
-  //                   true  = delete orphaned columns
-  //                   false = keep orphaned columns
-  // clientOrphanKeys: Array of attr keys detected by sidebar (e.g. ['xcvr_', 'custom_']).
-  //                   When provided, skip server-side re-detection to avoid divergence.
+function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, deleteOrphans) {
+  // deleteOrphans: undefined/null = prompt via ui.alert (menu/dialog context)
+  //                true  = delete orphaned columns (sidebar flow — user confirmed)
+  //                false = schema is already clean, skip orphan handling
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const mappingSheet = ss.getSheetByName(SHEET_DATA);
@@ -831,12 +829,9 @@ function syncSchemaPreservingOrder(optionalForcedSchema, applyFormatting, delete
   const schemaArray = optionalForcedSchema || getSchemaConfig();
   let targetKeys = schemaArray.map(item => item.key + "_");
 
-  // 2. Identify "Orphaned" Columns — use client-provided keys when available (sidebar flow)
-  //    to avoid double-detection divergence. Fall back to server-side detection for menu calls.
+  // 2. Identify "Orphaned" Columns — server-side detection (schema is source of truth)
   const currentDevices = getExistingDevices();
-  const orphanedCols = Array.isArray(clientOrphanKeys)
-    ? clientOrphanKeys
-    : _getOrphanAttrKeys(mappingSheet, targetKeys, currentDevices.map(d => d.name));
+  const orphanedCols = _getOrphanAttrKeys(mappingSheet, targetKeys, currentDevices.map(d => d.name));
 
   if (orphanedCols.length > 0) {
     let shouldDelete;
@@ -1121,9 +1116,7 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
         if (currentDev) {
           if (!memory[currentDev]) memory[currentDev] = {};
           let header = String(r2[c]).trim();
-          // Use globalAttributes (not just schemaObj.keys) so orphan keys added for Keep
-          // are matched via exact prefix, not the fragile lastIndexOf("_") fallback.
-          const attrKey = findAttrKey(header, globalAttributes);
+          const attrKey = findAttrKey(header, schemaObj.keys);
 
           if (attrKey) {
             for (let rowIdx = 2; rowIdx < backupValues.length; rowIdx++) {
@@ -1207,7 +1200,7 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
       const r2raw = backupValues[1];
       const preNonEmpty = {};
       for (let c = 0; c < r2raw.length; c++) {
-        const key = findAttrKey(String(r2raw[c]).trim(), globalAttributes);
+        const key = findAttrKey(String(r2raw[c]).trim(), schemaObj.keys);
         if (!key) continue;
         for (let r = 2; r < backupValues.length; r++) {
           const v = backupValues[r][c];
