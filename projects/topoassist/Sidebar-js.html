@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.107 | 2026-04-20 16:46:58 -->
+<!-- TopoAssist v260420.108 | 2026-04-20 16:54:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.107";  // keep in sync with Code.gs
+const APP_VERSION = "260420.108";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7803,9 +7803,14 @@ function renderHolistic(data) {
       if (typeof updateCanvasBounds === 'function') updateCanvasBounds();
     });
 
-    // Start
+    // Start simulation.
+    // hasNewNodes: some nodes have no saved position (new devices added since last holistic save).
+    // When isRestored+hasNewNodes, use gentle alpha to avoid displacing pinned nodes, but
+    // still call zoomToFit (with extra delay for gentle settle) so new nodes aren't off-screen.
+    const hasNewNodes = nodesData.some(n => n.fx === null);
     if (isRestored && !isFirstLoad) {
       holisticSimulation.alpha(0.3).restart();
+      if (hasNewNodes) setTimeout(() => { if (typeof zoomToFit === 'function') zoomToFit(); }, 600);
     } else {
       holisticSimulation.alpha(1).restart();
       setTimeout(() => { if (typeof zoomToFit === 'function') zoomToFit(); }, 300);
@@ -8203,12 +8208,8 @@ function fetchData(force, autoVerify, silent) {
       const auditBadge = document.getElementById("auditBadge");
       if (auditBadge) auditBadge.classList.add("hidden");
 
-      // Restore Positions
-      if (typeof loadStateFromStorage === 'function') {
-        loadStateFromStorage(currentViewMode);
-      }
-
       // [CRITICAL] VIEW PRESERVATION
+      // Note: loadStateFromStorage is called inside toggleViewMode — no need to call it here.
       // Run render FIRST — runValidation() inside render() may write "Audit Clean." to status
       if (typeof toggleViewMode === 'function') {
         toggleViewMode(currentViewMode, false);
