@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.30 | 2026-04-20 11:54:15
+# settings v260420.31 | 2026-04-20 12:00:14
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -10,6 +10,69 @@
 input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // ""')
 
+# ── STOP MODE: called from Stop hook (no Bash command) ───────────────────────
+# Shows uncommitted changes with file details when a skill finishes without committing.
+if [ -z "$cmd" ]; then
+  REPO="$HOME/claude"
+  uncommitted=$(git -C "$REPO" status --porcelain 2>/dev/null | grep -v '^??' )
+  [ -z "$uncommitted" ] && exit 0   # nothing to report — stay silent
+
+  GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
+  file_lines=""
+  gas_changed=0
+  gas_project_dir=""
+
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    st="${line:0:2}"
+    rel="${line:3}"
+    full="$REPO/$rel"
+    fname=$(basename "$rel")
+    [ -f "$full" ] || continue
+
+    line1=$(head -1 "$full" 2>/dev/null)
+    if echo "$line1" | grep -q '^#!'; then
+      stamp_line=$(sed -n '2p' "$full" 2>/dev/null)
+    else
+      stamp_line="$line1"
+    fi
+    ver=$(echo "$stamp_line" | grep -oE 'v[0-9]+\.[0-9]+' | head -1)
+    [ -z "$ver" ] && ver="(no stamp)"
+
+    file_lines="${file_lines}"$'\n'"  ${fname}  ${ver}"
+
+    if echo "$rel" | grep -q 'topoassist/' && echo "$GAS_NAMES" | grep -qw "$fname"; then
+      gas_changed=1
+      gas_project_dir=$(dirname "$full")
+    fi
+  done <<< "$uncommitted"
+
+  [ -z "$file_lines" ] && exit 0
+
+  clasp_label="GAS project"
+  if [ -n "$gas_project_dir" ] && [ -f "$gas_project_dir/.clasp.json" ]; then
+    script_id=$(jq -r '.scriptId // ""' "$gas_project_dir/.clasp.json" 2>/dev/null)
+    script_name=$(basename "$gas_project_dir")
+    short_id=$(echo "$script_id" | cut -c1-12)
+    clasp_label="${script_name} [${short_id}...]"
+  fi
+
+  if [ "$gas_changed" -eq 1 ]; then
+    clasp_note="${clasp_label} — check if clasp push needed ⚠"
+  else
+    clasp_note="N/A (no GAS files changed)"
+  fi
+
+  SUMMARY="[UNCOMMITTED CHANGES] — commit and push before ending session
+Files:${file_lines}
+Git:   uncommitted — run: git add <files> && git commit && git push
+Clasp: ${clasp_note}"
+
+  jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":$ctx}}'
+  exit 0
+fi
+
+# ── POSTTOOLUSEUSE:BASH MODE: fires on git commit/push or clasp push ──────────
 # Only fire on relevant commands — strip quoted strings first to avoid false
 # positives from commit messages containing "git push" etc.
 cmd_unquoted=$(echo "$cmd" | sed 's/"[^"]*"//g; s/'"'"'[^'"'"']*'"'"'//g')
