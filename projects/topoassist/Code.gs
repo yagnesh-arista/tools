@@ -1,10 +1,10 @@
-// TopoAssist v260420.82 | 2026-04-20 13:02:35
+// TopoAssist v260420.84 | 2026-04-20 13:17:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260420.82";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260420.84";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4066,6 +4066,16 @@ function getDeviceConfig(deviceName) {
           ? `Snake VRF Chain (${missing.join(', ')} missing)`
           : `Snake VRF Chain${nhWarn}`
       };
+      // [SECTION 081] SNAKE TTL — PBR
+      configMap["081_SNAKE_PBR"] = {
+        full: generateSnakeTtlPbrConfig(snakePairsForStatic),
+        blockStatus: "Snake TTL Reset (PBR)"
+      };
+      // [SECTION 082] SNAKE TTL — Traffic Policy
+      configMap["082_SNAKE_TRAFFIC_POLICY"] = {
+        full: generateSnakeTtlTrafficPolicyConfig(snakePairsForStatic),
+        blockStatus: "Snake TTL Reset (Traffic Policy)"
+      };
     }
 
     // [SECTION 070] MLAG
@@ -4791,6 +4801,79 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   });
 
   lines.push(`!`);
+  return lines.join('\n');
+}
+
+/**
+ * Generates PBR (Policy-Based Routing) TTL reset config for all snake interfaces.
+ * Outputs:
+ *   - ip access-list SNAKE_TTL_MATCH (permit all IPv4)
+ *   - route-map SNAKE_SET_TTL permit 10 (match ACL, set ip ttl 64)
+ *   - interface stanzas with `ip policy route-map SNAKE_SET_TTL` per snake port
+ *
+ * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}]
+ */
+function generateSnakeTtlPbrConfig(snakePairs) {
+  if (!snakePairs || snakePairs.length === 0) return '';
+
+  const lines = [
+    '! Snake TTL Reset — Policy-Based Routing',
+    'ip access-list SNAKE_TTL_MATCH',
+    '   10 permit ip any any',
+    '!',
+    'route-map SNAKE_SET_TTL permit 10',
+    '   match ip address access-list SNAKE_TTL_MATCH',
+    '   set ip ttl 64',
+    '!'
+  ];
+
+  snakePairs.forEach(({ primaryPort, secondaryPort }) => {
+    lines.push(`interface ${primaryPort}`);
+    lines.push(`   ip policy route-map SNAKE_SET_TTL`);
+    lines.push('!');
+    lines.push(`interface ${secondaryPort}`);
+    lines.push(`   ip policy route-map SNAKE_SET_TTL`);
+    lines.push('!');
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Generates Traffic Policy TTL reset config for all snake interfaces.
+ * Outputs:
+ *   - traffic-policies block with SNAKE_TTL_POLICY (set ip ttl 64 on all IPv4)
+ *   - interface stanzas applying the policy input + output per snake port
+ *
+ * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}]
+ */
+function generateSnakeTtlTrafficPolicyConfig(snakePairs) {
+  if (!snakePairs || snakePairs.length === 0) return '';
+
+  const lines = [
+    '! Snake TTL Reset — Traffic Policy',
+    'traffic-policies',
+    '   traffic-policy SNAKE_TTL_POLICY',
+    '      match SNAKE_ALL ipv4',
+    '         actions',
+    '            set ip ttl 64',
+    '         !',
+    '      !',
+    '   !',
+    '!'
+  ];
+
+  snakePairs.forEach(({ primaryPort, secondaryPort }) => {
+    lines.push(`interface ${primaryPort}`);
+    lines.push(`   traffic-policy input SNAKE_TTL_POLICY`);
+    lines.push(`   traffic-policy output SNAKE_TTL_POLICY`);
+    lines.push('!');
+    lines.push(`interface ${secondaryPort}`);
+    lines.push(`   traffic-policy input SNAKE_TTL_POLICY`);
+    lines.push(`   traffic-policy output SNAKE_TTL_POLICY`);
+    lines.push('!');
+  });
+
   return lines.join('\n');
 }
 

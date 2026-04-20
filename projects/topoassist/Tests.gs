@@ -1,4 +1,4 @@
-// TopoAssist v260420.82 | 2026-04-20 13:02:35
+// TopoAssist v260420.84 | 2026-04-20 13:18:24
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -823,6 +823,98 @@ function test_generateSnakeStaticConfig() {
 }
 
 
+// ── generateSnakeTtlPbrConfig ──────────────────────────────────────────────────
+
+function test_generateSnakeTtlPbrConfig() {
+  const t = assert_;
+  const results = [];
+
+  const pairs1 = [{ primaryPort: 'Ethernet1', secondaryPort: 'Ethernet2', vlan: 100 }];
+  const pairs2 = [
+    { primaryPort: 'Ethernet1', secondaryPort: 'Ethernet2', vlan: 100 },
+    { primaryPort: 'Ethernet3', secondaryPort: 'Ethernet4', vlan: 200 }
+  ];
+
+  // Empty / null → empty string
+  results.push(t("generateSnakeTtlPbrConfig — empty pairs → ''", generateSnakeTtlPbrConfig([]), ""));
+  results.push(t("generateSnakeTtlPbrConfig — null → ''",        generateSnakeTtlPbrConfig(null), ""));
+
+  // ACL and route-map header always present
+  const single = generateSnakeTtlPbrConfig(pairs1);
+  results.push(t("generateSnakeTtlPbrConfig — ACL present",
+    single.includes('ip access-list SNAKE_TTL_MATCH'), true));
+  results.push(t("generateSnakeTtlPbrConfig — permit ip any any",
+    single.includes('10 permit ip any any'), true));
+  results.push(t("generateSnakeTtlPbrConfig — route-map present",
+    single.includes('route-map SNAKE_SET_TTL permit 10'), true));
+  results.push(t("generateSnakeTtlPbrConfig — set ip ttl 64",
+    single.includes('set ip ttl 64'), true));
+
+  // Interface stanzas for each port
+  results.push(t("generateSnakeTtlPbrConfig — primary interface",
+    single.includes('interface Ethernet1'), true));
+  results.push(t("generateSnakeTtlPbrConfig — secondary interface",
+    single.includes('interface Ethernet2'), true));
+  results.push(t("generateSnakeTtlPbrConfig — ip policy on primary",
+    single.includes('ip policy route-map SNAKE_SET_TTL'), true));
+
+  // Two pairs — all four interfaces present
+  const multi = generateSnakeTtlPbrConfig(pairs2);
+  results.push(t("generateSnakeTtlPbrConfig — Et3 present for pair 2",
+    multi.includes('interface Ethernet3'), true));
+  results.push(t("generateSnakeTtlPbrConfig — Et4 present for pair 2",
+    multi.includes('interface Ethernet4'), true));
+
+  return results;
+}
+
+// ── generateSnakeTtlTrafficPolicyConfig ────────────────────────────────────────
+
+function test_generateSnakeTtlTrafficPolicyConfig() {
+  const t = assert_;
+  const results = [];
+
+  const pairs1 = [{ primaryPort: 'Ethernet1', secondaryPort: 'Ethernet2', vlan: 100 }];
+  const pairs2 = [
+    { primaryPort: 'Ethernet1', secondaryPort: 'Ethernet2', vlan: 100 },
+    { primaryPort: 'Ethernet3', secondaryPort: 'Ethernet4', vlan: 200 }
+  ];
+
+  // Empty / null → empty string
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — empty pairs → ''", generateSnakeTtlTrafficPolicyConfig([]), ""));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — null → ''",        generateSnakeTtlTrafficPolicyConfig(null), ""));
+
+  // traffic-policies block present
+  const single = generateSnakeTtlTrafficPolicyConfig(pairs1);
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — traffic-policies block",
+    single.includes('traffic-policies'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — policy name",
+    single.includes('traffic-policy SNAKE_TTL_POLICY'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — match clause",
+    single.includes('match SNAKE_ALL ipv4'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — set ip ttl 64",
+    single.includes('set ip ttl 64'), true));
+
+  // Interface stanzas — input + output per port
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — primary interface",
+    single.includes('interface Ethernet1'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — secondary interface",
+    single.includes('interface Ethernet2'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — traffic-policy input",
+    single.includes('traffic-policy input SNAKE_TTL_POLICY'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — traffic-policy output",
+    single.includes('traffic-policy output SNAKE_TTL_POLICY'), true));
+
+  // Two pairs — all four interfaces present
+  const multi = generateSnakeTtlTrafficPolicyConfig(pairs2);
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — Et3 present for pair 2",
+    multi.includes('interface Ethernet3'), true));
+  results.push(t("generateSnakeTtlTrafficPolicyConfig — Et4 present for pair 2",
+    multi.includes('interface Ethernet4'), true));
+
+  return results;
+}
+
 // ── findAttrKey ────────────────────────────────────────────────────────────────
 
 function test_findAttrKey() {
@@ -867,6 +959,8 @@ function runAllTests() {
     { name: "_breakoutSides",            fn: test_breakoutSides },
     { name: "_buildCableGroupsForTest",       fn: test_buildCableGroupsForTest },
     { name: "generateSnakeStaticConfig",      fn: test_generateSnakeStaticConfig },
+    { name: "generateSnakeTtlPbrConfig",          fn: test_generateSnakeTtlPbrConfig },
+    { name: "generateSnakeTtlTrafficPolicyConfig", fn: test_generateSnakeTtlTrafficPolicyConfig },
     { name: "findAttrKey",                    fn: test_findAttrKey },
   ];
 
