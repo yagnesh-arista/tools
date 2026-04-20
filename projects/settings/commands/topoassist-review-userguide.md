@@ -1,4 +1,4 @@
-Review changes made in this session and update UserGuide.html so it always reflects the current design — adding new content AND removing stale content.
+Review changes made in this session and update UserGuide.html so it always reflects the current design — adding new content, removing stale content, and keeping icon references accurate.
 
 ## Version format
 APP_VERSION is now `YYMMDD.N` (e.g. `260420.73`) — not the old `v4.5` style.
@@ -44,12 +44,32 @@ Cross-check against Code.gs and Sidebar-js.html to verify:
 
 ---
 
-## Step 4 — Report
+## Step 4 — Icon accuracy check (mandatory)
+
+UserGuide.html references toolbar icons and action buttons using inline SVG. These must always
+match what is actually rendered in the sidebar.
+
+For every icon referenced in UserGuide.html (e.g. inside `.inline-icon` spans or described in
+text as "the X button"):
+1. Find the matching button or icon in Sidebar.html or Sidebar-js.html.
+2. Compare the SVG path data — do they match?
+3. If the icon in the sidebar changed (new SVG path, replaced with a different icon symbol),
+   update the inline SVG in UserGuide.html to match.
+4. If UserGuide.html describes an icon by shape or name (e.g. "the globe icon", "the shield icon"),
+   verify the sidebar still uses that icon for that function.
+
+✗ FAIL if any icon in UserGuide.html does not match what the sidebar actually shows — update it.
+✗ FAIL if a button referenced in UserGuide.html no longer has an icon (or vice versa).
+
+---
+
+## Step 5 — Report
 
 Report:
 - What was added to UserGuide.html (section name + why)
 - What was removed from UserGuide.html (what was stale + why)
 - What was updated in place
+- Icon changes: which icons were verified, which were updated
 - If nothing changed: confirm and explain why UserGuide.html is already accurate
 
 Do not skip this check. UserGuide.html is the only end-user documentation.
