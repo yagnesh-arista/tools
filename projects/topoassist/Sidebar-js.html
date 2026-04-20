@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.104 | 2026-04-20 16:39:06 -->
+<!-- TopoAssist v260420.106 | 2026-04-20 16:45:36 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.104";  // keep in sync with Code.gs
+const APP_VERSION = "260420.106";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7565,19 +7565,23 @@ function renderHolistic(data) {
     const linksData = Object.values(linkMap);
 
     // --- Nodes ---
-    let maxSavedX = PAD;
     let hasSavedData = false;
     const visibleNodeIds = new Set(data.nodes.map(n => n.id));
+    // Compute centroid of saved positions — used to seed new/unknown nodes near the
+    // existing cluster instead of in a line to the right (which inflates the canvas
+    // to linear-view width and triggers the "full canvas" appearance bug).
+    let centX = PAD + NODE_R + 50, centY = PAD + NODE_R, centCount = 0;
     if (typeof savedNodePositions !== 'undefined' && savedNodePositions) {
       Object.keys(savedNodePositions).forEach(id => {
         if (visibleNodeIds.has(id)) {
           const pos = savedNodePositions[id];
-          if (pos && pos.x) {
+          if (pos && pos.x && pos.y) {
             hasSavedData = true;
-            if (pos.x > maxSavedX) maxSavedX = pos.x;
+            centX += pos.x; centY += pos.y; centCount++;
           }
         }
       });
+      if (centCount > 0) { centX /= centCount; centY /= centCount; }
     }
 
     const nodesData = data.nodes.map(n => {
@@ -7591,9 +7595,11 @@ function renderHolistic(data) {
         startX = saved.x;
         startY = saved.y;
       } else {
-        startX = hasSavedData ? (maxSavedX + PAD) : PAD + NODE_R + 50;
-        startY = PAD + NODE_R;
-        maxSavedX += 100;
+        // Seed near the cluster centroid with jitter so D3 spreads them into gaps
+        // (previously placed at maxSavedX+PAD which inflated canvas to linear width)
+        const jitter = () => (Math.random() - 0.5) * NODE_R * 2;
+        startX = centX + jitter();
+        startY = centY + jitter();
       }
 
       return {
