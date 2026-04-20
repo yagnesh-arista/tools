@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.103 | 2026-04-20 16:30:31 -->
+<!-- TopoAssist v260420.104 | 2026-04-20 16:39:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.103";  // keep in sync with Code.gs
+const APP_VERSION = "260420.104";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2589,12 +2589,12 @@ function runValidation() {
   }
 
   // =========================================================
-  // LLDP CHECKS (populated by runLldpCheck — empty if not yet run)
+  // Bridge CHECKS (populated by runBridgeCheck — empty if not yet run)
   // =========================================================
-  Object.entries(lldpPortStatus).forEach(([portId, status]) => {
+  Object.entries(bridgePortStatus).forEach(([portId, status]) => {
     if (status === 'mismatch') {
       flagErrorOnPort(portId, 'LLDP mismatch — wrong neighbor/port detected');
-    } else if (status === 'missing' && lldpAuditFlagMissing) {
+    } else if (status === 'missing' && bridgeAuditFlagMissing) {
       flagErrorOnPort(portId, 'LLDP — no neighbor seen on this port');
     }
   });
@@ -4718,7 +4718,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "lldpModal", "cablingModal", "auditModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal"];
+    const modalOrder = ["helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -4740,7 +4740,7 @@ window.topologyKeyHandler = function (event) {
           "helpModal": closeHelpModal, "reorderModal": attemptCloseManager,
           "editModal": closeEditModal, "ipConfigModal": closeIpModal,
           "globalCfgModal": closeGlobalCfgModal,
-          "lldpModal": closeLldpModal,
+          "bridgeModal": closeBridgeModal,
           "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
           "techModal": closeTechModal, "configModal": closeConfigModal,
           "groupRectModal": closeGroupRectModal,
@@ -6965,7 +6965,7 @@ function render(data) {
       body.className = "node-body";
       let colHeader = document.createElement("div");
       colHeader.className = "node-cols-header";
-      colHeader.innerHTML = `<span>Et</span><span>Mode</span><span>Cat</span><span>Po</span><span title="LLDP">LL</span><span>St</span>`;
+      colHeader.innerHTML = `<span>Et</span><span>Mode</span><span>Cat</span><span>Po</span><span title="Bridge">Br/span><span>St</span>`;
       body.appendChild(colHeader);
 
       // Port Sorting
@@ -7042,14 +7042,14 @@ function render(data) {
         colPo.innerText = poId ? "Po" + poId : "";
         row.appendChild(colPo);
 
-        let colLldp = document.createElement("span"); colLldp.className = "col-lldp";
-        const _lldpSt = lldpPortStatus[domId];
-        if (_lldpSt) {
-          const _lldpCls   = _lldpEffectiveClass(_lldpSt);
-          const _lldpTitle = _lldpSt === 'match' ? 'LLDP match' : _lldpSt === 'mismatch' ? 'LLDP mismatch' : 'No LLDP neighbor';
-          colLldp.innerHTML = `<span class="lldp-port-dot lldp-port-${_lldpCls}" title="${_lldpTitle}"></span>`;
+        let colBridge = document.createElement("span"); colBridge.className = "col-bridge";
+        const _bridgeSt = bridgePortStatus[domId];
+        if (_bridgeSt) {
+          const _bridgeCls   = _bridgeEffectiveClass(_bridgeSt);
+          const _bridgeTitle = _bridgeSt === 'match' ? 'LLDP match' : _bridgeSt === 'mismatch' ? 'LLDP mismatch' : 'No LLDP neighbor';
+          colBridge.innerHTML = `<span class="bridge-port-dot bridge-port-${_bridgeCls}" title="${_bridgeTitle}"></span>`;
         }
-        row.appendChild(colLldp);
+        row.appendChild(colBridge);
 
         let box = document.createElement("div"); box.className = "port-box";
         let dotClass = portObj.connected ? "connected" : "disconnected";
@@ -7599,6 +7599,7 @@ function renderHolistic(data) {
       return {
         id: n.id, type: n.type, ports: n.ports, displayId: displayId, isOrphan: isOrphan,
         labels: n.labels || [], hostname: n.hostname || "", role: n.role || "",
+        model: ((deviceMetadata[n.id] || {}).model || '').trim(),
         x: startX, y: startY,
         fx: saved ? saved.x : null, fy: saved ? saved.y : null
       };
@@ -7736,31 +7737,34 @@ function renderHolistic(data) {
     nodeNodes.append("text").text(d => `#${d.displayId}`).attr("dy", "-26").attr("text-anchor", "middle").attr("font-size", "11px").attr("font-weight", "800").attr("fill", NODE_COLOR);
     nodeNodes.append("text").attr("dy", "-2").attr("text-anchor", "middle").attr("font-size", "10px").attr("font-weight", "500").attr("fill", "#334155").each(function (d) { const el = d3.select(this); const label = d.hostname || d.id; let p = label.split(/[-_.]/).filter(x => x); if (!p.length) el.append("tspan").text(label); else if (p.length === 1) { let s = p[0]; if (s.length > 10) { let m = Math.floor(s.length / 2); el.append("tspan").attr("x", 0).attr("dy", 0).text(s.substring(0, m) + "-"); el.append("tspan").attr("x", 0).attr("dy", 11).text(s.substring(m)); } else el.append("tspan").attr("x", 0).attr("dy", 4).text(s); } else { let l = ["", "", ""], c = 0; p.forEach(x => { let P = l[c] ? "-" : ""; if ((l[c] + P + x).length <= 9) l[c] += P + x; else { if (c < 2 && l[c]) l[c] += "-"; c++; if (c < 3) l[c] = x; else l[2] = l[2].substring(0, 7) + ".."; } }); if (l[0]) el.append("tspan").attr("x", 0).attr("dy", -2).text(l[0]); if (l[1]) el.append("tspan").attr("x", 0).attr("dy", 11).text(l[1]); if (l[2]) el.append("tspan").attr("x", 0).attr("dy", 11).text(l[2]); } });
 
-    // Device pills below node circle: role first, then labels (dedup if same value)
+    // Device pills below node circle: model first (if set), then role, then labels (dedup)
     // Uniform pill width: sized to the longest pill text across all nodes
+    const MODEL_PILL = { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' };
     const getPillsForNode = (d) => {
       const role = (d.role || '').toUpperCase();
       const labels = d.labels || [];
+      const modelStr = d.model ? (d.model.length > 14 ? d.model.substring(0, 13) + '\u2026' : d.model) : '';
       return [
-        ...(role ? [role] : []),
-        ...labels.filter(lbl => lbl.toUpperCase() !== role)
+        ...(modelStr ? [{ lbl: modelStr, isModel: true }] : []),
+        ...(role ? [{ lbl: role, isModel: false }] : []),
+        ...labels.filter(lbl => lbl.toUpperCase() !== role).map(lbl => ({ lbl, isModel: false }))
       ];
     };
     const maxLabelLen = nodesData.reduce((max, d) =>
-      Math.max(max, ...getPillsForNode(d).map(l => l.length), 0), 0);
+      Math.max(max, ...getPillsForNode(d).map(p => p.lbl.length), 0), 0);
     const uniformPillW = Math.max(52, Math.ceil(maxLabelLen * 4.8) + 10);
 
     nodeNodes.each(function(d) {
       const pills = getPillsForNode(d);
       if (!pills.length) return;
       const el = d3.select(this);
-      pills.forEach((lbl, i) => {
-        const c = ROLE_COLORS[lbl] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+      pills.forEach(({ lbl, isModel }, i) => {
+        const c = isModel ? MODEL_PILL : (ROLE_COLORS[lbl] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' });
         const pillH = 13, pillX = -uniformPillW / 2, pillY = NODE_R + 6 + i * 16;
         el.append("rect").attr("x", pillX).attr("y", pillY).attr("width", uniformPillW).attr("height", pillH)
           .attr("rx", 3).attr("fill", c.bg).attr("stroke", c.border).attr("stroke-width", 1);
         el.append("text").attr("x", 0).attr("y", pillY + pillH - 3)
-          .attr("text-anchor", "middle").attr("font-size", "8px").attr("font-weight", "700")
+          .attr("text-anchor", "middle").attr("font-size", "8px").attr("font-weight", isModel ? "500" : "700")
           .attr("fill", c.text).text(lbl);
       });
     });
@@ -8085,7 +8089,7 @@ function fetchData(force, autoVerify, silent) {
     let btn = document.getElementById("manualRefreshBtn");
 
     if (btn) { btn.disabled = true; btn.style.cursor = "not-allowed"; }
-    _topologyReady = false; // block auto-LLDP until fresh data arrives
+    _topologyReady = false; // block auto-Bridge until fresh data arrives
 
     if (!silent && !savedSelectionId && !selectedDeviceId && statusEl) {
       statusEl.innerText = "🚀 Requesting Topology Data.. no local cache";
@@ -8257,13 +8261,13 @@ function fetchData(force, autoVerify, silent) {
       }
 
       // Auto bridge health check after topology loads (if integration enabled).
-      // If bridge is already confirmed up, also run LLDP immediately (topology just refreshed).
-      // If bridge state is unknown, _silentBridgeCheck will trigger LLDP on fresh connect via transition.
+      // If bridge is already confirmed up, also run Bridge check immediately (topology just refreshed).
+      // If bridge state is unknown, _silentBridgeCheck will trigger Bridge check on fresh connect via transition.
       _topologyReady = true; // topology is fully loaded — auto-LLDP may now proceed
       _silentBridgeCheck();
-      // Only run LLDP on fetchData if cabling changed (or never run before).
+      // Only run Bridge on fetchData if cabling changed (or never run before).
       // Bridge up→down→up transition fires unconditionally (fresh connect path in _updateBridgeToolbarIcon).
-      if (_bridgeUpState && _getLinkSig() !== _lastLldpLinkSig) _autoRunLldp();
+      if (_bridgeUpState && _getLinkSig() !== _lastBridgeLinkSig) _autoRunBridge();
 
     }).withFailureHandler(function (err) {
       hideGlobalLoading();
@@ -8326,11 +8330,11 @@ function toggleMinimize() {
   }, 50);
 }
 
-// --- LLDP VERIFICATION MODAL ---
+// --- BRIDGE MODAL ---
 
-const LLDP_BRIDGE_URL = 'http://localhost:8765';
-let lldpPortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
-let lldpAuditFlagMissing = localStorage.getItem('lldpAuditFlagMissing') === 'true';
+const BRIDGE_URL = 'http://localhost:8765';
+let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
+let bridgeAuditFlagMissing = localStorage.getItem('bridgeAuditFlagMissing') === 'true';
 let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
 let deviceMetadata = {};        // devName → {model: "", rack: ""} — persisted in DocumentProperties DEVICE_METADATA
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
@@ -8345,9 +8349,9 @@ let _configViewContext  = null; // {deviceName, portFilter} — tracks what the 
 let _bridgeClickTimer   = null; // debounce single vs double-click on bridge toolbar icon
 let _pushAutoCloseTimeout = null; // ID of setTimeout that auto-closes push confirm modal after success
 let _silentBridgeTimer  = null; // debounce timer for _silentBridgeCheck
-let _bridgeUpState      = false; // true when bridge is confirmed up; tracks down→up for auto-LLDP trigger
-let _topologyReady      = false; // true after fetchData() completes; guards _autoRunLldp from firing on stale session data
-let _lastLldpLinkSig    = null;  // link signature at last LLDP run; null = never run; used to skip LLDP on config-only fetchData
+let _bridgeUpState      = false; // true when bridge is confirmed up; tracks down→up for auto-Bridge trigger
+let _topologyReady      = false; // true after fetchData() completes; guards _autoRunBridge from firing on stale session data
+let _lastBridgeLinkSig    = null;  // link signature at last Bridge run; null = never run; used to skip LLDP on config-only fetchData
 let _bridgeDeviceTimeout = 15;  // per-attempt push timeout (seconds) — updated from /health on connect
 let _nonAristaSyncNotice = null; // set when IXIA/SPIRENT role saved — shown after next fetchData completes
 
@@ -8435,7 +8439,7 @@ def _oc_lldp_to_eos(raw):
         if not nbrs:
             continue
         state = nbrs[0].get("state", {})
-        neighbors[name] = {"lldpNeighborInfo": [{
+        neighbors[name] = {"bridgeNeighborInfo": [{
             "systemName": state.get("system-name", ""),
             "neighborInterfaceInfo": {"interfaceId_v2": state.get("port-id", "")},
         }]}
@@ -8875,8 +8879,8 @@ if __name__ == "__main__":
   URL.revokeObjectURL(url);
 }
 
-function openLldpModal() {
-  const modal = document.getElementById('lldpModal');
+function openBridgeModal() {
+  const modal = document.getElementById('bridgeModal');
   // Restore last dragged position (default: top-right via CSS)
   try {
     const savedPos = JSON.parse(localStorage.getItem('bridgeModalPos') || 'null');
@@ -8888,35 +8892,35 @@ function openLldpModal() {
   } catch (e) { localStorage.removeItem('bridgeModalPos'); }
   modal.style.display = 'flex';
   // No editOverlay — floating modal does not block background
-  document.getElementById('lldpResults').style.display = 'none';
-  document.getElementById('lldpRunStatus').style.display = 'none';
-  document.getElementById('btnRunLldp').disabled = true;
-  const chk = document.getElementById('chkLldpAuditMissing');
-  if (chk) chk.checked = lldpAuditFlagMissing;
+  document.getElementById('bridgeResults').style.display = 'none';
+  document.getElementById('bridgeRunStatus').style.display = 'none';
+  document.getElementById('btnRunBridge').disabled = true;
+  const chk = document.getElementById('chkBridgeAuditMissing');
+  if (chk) chk.checked = bridgeAuditFlagMissing;
   _syncBridgeEnableCheckbox();
   _populateLldpDevTable();
   _checkBridgeHealth();
 }
 
-function toggleLldpAuditMissing(val) {
-  lldpAuditFlagMissing = val;
-  localStorage.setItem('lldpAuditFlagMissing', val);
+function toggleBridgeAuditMissing(val) {
+  bridgeAuditFlagMissing = val;
+  localStorage.setItem('bridgeAuditFlagMissing', val);
   applyLldpIndicators();          // recolor missing dots: gray ↔ red
   if (isValidationMode) runValidation();
 }
 
 function _checkBridgeHealth() {
-  const dot  = document.getElementById('lldpBridgeDot');
-  const msg  = document.getElementById('lldpBridgeMsg');
-  const cmd  = document.getElementById('lldpBridgeCmd');
-  const btn  = document.getElementById('btnRunLldp');
-  dot.className = 'lldp-dev-dot';
+  const dot  = document.getElementById('bridgeDot');
+  const msg  = document.getElementById('bridgeMsg');
+  const cmd  = document.getElementById('bridgeCmd');
+  const btn  = document.getElementById('btnRunBridge');
+  dot.className = 'bridge-dev-dot';
   msg.textContent = 'Checking…';
-  fetch(LLDP_BRIDGE_URL + '/health', { method: 'GET' })
+  fetch(BRIDGE_URL + '/health', { method: 'GET' })
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
-        dot.className = 'lldp-dev-dot dot-green';
+        dot.className = 'bridge-dev-dot dot-green';
         msg.textContent = 'Running on port ' + (data.port || 8765);
         cmd.style.display = 'none';
         btn.disabled = false;
@@ -8927,7 +8931,7 @@ function _checkBridgeHealth() {
       }
     })
     .catch(() => {
-      dot.className = 'lldp-dev-dot dot-red';
+      dot.className = 'bridge-dev-dot dot-red';
       msg.textContent = 'Not running';
       cmd.style.display = 'block';
       btn.disabled = true;
@@ -8935,8 +8939,8 @@ function _checkBridgeHealth() {
     });
 }
 
-function closeLldpModal() {
-  document.getElementById('lldpModal').style.display = 'none';
+function closeBridgeModal() {
+  document.getElementById('bridgeModal').style.display = 'none';
   // No editOverlay to hide — floating modal
 }
 
@@ -8950,7 +8954,7 @@ function onBridgeIconClick() {
   } else {
     _bridgeClickTimer = setTimeout(() => {
       _bridgeClickTimer = null;
-      openLldpModal();
+      openBridgeModal();
     }, 220);
   }
 }
@@ -8981,7 +8985,7 @@ function _silentBridgeCheck() {
   _silentBridgeTimer = setTimeout(() => {
     _silentBridgeTimer = null;
     if (localStorage.getItem('bridgeEnabled') === 'false') return;
-    fetch(LLDP_BRIDGE_URL + '/health', { method: 'GET' })
+    fetch(BRIDGE_URL + '/health', { method: 'GET' })
       .then(r => r.json())
       .then(data => { if (data.timeout) _bridgeDeviceTimeout = data.timeout; _updateBridgeToolbarIcon(data.status === 'ok' ? 'up' : 'down'); })
       .catch(()  => _updateBridgeToolbarIcon('down'));
@@ -9000,10 +9004,10 @@ function _updateBridgeToolbarIcon(state) {
   else if (state === 'down') btn.classList.add('bridge-down');
   // 'idle' = enabled but health unknown — no class (normal toolbar color)
 
-  // Auto-LLDP: trigger only on fresh connect (down/idle → up transition)
+  // Auto-Bridge: trigger only on fresh connect (down/idle → up transition)
   const wasUp = _bridgeUpState;
   _bridgeUpState = (enabled && state === 'up');
-  if (!wasUp && _bridgeUpState) _autoRunLldp();
+  if (!wasUp && _bridgeUpState) _autoRunBridge();
 }
 
 // Returns a stable string fingerprint of current cabling (sorted link ids).
@@ -9012,46 +9016,46 @@ function _getLinkSig() {
   return globalLinks.map(l => l.id || `${l.u}:${l.v}`).sort().join('|');
 }
 
-// Silent auto-LLDP run on fresh bridge connect or cabling change.
+// Silent auto-Bridge run on fresh bridge connect or cabling change.
 // IP resolution: Ma0/Management0 from sheet → bridge modal input → device name as DNS hostname.
 // Fires only after fetchData() sets _topologyReady=true; never on stale session-restored data.
-function _autoRunLldp() {
+function _autoRunBridge() {
   if (!_topologyReady || !currentData || !currentData.nodes) {
-    dbg('Auto-LLDP: skipped — topology not ready yet');
+    dbg('Auto-Bridge: skipped — topology not ready yet');
     return;
   }
   const autoIps = _getLldpMgmtIps();
-  dbg('Auto-LLDP: triggered — running LLDP + device status check');
+  dbg('Auto-Bridge: triggered — running LLDP + device status check');
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
-  if (st)  { st.innerHTML = 'Running LLDP check\u2026'; st.style.color = '#0369a1'; }
-  if (btn) { btn.classList.add('lldp-scanning'); }
-  _lastLldpLinkSig = _getLinkSig(); // snapshot cabling — next config-only fetchData won't re-trigger
-  const _done = () => { if (btn) btn.classList.remove('lldp-scanning'); };
+  if (st)  { st.innerHTML = 'Running Bridge check\u2026'; st.style.color = '#0369a1'; }
+  if (btn) { btn.classList.add('bridge-scanning'); }
+  _lastBridgeLinkSig = _getLinkSig(); // snapshot cabling — next config-only fetchData won't re-trigger
+  const _done = () => { if (btn) btn.classList.remove('bridge-scanning'); };
   const devices = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   const ipMap = {};
   devices.forEach(n => {
     let ip = autoIps[n.id] || '';
-    if (!ip) { const inp = document.getElementById('lldpIp_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_')); if (inp) ip = inp.value.trim(); }
+    if (!ip) { const inp = document.getElementById('bridgeIp_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_')); if (inp) ip = inp.value.trim(); }
     if (!ip) ip = n.id; // DNS hostname fallback — device_bridge.py resolves via DNS
     ipMap[n.id] = ip;
   });
   const postOpts = () => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ipMap }) });
   Promise.allSettled([
-    fetch(LLDP_BRIDGE_URL + '/lldp',      postOpts()).then(r => r.json()),
-    fetch(LLDP_BRIDGE_URL + '/devstatus', postOpts()).then(r => r.json())
-  ]).then(([lldpResult, devResult]) => {
+    fetch(BRIDGE_URL + '/lldp',      postOpts()).then(r => r.json()),
+    fetch(BRIDGE_URL + '/devstatus', postOpts()).then(r => r.json())
+  ]).then(([bridgeResult, devResult]) => {
     _done();
-    if (lldpResult.status === 'fulfilled') {
-      dbg('Auto-LLDP: LLDP results received');
-      const { results, orphans } = _compareLldpData(lldpResult.value);
+    if (bridgeResult.status === 'fulfilled') {
+      dbg('Auto-Bridge: LLDP results received');
+      const { results, orphans } = _compareBridgeData(bridgeResult.value);
       _renderLldpResults(results, orphans);
       applyLldpIndicators();
     } else {
-      dbg('Auto-LLDP: LLDP fetch failed —', lldpResult.reason);
+      dbg('Auto-Bridge: LLDP fetch failed —', bridgeResult.reason);
     }
     if (devResult.status === 'fulfilled') {
-      dbg('Auto-LLDP: device status received');
+      dbg('Auto-Bridge: device status received');
       devStatusMap = devResult.value;
       deviceInternalVlans = {};
       Object.entries(devStatusMap).forEach(([devId, ds]) => {
@@ -9062,11 +9066,11 @@ function _autoRunLldp() {
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
     } else {
-      dbg('Auto-LLDP: device status fetch failed —', devResult.reason);
+      dbg('Auto-Bridge: device status fetch failed —', devResult.reason);
     }
     if (isValidationMode) runValidation();
-    const _dbChkData = (lldpResult.status === 'fulfilled' && lldpResult.value)
-      ? lldpResult.value
+    const _dbChkData = (bridgeResult.status === 'fulfilled' && bridgeResult.value)
+      ? bridgeResult.value
       : (devResult.status === 'fulfilled' && devResult.value) ? devResult.value : null;
     let _dbChkMsg = 'Device Bridge checks complete';
     let _dbChkColor = '#15803d';
@@ -9081,13 +9085,13 @@ function _autoRunLldp() {
       else if (_reached < _total) _dbChkColor = '#dc2626';
     }
     if (st) { st.innerHTML = '<b>' + _dbChkMsg + '</b>'; st.style.color = _dbChkColor; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 4000); }
-  }).catch(err => { _done(); dbg('Auto-LLDP: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
+  }).catch(err => { _done(); dbg('Auto-Bridge: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
 }
 
-function toggleLldpMinimize() {
-  const modal  = document.getElementById('lldpModal');
+function toggleBridgeMinimize() {
+  const modal  = document.getElementById('bridgeModal');
   const isMin  = modal.classList.toggle('modal-minimized');
-  const minBtn = document.getElementById('btnLldpMinimize');
+  const minBtn = document.getElementById('btnBridgeMinimize');
   if (minBtn) minBtn.innerHTML = isMin
     ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="1" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>'
     : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
@@ -9095,8 +9099,8 @@ function toggleLldpMinimize() {
 
 // Make the bridge modal draggable by its header.
 function _initLldpModalDrag() {
-  const modal  = document.getElementById('lldpModal');
-  const header = document.getElementById('lldpModalHeader');
+  const modal  = document.getElementById('bridgeModal');
+  const header = document.getElementById('bridgeModalHeader');
   if (!header || !modal) return;
   header.addEventListener('mousedown', e => {
     if (e.target.closest('button')) return; // buttons stay clickable
@@ -9154,22 +9158,22 @@ function _autoDetectBridgeMac(dsData) {
 }
 
 function _populateLldpDevTable() {
-  const table = document.getElementById('lldpDevTable');
-  if (!currentData || !currentData.nodes) { table.innerHTML = '<div class="lldp-empty">No topology data.</div>'; return; }
+  const table = document.getElementById('bridgeDevTable');
+  if (!currentData || !currentData.nodes) { table.innerHTML = '<div class="bridge-empty">No topology data.</div>'; return; }
   const autoIps = _getLldpMgmtIps();
   const devices = currentData.nodes.filter(n => {
     const d = allDevicesData[n.id];
     return d && d.type !== 'non-arista';
   });
-  if (!devices.length) { table.innerHTML = '<div class="lldp-empty">No Arista devices found.</div>'; return; }
+  if (!devices.length) { table.innerHTML = '<div class="bridge-empty">No Arista devices found.</div>'; return; }
   table.innerHTML = devices.map(n => {
     const host = autoIps[n.id] || n.id;
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    return `<div class="lldp-dev-row">
-      <span class="lldp-dev-name">${n.id}</span>
-      <input class="lldp-ip-inp" id="lldpIp_${safeId}" type="text" value="${host}" placeholder="host / IP" spellcheck="false">
-      <span class="lldp-dev-dot" id="lldpDot_${safeId}" title="SSH status"></span>
-      <span class="lldp-hn-dot"  id="lldpHn_${safeId}"  title="Hostname"></span>
+    return `<div class="bridge-dev-row">
+      <span class="bridge-dev-name">${n.id}</span>
+      <input class="bridge-ip-inp" id="bridgeIp_${safeId}" type="text" value="${host}" placeholder="host / IP" spellcheck="false">
+      <span class="bridge-dev-dot" id="bridgeDot_${safeId}" title="SSH status"></span>
+      <span class="bridge-hn-dot"  id="bridgeHn_${safeId}"  title="Hostname"></span>
     </div>`;
   }).join('');
 }
@@ -9193,42 +9197,42 @@ function _normLldpIface(name) {
     .replace(/^Vxlan(\d.*)/i,       'Vx$1');
 }
 
-// Apply lldpPortStatus to topology card port rows.
-// Called after runLldpCheck() and after render() (to survive topology redraws).
-function _lldpEffectiveClass(status) {
-  if (status === 'missing') return lldpAuditFlagMissing ? 'missing' : 'missing-quiet';
+// Apply bridgePortStatus to topology card port rows.
+// Called after runBridgeCheck() and after render() (to survive topology redraws).
+function _bridgeEffectiveClass(status) {
+  if (status === 'missing') return bridgeAuditFlagMissing ? 'missing' : 'missing-quiet';
   return status;
 }
 
 function _applyHostnameIndicators(devices) {
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const el = document.getElementById('lldpHn_' + safeId);
+    const el = document.getElementById('bridgeHn_' + safeId);
     if (!el) return;
     const ds = devStatusMap[n.id];
     if (!ds || !ds.ok || !ds.hostname) return;
     const expected = _normSysName(n.id);
     const actual   = _normSysName(ds.hostname);
     if (expected === actual) {
-      el.className = 'lldp-hn-dot hn-match';
+      el.className = 'bridge-hn-dot hn-match';
       el.title = 'Hostname verified: ' + ds.hostname;
     } else {
-      el.className = 'lldp-hn-dot hn-mismatch';
+      el.className = 'bridge-hn-dot hn-mismatch';
       el.title = 'Hostname mismatch — expected: ' + n.id + ', got: ' + ds.hostname;
     }
   });
 }
 
 function applyLldpIndicators() {
-  document.querySelectorAll('.col-lldp').forEach(el => { el.innerHTML = ''; });
-  Object.entries(lldpPortStatus).forEach(([portId, status]) => {
+  document.querySelectorAll('.col-bridge').forEach(el => { el.innerHTML = ''; });
+  Object.entries(bridgePortStatus).forEach(([portId, status]) => {
     const rowEl = document.getElementById('p-' + portId.replace(/[^a-zA-Z0-9]/g, '-'));
     if (!rowEl) return;
-    const col = rowEl.querySelector('.col-lldp');
+    const col = rowEl.querySelector('.col-bridge');
     if (!col) return;
-    const cls   = _lldpEffectiveClass(status);
+    const cls   = _bridgeEffectiveClass(status);
     const title = status === 'match' ? 'LLDP match' : status === 'mismatch' ? 'LLDP mismatch' : 'No LLDP neighbor';
-    col.innerHTML = `<span class="lldp-port-dot lldp-port-${cls}" title="${title}"></span>`;
+    col.innerHTML = `<span class="bridge-port-dot bridge-port-${cls}" title="${title}"></span>`;
   });
 }
 
@@ -9261,7 +9265,7 @@ function _refreshModelLines() {
 }
 
 // Apply devStatusMap to device cards (version line) and port St dots (op-status).
-// Called after runLldpCheck() and after render().
+// Called after runBridgeCheck() and after render().
 function applyDevStatusToCards() {
   // Version line: EOS version only (platform is now in the model line)
   document.querySelectorAll('.dev-version-line').forEach(el => {
@@ -9296,38 +9300,38 @@ function applyDevStatusToCards() {
   });
 }
 
-function runLldpCheck() {
+function runBridgeCheck() {
   if (!currentData || !currentData.nodes) return;
-  const btn      = document.getElementById('btnRunLldp');
-  const statusEl = document.getElementById('lldpRunStatus');
+  const btn      = document.getElementById('btnRunBridge');
+  const statusEl = document.getElementById('bridgeRunStatus');
   const devices  = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
 
   // Collect IPs and reset per-device dots
   const ipMap = {};
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const inp = document.getElementById('lldpIp_' + safeId);
+    const inp = document.getElementById('bridgeIp_' + safeId);
     ipMap[n.id] = inp ? inp.value.trim() : '';
-    const dot = document.getElementById('lldpDot_' + safeId);
-    if (dot) { dot.className = 'lldp-dev-dot'; dot.title = ''; }
-    const hn = document.getElementById('lldpHn_' + safeId);
-    if (hn) { hn.className = 'lldp-hn-dot'; hn.title = 'Hostname'; }
+    const dot = document.getElementById('bridgeDot_' + safeId);
+    if (dot) { dot.className = 'bridge-dev-dot'; dot.title = ''; }
+    const hn = document.getElementById('bridgeHn_' + safeId);
+    if (hn) { hn.className = 'bridge-hn-dot'; hn.title = 'Hostname'; }
   });
 
   btn.disabled = true;
   btn.textContent = 'Checking…';
   const _bridgeBtn = document.getElementById('btnBridgeToolbar');
-  if (_bridgeBtn) _bridgeBtn.classList.add('lldp-scanning');
-  document.getElementById('lldpResults').style.display = 'none';
+  if (_bridgeBtn) _bridgeBtn.classList.add('bridge-scanning');
+  document.getElementById('bridgeResults').style.display = 'none';
   statusEl.style.display = 'block';
   statusEl.style.color = '';
   statusEl.textContent = 'Bridge is querying devices via SSH…';
 
   const n = devices.length;
   const devWord = n === 1 ? 'device' : 'devices';
-  let lldpDone = false, devDone = false;
+  let bridgeDone = false, devDone = false;
   const updateStatus = () => {
-    const done = [lldpDone && 'LLDP', devDone && 'status'].filter(Boolean).join(' + ');
+    const done = [bridgeDone && 'Bridge', devDone && 'status'].filter(Boolean).join(' + ');
     statusEl.textContent = done
       ? `Querying ${n} ${devWord}… (${done} done)`
       : `Querying ${n} ${devWord}…`;
@@ -9340,40 +9344,40 @@ function runLldpCheck() {
     body:    JSON.stringify({ ipMap }),
   });
 
-  const fetchLldp = fetch(LLDP_BRIDGE_URL + '/lldp', postOpts())
+  const fetchLldp = fetch(BRIDGE_URL + '/lldp', postOpts())
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(d => { lldpDone = true; updateStatus(); return d; });
-  const fetchDev  = fetch(LLDP_BRIDGE_URL + '/devstatus', postOpts())
+    .then(d => { bridgeDone = true; updateStatus(); return d; });
+  const fetchDev  = fetch(BRIDGE_URL + '/devstatus', postOpts())
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(d => { devDone = true; updateStatus(); return d; });
 
   Promise.allSettled([fetchLldp, fetchDev])
-    .then(([lldpResult, devResult]) => {
+    .then(([bridgeResult, devResult]) => {
       btn.disabled = false;
       btn.textContent = 'Run Checks';
-      if (_bridgeBtn) _bridgeBtn.classList.remove('lldp-scanning');
-      const lldpData = lldpResult.status === 'fulfilled' ? lldpResult.value : null;
+      if (_bridgeBtn) _bridgeBtn.classList.remove('bridge-scanning');
+      const bridgeData = bridgeResult.status === 'fulfilled' ? bridgeResult.value : null;
       const dsData   = devResult.status  === 'fulfilled' ? devResult.value  : null;
 
-      if (!lldpData && !dsData) {
+      if (!bridgeData && !dsData) {
         // Both failed — show error
-        const err = lldpResult.reason || devResult.reason;
+        const err = bridgeResult.reason || devResult.reason;
         statusEl.textContent = 'Bridge error: ' + err.message + ' — is device_bridge.py running?';
         _checkBridgeHealth();
         return;
       }
 
-      if (lldpData) {
+      if (bridgeData) {
         devices.forEach(n => {
           const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-          const dot = document.getElementById('lldpDot_' + safeId);
+          const dot = document.getElementById('bridgeDot_' + safeId);
           if (!dot) return;
-          const res = lldpData[n.id];
-          if (!res)       { dot.className = 'lldp-dev-dot dot-gray';  dot.title = 'No IP / not queried'; }
-          else if (res.ok){ dot.className = 'lldp-dev-dot dot-green'; dot.title = 'SSH OK'; }
-          else            { dot.className = 'lldp-dev-dot dot-red';   dot.title = res.error || 'Error'; }
+          const res = bridgeData[n.id];
+          if (!res)       { dot.className = 'bridge-dev-dot dot-gray';  dot.title = 'No IP / not queried'; }
+          else if (res.ok){ dot.className = 'bridge-dev-dot dot-green'; dot.title = 'SSH OK'; }
+          else            { dot.className = 'bridge-dev-dot dot-red';   dot.title = res.error || 'Error'; }
         });
-        const { results, orphans } = _compareLldpData(lldpData);
+        const { results, orphans } = _compareBridgeData(bridgeData);
         _renderLldpResults(results, orphans);
         applyLldpIndicators();
       }
@@ -9393,7 +9397,7 @@ function runLldpCheck() {
       if (isValidationMode) runValidation();
 
       // Compute per-device summary with auth error detection
-      const _chkData = lldpData || dsData;
+      const _chkData = bridgeData || dsData;
       let _msg = 'Device Bridge checks complete';
       let _msgColor = '#15803d';
       if (_chkData) {
@@ -9406,7 +9410,7 @@ function runLldpCheck() {
         if (_authFails) { _msg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _msgColor = '#d97706'; }
         else if (_reached < _total) _msgColor = '#dc2626';
       }
-      if (lldpResult.status === 'rejected') _msg += ' \u2014 LLDP endpoint error: ' + lldpResult.reason.message;
+      if (bridgeResult.status === 'rejected') _msg += ' \u2014 LLDP endpoint error: ' + bridgeResult.reason.message;
       else if (devResult.status === 'rejected') _msg += ' \u2014 status endpoint error: ' + devResult.reason.message;
       statusEl.style.display = 'block';
       statusEl.style.color = _msgColor;
@@ -9459,7 +9463,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   let   ip  = ips[deviceName] || '';
   if (!ip) {
     const safeId = deviceName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const inp    = document.getElementById('lldpIp_' + safeId);
+    const inp    = document.getElementById('bridgeIp_' + safeId);
     if (inp) ip  = inp.value.trim();
   }
   if (!ip) ip = deviceName; // fall back to device name as hostname (DNS)
@@ -9490,7 +9494,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
 
   // Phase 1: dry-run to get diff preview (no commit)
   try {
-    const resp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+    const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, dry_run: true }),
@@ -9629,7 +9633,7 @@ async function commitPushConfig() {
       if (commitBtn) commitBtn.textContent = attempt === 1 ? 'Committing…' : `Retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
       _ptSet('pt2', '#94a3b8', attemptLabel);
       try {
-        const resp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+        const resp = await fetch(BRIDGE_URL + '/pushconfig', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } } }),
@@ -9645,7 +9649,7 @@ async function commitPushConfig() {
       // All retries timed out — run /devstatus reachability check (matches bulk push behavior)
       let reachable = false;
       try {
-        const chk = await fetch(LLDP_BRIDGE_URL + '/devstatus', {
+        const chk = await fetch(BRIDGE_URL + '/devstatus', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ipMap: { [deviceName]: ip } }),
         });
@@ -9670,7 +9674,7 @@ async function commitPushConfig() {
       if (commitBtn) commitBtn.style.display = 'none';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
       try {
-        const vResp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+        const vResp = await fetch(BRIDGE_URL + '/pushconfig', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, dry_run: true }),
@@ -9840,7 +9844,7 @@ async function pushAllConfigs() {
   deviceNames.forEach(name => {
     let ip = ips[name] || '';
     if (!ip) {
-      const inp = document.getElementById('lldpIp_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
+      const inp = document.getElementById('bridgeIp_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
       ip = inp ? inp.value.trim() : '';
     }
     if (!ip) ip = name;  // hostname fallback — device_bridge.py will resolve via DNS
@@ -9958,7 +9962,7 @@ async function pushAllConfigs() {
           if (sp) sp.textContent = attempt === 1 ? 'pushing…' : `retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
         }
         try {
-          const resp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+          const resp = await fetch(BRIDGE_URL + '/pushconfig', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ipMap: { [name]: { ip, config } } }),
@@ -9977,7 +9981,7 @@ async function pushAllConfigs() {
       if (!res) {
         let reachable = false;
         try {
-          const chk = await fetch(LLDP_BRIDGE_URL + '/devstatus', {
+          const chk = await fetch(BRIDGE_URL + '/devstatus', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ipMap: { [name]: ip } }),
@@ -10015,7 +10019,7 @@ async function pushAllConfigs() {
       let vDiff  = null;   // null = verify failed; '' = clean; non-empty = partial
       let vError = null;   // captured error message when verify fails
       try {
-        const vResp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+        const vResp = await fetch(BRIDGE_URL + '/pushconfig', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ ipMap: { [name]: { ip, config } }, dry_run: true }),
@@ -10051,21 +10055,21 @@ async function pushAllConfigs() {
 }
 
 // Compare LLDP data against globalLinks. Only checks Et↔Et links on Arista devices.
-function _compareLldpData(lldpData) {
-  lldpPortStatus = {};  // reset per-port status for topology cards
-  // Build lldpMap: "DevName:NormIface" → {remoteDevice, remoteIface}
-  const lldpMap = {};
-  Object.entries(lldpData).forEach(([devName, res]) => {
+function _compareBridgeData(bridgeData) {
+  bridgePortStatus = {};  // reset per-port status for topology cards
+  // Build bridgeMap: "DevName:NormIface" → {remoteDevice, remoteIface}
+  const bridgeMap = {};
+  Object.entries(bridgeData).forEach(([devName, res]) => {
     if (!res.ok || !res.neighbors) return;
     Object.entries(res.neighbors).forEach(([rawIface, info]) => {
-      const neighborList = info.lldpNeighborInfo;
+      const neighborList = info.bridgeNeighborInfo;
       if (!neighborList || !neighborList.length) return;
       const nb = neighborList[0];
       const remDev  = _normSysName((nb.systemName || '').trim());
       // interfaceId_v2 is clean; interfaceId has embedded quotes ("Ethernet1") — strip them
       const rawRemIface = (nb.neighborInterfaceInfo && (nb.neighborInterfaceInfo.interfaceId_v2 || nb.neighborInterfaceInfo.interfaceId || '')).replace(/^"|"$/g, '');
       const remIface = _normLldpIface(rawRemIface);
-      lldpMap[devName + ':' + _normLldpIface(rawIface)] = { remoteDevice: remDev, remoteIface: remIface };
+      bridgeMap[devName + ':' + _normLldpIface(rawIface)] = { remoteDevice: remDev, remoteIface: remIface };
     });
   });
 
@@ -10087,36 +10091,36 @@ function _compareLldpData(lldpData) {
     if (!arisU || !arisV)  { results.push({ u: link.u, v: link.v, status: 'skip', msg: 'non-Arista device' }); return; }
     if (!/^et\d/i.test(ifU) || !/^et\d/i.test(ifV)) { results.push({ u: link.u, v: link.v, status: 'skip', msg: 'non-Ethernet interface' }); return; }
 
-    const queriedU = lldpData[devU] !== undefined;
-    const queriedV = lldpData[devV] !== undefined;
-    const okU = lldpData[devU] && lldpData[devU].ok;
-    const okV = lldpData[devV] && lldpData[devV].ok;
+    const queriedU = bridgeData[devU] !== undefined;
+    const queriedV = bridgeData[devV] !== undefined;
+    const okU = bridgeData[devU] && bridgeData[devU].ok;
+    const okV = bridgeData[devV] && bridgeData[devV].ok;
 
     if (!queriedU && !queriedV) { results.push({ u: link.u, v: link.v, status: 'unknown', msg: 'neither device queried' }); return; }
 
-    const lldpU = lldpMap[link.u]; // what LLDP says U sees
-    const lldpV = lldpMap[link.v]; // what LLDP says V sees
+    const bridgeU = bridgeMap[link.u]; // what LLDP says U sees
+    const bridgeV = bridgeMap[link.v]; // what LLDP says V sees
 
     // Check each direction independently (only if device was successfully queried)
-    const uMatch = !okU ? null : (lldpU && lldpU.remoteDevice === devV && lldpU.remoteIface === ifV);
-    const vMatch = !okV ? null : (lldpV && lldpV.remoteDevice === devU && lldpV.remoteIface === ifU);
+    const uMatch = !okU ? null : (bridgeU && bridgeU.remoteDevice === devV && bridgeU.remoteIface === ifV);
+    const vMatch = !okV ? null : (bridgeV && bridgeV.remoteDevice === devU && bridgeV.remoteIface === ifU);
 
     // Populate per-port status for topology card indicators
-    if (okU) lldpPortStatus[link.u] = uMatch ? 'match' : (lldpU ? 'mismatch' : 'missing');
-    if (okV) lldpPortStatus[link.v] = vMatch ? 'match' : (lldpV ? 'mismatch' : 'missing');
+    if (okU) bridgePortStatus[link.u] = uMatch ? 'match' : (bridgeU ? 'mismatch' : 'missing');
+    if (okV) bridgePortStatus[link.v] = vMatch ? 'match' : (bridgeV ? 'mismatch' : 'missing');
 
     if (uMatch === true && (vMatch === true || vMatch === null)) {
       results.push({ u: link.u, v: link.v, status: 'match' });
     } else if (uMatch === false || vMatch === false) {
       const parts = [];
       if (uMatch === false) {
-        parts.push(lldpU
-          ? devU + ':' + ifU + ' sees ' + lldpU.remoteDevice + ':' + lldpU.remoteIface
+        parts.push(bridgeU
+          ? devU + ':' + ifU + ' sees ' + bridgeU.remoteDevice + ':' + bridgeU.remoteIface
           : devU + ':' + ifU + ' — no LLDP neighbor');
       }
       if (vMatch === false) {
-        parts.push(lldpV
-          ? devV + ':' + ifV + ' sees ' + lldpV.remoteDevice + ':' + lldpV.remoteIface
+        parts.push(bridgeV
+          ? devV + ':' + ifV + ' sees ' + bridgeV.remoteDevice + ':' + bridgeV.remoteIface
           : devV + ':' + ifV + ' — no LLDP neighbor');
       }
       results.push({ u: link.u, v: link.v, status: 'mismatch', msg: parts.join(' / ') });
@@ -10132,7 +10136,7 @@ function _compareLldpData(lldpData) {
   // Find LLDP-discovered links not present in the sheet (both endpoints must be topology devices)
   const orphans = [];
   const seenOrphanPairs = new Set();
-  Object.entries(lldpMap).forEach(([key, val]) => {
+  Object.entries(bridgeMap).forEach(([key, val]) => {
     const colon    = key.lastIndexOf(':');
     const localDev = key.slice(0, colon);
     const localIf  = key.slice(colon + 1);
@@ -10156,9 +10160,9 @@ function _compareLldpData(lldpData) {
 }
 
 function _renderLldpResults(results, orphans) {
-  const container = document.getElementById('lldpResults');
-  const list = document.getElementById('lldpResultList');
-  const badge = document.getElementById('lldpSummaryBadge');
+  const container = document.getElementById('bridgeResults');
+  const list = document.getElementById('bridgeResultList');
+  const badge = document.getElementById('bridgeSummaryBadge');
 
   const matched   = results.filter(r => r.status === 'match').length;
   const mismatched = results.filter(r => r.status === 'mismatch').length;
@@ -10168,7 +10172,7 @@ function _renderLldpResults(results, orphans) {
   const checkable = results.length - skipped;
 
   badge.textContent = matched + '/' + checkable + ' matched';
-  badge.className = 'lldp-summary-badge ' + (mismatched > 0 ? 'badge-fail' : 'badge-ok');
+  badge.className = 'bridge-summary-badge ' + (mismatched > 0 ? 'badge-fail' : 'badge-ok');
 
   // Sort: mismatches first, then partial/unknown, then match, then skip
   const order = { mismatch: 0, partial: 1, unknown: 2, match: 3, skip: 4 };
@@ -10181,32 +10185,32 @@ function _renderLldpResults(results, orphans) {
 
   list.innerHTML = sorted.map(r => {
     let icon, cls, detail = '';
-    if      (r.status === 'match')    { icon = svgCheck; cls = 'lldp-row-ok'; }
-    else if (r.status === 'mismatch') { icon = svgX;     cls = 'lldp-row-fail'; detail = r.msg; }
-    else if (r.status === 'partial')  { icon = svgQ;     cls = 'lldp-row-part'; detail = r.msg; }
-    else if (r.status === 'unknown')  { icon = svgQ;     cls = 'lldp-row-unk';  detail = r.msg; }
-    else                              { icon = svgSkip;   cls = 'lldp-row-skip'; detail = r.msg; }
-    return `<div class="lldp-result-row ${cls}">
-      <span class="lldp-row-icon">${icon}</span>
-      <span class="lldp-row-cable">${r.u} ↔ ${r.v}</span>
-      ${detail ? `<span class="lldp-row-detail">${detail}</span>` : ''}
+    if      (r.status === 'match')    { icon = svgCheck; cls = 'bridge-row-ok'; }
+    else if (r.status === 'mismatch') { icon = svgX;     cls = 'bridge-row-fail'; detail = r.msg; }
+    else if (r.status === 'partial')  { icon = svgQ;     cls = 'bridge-row-part'; detail = r.msg; }
+    else if (r.status === 'unknown')  { icon = svgQ;     cls = 'bridge-row-unk';  detail = r.msg; }
+    else                              { icon = svgSkip;   cls = 'bridge-row-skip'; detail = r.msg; }
+    return `<div class="bridge-result-row ${cls}">
+      <span class="bridge-row-icon">${icon}</span>
+      <span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>
+      ${detail ? `<span class="bridge-row-detail">${detail}</span>` : ''}
     </div>`;
   }).join('');
 
   // Discovered links section
-  const discEl   = document.getElementById('lldpDiscovered');
-  const discList = document.getElementById('lldpDiscoveredList');
+  const discEl   = document.getElementById('bridgeDiscovered');
+  const discList = document.getElementById('bridgeDiscoveredList');
   if (orphans && orphans.length) {
     const svgPlus = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     discList.innerHTML = orphans.map((o, i) =>
-      `<label class="lldp-disc-row">
-        <input type="checkbox" class="lldp-disc-check" id="disc_${i}"
+      `<label class="bridge-disc-row">
+        <input type="checkbox" class="bridge-disc-check" id="disc_${i}"
                data-pair="${encodeURIComponent(JSON.stringify(o))}">
-        <span class="lldp-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span>
+        <span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span>
       </label>`
     ).join('');
-    document.getElementById('lldpDiscHdr').innerHTML =
-      `Discovered — not in sheet <span class="lldp-summary-badge" style="background:#ede9fe;color:#6d28d9;">${orphans.length} link${orphans.length !== 1 ? 's' : ''}</span>`;
+    document.getElementById('bridgeDiscHdr').innerHTML =
+      `Discovered — not in sheet <span class="bridge-summary-badge" style="background:#ede9fe;color:#6d28d9;">${orphans.length} link${orphans.length !== 1 ? 's' : ''}</span>`;
     discEl.style.display = 'block';
   } else {
     discEl.style.display = 'none';
@@ -10216,7 +10220,7 @@ function _renderLldpResults(results, orphans) {
 }
 
 function addSelectedDiscovered() {
-  const checked = Array.from(document.querySelectorAll('.lldp-disc-check:checked'));
+  const checked = Array.from(document.querySelectorAll('.bridge-disc-check:checked'));
   if (!checked.length) return;
   const btn = document.getElementById('btnAddDiscovered');
   btn.disabled = true;
@@ -11370,14 +11374,14 @@ async function _pushConfigText(deviceName, config, label, btnId) {
   let   ip  = ips[deviceName] || '';
   if (!ip) {
     const safeId = deviceName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const inp    = document.getElementById('lldpIp_' + safeId);
+    const inp    = document.getElementById('bridgeIp_' + safeId);
     if (inp) ip  = inp.value.trim();
   }
   if (!ip) ip = deviceName;
 
   if (btn) { btn.disabled = true; btn.textContent = 'Previewing…'; }
   try {
-    const resp = await fetch(LLDP_BRIDGE_URL + '/pushconfig', {
+    const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, dry_run: true }),
@@ -11682,7 +11686,7 @@ function focusAndPulseNode(node) {
 }
 
 function closeAllModals() {
-  const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'lldpModal', 'cablingModal', 'auditModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
+  const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'bridgeModal', 'cablingModal', 'auditModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
