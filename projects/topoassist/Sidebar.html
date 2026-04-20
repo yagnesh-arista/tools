@@ -610,64 +610,64 @@
   </div>
 
   <!-- Device Bridge Modal (floating, draggable) -->
-  <div id="lldpModal" class="modal-floating" style="width:480px;">
-    <div class="modal-header" id="lldpModalHeader">
+  <div id="bridgeModal" class="modal-floating" style="width:480px;">
+    <div class="modal-header" id="bridgeModalHeader">
       <div>
         <div class="modal-header-title">Device Bridge</div>
-        <div class="modal-header-subtitle">SSH bridge to lab devices — LLDP verification, device status & more</div>
+        <div class="modal-header-subtitle">SSH bridge to lab devices — Bridge verification, device status & more</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button id="btnLldpMinimize" onclick="toggleLldpMinimize()" class="btn-mono" title="Minimize" style="padding:2px 8px;font-size:14px;line-height:1;">−</button>
-        <button onclick="closeLldpModal()" class="btn-mono">Close</button>
+        <button id="btnBridgeMinimize" onclick="toggleBridgeMinimize()" class="btn-mono" title="Minimize" style="padding:2px 8px;font-size:14px;line-height:1;">−</button>
+        <button onclick="closeBridgeModal()" class="btn-mono">Close</button>
       </div>
     </div>
-    <div id="lldpModalBody" style="padding:14px 16px;overflow-y:auto;max-height:430px;">
+    <div id="bridgeModalBody" style="padding:14px 16px;overflow-y:auto;max-height:430px;">
       <!-- Bridge status bar -->
-      <div class="lldp-bridge-bar">
-        <span class="lldp-field-label">Bridge</span>
-        <span class="lldp-dev-dot" id="lldpBridgeDot"></span>
-        <span id="lldpBridgeMsg" class="lldp-bridge-msg">Checking…</span>
-        <button class="lldp-recheck-btn" onclick="_checkBridgeHealth()">Recheck</button>
+      <div class="bridge-status-bar">
+        <span class="bridge-field-label">Bridge</span>
+        <span class="bridge-dev-dot" id="bridgeDot"></span>
+        <span id="bridgeMsg" class="bridge-msg">Checking…</span>
+        <button class="bridge-recheck-btn" onclick="_checkBridgeHealth()">Recheck</button>
       </div>
-      <div id="lldpBridgeCmd" class="lldp-bridge-cmd" style="display:none;">
+      <div id="bridgeCmd" class="bridge-cmd" style="display:none;">
         Start the bridge on your machine:
-        <code class="lldp-cmd-code">python3 device_bridge.py</code>
+        <code class="bridge-cmd-code">python3 device_bridge.py</code>
       </div>
       <!-- Settings card: auto-check + audit -->
-      <div class="lldp-settings-card">
-        <label class="lldp-chk-label" title="When enabled: bridge health is checked automatically after each topology load. Double-click the toolbar icon to toggle.">
+      <div class="bridge-settings-card">
+        <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically after each topology load. Double-click the toolbar icon to toggle.">
           <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
           Auto-check after topology loads
         </label>
-        <div class="lldp-settings-sep"></div>
-        <div class="lldp-audit-header">
-          <span class="lldp-audit-section">LLDP Audit</span>
-          <span class="lldp-audit-always" title="LLDP mismatches are always flagged as errors in Audit mode — cannot be disabled">Mismatches always flagged</span>
+        <div class="bridge-settings-sep"></div>
+        <div class="bridge-audit-header">
+          <span class="bridge-audit-section">Bridge Audit</span>
+          <span class="bridge-audit-always" title="LLDP mismatches are always flagged as errors in Audit mode — cannot be disabled">Mismatches always flagged</span>
         </div>
-        <label class="lldp-chk-label" title="When on: ports with no LLDP neighbor show red and are flagged in Audit. Turn off for early-stage labs where dark ports are expected.">
-          <input type="checkbox" id="chkLldpAuditMissing" onchange="toggleLldpAuditMissing(this.checked)">
+        <label class="bridge-chk-label" title="When on: ports with no LLDP neighbor show red and are flagged in Audit. Turn off for early-stage labs where dark ports are expected.">
+          <input type="checkbox" id="chkBridgeAuditMissing" onchange="toggleBridgeAuditMissing(this.checked)">
           Flag missing neighbors
         </label>
       </div>
-      <div class="lldp-section-hdr" style="margin-top:10px;">Devices <span class="lldp-hint">IP defaults to device name via DNS — edit to override</span></div>
-      <div id="lldpDevTable"></div>
-      <div id="lldpRunStatus" class="lldp-run-status" style="display:none;"></div>
-      <div id="lldpResults" style="display:none;">
-        <div class="lldp-section-hdr" style="margin-top:12px;">Results <span id="lldpSummaryBadge" class="lldp-summary-badge"></span></div>
-        <div id="lldpResultList" class="lldp-result-list"></div>
-        <div id="lldpDiscovered" style="display:none;">
-          <div id="lldpDiscHdr" class="lldp-section-hdr" style="margin-top:10px;"></div>
-          <div id="lldpDiscoveredList" class="lldp-disc-list"></div>
-          <div class="lldp-disc-actions">
+      <div class="bridge-section-hdr" style="margin-top:10px;">Devices <span class="bridge-hint">IP defaults to device name via DNS — edit to override</span></div>
+      <div id="bridgeDevTable"></div>
+      <div id="bridgeRunStatus" class="bridge-run-status" style="display:none;"></div>
+      <div id="bridgeResults" style="display:none;">
+        <div class="bridge-section-hdr" style="margin-top:12px;">Results <span id="bridgeSummaryBadge" class="bridge-summary-badge"></span></div>
+        <div id="bridgeResultList" class="bridge-result-list"></div>
+        <div id="bridgeDiscovered" style="display:none;">
+          <div id="bridgeDiscHdr" class="bridge-section-hdr" style="margin-top:10px;"></div>
+          <div id="bridgeDiscoveredList" class="bridge-disc-list"></div>
+          <div class="bridge-disc-actions">
             <button id="btnAddDiscovered" class="btn-mono" onclick="addSelectedDiscovered()">Add Selected</button>
           </div>
         </div>
       </div>
     </div>
     <div class="modal-actions right-align">
-      <button class="btn-mono" onclick="closeLldpModal()">Close</button>
+      <button class="btn-mono" onclick="closeBridgeModal()">Close</button>
       <button class="btn-mono" onclick="downloadBridgeScript()">Download Bridge</button>
-      <button class="btn-primary-mono" id="btnRunLldp" onclick="runLldpCheck()" disabled>Run Checks</button>
+      <button class="btn-primary-mono" id="btnRunBridge" onclick="runBridgeCheck()" disabled>Run Checks</button>
     </div>
   </div>
 

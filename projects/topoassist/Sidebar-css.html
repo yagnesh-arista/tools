@@ -2094,23 +2094,23 @@
     background-color: var(--danger)
   }
 
-  /* --- LLDP PORT STATUS DOT --- */
-  .col-lldp {
+  /* --- BRIDGE PORT STATUS DOT --- */
+  .col-bridge {
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .lldp-port-dot {
+  .bridge-port-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
     cursor: default;
   }
-  .lldp-port-dot.lldp-port-match        { background: #22c55e; box-shadow: 0 0 3px rgba(34,197,94,0.5); }
-  .lldp-port-dot.lldp-port-mismatch     { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
-  .lldp-port-dot.lldp-port-missing      { background: #ef4444; box-shadow: 0 0 3px rgba(239,68,68,0.5); }
-  .lldp-port-dot.lldp-port-missing-quiet { background: #94a3b8; }
+  .bridge-port-dot.bridge-port-match        { background: #22c55e; box-shadow: 0 0 3px rgba(34,197,94,0.5); }
+  .bridge-port-dot.bridge-port-mismatch     { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
+  .bridge-port-dot.bridge-port-missing      { background: #ef4444; box-shadow: 0 0 3px rgba(239,68,68,0.5); }
+  .bridge-port-dot.bridge-port-missing-quiet { background: #94a3b8; }
 
   /* --- EOS VERSION LINE (under hostname in device card header) --- */
   .dev-version-line {
@@ -4633,18 +4633,18 @@
   }
   .modal-floating .modal-header:active { cursor: grabbing; }
   .modal-floating .modal-header button { cursor: pointer; }
-  .modal-floating.modal-minimized #lldpModalBody,
+  .modal-floating.modal-minimized #bridgeModalBody,
   .modal-floating.modal-minimized .modal-actions { display: none !important; }
 
   /* Bridge toolbar icon states (SVG uses stroke=currentColor) */
   #btnBridgeToolbar.bridge-down     { color: #f59e0b; }  /* yellow — enabled, bridge down */
   #btnBridgeToolbar.bridge-up       { color: #22c55e; }  /* green  — enabled, bridge up   */
   #btnBridgeToolbar.bridge-disabled { opacity: 0.45; }   /* dimmed — integration disabled */
-  @keyframes lldp-scan { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-  #btnBridgeToolbar.lldp-scanning   { animation: lldp-scan 0.9s ease-in-out infinite; }
+  @keyframes bridge-scan { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.9s ease-in-out infinite; }
 
-  /* ================= 13. LLDP VERIFICATION MODAL ================= */
-  .lldp-settings-card {
+  /* ================= 13. BRIDGE MODAL ================= */
+  .bridge-settings-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 5px;
@@ -4656,137 +4656,137 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
   }
-  .lldp-settings-sep {
+  .bridge-settings-sep {
     border: none;
     border-top: 1px solid var(--border);
     margin: 1px 0;
   }
-  .lldp-audit-header {
+  .bridge-audit-header {
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  .lldp-bridge-bar {
+  .bridge-status-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 10px; border-radius: 4px;
     background: var(--bg-secondary); border: 1px solid var(--border);
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     margin-bottom: 6px;
   }
-  .lldp-bridge-msg { color: var(--text-muted); flex: 1; }
-  .lldp-recheck-btn {
+  .bridge-msg { color: var(--text-muted); flex: 1; }
+  .bridge-recheck-btn {
     font-family: 'JetBrains Mono', monospace; font-size: 10px;
     padding: 2px 8px; border: 1px solid var(--border); border-radius: 3px;
     background: var(--bg-primary); color: var(--text-main); cursor: pointer;
     user-select: none;
   }
-  .lldp-recheck-btn:hover { background: var(--bg-secondary); }
-  .lldp-bridge-cmd {
+  .bridge-recheck-btn:hover { background: var(--bg-secondary); }
+  .bridge-cmd {
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     color: var(--text-muted); padding: 6px 10px; margin-bottom: 6px;
     background: #fefce8; border: 1px solid #fde68a; border-radius: 4px;
   }
-  .lldp-cmd-code {
+  .bridge-cmd-code {
     display: block; margin-top: 4px; font-size: 11px; font-weight: 700;
     color: #92400e; user-select: text;
   }
-  .lldp-field-label { color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-  .lldp-section-hdr {
+  .bridge-field-label { color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .bridge-section-hdr {
     font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
     color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
     margin-bottom: 6px;
   }
-  .lldp-hint { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10px; }
-  .lldp-audit-section {
+  .bridge-hint { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10px; }
+  .bridge-audit-section {
     color: var(--text-muted); font-size: 10px; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
   }
-  .lldp-audit-always {
+  .bridge-audit-always {
     color: #16a34a; font-weight: 700; font-size: 10px;
     background: rgba(22,163,74,0.1); border: 1px solid rgba(22,163,74,0.3);
     border-radius: 3px; padding: 2px 6px; white-space: nowrap; cursor: default;
   }
-  .lldp-chk-label {
+  .bridge-chk-label {
     display: flex; align-items: center; gap: 5px;
     color: var(--text-main); font-size: 11px; cursor: pointer;
     user-select: none;
   }
-  .lldp-chk-label input[type="checkbox"] { cursor: pointer; accent-color: var(--primary); }
-  .lldp-dev-row {
+  .bridge-chk-label input[type="checkbox"] { cursor: pointer; accent-color: var(--primary); }
+  .bridge-dev-row {
     display: grid; grid-template-columns: 1fr 140px 18px 18px;
     align-items: center; gap: 8px;
     padding: 4px 0; border-bottom: 1px solid var(--border);
     font-family: 'JetBrains Mono', monospace;
   }
-  .lldp-dev-row:last-child { border-bottom: none; }
-  .lldp-dev-name { font-size: 11px; color: var(--text-main); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lldp-ip-inp {
+  .bridge-dev-row:last-child { border-bottom: none; }
+  .bridge-dev-name { font-size: 11px; color: var(--text-main); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bridge-ip-inp {
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px;
     background: var(--bg-primary); color: var(--text-main); outline: none; width: 100%; box-sizing: border-box; user-select: text;
   }
-  .lldp-ip-inp:focus { border-color: #3b82f6; }
-  .lldp-dev-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); display: inline-block; justify-self: center; }
-  .lldp-dev-dot.dot-green { background: #16a34a; }
-  .lldp-dev-dot.dot-red   { background: #dc2626; }
-  .lldp-dev-dot.dot-gray  { background: #94a3b8; }
-  .lldp-hn-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; justify-self: center; }
-  .lldp-hn-dot.hn-match    { background: #16a34a; }
-  .lldp-hn-dot.hn-mismatch { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
-  .lldp-empty { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); padding: 8px 0; }
-  .lldp-run-status {
+  .bridge-ip-inp:focus { border-color: #3b82f6; }
+  .bridge-dev-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); display: inline-block; justify-self: center; }
+  .bridge-dev-dot.dot-green { background: #16a34a; }
+  .bridge-dev-dot.dot-red   { background: #dc2626; }
+  .bridge-dev-dot.dot-gray  { background: #94a3b8; }
+  .bridge-hn-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; justify-self: center; }
+  .bridge-hn-dot.hn-match    { background: #16a34a; }
+  .bridge-hn-dot.hn-mismatch { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
+  .bridge-empty { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); padding: 8px 0; }
+  .bridge-run-status {
     display: flex; align-items: center; gap: 8px;
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     color: var(--text-muted); padding: 6px 0;
   }
-  .lldp-run-status::before {
+  .bridge-run-status::before {
     content: ''; flex-shrink: 0;
     width: 10px; height: 10px;
     border: 2px solid var(--border); border-top-color: var(--primary);
     border-radius: 50%;
-    animation: lldp-spin 0.75s linear infinite;
+    animation: bridge-spin 0.75s linear infinite;
   }
-  @keyframes lldp-spin { to { transform: rotate(360deg); } }
-  .lldp-summary-badge {
+  @keyframes bridge-spin { to { transform: rotate(360deg); } }
+  .bridge-summary-badge {
     font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
     padding: 1px 7px; border-radius: 10px; margin-left: 8px;
   }
-  .lldp-summary-badge.badge-ok   { background: #dcfce7; color: #15803d; }
-  .lldp-summary-badge.badge-fail { background: #fee2e2; color: #b91c1c; }
-  .lldp-result-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
-  .lldp-result-row {
+  .bridge-summary-badge.badge-ok   { background: #dcfce7; color: #15803d; }
+  .bridge-summary-badge.badge-fail { background: #fee2e2; color: #b91c1c; }
+  .bridge-result-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .bridge-result-row {
     display: grid; grid-template-columns: 18px 1fr;
     grid-template-rows: auto auto;
     align-items: start; gap: 0 6px;
     padding: 4px 6px; border-radius: 3px;
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
   }
-  .lldp-row-ok   { background: #f0fdf4; }
-  .lldp-row-fail { background: #fff1f2; }
-  .lldp-row-part { background: #fffbeb; }
-  .lldp-row-unk  { background: var(--bg-secondary); }
-  .lldp-row-skip { opacity: 0.45; }
-  .lldp-row-icon { grid-row: 1; display: flex; align-items: center; padding-top: 1px; }
-  .lldp-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lldp-row-detail {
+  .bridge-row-ok   { background: #f0fdf4; }
+  .bridge-row-fail { background: #fff1f2; }
+  .bridge-row-part { background: #fffbeb; }
+  .bridge-row-unk  { background: var(--bg-secondary); }
+  .bridge-row-skip { opacity: 0.45; }
+  .bridge-row-icon { grid-row: 1; display: flex; align-items: center; padding-top: 1px; }
+  .bridge-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bridge-row-detail {
     grid-column: 2; grid-row: 2;
     font-size: 10px; color: var(--text-muted); margin-top: 1px;
     white-space: pre-wrap; word-break: break-word;
   }
-  .lldp-row-fail .lldp-row-detail { color: #b91c1c; }
+  .bridge-row-fail .bridge-row-detail { color: #b91c1c; }
 
   /* ── Discovered links (LLDP on device, not in sheet) ─────────────────── */
-  .lldp-disc-list    { display:flex; flex-direction:column; gap:2px; margin-top:4px; }
-  .lldp-disc-row     {
+  .bridge-disc-list    { display:flex; flex-direction:column; gap:2px; margin-top:4px; }
+  .bridge-disc-row     {
     display:flex; align-items:center; gap:7px;
     padding:4px 6px; border-radius:3px; cursor:pointer;
     font-family:'JetBrains Mono',monospace; font-size:11px;
     background:#f5f3ff;
   }
-  .lldp-disc-row:hover { background:#ede9fe; }
-  .lldp-disc-check   { cursor:pointer; accent-color:#7c3aed; flex-shrink:0; }
-  .lldp-disc-cable   { color:var(--text-main); flex:1; }
-  .lldp-disc-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+  .bridge-disc-row:hover { background:#ede9fe; }
+  .bridge-disc-check   { cursor:pointer; accent-color:#7c3aed; flex-shrink:0; }
+  .bridge-disc-cable   { color:var(--text-main); flex:1; }
+  .bridge-disc-actions { display:flex; justify-content:flex-end; margin-top:6px; }
 
   /* ── Config Push results ──────────────────────────────────────────────── */
   .cfg-push-result-row {
