@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
+# settings v260420.29 | 2026-04-20 11:41:22
 # project-stamp.sh
 # Global stamp hook for all ~/claude/projects/ files.
 # Stamps with: # <project> vYYMMDD.N | YYYY-MM-DD HH:MM:SS | git commit: <hash>
@@ -12,8 +12,11 @@
 #   - Line 1 if file does NOT start with a shebang (#!)
 #   - Line 2 if file starts with a shebang (shebang must stay on line 1)
 #
-# Only updates if the stamp marker is already present on the target line.
-# TopoAssist GAS files are handled by topoassist-stamp.sh — skipped here.
+# Behaviour:
+#   - Settings files (~/.claude/hooks|rules|commands): always inserts if missing
+#   - Project source files (~/claude/projects/*): always inserts if missing
+#   - Does NOT stamp: .md, .json, .lock, .txt, INSTRUCTIONS_*, CLAUDE.md
+#   - TopoAssist GAS files handled by topoassist-stamp.sh — skipped here
 
 input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
@@ -33,6 +36,7 @@ case "$f" in
   $PROJECTS_DIR/*)
     proj_rel="${f#$PROJECTS_DIR/}"
     project=$(echo "$proj_rel" | cut -d'/' -f1)
+    insert_if_missing=1
     ;;
   *) exit 0 ;;
 esac

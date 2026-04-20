@@ -41,5 +41,6 @@ if [ -n "$UNTESTED" ]; then
 elif [ -n "$NEW_FNS" ]; then
   MSG="${MSG} | ✓ new functions covered: ${NEW_FNS}"
 fi
+MSG="${MSG} | [SYNC] Update embedded template in downloadBridgeScript() in Sidebar-js.html — VERSION must match in both files"
 
 jq -n --arg ctx "$MSG" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
