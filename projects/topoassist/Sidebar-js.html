@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.58 | 2026-04-20 04:03:03 -->
+<!-- TopoAssist v260420.59 | 2026-04-20 10:04:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.58";  // keep in sync with Code.gs
+const APP_VERSION = "260420.59";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1637,26 +1637,17 @@ function setUiBusy(isBusy) {
 // Updates the warning badge on #btnForceSync based on orphaned column scan results.
 // Called on schema panel open and after every sync completes.
 function _updateForceSyncBadge(orphans) {
-  const badge = document.getElementById('forceSyncWarnBadge');
-  const btn   = document.getElementById('btnForceSync');
-  if (!badge || !btn) return;
+  const btn = document.getElementById('btnForceSync');
+  if (!btn) return;
   if (!orphans || orphans.length === 0) {
-    badge.style.display = 'none';
-    badge.innerHTML = '';
-    btn.title = '';
     btn.style.background = '';
     btn.style.borderColor = '';
     btn.style.color = '';
-    return;
+  } else {
+    btn.style.background = '#fef3c7';
+    btn.style.borderColor = '#f59e0b';
+    btn.style.color = '#92400e';
   }
-  const warnSvg = '<svg width="10" height="10" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0" fill="#92400e"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="#fff"/></svg>';
-  badge.innerHTML = warnSvg + '\u202f' + orphans.length;
-  badge.style.display = 'inline-flex';
-  const names = orphans.map(function(o) { return o.key.replace(/_$/, '') + (o.hasData ? ' (has data)' : ''); }).join('\n  ');
-  btn.title = orphans.length + ' column(s) not in schema — will prompt for deletion on Force Sync:\n  ' + names;
-  btn.style.background = '#fef3c7';
-  btn.style.borderColor = '#f59e0b';
-  btn.style.color = '#92400e';
 }
 
 /**
