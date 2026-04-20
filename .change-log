@@ -1,0 +1,7 @@
+[CHANGE SUMMARY] commit hash: b38be14 — TopoAssist: rename lldp* → bridge* in Sidebar.html and Sideb
+Files:
+  INSTRUCTIONS_topoassist.txt  (no stamp)
+  Sidebar-css.html  v260420.104
+  Sidebar.html  v260420.104
+Git:   pushed to github.com/yagnesh-arista/tools ✓
+Clasp: topoassist [1NL5x7CnPy2R...] pushed by edit hook at 16:43:46 ✓
