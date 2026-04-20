@@ -1,4 +1,4 @@
-<!-- TopoAssist v260420.73 | 2026-04-20 12:13:05 -->
+<!-- TopoAssist v260420.74 | 2026-04-20 12:16:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -301,7 +301,7 @@
       </button>
     </div>
 
-    <h1>🌐 Network Topology &amp; Config Manager v<?= APP_VERSION ?></h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v<?= APP_VERSION ?></h1>
 
     <!-- ================================================================ -->
     <h2>🚀 Quick Start</h2>
@@ -515,6 +515,41 @@
       <li><b>IP Type</b> column is grayed when mode is <code>l2-*</code> and SVI is empty.</li>
     </ul>
 
+    <h3>Sheet — Speed Colors (<code>et_speed_</code> and <code>xcvr_speed_</code>)</h3>
+    <p style="font-size:13px;">Both the <code>et_speed_</code> (EOS interface speed) and <code>xcvr_speed_</code> (transceiver speed) columns use the same speed-tier palette — so mismatches between port speed and module speed are immediately visible:</p>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+      <span style="background:#e0e7ff; border:1px solid #c7d2fe; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">1.6T</span>
+      <span style="background:#fae8ff; border:1px solid #f5d0fe; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">800G</span>
+      <span style="background:#f3e8ff; border:1px solid #e9d5ff; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">400G</span>
+      <span style="background:#dbeafe; border:1px solid #bfdbfe; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">200G</span>
+      <span style="background:#dcfce7; border:1px solid #bbf7d0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">100G</span>
+      <span style="background:#ccfbf1; border:1px solid #99f6e4; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">50G</span>
+      <span style="background:#fef9c3; border:1px solid #fde68a; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">40G</span>
+      <span style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">25G</span>
+      <span style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">10G</span>
+      <span style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">1G</span>
+    </div>
+    <p style="font-size:13px; margin-top:10px;"><b>Conditional rules on <code>xcvr_speed_</code>:</b></p>
+    <ul>
+      <li><span style="background:#fef3c7; border:1px solid #fde68a; border-radius:3px; padding:1px 6px; font-size:11px; font-family:'JetBrains Mono',monospace;">Amber</span> — <code>xcvr_speed_</code> equals <code>et_speed_</code>: the transceiver is likely a breakout module but xcvr_speed was set to per-lane speed instead of the aggregate. Example: QSFP28 in 4×25G mode with et_speed=25g and xcvr_speed=25g — xcvr_speed should be 100g.</li>
+      <li><span style="background:#fed7aa; border:1px solid #fdba74; border-radius:3px; padding:1px 6px; font-size:11px; font-family:'JetBrains Mono',monospace;">Pale orange</span> — <code>xcvr_speed_</code> is empty AND the <code>xcvr_type_</code> native speed does not match <code>et_speed_</code> (breakout detected). Fill in <code>xcvr_speed_</code> with the aggregate module speed to enable correct cable-group detection in the cabling report.</li>
+    </ul>
+
+    <h3>Sheet — Transceiver Type Colors (<code>xcvr_type_</code>)</h3>
+    <p style="font-size:13px;">The <code>xcvr_type_</code> column is color-coded by form factor, using the same palette as the speed columns where the native speeds align:</p>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+      <span style="background:#fae8ff; border:1px solid #f5d0fe; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">OSFP</span>
+      <span style="background:#f3e8ff; border:1px solid #e9d5ff; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">QSFP-DD</span>
+      <span style="background:#dbeafe; border:1px solid #bfdbfe; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">QSFP56</span>
+      <span style="background:#dcfce7; border:1px solid #bbf7d0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">QSFP28 / QSFP100 / DSFP</span>
+      <span style="background:#fef9c3; border:1px solid #fde68a; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">QSFP+</span>
+      <span style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">SFP28 / SFP25</span>
+      <span style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">SFP+</span>
+      <span style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">SFP (1G)</span>
+      <span style="background:#ffedd5; border:1px solid #fed7aa; border-radius:4px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace;">BASE-T</span>
+    </div>
+    <p style="font-size:13px; margin-top:8px;">The palette intentionally aligns with speed colors: a QSFP28 (100G native) and a 100G speed cell both show green (#dcfce7). This makes it easy to spot when a module is running in breakout mode — xcvr_type shows green (100G) but et_speed shows sky blue (25G).</p>
+
     <h3>Device Labels (Topology Nodes)</h3>
     <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
       <span style="background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold;">SPINE</span>
@@ -535,11 +570,12 @@
     <p style="font-size:13px;">Quickly focus the sheet on specific data without losing any columns:</p>
     <ul>
       <li><b>Show All Columns</b> — unhide everything.</li>
-      <li><b>Cabling Focused</b> — <code>int_</code> columns only.</li>
-      <li><b>Po Focused</b> — <code>int_</code> + <code>po_</code>.</li>
-      <li><b>Transceiver Focused</b> — <code>int_</code> + <code>xcvr_</code>.</li>
-      <li><b>Mode Focused</b> — <code>int_</code> + <code>po_</code> + <code>sp_mode_</code>.</li>
-      <li><b>Vlan Focused</b> — <code>int_</code> + <code>po_</code> + <code>vlan_</code>.</li>
+      <li><b>Cabling</b> — <code>int_</code> columns only.</li>
+      <li><b>Transceiver</b> — <code>int_</code> + <code>xcvr_type_</code> columns.</li>
+      <li><b>Speed</b> — <code>int_</code> + <code>xcvr_type_</code> + <code>et_speed_</code> + <code>xcvr_speed_</code> columns. Use this to cross-check transceiver type against port and module speeds.</li>
+      <li><b>Po</b> — <code>int_</code> + <code>po_</code> columns.</li>
+      <li><b>Mode</b> — <code>int_</code> + <code>po_</code> + <code>sp_mode_</code> columns.</li>
+      <li><b>Vlan</b> — <code>int_</code> + <code>po_</code> + <code>sp_mode_</code> + <code>vlan_</code> columns.</li>
       <li><b>Custom View</b> — pick any column combination and save it.</li>
     </ul>
 
@@ -548,7 +584,8 @@
     <ul>
       <li>Add, remove, or reorder attribute columns (affects all devices).</li>
       <li>Customise dropdown options for any column (e.g. add a new speed value).</li>
-      <li><b>Save &amp; Sync</b> rebuilds the sheet with the new schema — existing data is preserved. You will be prompted before any orphaned columns are deleted.</li>
+      <li><b>Save &amp; Sync</b> rebuilds the sheet with the new schema — existing data is preserved. If orphaned columns are detected (columns no longer in the schema), the Force Sync button turns <b>yellow</b>. A <b>Delete &amp; Sync / Cancel</b> confirmation is shown before data is removed — the schema is the source of truth and orphaned columns cannot be kept.</li>
+      <li><b>Schema prefix guard</b> — adding a field key that is a prefix of an existing key (e.g. adding <code>xcvr</code> when <code>xcvr_speed</code> exists) is blocked at both the client and server. This prevents silent data loss during sync.</li>
       <li><b>Apply GSheet Coloring</b> checkbox — re-applies connection backgrounds and conditional rules during sync.</li>
       <li><b>Debug Logging</b> checkbox — enables verbose debug output to the browser console (F12 → Console). Useful for diagnosing fetch, cache, and LLDP issues. State persists across reloads; toggle off when not needed.</li>
     </ul>
