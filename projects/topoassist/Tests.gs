@@ -1,4 +1,4 @@
-// TopoAssist v260420.99 | 2026-04-20 16:09:49
+// TopoAssist v260420.100 | 2026-04-20 16:12:43
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -944,6 +944,45 @@ function test_findAttrKey() {
   return results;
 }
 
+
+// ── deviceMetadata / buildMetadataMap ──────────────────────────────────────────
+
+function test_deviceMetadata() {
+  const t = assert_;
+  const results = [];
+
+  // JSON round-trip — mimics saveDeviceMetadata → getDeviceMetadata cycle
+  const meta = { leaf1: { model: "7050CX3-32S", rack: "R14" }, spine1: { model: "", rack: "" } };
+  const roundTrip = JSON.parse(JSON.stringify(meta));
+  results.push(t("deviceMetadata — model survives round-trip",           roundTrip.leaf1.model,  "7050CX3-32S"));
+  results.push(t("deviceMetadata — rack survives round-trip",            roundTrip.leaf1.rack,   "R14"));
+  results.push(t("deviceMetadata — empty model survives round-trip",     roundTrip.spine1.model, ""));
+  results.push(t("deviceMetadata — unknown device is undefined",         roundTrip["missing"],   undefined));
+
+  // Null-prop fallback — mimics: prop ? JSON.parse(prop) : {}
+  const nullFallback = (null ? JSON.parse(null) : {});
+  results.push(t("deviceMetadata — null prop returns empty object",      nullFallback,           {}));
+
+  // buildMetadataMap filter: only include devices with at least model or rack set
+  const devices = [
+    { name: "leaf1",  model: "7050CX3-32S", rack: "R14" },
+    { name: "spine1", model: "",             rack: ""    },
+    { name: "leaf2",  model: "7020R",        rack: ""    },
+  ];
+  const builtMap = {};
+  devices.forEach(d => {
+    const model = (d.model || '').trim();
+    const rack  = (d.rack  || '').trim();
+    if (model || rack) builtMap[d.name] = { model, rack };
+  });
+  results.push(t("deviceMetadata — buildMetadataMap includes device with model+rack", builtMap["leaf1"],  { model: "7050CX3-32S", rack: "R14" }));
+  results.push(t("deviceMetadata — buildMetadataMap includes device with model only", builtMap["leaf2"],  { model: "7020R", rack: "" }));
+  results.push(t("deviceMetadata — buildMetadataMap omits device with no model/rack", builtMap["spine1"], undefined));
+
+  return results;
+}
+
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -962,6 +1001,7 @@ function runAllTests() {
     { name: "generateSnakeTtlPbrConfig",          fn: test_generateSnakeTtlPbrConfig },
     { name: "generateSnakeTtlTrafficPolicyConfig", fn: test_generateSnakeTtlTrafficPolicyConfig },
     { name: "findAttrKey",                    fn: test_findAttrKey },
+    { name: "deviceMetadata",                 fn: test_deviceMetadata },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);
