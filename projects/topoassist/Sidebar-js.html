@@ -1,7 +1,7 @@
-<!-- TopoAssist v260420.91 | 2026-04-20 13:45:30 -->
+<!-- TopoAssist v260420.92 | 2026-04-20 13:46:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260420.91";  // keep in sync with Code.gs
+const APP_VERSION = "260420.92";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2636,7 +2636,7 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
         if (selectedDeviceId === deviceName) {
           const btn = document.getElementById("btnDevice");
           if (btn) {
-            btn.innerText = "△ Fetch Failed: " + res.error;
+            btn.innerText = "Fetch Failed: " + res.error;
             btn.style.color = "var(--error-text)";
             btn.style.background = "var(--error-bg)";
           }
@@ -2915,7 +2915,7 @@ function saveLayoutPreferences() {
       .withFailureHandler(function (err) {
         console.error("Prefs Save Failed:", err.message);
         const status = document.getElementById("status");
-        if (status) status.innerText = "⚠ Save Failed";
+        if (status) status.innerText = "Save Failed";
       })
       .savePreferences(w, dg, o, t, r, a);
 
@@ -2979,7 +2979,7 @@ function handleCopy(text, btnId) {
   const doFeedback = () => {
     if (!btn) return;
     const originalLabel = btn.innerText;
-    btn.innerText = "✔ Copied";
+    btn.innerText = "Copied";
     if (wrapper) wrapper.style.background = "#3b82f6";
     setTimeout(() => {
       btn.innerText = originalLabel;
