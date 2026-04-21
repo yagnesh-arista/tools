@@ -253,6 +253,36 @@ Check Sidebar-css.html defines a `code, .inline-code` rule with:
 
 ---
 
+## Check 17 — GAS Loading Overlay Guard (Rule 20)
+
+Every `showGlobalLoading()` call in Sidebar-js.html must be paired with a `_guard` timeout.
+GAS framework-level failures (auth expiry, quota, network drop) fire no handler — without a
+guard the overlay stays up forever.
+
+```bash
+grep -n "showGlobalLoading\|showModalLoading\|_guard\|clearTimeout(_guard)" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -60
+```
+
+For each call site that shows `showGlobalLoading` or `showModalLoading`:
+- `_guard = setTimeout(hideGlobalLoading + setStatus, N)` must appear before `.run`
+- `clearTimeout(_guard)` must be the FIRST statement in `withSuccessHandler`
+- `clearTimeout(_guard)` must be the FIRST statement in `withFailureHandler`
+- `hideGlobalLoading()` must be called in BOTH handlers
+- For modal-open handlers: `hideGlobalLoading()` must come before any DOM assignments
+- For callback-queue callers (`fetchFullConfig`): `_guard` must flush the queue on timeout
+
+Timeout values: 15s for read/save ops, 20s for `fetchFullConfig`, 60s for sync/schema ops.
+
+Exempt: `saveSchemaChanges()` uses `schemaLockTimer` (30s `clearInterval`+`hideGlobalLoading`) — this is the approved alternative pattern.
+
+✗ FAIL for each `showGlobalLoading()` site missing a `_guard` timeout.
+✗ FAIL if `clearTimeout(_guard)` is NOT the first statement in a handler.
+✗ FAIL if `hideGlobalLoading()` is missing from either handler.
+✗ FAIL if a modal-open handler calls `hideGlobalLoading()` after DOM field assignments.
+
+---
+
 ## Output Format
 
 ```
