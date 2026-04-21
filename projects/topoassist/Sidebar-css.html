@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.91 | 2026-04-21 15:33:24 -->
+<!-- TopoAssist v260421.92 | 2026-04-21 15:40:43 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -585,6 +585,7 @@
     height: 26px;
     box-sizing: border-box
   }
+  .mono-search::placeholder { color: #94a3b8; font-style: italic; }
 
   .mono-search:focus {
     background: var(--bg-card);
@@ -736,7 +737,7 @@
   .strict-btn {
     display: inline-flex;
     align-items: center;
-    height: 22px;
+    height: 26px;
     padding: 0 8px;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -4984,6 +4985,36 @@
     align-items: center;
     gap: 8px;
   }
+  /* Global Config find bar */
+  .gcfg-find-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 16px;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border-light);
+    user-select: none; -webkit-user-select: none;
+  }
+  .gcfg-find-input {
+    flex: 1; min-width: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--text-main); background: var(--bg-body);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; outline: none; user-select: text; -webkit-user-select: text;
+  }
+  .gcfg-find-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+  .gcfg-find-input::placeholder { color: #94a3b8; font-style: italic; }
+  .gcfg-find-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-muted); white-space: nowrap; min-width: 52px; text-align: right;
+    user-select: none; -webkit-user-select: none;
+  }
+  .gcfg-find-btn {
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; cursor: pointer; color: var(--text-main);
+    user-select: none; -webkit-user-select: none;
+  }
+  .gcfg-find-btn:hover { background: var(--bg-card); }
+
   .bridge-status-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 10px; border-radius: 4px;

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.91 | 2026-04-21 15:33:24 -->
+<!-- TopoAssist v260421.92 | 2026-04-21 15:40:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.91";  // keep in sync with Code.gs
+const APP_VERSION = "260421.92";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -97,6 +97,36 @@ const APP_VERSION = "260421.91";  // keep in sync with Code.gs
     const inp = document.getElementById('statusLogSearch');
     if (inp) inp.value = '';
     renderStatusLog();
+  }
+
+  // --- AUTO PANEL RESIZE ---
+  // Resize the GAS dialog height to fit content after data loads.
+  // Clamped to 90% of available screen height. Never runs in minimized mode.
+  function autoResizePanelHeight() {
+    try {
+      if (isWindowMinimized) return;
+      const screenH = window.screen.availHeight || window.outerHeight || 900;
+      const maxH    = Math.floor(screenH * 0.92);
+      const toolbar = document.getElementById('mainToolbar');
+      const tbH     = toolbar ? toolbar.offsetHeight : 65;
+
+      let targetH;
+      if (currentMode === 'manager') {
+        const n   = currentDeviceList ? currentDeviceList.length : 0;
+        const ROW = 44; // approx px per device row
+        const HDR = 110; // header + column labels + save row
+        targetH = Math.max(380, Math.min(maxH, HDR + n * ROW + 40));
+      } else {
+        // Topology: measure canvas surface height
+        const surface = document.getElementById('surface');
+        if (!surface) return;
+        const canvasH = surface.scrollHeight || surface.offsetHeight;
+        targetH = Math.max(500, Math.min(maxH, tbH + canvasH + 40));
+      }
+
+      google.script.host.setHeight(targetH);
+      previousDims.h = targetH;
+    } catch (e) { /* non-critical — GAS host may not be present in dev */ }
   }
 
   let nodeIndexMap = {};
@@ -4502,6 +4532,13 @@ function openGlobalCfgModal() {
   btn.disabled = true;
   btn.textContent = btn.dataset.cleanLabel;
   status.textContent = '';
+  // Reset find bar
+  var srch = document.getElementById('globalCfgSearch');
+  if (srch) srch.value = '';
+  var srchCnt = document.getElementById('globalCfgSearchCount');
+  if (srchCnt) srchCnt.textContent = '';
+  _gcfgMatches = [];
+  _gcfgMatchIdx = 0;
   document.getElementById('globalCfgModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
 
@@ -4526,6 +4563,69 @@ function closeGlobalCfgModal() {
   document.getElementById('globalCfgModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
+
+// ── Global Config find-in-textarea ───────────────────────────────────────────
+var _gcfgMatches = [];
+var _gcfgMatchIdx = 0;
+
+function globalCfgSearchUpdate() {
+  var inp   = document.getElementById('globalCfgSearch');
+  var count = document.getElementById('globalCfgSearchCount');
+  var ta    = document.getElementById('globalCfgTextarea');
+  var q     = inp ? inp.value : '';
+  _gcfgMatches = [];
+  _gcfgMatchIdx = 0;
+  if (!q || !ta) { if (count) count.textContent = ''; return; }
+  var text  = ta.value;
+  var lower = text.toLowerCase();
+  var ql    = q.toLowerCase();
+  var pos   = 0;
+  while (true) {
+    var idx = lower.indexOf(ql, pos);
+    if (idx < 0) break;
+    _gcfgMatches.push(idx);
+    pos = idx + 1;
+  }
+  if (_gcfgMatches.length > 0) {
+    _gcfgJumpTo(0);
+  } else {
+    if (count) count.textContent = q ? 'no match' : '';
+  }
+}
+
+function _gcfgJumpTo(idx) {
+  var ta    = document.getElementById('globalCfgTextarea');
+  var count = document.getElementById('globalCfgSearchCount');
+  var inp   = document.getElementById('globalCfgSearch');
+  if (!ta || !_gcfgMatches.length) return;
+  _gcfgMatchIdx = ((idx % _gcfgMatches.length) + _gcfgMatches.length) % _gcfgMatches.length;
+  var pos = _gcfgMatches[_gcfgMatchIdx];
+  var q   = inp ? inp.value : '';
+  ta.focus();
+  ta.setSelectionRange(pos, pos + q.length);
+  var linesBefore = ta.value.slice(0, pos).split('\n').length - 1;
+  var lineHeight  = parseFloat(getComputedStyle(ta).lineHeight) || 19.2;
+  ta.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
+  if (count) count.textContent = (_gcfgMatchIdx + 1) + ' / ' + _gcfgMatches.length;
+}
+
+function globalCfgSearchNext() { _gcfgJumpTo(_gcfgMatchIdx + 1); }
+function globalCfgSearchPrev() { _gcfgJumpTo(_gcfgMatchIdx - 1); }
+
+function globalCfgSearchKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (e.shiftKey) globalCfgSearchPrev(); else globalCfgSearchNext();
+  } else if (e.key === 'Escape') {
+    var inp   = document.getElementById('globalCfgSearch');
+    var count = document.getElementById('globalCfgSearchCount');
+    if (inp)   inp.value = '';
+    if (count) count.textContent = '';
+    _gcfgMatches = [];
+    _gcfgMatchIdx = 0;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function saveGlobalCfgFromSidebar() {
   const textarea = document.getElementById('globalCfgTextarea');
@@ -8385,6 +8485,7 @@ function fetchData(force, autoVerify, silent) {
       // If bridge is already confirmed up, also run Bridge check immediately (topology just refreshed).
       // If bridge state is unknown, _silentBridgeCheck will trigger Bridge check on fresh connect via transition.
       _topologyReady = true; // topology is fully loaded — auto-LLDP may now proceed
+      requestAnimationFrame(autoResizePanelHeight);
       _silentBridgeCheck();
       // Only run Bridge on fetchData if cabling changed (or never run before).
       // Bridge up→down→up transition fires unconditionally (fresh connect path in _updateBridgeToolbarIcon).
