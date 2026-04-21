@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.167 | 2026-04-21 19:01:31 -->
+<!-- TopoAssist v260421.168 | 2026-04-21 19:02:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.167";  // keep in sync with Code.gs
+const APP_VERSION = "260421.168";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8721,16 +8721,26 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260421.7"
+def _arg(flag):
+    try:
+        i = sys.argv.index(flag)
+        return sys.argv[i + 1]
+    except (ValueError, IndexError):
+        return None
+
+VERBOSE = "-v" in sys.argv
+
+VERSION = "260421.8"
 PORT    = 8765
-TIMEOUT = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
+_b        = _arg("-b")
+SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
+JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 
 # -- Active transport -----------------------------------------------------------
 METHOD = "ssh"      # ssh | eapi | rest | gnmi
 
 # -- SSH config (METHOD = "ssh") -----------------------------------------------
-SSH_USER  = os.environ.get("BRIDGE_SSH_USER",  "admin")     # override: export BRIDGE_SSH_USER=myuser
-JUMP_HOST = os.environ.get("BRIDGE_JUMP_HOST", "bus-home")  # override: export BRIDGE_JUMP_HOST=""
 
 # -- eAPI config (METHOD = "eapi") ---------------------------------------------
 EAPI_USER = "admin"

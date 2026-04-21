@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.166 | 2026-04-21 18:58:16
+# topoassist v260421.167 | 2026-04-21 19:01:36
 """
 TopoAssist Device Bridge
 ========================
@@ -29,11 +29,23 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
+def _arg(flag):
+    """Return the value after flag in sys.argv, or None if flag absent or has no value."""
+    try:
+        i = sys.argv.index(flag)
+        return sys.argv[i + 1]
+    except (ValueError, IndexError):
+        return None
+
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260421.7"
+VERSION           = "260421.8"
 PORT              = 8765
-TIMEOUT           = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
+# CLI flags (-u/-b/-t) take priority; env vars are the fallback.
+_b        = _arg("-b")
+SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
+JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 
@@ -41,8 +53,6 @@ PUSH_RETRY_DELAY  = 4   # seconds between retries
 METHOD = "ssh"      # ssh | eapi | rest | gnmi
 
 # ── SSH config (METHOD = "ssh") ───────────────────────────────────────────────
-SSH_USER  = os.environ.get("BRIDGE_SSH_USER",  "admin")     # override: export BRIDGE_SSH_USER=myuser
-JUMP_HOST = os.environ.get("BRIDGE_JUMP_HOST", "bus-home")  # override: export BRIDGE_JUMP_HOST=""
 
 # ── eAPI config (METHOD = "eapi") ─────────────────────────────────────────────
 # Arista eAPI — JSON-RPC over HTTPS; returns same EOS JSON as SSH show | json
@@ -693,25 +703,20 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   ─────────────────────────────────────
-  Usage: python device_bridge.py [-v] [-h]
+  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-v] [-h]
 
   Options:
-    -v    Verbose — print SSH connect, session, retry, error, and timeout logs
-    -h    Show this help and exit
+    -u USER       SSH username          default: admin
+    -b JUMP_HOST  Jump host for SSH     default: bus-home
+                  Use -b "" for direct SSH (no jump host)
+    -t TIMEOUT    Per-device timeout    default: 15  (seconds)
+    -v            Verbose — print SSH connect, session, retry, error, and timeout logs
+    -h            Show this help and exit
 
-  Environment variable overrides (set before running):
-    BRIDGE_SSH_USER    SSH username            default: admin
-                       export BRIDGE_SSH_USER=myuser
-
-    BRIDGE_JUMP_HOST   Jump host for SSH       default: bus-home
-                       export BRIDGE_JUMP_HOST=""      (direct SSH, no jump)
-                       export BRIDGE_JUMP_HOST=bastion (use a different host)
-
-    BRIDGE_TIMEOUT     Per-device SSH timeout  default: 15  (seconds)
-                       export BRIDGE_TIMEOUT=30
-
-  Example:
-    BRIDGE_SSH_USER=admin BRIDGE_JUMP_HOST="" python device_bridge.py -v
+  Examples:
+    python device_bridge.py                          # defaults
+    python device_bridge.py -u admin -b "" -t 30    # direct SSH, 30s timeout
+    python device_bridge.py -b bastion -v            # custom jump host + verbose
 """)
         sys.exit(0)
 
