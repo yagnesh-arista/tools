@@ -331,6 +331,29 @@ grep -B2 -A5 'btn-danger-mono.*margin-right:auto' ~/claude/projects/topoassist/S
 
 ---
 
+## Check 20 — Reuse and Enhance (Rule 11a)
+
+When reviewing code added this session, flag any new function that duplicates logic already
+present in the codebase.
+
+```bash
+# Look for near-duplicate drag handlers, modal openers, loader patterns, etc.
+grep -n "addEventListener.*mousedown\|function.*[Dd]rag\|function.*[Mm]odal" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -30
+```
+
+For each new function added:
+- Does an existing function already do the same job?
+- If yes: was it extended with opts/params, or was a parallel copy written?
+- Are all old call sites updated to use the enhanced version?
+- Are there any dead/unreachable old implementations left behind?
+
+✗ FAIL if a new function duplicates logic from an existing one without consolidating
+✗ FAIL if old call sites still reference a replaced implementation
+⚠ WARN if two functions have >80% similar structure — flag as a consolidation candidate
+
+---
+
 ## Check 19 — Search / Filter Input Height (Rule 22)
 
 Every search or filter input in a compact context (panel, toolbar, list) must have explicit height — never rely on browser UA default (~26px).
