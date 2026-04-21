@@ -189,6 +189,19 @@ in the global `keydown` handler — omitting either causes Esc to reset the canv
 
 Full pattern: `~/.claude/rules/ui.md` (Rule 21)
 
+## 22. Search / Filter Input Height
+
+Browser UA stylesheets inflate `<input>` height beyond what padding implies — a `10px` font with `padding: 3px` renders ~26px in Chromium/WebKit. In compact panels or toolbars this breaks visual symmetry with adjacent icon buttons or list rows.
+
+Every search or filter input in a compact context must pin height explicitly:
+```css
+height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box;
+```
+- Match `height` to the tallest sibling element in the same row/section
+- Never use top/bottom padding as the only height control
+- Full-form modal inputs (with labels above) are exempt — use standard `padding: 5px 8px`
+- Full pattern: `~/.claude/rules/ui.md` (Rule 22)
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.

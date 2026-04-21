@@ -6,7 +6,7 @@ Last updated: 2026-04-21
 
 ---
 
-## 21 Global Rules
+## 22 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -37,6 +37,7 @@ Last updated: 2026-04-21
 | 19 | Rollback Logging — every revert/rollback logged to ROLLBACKS.md; git revert handled by hook, manual rollbacks written by Claude | `hooks/` + `CLAUDE.md` | `hooks/rollback-logger.sh`, `CLAUDE.md` |
 | 20 | GAS loading overlay guard — every `showGlobalLoading()` must have a `_guard = setTimeout(hideGlobalLoading+setStatus, N)`; both handlers `clearTimeout(_guard)` first; timeouts: 15s read/save, 20s fetchFullConfig, 60s sync | `rules/` | `rules/gas.md` |
 | 21 | Modal button standard — SVG × header (`.btn-modal-close`); footer order: Delete-isolated-left · Cancel · Primary-right; view-only = no footer; no duplicate close/cancel; every new modal must register in `modalOrder` + `closeFuncs` for Esc handling | `rules/` | `rules/ui.md` |
+| 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
 
 ---
 
