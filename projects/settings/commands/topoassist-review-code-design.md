@@ -283,6 +283,43 @@ Exempt: `saveSchemaChanges()` uses `schemaLockTimer` (30s `clearInterval`+`hideG
 
 ---
 
+## Check 18 — Modal Button Standard (Rule 21)
+
+Every modal in Sidebar.html must follow the standard:
+
+```bash
+# All modal header close buttons should use btn-modal-close (SVG ×), never btn-mono text "Close"
+grep -n 'class="btn-mono">Close\|class="btn-mono">Cancel' \
+  ~/claude/projects/topoassist/Sidebar.html | grep -v "footer\|modal-actions" | head -20
+
+# Count btn-modal-close occurrences (expect 16 — one per modal)
+grep -c "btn-modal-close" ~/claude/projects/topoassist/Sidebar.html
+
+# Check .btn-modal-close CSS exists in Sidebar-css.html
+grep -c "btn-modal-close" ~/claude/projects/topoassist/Sidebar-css.html
+
+# View-only modals must NOT have a modal-actions footer
+# (helpModal, auditModal, cablingModal, generateAllModal, configModal)
+grep -A5 'id="helpModal"\|id="auditModal"\|id="cablingModal"\|id="generateAllModal"' \
+  ~/claude/projects/topoassist/Sidebar.html | grep "modal-actions"
+```
+
+For each modal:
+- Header must have exactly one `.btn-modal-close` SVG × button as the **rightmost** element
+- View-only modals (help, audit, cabling, generateAll, configModal) must have **no** `.modal-actions` footer
+- Edit/confirm modals must use `.modal-actions right-align`
+- No text "Close" or "Cancel" button in the header (SVG × replaces these)
+- No duplicate close/cancel across both header AND footer
+- `.btn-modal-close` must be in the no-select list in Sidebar-css.html
+
+✗ FAIL if any modal header still uses a text "Close" button (`.btn-mono`) instead of `.btn-modal-close`
+✗ FAIL if any modal header is missing a close button entirely
+✗ FAIL if `.btn-modal-close` CSS class is missing from Sidebar-css.html
+✗ FAIL if the same dismiss action appears in both header AND footer as labeled buttons
+⚠ WARN if a view-only modal has a `.modal-actions` footer with only a Close/status element
+
+---
+
 ## Output Format
 
 ```
