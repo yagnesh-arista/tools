@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (secondary toolbar: disambiguate duplicate STATUS LOGS labels — center section → "LIVE STATUS" (live #status text), right section → "LOG HISTORY" (drawer toggle button). File: Sidebar.html)
+  Last updated: 2026-04-21 (secondary toolbar final naming: center section label → "STATUS LIVE LOGS" (live #status text); right section label → "STATUS LOGS"; drawer-toggle button text → "HISTORY". File: Sidebar.html)
   Previous: 2026-04-21 (Help modal header: title color:white explicit (was inheriting var(--text-main) from CSS overriding parent color:white); Close button styled white/transparent-border; title simplified to "Keyboard Shortcuts". File: Sidebar.html)
   Previous: 2026-04-21 (Help modal overhaul: width 460→720px (min(720px,100vw-40px)); 2-column layout (Navigation+Reset+General left | Autocomplete+Config Find Bar+Card Interactions right); Search Examples moved to full-width 2-col grid below; kbd-group flex-wrap:nowrap so multi-key combos stay on one line; key column 96→110px; ⌨ unicode → SVG keyboard icon; new sections: Search Autocomplete (↑/↓/Enter/Esc), Config Find Bar (Enter/Shift+Enter/Esc); CSS: .help-two-col, .help-col, .help-examples-grid added. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-21 (STATUS LOGS center section: wrapped #status in a proper tb-section with tb-label "STATUS LOGS" ribbon above it — matches the same column layout as TOPO/INT SORT/SEARCH sections. tb-btns justify-content:center so live text stays centered. File: Sidebar.html)
