@@ -116,6 +116,28 @@ code, .inline-code {
 ```
 Never use `<code>` without explicit font-family — it defaults to the browser serif mono, not JetBrains Mono.
 
+## Search / Filter Input Height (Rule 22)
+
+Browser UA stylesheets inflate `<input>` height beyond what padding alone suggests — a `10px` font with `padding: 3px` renders at ~26px in Chromium/WebKit instead of the expected ~16px. In compact panels, toolbars, or lists, this makes filter inputs visually taller than adjacent icon buttons or list rows, breaking symmetry.
+
+**Rule: every search or filter input in a compact context must pin height explicitly.**
+
+```css
+.my-search-input {
+  height: 20px;          /* explicit — never rely on browser UA */
+  padding: 0 7px;        /* horizontal only — vertical handled by height */
+  line-height: 20px;     /* keeps text vertically centered */
+  box-sizing: border-box;
+  font-size: 10px;       /* match surrounding row scale */
+}
+```
+
+- Match `height` to the tallest sibling element in the same row or section (icon buttons, list item rows, close buttons)
+- Never use top/bottom padding as the only height control — always pair with explicit `height` + `line-height`
+- `box-sizing: border-box` is required whenever `height` is set on an input
+- Applies to: panel search boxes, toolbar filter inputs, modal search bars, inline keyword filters
+- Full-form inputs (modals with labels above) are exempt — they use the standard `padding: 5px 8px` form style
+
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
