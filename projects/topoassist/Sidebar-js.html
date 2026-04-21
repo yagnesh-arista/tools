@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.94 | 2026-04-21 15:41:38 -->
+<!-- TopoAssist v260421.95 | 2026-04-21 15:42:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.94";  // keep in sync with Code.gs
+const APP_VERSION = "260421.95";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5056,8 +5056,7 @@ function clearVlanTrace() {
   if (typeof redrawLinks === 'function') redrawLinks();
 
   // Update Toolbar Status
-  const st = document.getElementById("status");
-  setStatus("View Reset");
+  setStatus(getReadyStatus());
 
   const legend = document.getElementById("vlan-legend");
   if (legend) legend.classList.remove("visible");
