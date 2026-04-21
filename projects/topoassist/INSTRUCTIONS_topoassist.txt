@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (STATUS LOGS ribbon: swap label/button text — tb-label="STATUS LOGS", button="Status Live Logs" (was reversed). File: Sidebar.html)
+  Last updated: 2026-04-21 (Help modal overhaul: width 460→720px (min(720px,100vw-40px)); 2-column layout (Navigation+Reset+General left | Autocomplete+Config Find Bar+Card Interactions right); Search Examples moved to full-width 2-col grid below; kbd-group flex-wrap:nowrap so multi-key combos stay on one line; key column 96→110px; ⌨ unicode → SVG keyboard icon; new sections: Search Autocomplete (↑/↓/Enter/Esc), Config Find Bar (Enter/Shift+Enter/Esc); CSS: .help-two-col, .help-col, .help-examples-grid added. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-21 (STATUS LOGS center section: wrapped #status in a proper tb-section with tb-label "STATUS LOGS" ribbon above it — matches the same column layout as TOPO/INT SORT/SEARCH sections. tb-btns justify-content:center so live text stays centered. File: Sidebar.html)
   Previous: 2026-04-21 (Sheet View menu: removed "+" prefix from Transceiver, Speed, Port Channel, Mode, Vlan, SVI items. File: Code.gs)
   Previous: 2026-04-21 (STATUS ribbon: tb-label → "Status Live Logs"; button text restored to "LOG HISTORY". File: Sidebar.html)
