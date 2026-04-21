@@ -43,7 +43,7 @@ if [ "$gas_changed" = "true" ]; then
   else
     exec 9>/tmp/clasp-topoassist.lock
     flock -x 9
-    push_out=$(cd "$TOPODIR" && clasp push 2>&1)
+    push_out=$(cd "$TOPODIR" && timeout 30 clasp push 2>&1)
     push_exit=$?
     if [ $push_exit -eq 0 ]; then
       pushed=$(echo "$push_out" | grep "Pushed" | head -1)
@@ -51,8 +51,11 @@ if [ "$gas_changed" = "true" ]; then
       # Marker read by post-change-summary.sh to avoid false "clasp push needed" warnings
       date +%s > /tmp/topoassist_clasp_last_push
     else
-      err=$(echo "$push_out" | tail -2 | tr '\n' ' ')
-      msg="[DEPLOY] clasp push FAILED: $err — re-auth: cd $TOPODIR && clasp login --no-localhost"
+      err=$(echo "$push_out" | tail -3 | tr '\n' ' ')
+      # Exit 2 = blocking error in Claude Code — forces Claude to surface this to the user
+      jq -n --arg ctx "[DEPLOY] clasp push FAILED: $err — re-auth: cd $TOPODIR && clasp login --no-localhost" \
+        '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
+      exit 2
     fi
   fi
 fi
