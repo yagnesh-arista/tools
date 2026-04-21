@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.64 | 2026-04-21 14:50:20 -->
+<!-- TopoAssist v260421.65 | 2026-04-21 14:53:12 -->
 <!DOCTYPE html>
 <html>
 
@@ -1029,6 +1029,15 @@
       <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN ID or device…"
         oninput="filterVlanSummary()"
         style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-main);font-family:'JetBrains Mono',monospace;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);user-select:none;-webkit-user-select:none;">Sort:</span>
+        <button id="vlanSortId"    onclick="setVlanSort('id')"    style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">ID</button>
+        <button id="vlanSortType"  onclick="setVlanSort('type')"  style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">Type</button>
+        <button id="vlanSortVrf"   onclick="setVlanSort('vrf')"   style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">VRF</button>
+        <button id="vlanSortPorts" onclick="setVlanSort('ports')" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">Ports</button>
+        <div style="flex:1;"></div>
+        <button id="vlanConflictsOnlyBtn" onclick="toggleVlanConflictsOnly()" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">Conflicts</button>
+      </div>
     </div>
     <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;background:var(--bg-modal, #ffffff);font-family:'JetBrains Mono',monospace;font-size:12px;">
     </div>

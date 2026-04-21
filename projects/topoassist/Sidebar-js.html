@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.64 | 2026-04-21 14:50:20 -->
+<!-- TopoAssist v260421.65 | 2026-04-21 14:54:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.64";  // keep in sync with Code.gs
+const APP_VERSION = "260421.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11952,9 +11952,72 @@ setInterval(refreshConfigAges, 30000);
 // VLAN SUMMARY PANEL
 // =====================================================================
 
+let _vlanSortKey        = 'id';   // 'id' | 'type' | 'vrf' | 'ports'
+let _vlanConflictsOnly  = false;
+
+function _updateVlanSortBtns() {
+  ['Id', 'Type', 'Vrf', 'Ports'].forEach(k => {
+    const btn = document.getElementById('vlanSort' + k);
+    if (!btn) return;
+    const active = _vlanSortKey === k.toLowerCase();
+    btn.style.background   = active ? '#3b82f6' : 'var(--bg-body)';
+    btn.style.color        = active ? '#ffffff'  : 'var(--text-muted)';
+    btn.style.borderColor  = active ? '#3b82f6' : 'var(--border)';
+  });
+  const cb = document.getElementById('vlanConflictsOnlyBtn');
+  if (cb) {
+    cb.style.background  = _vlanConflictsOnly ? '#ef4444' : 'var(--bg-body)';
+    cb.style.color       = _vlanConflictsOnly ? '#ffffff'  : 'var(--text-muted)';
+    cb.style.borderColor = _vlanConflictsOnly ? '#ef4444' : 'var(--border)';
+  }
+}
+
+function setVlanSort(key) {
+  _vlanSortKey = key;
+  _updateVlanSortBtns();
+  filterVlanSummary();
+}
+
+function toggleVlanConflictsOnly() {
+  _vlanConflictsOnly = !_vlanConflictsOnly;
+  _updateVlanSortBtns();
+  filterVlanSummary();
+}
+
+function _applyVlanFilterSort(sorted, vlanMap, q) {
+  let result = sorted;
+  if (q) {
+    result = result.filter(vid =>
+      vid.includes(q)
+      || (vlanMap[vid].vrf || '').toLowerCase().includes(q)
+      || vlanMap[vid].ports.some(p => p.device.toLowerCase().includes(q) || p.port.toLowerCase().includes(q))
+      || (vlanMap[vid].internalOn || []).some(d => d.toLowerCase().includes(q)));
+  }
+  if (_vlanConflictsOnly) {
+    result = result.filter(vid => {
+      const info = vlanMap[vid];
+      return info.ports.length > 0 && info.internalOn && info.internalOn.length > 0;
+    });
+  }
+  result = result.slice();
+  if (_vlanSortKey === 'type') {
+    result.sort((a, b) => (vlanMap[a].type || '').localeCompare(vlanMap[b].type || '') || parseInt(a) - parseInt(b));
+  } else if (_vlanSortKey === 'vrf') {
+    result.sort((a, b) => (vlanMap[a].vrf || '').localeCompare(vlanMap[b].vrf || '') || parseInt(a) - parseInt(b));
+  } else if (_vlanSortKey === 'ports') {
+    result.sort((a, b) => (vlanMap[b].ports.length - vlanMap[a].ports.length) || parseInt(a) - parseInt(b));
+  } else {
+    result.sort((a, b) => parseInt(a) - parseInt(b)); // 'id' (default)
+  }
+  return result;
+}
+
 function openVlanSummaryModal() {
   document.getElementById('vlanSummaryFilter').value = '';
+  _vlanSortKey       = 'id';
+  _vlanConflictsOnly = false;
   buildVlanSummary();
+  _updateVlanSortBtns();
   document.getElementById('vlanSummaryModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
 }
@@ -12049,19 +12112,15 @@ function renderVlanSummaryTable(sorted, vlanMap) {
   });
   html += '</tbody></table>';
   body.innerHTML = html;
-  document.getElementById('vlanSummaryCount').innerText = sorted.length + ' VLAN' + (sorted.length !== 1 ? 's' : '');
+  const suffix = _vlanConflictsOnly ? ' · conflicts only' : '';
+  document.getElementById('vlanSummaryCount').innerText = sorted.length + ' VLAN' + (sorted.length !== 1 ? 's' : '') + suffix;
 }
 
 function filterVlanSummary() {
   const q = (document.getElementById('vlanSummaryFilter').value || '').toLowerCase().trim();
   const { vlanMap, sorted } = window._vlanSummaryData || {};
   if (!vlanMap) return;
-  const filtered = q
-    ? sorted.filter(vid => vid.includes(q) || (vlanMap[vid].vrf || '').toLowerCase().includes(q)
-        || vlanMap[vid].ports.some(p => p.device.toLowerCase().includes(q) || p.port.toLowerCase().includes(q))
-        || (vlanMap[vid].internalOn || []).some(d => d.toLowerCase().includes(q)))
-    : sorted;
-  renderVlanSummaryTable(filtered, vlanMap);
+  renderVlanSummaryTable(_applyVlanFilterSort(sorted, vlanMap, q), vlanMap);
 }
 
 // =====================================================================

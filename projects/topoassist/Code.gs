@@ -1,10 +1,10 @@
-// TopoAssist v260421.64 | 2026-04-21 14:50:20
+// TopoAssist v260421.65 | 2026-04-21 14:50:49
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.64";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.65";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5317,7 +5317,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
         }
         if (s.evpn_ipv6) {
           const pid = item.peerId;
-          const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
+          const v6Loop = item.loopbackV6 || `${pid}:${pid}:${pid}::${pid}`;
           configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
           configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
         }
