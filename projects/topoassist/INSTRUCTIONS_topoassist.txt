@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (Global UI rules 7d/7e/7f added: font scale extended to 5 levels (10/11/12/13/14px); textarea state taxonomy; inline code style. Input state taxonomy CSS (.has-error, :disabled, :read-only, .input-affix) added to Sidebar-css.html. Files: Sidebar-css.html + global ui.md)
+  Last updated: 2026-04-21 (Toolbar edit group reorder: editModeBtn moved to rightmost position — order is now groupRectBtn, nodeSizeMinusBtn, nodeSizePlusBtn, editModeBtn. File: Sidebar.html)
+  Previous: 2026-04-21 (Global UI rules 7d/7e/7f added: font scale extended to 5 levels (10/11/12/13/14px); textarea state taxonomy; inline code style. Input state taxonomy CSS (.has-error, :disabled, :read-only, .input-affix) added to Sidebar-css.html. Files: Sidebar-css.html + global ui.md)
   Previous: 2026-04-21 (Edit Mode button greyed + pointer-events:none in holistic view; auto-exits edit mode when switching to holistic if active. Files: Sidebar-js.html)
   Previous: 2026-04-21 (Fix holistic view model pills missing on direct load — getDeviceMetadata() is async so deviceMetadata was empty when renderHolistic() first ran; fix: re-call renderHolistic(currentData) in the getDeviceMetadata success handler when currentViewMode==='holistic'. Files: Sidebar-js.html)
   Previous: 2026-04-21 (Input state taxonomy CSS: added .input-wrapper.has-error + .error-msg, input:disabled, input:read-only, .input-affix patterns to Sidebar-css.html; global rule 7c added to ui.md + Reference_Card.md. Files: Sidebar-css.html)
