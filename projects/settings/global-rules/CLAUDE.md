@@ -176,10 +176,18 @@ Every modal header must have an SVG × close button (`.btn-modal-close`) as the 
 
 Footer layout by modal type:
 - **View-only** (help, audit, read-only viewers): no footer — header × only
-- **Edit/confirm**: `.modal-actions right-align` — Delete left (`.btn-danger-mono`, hidden) · Cancel · Save
+- **Edit/confirm**: `.modal-actions right-align` — Delete left (`.btn-danger-mono`, `margin-right:auto`, hidden) · Cancel · Save
 - **Action-only**: `.modal-actions right-align` — action buttons only, no close button needed
 - Never duplicate close/cancel across both header AND footer
-- Full pattern: `~/.claude/rules/ui.md` (Rule 21)
+
+Button ordering (left → right): `[Delete isolated-left]` ··· `[Cancel] [Primary Action]`
+- Primary action always **rightmost**; Cancel always immediately left of it
+- Delete always `margin-right: auto; display: none` — never inline with Cancel/Save
+
+Esc key: every new modal must be added to both `modalOrder` array AND `closeFuncs` map
+in the global `keydown` handler — omitting either causes Esc to reset the canvas instead.
+
+Full pattern: `~/.claude/rules/ui.md` (Rule 21)
 
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
