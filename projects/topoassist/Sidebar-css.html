@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.160 | 2026-04-21 18:29:07 -->
+<!-- TopoAssist v260421.161 | 2026-04-21 18:31:48 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2118,7 +2118,7 @@
     flex-shrink: 0;
   }
 
-  /* Gesture/action badges (dbl-click, drag) — same box as search-ex but dark text, centered in key column */
+  /* Gesture/action badges (dbl-click, drag) — fill full 110px key column like .kbd-group */
   .action-ex {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
@@ -2128,8 +2128,10 @@
     border-radius: 4px;
     padding: 2px 6px;
     white-space: nowrap;
-    flex-shrink: 0;
-    justify-self: center; /* center within 110px grid key column */
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    justify-self: stretch;
     text-align: center;
   }
 
