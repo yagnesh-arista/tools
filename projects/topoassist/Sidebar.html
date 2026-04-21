@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.156 | 2026-04-21 18:00:24 -->
+<!-- TopoAssist v260421.157 | 2026-04-21 18:07:35 -->
 <!DOCTYPE html>
 <html>
 
@@ -892,7 +892,7 @@
               </div>
               <div class="shortcut-row">
                 <kbd>v</kbd>
-                <span>VLAN trace mode<span class="shortcut-ctx">Prefills search with "v" — type VLAN ID to trace</span></span>
+                <span>VLAN trace<span class="shortcut-ctx">Type v&lt;VLAN ID&gt; to trace, e.g. v10 or v10,20</span></span>
               </div>
               <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search</span></div>
               <div class="shortcut-row">
@@ -938,7 +938,7 @@
               <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
-                <span>Hard refresh topology data</span>
+                <span>Hard reset — force reload from sheet</span>
               </div>
             </div>
           </div>
@@ -948,41 +948,42 @@
               <div class="shortcut-row"><kbd>?</kbd><span>Open this shortcuts panel</span></div>
               <div class="shortcut-row">
                 <code class="action-ex">dbl-click</code>
-                <span>Toggle Bridge auto-check<span class="shortcut-ctx">Double-click the Bridge icon in toolbar</span></span>
+                <span>Toggle Bridge auto-check<span class="shortcut-ctx">Double-click Bridge icon — auto-verifies physical wiring against the sheet after each data refresh</span></span>
               </div>
             </div>
           </div>
         </div><!-- /help-col left -->
 
-        <!-- Right: Config Search + Card Interactions -->
+        <!-- Right: Config Search + Device Cards -->
         <div class="help-col">
           <div class="shortcut-section">
             <div class="shortcut-section-label">Config Search</div>
             <div class="legend-grid">
-              <div class="shortcut-row"><kbd>Enter</kbd><span>Next match<span class="shortcut-ctx">Find bar inside the Global Config Template modal</span></span></div>
+              <div class="shortcut-row"><kbd>Enter</kbd><span>Next result<span class="shortcut-ctx">Find bar inside View Config modal</span></span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>Shift</kbd><kbd>Enter</kbd></div>
-                <span>Previous match</span>
+                <span>Previous result</span>
               </div>
               <div class="shortcut-row"><kbd>Esc</kbd><span>Clear find &amp; close bar</span></div>
             </div>
           </div>
           <div class="shortcut-section">
-            <div class="shortcut-section-label">Card Interactions</div>
+            <div class="shortcut-section-label">Device Cards</div>
             <div class="legend-grid">
               <div class="shortcut-row">
                 <code class="action-ex">dbl-click</code>
-                <span>Collapse / expand card<span class="shortcut-ctx">Double-click card header — state saved across reloads</span></span>
+                <span>Double-click device header<span class="shortcut-ctx">Collapses / expands the card — state persists across reloads</span></span>
               </div>
               <div class="shortcut-row">
                 <code class="action-ex">drag</code>
-                <span>Resize card width<span class="shortcut-ctx">Drag right edge — width saved per card across reloads</span></span>
+                <span>Drag right edge<span class="shortcut-ctx">Resizes device card width — persists per card across reloads</span></span>
               </div>
             </div>
           </div>
         </div><!-- /help-col right -->
 
       </div><!-- /help-two-col -->
+      <div style="height: 14px;"></div>
 
     </div>
   </div>

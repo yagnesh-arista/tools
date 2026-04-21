@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.156 | 2026-04-21 18:00:58 -->
+<!-- TopoAssist v260421.157 | 2026-04-21 18:07:53 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2118,7 +2118,7 @@
     flex-shrink: 0;
   }
 
-  /* Gesture/action badges (dbl-click, drag) — same box as search-ex but dark text */
+  /* Gesture/action badges (dbl-click, drag) — same box as search-ex but dark text, centered in key column */
   .action-ex {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
@@ -2129,6 +2129,8 @@
     padding: 2px 6px;
     white-space: nowrap;
     flex-shrink: 0;
+    justify-self: center; /* center within 110px grid key column */
+    text-align: center;
   }
 
   /* Always-active notice — shown at top of help modal body */
