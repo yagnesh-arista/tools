@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# topoassist v260421.3 | 2026-04-21 11:32:52
 """
 TopoAssist Device Bridge
 ========================
@@ -28,7 +29,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260420.3"
+VERSION = "260421.1"
 PORT    = 8765
 TIMEOUT = 15  # seconds per device
 
@@ -133,14 +134,14 @@ def _gnmi_val(response):
 
 
 def _parse_internal_vlans(ivlans):
-    """Parse 'show vlan internal' JSON response into a sorted int list.
+    """Parse 'show vlan internal usage' JSON response into a sorted int list.
 
-    EOS returns: {"vlans": {"1025": {...}, "1026": {...}}}
+    EOS returns: {"internalVlans": {"1025": "Ethernet1", "1026": "Ethernet2", ...}}
     Returns [] when the response is empty, None (command failed), or the key is absent.
     """
     if not ivlans:
         return []
-    return sorted(int(vid) for vid in ivlans.get("vlans", {}).keys())
+    return sorted(int(vid) for vid in ivlans.get("internalVlans", {}).keys())
 
 
 def _build_devstatus_ssh(ver, ifs, ivlans):

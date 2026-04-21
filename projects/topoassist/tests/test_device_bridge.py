@@ -1,3 +1,4 @@
+# topoassist v260421.3 | 2026-04-21 11:33:17
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -250,31 +251,33 @@ class TestGnmiVal:
 
 class TestParseInternalVlans:
     def test_empty_dict(self):
-        # No vlans key at all → empty list
+        # No internalVlans key at all → empty list
         assert db._parse_internal_vlans({}) == []
 
     def test_vlans_key_present_but_empty(self):
-        assert db._parse_internal_vlans({"vlans": {}}) == []
+        # EOS actual format: {"internalVlans": {}} → empty list
+        assert db._parse_internal_vlans({"internalVlans": {}}) == []
 
     def test_single_vlan(self):
-        assert db._parse_internal_vlans({"vlans": {"1025": {}}}) == [1025]
+        # EOS maps VLAN id → interface name string
+        assert db._parse_internal_vlans({"internalVlans": {"1025": "Ethernet1"}}) == [1025]
 
     def test_multiple_vlans_returned_sorted(self):
         # EOS JSON key order is not guaranteed — must come back sorted
-        result = db._parse_internal_vlans({"vlans": {"1026": {}, "1024": {}, "1025": {}}})
+        result = db._parse_internal_vlans({"internalVlans": {"1026": "Ethernet2", "1024": "Ethernet1", "1025": "Ethernet3"}})
         assert result == [1024, 1025, 1026]
 
     def test_string_keys_converted_to_int(self):
         # JSON keys are always strings; must be integers in the output
-        result = db._parse_internal_vlans({"vlans": {"1025": {"name": "Ethernet1.100"}}})
+        result = db._parse_internal_vlans({"internalVlans": {"1025": "Ethernet1.100"}})
         assert result == [1025]
         assert all(isinstance(v, int) for v in result)
 
     def test_extra_top_level_keys_ignored(self):
-        # EOS may return other keys alongside "vlans"
+        # EOS may return other keys alongside "internalVlans"
         result = db._parse_internal_vlans({
-            "vlans": {"1025": {}, "1026": {}},
-            "internalMaxVlan": 4094,
+            "internalVlans": {"1025": "Ethernet1", "1026": "Ethernet2"},
+            "maxInternalVlan": 4094,
         })
         assert result == [1025, 1026]
 
