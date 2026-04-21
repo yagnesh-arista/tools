@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.85 | 2026-04-21 15:26:00 -->
+<!-- TopoAssist v260421.87 | 2026-04-21 15:28:57 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.85";  // keep in sync with Code.gs
+const APP_VERSION = "260421.87";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12071,6 +12071,12 @@ setInterval(refreshConfigAges, 30000);
 let _vlanSortKey        = 'id';   // 'id' | 'type' | 'vrf' | 'ports'
 let _vlanConflictsOnly  = false;
 
+// Conflict = the SAME device has the VLAN both user-configured (ports[]) and EOS-internal (internalOn[])
+function _vlanHasConflict(info) {
+  const portDevs = new Set((info.ports || []).map(p => p.device));
+  return (info.internalOn || []).some(d => portDevs.has(d));
+}
+
 function _updateVlanSortBtns() {
   ['Id', 'Type', 'Vrf', 'Ports'].forEach(k => {
     const btn = document.getElementById('vlanSort' + k);
@@ -12110,11 +12116,7 @@ function _applyVlanFilterSort(sorted, vlanMap, q) {
       || (vlanMap[vid].internalOn || []).some(d => d.toLowerCase().includes(q)));
   }
   if (_vlanConflictsOnly) {
-    result = result.filter(vid => {
-      const info = vlanMap[vid];
-      const portDevs = new Set(info.ports.map(p => p.device));
-      return (info.internalOn || []).some(d => portDevs.has(d));
-    });
+    result = result.filter(vid => _vlanHasConflict(vlanMap[vid]));
   }
   result = result.slice();
   if (_vlanSortKey === 'type') {
@@ -12202,9 +12204,7 @@ function renderVlanSummaryTable(sorted, vlanMap) {
   sorted.forEach((vid, i) => {
     const info = vlanMap[vid];
     const isIntOnly = info.type === 'INT';
-    // Conflict only when the SAME device has the VLAN both user-configured and EOS-internal
-    const _portDevices = new Set(info.ports.map(p => p.device));
-    const hasConflict  = (info.internalOn || []).some(d => _portDevices.has(d));
+    const hasConflict = _vlanHasConflict(info);
     const typeColor = isIntOnly ? '#a855f7' : (info.type === 'L3' ? '#f59e0b' : '#60a5fa');
     let portsSummary = info.ports.map(p => p.device + ':' + p.port).join(', ');
     if (info.internalOn && info.internalOn.length) {

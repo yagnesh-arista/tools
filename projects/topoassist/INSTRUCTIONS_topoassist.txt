@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (VLAN Summary conflict filter bug: _applyVlanFilterSort "Conflicts only" filter still used old any-device logic (ports.length>0 && internalOn.length>0); fixed to same-device Set intersection matching renderVlanSummaryTable. File: Sidebar-js.html)
+  Last updated: 2026-04-21 (VLAN conflict logic extracted to _vlanHasConflict(info): single helper used by both _applyVlanFilterSort and renderVlanSummaryTable — prevents future logic drift between filter and display. File: Sidebar-js.html)
+  Previous: 2026-04-21 (VLAN Summary conflict filter bug: _applyVlanFilterSort "Conflicts only" filter still used old any-device logic (ports.length>0 && internalOn.length>0); fixed to same-device Set intersection matching renderVlanSummaryTable. File: Sidebar-js.html)
   Previous: 2026-04-21 (holistic view: LAYOUT + CABLE toolbar sections dimmed (opacity 0.35, pointer-events none) in holistic mode — added id="tbSectionLayout" and id="tbSectionCable" to tb-section divs; updateViewButtons() extended with step 3b loop to set/clear these. EDIT section already handled. Files: Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-21 (lo_base fallback fix: generateBGP() evpn_ipv6 branch and generateBGPEvpnOverlay() both had fallback IPv6 loopback `${pid}:${pid}:${pid}::${pid}` that ignored lo_base; fixed by computing pidLoId=pid+loBase in each — consistent with the populated loopbackV6 field in bgpNeighbors. File: Code.gs)
   Previous: 2026-04-21 (Dev Vis int_mode labels: renamed from 4-char run-together (l2ea, l3es etc.) to dash-separated 5-char (l2-ea, l3-es etc.) for readability. Added .dev-vis-ip-list .dev-vis-name { white-space: nowrap; overflow: hidden } to prevent wrap at panel column width. Files: Sidebar-js.html, Sidebar-css.html)
