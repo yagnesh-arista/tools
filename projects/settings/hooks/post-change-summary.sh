@@ -62,7 +62,15 @@ if [ -z "$cmd" ]; then
     git -C "$REPO" add -- "$REPO/$rel" 2>/dev/null
   done <<< "$uncommitted"
 
-  git -C "$REPO" commit -m "chore: auto-commit session changes" >/dev/null 2>&1
+  # Build a descriptive commit message when real changes exist
+  if [ -n "$file_lines" ]; then
+    # Extract just filenames from file_lines (strip leading spaces and version)
+    changed_names=$(echo "$file_lines" | awk '{print $1}' | paste -sd', ' -)
+    commit_msg="chore: session-end commit — ${changed_names}"
+  else
+    commit_msg="chore: auto-commit session changes"
+  fi
+  git -C "$REPO" commit -m "$commit_msg" >/dev/null 2>&1
   push_result=0
   git -C "$REPO" push >/dev/null 2>&1 || push_result=$?
   exec 9>&-   # release git lock before clasp
