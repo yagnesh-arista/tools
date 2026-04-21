@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.89 | 2026-04-21 15:30:47 -->
+<!-- TopoAssist v260421.90 | 2026-04-21 15:33:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.89";  // keep in sync with Code.gs
+const APP_VERSION = "260421.90";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9987,8 +9987,17 @@ async function pushAllConfigs() {
     return;
   }
 
+  _pushAllStopped = false;
   btn.disabled = true;
   btn.textContent = 'Pushing…';
+
+  const stopPushBtn = document.getElementById('btnStopPush');
+  stopPushBtn.disabled = false;
+  stopPushBtn.textContent = 'Stop Push';
+  stopPushBtn.onclick = function() {
+    _pushAllStopped = true;
+    _resetStopPushBtn();
+  };
 
   // Resolve IPs: management IP from sheet → bridge modal input → hostname fallback (DNS)
   const ips = _getLldpMgmtIps();
@@ -10088,6 +10097,15 @@ async function pushAllConfigs() {
   // Fetch + push + verify each device — rolling window of PUSH_CONCURRENCY concurrent pipelines
   await Promise.allSettled(deviceNames.map(async (name) => {
     await _semAcquire();
+    if (_pushAllStopped) {
+      const rowId    = 'gapr_' + name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeName = escapeHtml(name);
+      completed++;
+      _updateSummary();
+      _setResultRow(rowId, safeName, '#94a3b8', 'skipped', null, null);
+      _semRelease();
+      return;
+    }
     try {
       const rowId    = 'gapr_' + name.replace(/[^a-zA-Z0-9_-]/g, '_');
       const safeName = escapeHtml(name);
@@ -11924,11 +11942,31 @@ function closeIpModal() {
 // GENERATE ALL CONFIGS
 // =====================================================================
 
+let _generateAllAborted = false;
+let _pushAllStopped     = false;
+
+function _resetStopGenerateBtn() {
+  const b = document.getElementById('btnStopGenerate');
+  if (!b) return;
+  b.disabled = true;
+  b.className = 'btn-mono genall-btn';
+  b.textContent = 'Stop';
+  b.onclick = null;
+}
+function _resetStopPushBtn() {
+  const b = document.getElementById('btnStopPush');
+  if (!b) return;
+  b.disabled = true;
+  b.textContent = 'Stop';
+  b.onclick = null;
+}
+
 function openGenerateAllModal() {
   document.getElementById('generateAllLeft').innerHTML =
     '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>';
   document.getElementById('generateAllRight').style.display = 'none';
-  document.getElementById('btnCopyAllConfigs').style.display = 'none';
+  _resetStopGenerateBtn();
+  _resetStopPushBtn();
   const btn = document.getElementById('btnRunGenerateAll');
   btn.disabled = false;
   btn.innerText = 'Generate All';
@@ -11942,10 +11980,26 @@ function closeGenerateAllModal() {
 }
 
 function runGenerateAll() {
-  const btn = document.getElementById('btnRunGenerateAll');
+  _generateAllAborted = false;
+  const btn     = document.getElementById('btnRunGenerateAll');
+  const stopBtn = document.getElementById('btnStopGenerate');
+
   btn.disabled = true;
   btn.innerText = 'Generating...';
-  document.getElementById('btnCopyAllConfigs').style.display = 'none';
+
+  // Activate stop button
+  stopBtn.disabled = false;
+  stopBtn.className = 'btn-mono genall-btn';
+  stopBtn.textContent = 'Stop Generate';
+  stopBtn.onclick = function() {
+    _generateAllAborted = true;
+    _resetStopGenerateBtn();
+    btn.disabled = false;
+    btn.innerText = 'Generate All';
+    document.getElementById('generateAllLeft').innerHTML =
+      '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">Generation stopped.</div>';
+  };
+
   document.getElementById('generateAllLeft').innerHTML =
     '<div style="text-align:center;padding:30px 0;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
     + '<div style="font-size:20px;margin-bottom:10px;">\u23F3</div>'
@@ -11953,9 +12007,11 @@ function runGenerateAll() {
 
   google.script.run
     .withSuccessHandler(function(result) {
+      if (_generateAllAborted) return;
       btn.disabled = false;
       btn.innerText = 'Re-Generate All';
       if (result.error) {
+        _resetStopGenerateBtn();
         document.getElementById('generateAllLeft').innerHTML =
           '<div style="color:var(--error-text,#ef4444);padding:20px;font-family:\'JetBrains Mono\',monospace;font-size:12px;"><b>Error:</b> ' + result.error + '</div>';
         return;
@@ -11976,9 +12032,15 @@ function runGenerateAll() {
         return '! === ' + c.name + ' ===\n' + c.text;
       }).join('\n!\n!\n');
       window._generateAllConfigs = configs;  // [{name, text}] — used by pushAllConfigs()
-      document.getElementById('btnCopyAllConfigs').style.display  = 'inline-block';
+      // Transform Stop → Copy All
+      stopBtn.disabled = false;
+      stopBtn.className = 'btn-success-mono genall-btn';
+      stopBtn.textContent = 'Copy All';
+      stopBtn.onclick = copyAllConfigs;
     })
     .withFailureHandler(function(err) {
+      if (_generateAllAborted) return;
+      _resetStopGenerateBtn();
       btn.disabled = false;
       btn.innerText = 'Retry';
       document.getElementById('generateAllLeft').innerHTML =
