@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.131 | 2026-04-21 16:56:18 -->
+<!-- TopoAssist v260421.132 | 2026-04-21 17:04:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.131";  // keep in sync with Code.gs
+const APP_VERSION = "260421.132";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -66,7 +66,7 @@ const APP_VERSION = "260421.131";  // keep in sync with Code.gs
       requestAnimationFrame(() => {
         drawer.classList.add('open');
         const inp = document.getElementById('statusLogSearch');
-        if (inp) inp.focus();
+        if (inp) inp.focus({ preventScroll: true });
       });
     } else {
       drawer.classList.remove('open');
