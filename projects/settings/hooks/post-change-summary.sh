@@ -158,6 +158,13 @@ while IFS= read -r rel; do
   fname=$(basename "$rel")
   [ -f "$full" ] || continue
 
+  # Skip files where the only diff is the version stamp line (no real changes)
+  nonstamp=$(git -C "$REPO" diff HEAD~1 HEAD -- "$full" 2>/dev/null \
+    | grep '^[+-]' | grep -v '^[+-][+-][+-]' \
+    | grep -cvE 'v[0-9]{6}\.[0-9]+|[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}|git commit: [0-9a-f]+' \
+    || true)
+  [ "${nonstamp:-0}" -eq 0 ] && continue
+
   line1=$(head -1 "$full" 2>/dev/null)
   if echo "$line1" | grep -q '^#!'; then
     stamp_line=$(sed -n '2p' "$full" 2>/dev/null)
