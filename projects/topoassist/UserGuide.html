@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.173 | 2026-04-21 19:18:12 -->
+<!-- TopoAssist v260421.174 | 2026-04-21 19:27:19 -->
 <!DOCTYPE html>
 <html>
 
@@ -697,7 +697,7 @@ clasp login --no-localhost</pre>
       <li><b>Save &amp; Sync</b> rebuilds the sheet with the new schema — existing data is preserved. If orphaned columns are detected (columns no longer in the schema), the Force Sync button turns <b>yellow</b>. A <b>Delete &amp; Sync / Cancel</b> confirmation is shown before data is removed — the schema is the source of truth and orphaned columns cannot be kept.</li>
       <li><b>Schema prefix guard</b> — adding a field key that is a prefix of an existing key (e.g. adding <code>xcvr</code> when <code>xcvr_speed</code> exists) is blocked at both the client and server. This prevents silent data loss during sync.</li>
       <li><b>Apply GSheet Coloring</b> checkbox — re-applies connection backgrounds and conditional rules during sync.</li>
-      <li><b>Debug Logging</b> checkbox — enables verbose debug output to the browser console (F12 → Console). Useful for diagnosing fetch, cache, and LLDP issues. State persists across reloads; toggle off when not needed.</li>
+      <li><b>Debug log in F12</b> checkbox — enables verbose debug output to the browser console (F12 → Console). Useful for diagnosing fetch, cache, and LLDP issues. Off by default; persists across reloads and browser restarts via localStorage. Toggle off when not needed.</li>
     </ul>
     <div class="info-box amber">
       <b>Note:</b> After editing conditional format rules, always run <b>Save &amp; Sync</b> from the Schema Manager to push the changes to the sheet.
