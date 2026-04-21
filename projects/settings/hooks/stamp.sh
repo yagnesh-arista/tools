@@ -116,7 +116,7 @@ for fname in ['Code.gs', 'Sidebar-js.html']:
     except: pass
 PYEOF
 
-    # Re-stamp + git-stage all GAS files so every file ships the same version
+    # Re-stamp all GAS files so every file ships the same version
     STAMPED_EXTRA=""
     for gas in Code.gs Tests.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
       gas_path="$TOPODIR/$gas"
@@ -127,9 +127,17 @@ PYEOF
       else
         stamp_file "$gas_path" "<!-- TopoAssist v${VERSION} | ${DATETIME} -->" "<!-- TopoAssist v"
       fi
-      git -C "$HOME/claude" add "$gas_path" &>/dev/null
       STAMPED_EXTRA="${STAMPED_EXTRA}${gas} "
     done
+
+    # Stage all stamped GAS files under claude-git.lock (prevents index.lock conflicts)
+    exec 8>/tmp/claude-git.lock
+    flock -x 8
+    for gas in Code.gs Tests.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
+      gas_path="$TOPODIR/$gas"
+      [ -f "$gas_path" ] && git -C "$HOME/claude" add "$gas_path" &>/dev/null
+    done
+    exec 8>&-   # release git lock
 
     jq -n --arg ctx "[STAMP] APP_VERSION bumped ${CURRENT_VER} → ${VERSION}. All GAS files re-stamped and staged: ${STAMPED_EXTRA}— commit when ready." \
       '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
