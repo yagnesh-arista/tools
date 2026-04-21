@@ -1,4 +1,4 @@
-// TopoAssist v260421.65 | 2026-04-21 14:50:49
+// TopoAssist v260421.65 | 2026-04-21 14:54:14
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
@@ -3896,7 +3896,8 @@ function getDeviceConfig(deviceName) {
               isEvpn,
               parseInt(ipPrefs.vni_base) || 10000,
               vtepNames,
-              settings
+              settings,
+              ipPrefs
             ),
             blockStatus: "VXLAN Active"
           };
@@ -4124,7 +4125,7 @@ function getDeviceConfig(deviceName) {
       );
       if (hasP2pForOspf) {
         configMap["090_OSPF_UNDERLAY"] = {
-          full: generateOSPF(deviceSheetIndex, mlagState.bgpNeighbors),
+          full: generateOSPF(deviceSheetIndex, mlagState.bgpNeighbors, ipPrefs),
           blockStatus: "OSPFv2 Underlay"
         };
       } else {
@@ -4147,7 +4148,7 @@ function getDeviceConfig(deviceName) {
       );
       if (hasP2pForOspf3) {
         configMap["091_OSPF3_UNDERLAY"] = {
-          full: generateOSPFv3(deviceSheetIndex, mlagState.bgpNeighbors),
+          full: generateOSPFv3(deviceSheetIndex, mlagState.bgpNeighbors, ipPrefs),
           blockStatus: "OSPFv3 Underlay"
         };
       } else {
@@ -5430,8 +5431,10 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
  * Per-interface OSPF commands (point-to-point, area, bfd) are added by
  * generateComplexL3Block() when netSettings.ospf_ipv4 is true.
  */
-function generateOSPF(deviceSheetIndex, bgpNeighbors) {
-  const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
+function generateOSPF(deviceSheetIndex, bgpNeighbors, ipPrefs) {
+  const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+  const loId = deviceSheetIndex + loBase;
+  const routerId = `${loId}.${loId}.${loId}.${loId}`;
 
   // Group non-MLAG P2P interfaces by VRF ("DEFAULT" = default VRF)
   const vrfIntfMap = {};
@@ -5474,8 +5477,10 @@ function generateOSPF(deviceSheetIndex, bgpNeighbors) {
  * Mirrors generateOSPF() but uses `router ospf3 1`. Per-interface commands
  * (`ipv6 ospf 1 area 0.0.0.0`) are added by generateComplexL3Block() when ospf_ipv6=true.
  */
-function generateOSPFv3(deviceSheetIndex, bgpNeighbors) {
-  const routerId = `${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}.${deviceSheetIndex}`;
+function generateOSPFv3(deviceSheetIndex, bgpNeighbors, ipPrefs) {
+  const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+  const loId = deviceSheetIndex + loBase;
+  const routerId = `${loId}.${loId}.${loId}.${loId}`;
 
   // Group non-MLAG P2P interfaces by VRF
   const vrfIntfMap = {};
@@ -5577,7 +5582,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
         lines.push(` neighbor ${pgOvV6} send-community standard extended`);
         lines.push(` neighbor ${pgOvV6} maximum-routes 12000`);
       }
-      const v6Loop = `${pid}:${pid}:${pid}::${pid}`;
+      const v6Loop = peerData.loopbackV6 || `${pid}:${pid}:${pid}::${pid}`;
       lines.push(` neighbor ${v6Loop} peer group ${pgOvV6}`);
       lines.push(` neighbor ${v6Loop} description Overlay to ${peerName} (v6)`);
     }
@@ -5608,11 +5613,12 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 * - [FIX] Flood List is ONLY generated if EVPN is DISABLED.
 * - [FIX] Flood List ONLY includes Leaf VTEPs (GW + P2P), ignoring Spines.
 */
-function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames, settings) {
+function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames, settings, ipPrefs) {
   const lines = [];
   lines.push("!");
   const s = settings || {};
   const addVtepIpv6 = s.vxlan_ipv6;  // gated on explicit VXLAN IPv6 flag only
+  const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
 
   // 1. Calculate My VTEP IP (IPv4 + IPv6)
   let myVtepIpV4 = "";
@@ -5620,8 +5626,8 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
 
   if (isMlag) {
     // Shared IP Logic (Anycast VTEP)
-    const id1 = parseInt(myId) || 0;
-    const id2 = parseInt(peerId) || 0;
+    const id1 = (parseInt(myId) || 0) + loBase;
+    const id2 = (parseInt(peerId) || 0) + loBase;
     const low = Math.min(id1, id2);
     const high = Math.max(id1, id2);
 
@@ -5643,11 +5649,9 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
 
   } else {
     // Standalone Logic
-    // IPv4: 3.3.3.3
-    myVtepIpV4 = `${myId}.${myId}.${myId}.${myId}`;
-
-    // IPv6: 3:3:3::3 <--- UPDATED FOR CONSISTENCY
-    myVtepIpV6 = `${myId}:${myId}:${myId}::${myId}`;
+    const myLoId = (parseInt(myId) || 0) + loBase;
+    myVtepIpV4 = `${myLoId}.${myLoId}.${myLoId}.${myLoId}`;
+    myVtepIpV6 = `${myLoId}:${myLoId}:${myLoId}::${myLoId}`;
 
     lines.push("interface Vxlan1");
     lines.push(" vxlan source-interface Loopback0");
@@ -5684,8 +5688,8 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
         // Shared IP Logic
         const remotePeerObj = allDevices.find(dev => dev.name === remotePeerName);
         if (remotePeerObj) {
-          const id1 = parseInt(d.sheetIndex);
-          const id2 = parseInt(remotePeerObj.sheetIndex);
+          const id1 = parseInt(d.sheetIndex) + loBase;
+          const id2 = parseInt(remotePeerObj.sheetIndex) + loBase;
           const low = Math.min(id1, id2);
           const high = Math.max(id1, id2);
 
@@ -5693,8 +5697,8 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
           remoteVtepIp = `${low}.${low}.${high}.${high}`;
         }
       } else {
-        const rid = d.sheetIndex;
-        remoteVtepIp = `${rid}.${rid}.${rid}.${rid}`;
+        const remoteLoId = parseInt(d.sheetIndex) + loBase;
+        remoteVtepIp = `${remoteLoId}.${remoteLoId}.${remoteLoId}.${remoteLoId}`;
       }
 
       if (remoteVtepIp && remoteVtepIp !== myVtepIpV4) {
