@@ -1,4 +1,4 @@
-# topoassist v260421.3 | 2026-04-21 11:33:17
+# topoassist v260421.38 | 2026-04-21 13:22:59
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -300,7 +300,7 @@ _IFS = {
         "Ethernet2": {"linkStatus": "notconnect"},
     }
 }
-_IVLANS = {"vlans": {"1025": {}, "1026": {}}}
+_IVLANS = {"internalVlans": {"1025": "Ethernet1", "1026": "Ethernet2"}}
 
 
 class TestBuildDevstatusSsh:
