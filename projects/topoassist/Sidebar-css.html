@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.95 | 2026-04-21 15:42:01 -->
+<!-- TopoAssist v260421.98 | 2026-04-21 15:51:58 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -718,7 +718,10 @@
     width: 1px;
     height: 18px;
     background: var(--border);
-    margin: 0 4px
+    margin: 0 4px;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .chk-wrapper {
@@ -806,7 +809,7 @@
 
   .icon-btn {
     background: transparent;
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
@@ -921,6 +924,9 @@
     flex-shrink: 0;
     background: var(--copygroup-border);
     margin: 3px 0;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .view-action {
