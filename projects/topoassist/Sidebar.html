@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.125 | 2026-04-21 16:42:22 -->
+<!-- TopoAssist v260421.126 | 2026-04-21 16:43:12 -->
 <!DOCTYPE html>
 <html>
 
@@ -864,35 +864,122 @@
   </div>
 
   <!-- Help Modal -->
-  <div id="helpModal" class="modal-std" style="width: 460px;">
+  <div id="helpModal" class="modal-std" style="width: min(720px, calc(100vw - 40px));">
     <div class="modal-header" style="background: #334155; color: white;">
-      <div class="modal-header-title">⌨ Shortcuts</div>
+      <div class="modal-header-title" style="display:flex;align-items:center;gap:7px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h6"/></svg>
+        Keyboard Shortcuts &amp; Reference
+      </div>
       <button onclick="closeHelpModal()" class="btn-mono">Close</button>
     </div>
-    <div style="background: var(--bg-modal, #ffffff); overflow-y: auto;">
-      <div class="shortcut-legend">
+    <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
 
-        <div class="shortcut-section">
-          <div class="shortcut-section-label">Navigation</div>
-          <div class="legend-grid">
-            <div class="shortcut-row">
-              <div class="kbd-group"><kbd>/</kbd><span class="kbd-or">or</span><kbd>f</kbd></div>
-              <span>Global Search<span class="shortcut-ctx">Switches to config search when Config modal is open</span></span>
-            </div>
-            <div class="shortcut-row">
-              <kbd>v</kbd>
-              <span>VLAN Trace<span class="shortcut-ctx">Focuses search with v prefix — type VLAN number to trace</span></span>
-            </div>
-            <div class="shortcut-row">
-              <kbd>s</kbd>
-              <span>Toggle Strict Search</span>
+      <!-- Two-column shortcut grid -->
+      <div class="shortcut-legend help-two-col">
+
+        <!-- LEFT COLUMN -->
+        <div class="help-col">
+
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">Navigation</div>
+            <div class="legend-grid">
+              <div class="shortcut-row">
+                <div class="kbd-group"><kbd>/</kbd><span class="kbd-or">or</span><kbd>f</kbd></div>
+                <span>Focus search<span class="shortcut-ctx">In Config modal: focuses config filter instead</span></span>
+              </div>
+              <div class="shortcut-row">
+                <kbd>v</kbd>
+                <span>VLAN trace mode<span class="shortcut-ctx">Prefills search with "v" — type VLAN ID to trace</span></span>
+              </div>
+              <div class="shortcut-row">
+                <kbd>s</kbd>
+                <span>Toggle strict search</span>
+              </div>
             </div>
           </div>
-        </div>
 
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">Reset &amp; Clear</div>
+            <div class="legend-grid">
+              <div class="shortcut-row"><kbd>`</kbd><span>Reset view &amp; clear all filters<span class="shortcut-ctx">Always active — works even while typing</span></span></div>
+              <div class="shortcut-row"><kbd>c</kbd><span>Clear traces &amp; reset<span class="shortcut-ctx">Disabled while typing in an input</span></span></div>
+              <div class="shortcut-row">
+                <span class="search-ex"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                <span>Clear search<span class="shortcut-ctx">× button inside search box (appears when text present)</span></span>
+              </div>
+              <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
+              <div class="shortcut-row">
+                <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
+                <span>Hard refresh topology data</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">General</div>
+            <div class="legend-grid">
+              <div class="shortcut-row"><kbd>?</kbd><span>Open this shortcuts panel</span></div>
+              <div class="shortcut-row">
+                <code class="search-ex">dbl-click</code>
+                <span>Toggle Bridge auto-check<span class="shortcut-ctx">Double-click the Bridge icon in toolbar</span></span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /help-col left -->
+
+        <!-- RIGHT COLUMN -->
+        <div class="help-col">
+
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">Search Autocomplete</div>
+            <div class="legend-grid">
+              <div class="shortcut-row">
+                <div class="kbd-group"><kbd>&#x2191;</kbd><kbd>&#x2193;</kbd></div>
+                <span>Navigate suggestions</span>
+              </div>
+              <div class="shortcut-row">
+                <kbd>Enter</kbd>
+                <span>Select suggestion<span class="shortcut-ctx">Or jump to first match if no item highlighted</span></span>
+              </div>
+              <div class="shortcut-row"><kbd>Esc</kbd><span>Dismiss suggestion list</span></div>
+            </div>
+          </div>
+
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">Config Find Bar</div>
+            <div class="legend-grid">
+              <div class="shortcut-row"><kbd>Enter</kbd><span>Next match</span></div>
+              <div class="shortcut-row">
+                <div class="kbd-group"><kbd>Shift</kbd><kbd>Enter</kbd></div>
+                <span>Previous match</span>
+              </div>
+              <div class="shortcut-row"><kbd>Esc</kbd><span>Clear find &amp; close bar</span></div>
+            </div>
+          </div>
+
+          <div class="shortcut-section">
+            <div class="shortcut-section-label">Card Interactions</div>
+            <div class="legend-grid">
+              <div class="shortcut-row">
+                <code class="search-ex">dbl-click</code>
+                <span>Collapse / expand card<span class="shortcut-ctx">Double-click card header — state saved across reloads</span></span>
+              </div>
+              <div class="shortcut-row">
+                <code class="search-ex">drag</code>
+                <span>Resize card width<span class="shortcut-ctx">Drag right edge — width saved per card across reloads</span></span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /help-col right -->
+      </div><!-- /help-two-col -->
+
+      <!-- Full-width search examples -->
+      <div class="shortcut-legend" style="border-top: 1px solid var(--border-light);">
         <div class="shortcut-section">
           <div class="shortcut-section-label">Search Examples</div>
-          <div class="legend-grid">
+          <div class="help-examples-grid">
             <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Filter by device name</span></div>
             <div class="shortcut-row"><code class="search-ex">SPINE</code><span>Filter by role label</span></div>
             <div class="shortcut-row"><code class="search-ex">l2-et-trunk</code><span>Filter by port mode</span></div>
@@ -903,48 +990,9 @@
             <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded (auto-loads in background)</span></span></div>
           </div>
         </div>
-
-        <div class="shortcut-section">
-          <div class="shortcut-section-label">Reset & Clear</div>
-          <div class="legend-grid">
-            <div class="shortcut-row"><kbd>`</kbd><span>Reset view & clear all filters</span></div>
-            <div class="shortcut-row"><kbd>c</kbd><span>Clear traces & reset<span class="shortcut-ctx">Not active while typing in an input</span></span></div>
-            <div class="shortcut-row"><span class="search-ex"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span><span>Clear search<span class="shortcut-ctx">Button appears inside search box when text is present</span></span></div>
-            <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
-            <div class="shortcut-row">
-              <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
-              <span>Hard refresh topology data</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="shortcut-section">
-          <div class="shortcut-section-label">Card Interactions</div>
-          <div class="legend-grid">
-            <div class="shortcut-row">
-              <code class="search-ex">dbl-click</code>
-              <span>Collapse / expand card<span class="shortcut-ctx">Double-click card header — state saved across reloads</span></span>
-            </div>
-            <div class="shortcut-row">
-              <code class="search-ex">drag</code>
-              <span>Resize card width<span class="shortcut-ctx">Drag right edge — width saved per card across reloads</span></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="shortcut-section">
-          <div class="shortcut-section-label">General</div>
-          <div class="legend-grid">
-            <div class="shortcut-row"><kbd>?</kbd><span>Open this shortcuts panel</span></div>
-            <div class="shortcut-row">
-              <code class="search-ex">dbl-click</code>
-              <span>Toggle Bridge auto-check<span class="shortcut-ctx">Double-click the Bridge icon in the toolbar</span></span>
-            </div>
-          </div>
-        </div>
-
       </div>
-      <div class="help-footer-note">Most shortcuts are disabled while typing in an input — ` and Esc are always active.</div>
+
+      <div class="help-footer-note">Backtick ` and Esc are always active — all other shortcuts are disabled while typing in an input.</div>
     </div>
   </div>
 
