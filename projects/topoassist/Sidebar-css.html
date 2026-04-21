@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.146 | 2026-04-21 17:38:28 -->
+<!-- TopoAssist v260421.147 | 2026-04-21 17:38:47 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1998,6 +1998,27 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px 20px;
+  }
+
+  /* Search section inner 2-col (shortcuts | examples) */
+  .help-search-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 32px;
+    margin-top: 12px;
+  }
+
+  /* Sub-label inside search section */
+  .help-sub-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .shortcut-section {

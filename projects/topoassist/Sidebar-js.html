@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.146 | 2026-04-21 17:38:28 -->
+<!-- TopoAssist v260421.147 | 2026-04-21 17:38:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.146";  // keep in sync with Code.gs
+const APP_VERSION = "260421.147";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4938,7 +4938,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "schemaContainer", "viewCustomContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -4960,12 +4960,15 @@ window.topologyKeyHandler = function (event) {
           "helpModal": closeHelpModal, "reorderModal": attemptCloseManager,
           "editModal": closeEditModal, "ipConfigModal": closeIpModal,
           "globalCfgModal": closeGlobalCfgModal,
+          "pushConfirmModal": cancelPushConfig,
           "bridgeModal": closeBridgeModal,
           "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
           "techModal": closeTechModal, "configModal": closeConfigModal,
           "groupRectModal": closeGroupRectModal,
           "generateAllModal": closeGenerateAllModal,
-          "vlanSummaryModal": closeVlanSummaryModal
+          "vlanSummaryModal": closeVlanSummaryModal,
+          "schemaContainer": attemptCloseSchema,
+          "viewCustomContainer": google.script.host.close
         };
         if (typeof closeFuncs[id] === 'function') {
           closeFuncs[id]();
