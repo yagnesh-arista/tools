@@ -1,17 +1,17 @@
 Re-authenticate clasp for TopoAssist GAS deployment. Run on bus-home:
 
-1. Log in to Google via clasp:
+1. Log in to Google via clasp (use `--no-localhost` — it works and is required for SSH/headless sessions):
    ```bash
-   clasp login
+   cd ~/claude/projects/topoassist && clasp login --no-localhost
    ```
-   This opens a browser — complete the OAuth flow, then credentials are saved to `~/.clasprc.json`.
+   Visit the printed URL in a browser, complete the OAuth flow, then paste the redirect URL back into the terminal. Credentials are saved to `~/.clasprc.json`.
 
 2. Verify authentication succeeded:
    ```bash
    ls ~/.clasprc.json && echo "✓ authenticated"
    ```
 
-3. Test with a dry push:
+3. Push to GAS:
    ```bash
    cd ~/claude/projects/topoassist && clasp push --force
    ```
