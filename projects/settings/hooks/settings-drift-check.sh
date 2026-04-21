@@ -64,7 +64,9 @@ sync_file "$HOME/claude/CLAUDE.md" \
 
 [ -z "$changed_files" ] && exit 0
 
-# Auto-commit and push drifted files
+# Auto-commit and push drifted files (flock: prevent index.lock conflict)
+exec 9>/tmp/claude-git.lock
+flock -x 9
 git -C "$REPO" add -A -- "$SETTINGS_BACKUP" 2>/dev/null
 if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   git -C "$REPO" commit -m "settings: sync external edits —${changed_files}" >/dev/null 2>&1
