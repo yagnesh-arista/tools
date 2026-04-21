@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.1 | 2026-04-21
+# settings v260421.1 | 2026-04-21 11:28:05
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -200,6 +200,8 @@ CLASP_MARKER=/tmp/topoassist_clasp_last_push
 if echo "$cmd_unquoted" | grep -qE 'clasp\s+push'; then
   clasp_status="${clasp_label} push ran ✓"
 elif [ "$gas_changed" -eq 1 ]; then
+  # Check if clasp was pushed recently by the edit hook
+  recently_pushed=0
   if [ -f "$CLASP_MARKER" ]; then
     last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
     now=$(date +%s)
@@ -208,11 +210,18 @@ elif [ "$gas_changed" -eq 1 ]; then
       pushed_at=$(date -d "@${last_push}" '+%H:%M:%S' 2>/dev/null \
         || date -r "${last_push}" '+%H:%M:%S' 2>/dev/null)
       clasp_status="${clasp_label} pushed by edit hook at ${pushed_at} ✓"
-    else
-      clasp_status="${clasp_label} push needed ⚠ (last push was ${age}s ago)"
+      recently_pushed=1
     fi
-  else
-    clasp_status="${clasp_label} push needed ⚠"
+  fi
+  # Not pushed recently — auto-push now
+  if [ "$recently_pushed" -eq 0 ] && [ -n "$gas_project_dir" ]; then
+    push_out=$(cd "$gas_project_dir" && clasp push 2>&1)
+    if echo "$push_out" | grep -qi 'pushed\|push'; then
+      clasp_status="${clasp_label} auto-pushed ✓"
+      date +%s > "$CLASP_MARKER"
+    else
+      clasp_status="${clasp_label} auto-push FAILED — run clasp push manually ✗"
+    fi
   fi
 else
   clasp_status="N/A (no GAS files changed)"
