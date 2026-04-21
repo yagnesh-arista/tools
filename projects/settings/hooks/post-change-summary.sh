@@ -48,7 +48,9 @@ if [ -z "$cmd" ]; then
 
   [ -z "$file_lines" ] && exit 0
 
-  # Auto-commit tracked changes
+  # Auto-commit tracked changes (flock: prevent index.lock conflict with parallel sessions)
+  exec 9>/tmp/claude-git.lock
+  flock -x 9
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     rel="${line:3}"
