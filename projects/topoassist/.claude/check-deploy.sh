@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# topoassist v260421.36 | 2026-04-21 13:14:10
 # TopoAssist three-way sync check: git → local → GAS remote + commit history.
 # Called by /check-deploy command.
 
@@ -42,8 +43,8 @@ echo ""
 echo "── device_bridge.py ──────────────────────────────"
 db_git=$(git -C "$REPO" diff --name-only HEAD -- projects/topoassist/device_bridge.py 2>/dev/null)
 [ -n "$db_git" ] && echo "Git:     DIRTY (uncommitted changes)" && any_issue=true || echo "Git:     clean"
-db_ver_num=$(grep "^VERSION" "$TOPODIR/device_bridge.py" | head -1 | sed "s/VERSION = '//;s/'.*//")
-tmpl_ver=$(grep 'VERSION = ' "$TOPODIR/Sidebar-js.html" | head -1 | sed "s/.*VERSION = '//;s/'.*//")
+db_ver_num=$(grep "^VERSION" "$TOPODIR/device_bridge.py" | head -1 | sed "s/VERSION = ['\"]//;s/['\"].*//")
+tmpl_ver=$(grep -m1 '^VERSION = ' "$TOPODIR/Sidebar-js.html" | sed "s/VERSION = ['\"]//;s/['\"].*//")
 if [ "$db_ver_num" = "$tmpl_ver" ]; then
   echo "VERSION: $db_ver_num ✓"
 else
