@@ -1,10 +1,10 @@
-// TopoAssist v260421.136 | 2026-04-21 17:27:25
+// TopoAssist v260421.137 | 2026-04-21 17:29:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.136";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.137";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1000,8 +1000,11 @@ function auditSchemaVsSheet() {
       }
 
       if (isSubInt) {
-        // Sub-int: VRF count must match vlan_ count
-        const vlanList = vlanRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        // Sub-int: VRF count must match vlan_ count.
+        // Use parseVlanWithNative so nv<N> native-VLAN tokens are excluded — they don't
+        // create sub-interfaces, only real VLAN IDs in _pvL3.vlans do.
+        const pvSub = parseVlanWithNative(vlanRaw);
+        const vlanList = String(pvSub.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
         if (vrfList.length !== vlanList.length) {
           vrfIssues.push({ sev: 'error', msg: label + ': sub-int VRF count (' + vrfList.length + ') must match VLAN count (' + vlanList.length + ') — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
         }
