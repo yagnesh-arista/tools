@@ -1,4 +1,4 @@
-// TopoAssist v260421.80 | 2026-04-21 15:16:06
+// TopoAssist v260421.80 | 2026-04-21 15:17:00
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
@@ -5320,7 +5320,9 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
         }
         if (s.evpn_ipv6) {
           const pid = item.peerId;
-          const v6Loop = item.loopbackV6 || `${pid}:${pid}:${pid}::${pid}`;
+          const bgpLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+          const pidLoId = pid + bgpLoBase;
+          const v6Loop = item.loopbackV6 || `${pidLoId}:${pidLoId}:${pidLoId}::${pidLoId}`;
           configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
           configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
         }
@@ -5584,7 +5586,9 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
         lines.push(` neighbor ${pgOvV6} send-community standard extended`);
         lines.push(` neighbor ${pgOvV6} maximum-routes 12000`);
       }
-      const v6Loop = peerData.loopbackV6 || `${pid}:${pid}:${pid}::${pid}`;
+      const evpnLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+      const pidLoId = pid + evpnLoBase;
+      const v6Loop = peerData.loopbackV6 || `${pidLoId}:${pidLoId}:${pidLoId}::${pidLoId}`;
       lines.push(` neighbor ${v6Loop} peer group ${pgOvV6}`);
       lines.push(` neighbor ${v6Loop} description Overlay to ${peerName} (v6)`);
     }
