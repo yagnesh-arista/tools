@@ -41,8 +41,10 @@ esac
 
 [ "$changed" -eq 0 ] && exit 0
 
-# Auto-commit and push
+# Auto-commit and push (flock: prevent index.lock conflict with parallel sessions)
 fname=$(basename "$f")
+exec 9>/tmp/claude-git.lock
+flock -x 9
 git -C "$REPO" add -A -- "$SETTINGS_BACKUP" 2>/dev/null
 if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   git -C "$REPO" commit -m "settings: auto-sync ${fname}" >/dev/null 2>&1
