@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.44 | 2026-04-21 13:57:57
+# topoassist v260421.160 | 2026-04-21 18:28:31
 """
 TopoAssist Device Bridge
 ========================
@@ -29,9 +29,9 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION           = "260421.2"
+VERSION           = "260421.3"
 PORT              = 8765
-TIMEOUT           = 15  # seconds per SSH attempt
+TIMEOUT           = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 
@@ -693,7 +693,7 @@ if __name__ == "__main__":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s per device")
     print(f"  Endpoints : /health  /lldp  /devstatus")
-    print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST")
+    print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST  BRIDGE_TIMEOUT")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")

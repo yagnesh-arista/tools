@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.159 | 2026-04-21 18:17:28 -->
+<!-- TopoAssist v260421.160 | 2026-04-21 18:29:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.159";  // keep in sync with Code.gs
+const APP_VERSION = "260421.160";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8721,9 +8721,9 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260421.2"
+VERSION = "260421.3"
 PORT    = 8765
-TIMEOUT = 15  # seconds per device
+TIMEOUT = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
 
 # -- Active transport -----------------------------------------------------------
 METHOD = "ssh"      # ssh | eapi | rest | gnmi
@@ -9193,6 +9193,7 @@ if __name__ == "__main__":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s per device")
     print(f"  Endpoints : /health  /lldp  /devstatus")
+    print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST  BRIDGE_TIMEOUT")
     print(f"  -----------------------------------------")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
