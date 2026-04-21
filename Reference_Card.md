@@ -27,6 +27,7 @@ Last updated: 2026-04-21
 | 9 | User feedback for long actions — status before, live elapsed timer, confirm on complete | `rules/` | `rules/quality.md` |
 | 10 | Code quality — no over/under-engineering, match existing conventions | `rules/` | `rules/quality.md` |
 | 11 | Refactoring — surface opportunities, don't act without being asked | `rules/` | `rules/quality.md` |
+| 11a | Reuse and enhance — before writing a new function, find an existing one; extend with optional `opts`; replace all old call sites; never leave parallel implementations alive | `rules/` | `rules/quality.md` |
 | 12 | Security — validate at every system boundary, block on hardcoded secrets | `rules/` | `rules/security.md` |
 | 13 | Tests — real paths, independent, no internal mocks, happy path + edge cases | `rules/` | `rules/testing.md` |
 | 14 | Review — scope/hygiene, bugs, design quality (over/under-engineering), test quality, refactoring opportunities; `/review-global` before every commit | `hooks/` + `commands/` | `hooks/commit-guard.sh`, `commands/review-global.md` |
@@ -170,6 +171,7 @@ All concurrent-write risks are flock-protected:
 | Test rules | `~/.claude/rules/testing.md` | Isolation, mocking, coverage |
 | Commands | `~/.claude/commands/new-project.md` | New project gate |
 | Commands | `~/.claude/commands/review-global.md` | Pre-commit review |
+| Commands | `~/.claude/commands/topoassist-review-memory.md` | INSTRUCTIONS + memory + hooks cross-check — prune stale, resolve conflicts, fill gaps |
 | Hooks | `~/.claude/settings.json` | All automatic enforcement |
 | Backup | `~/claude/projects/settings/` | Restore kit for new machine |
 | Reference | `~/claude/Reference_Card.md` | This file — single source of truth |
