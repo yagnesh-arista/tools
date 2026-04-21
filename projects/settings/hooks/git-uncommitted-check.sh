@@ -24,14 +24,9 @@ for repo in "$PROJECTS_DIR"/*/; do
     summary="$summary $proj(${count})"
 done
 
-# Check the root ~/claude repo itself
-status=$(git -C "$CLAUDE_ROOT" status --porcelain 2>/dev/null)
-if [ -n "$status" ]; then
-    count=$(echo "$status" | grep -c .)
-    summary="$summary claude-root(${count})"
-fi
+# ~/claude root is handled by post-change-summary.sh Stop hook (auto-commits on session end)
 
 if [ -n "$summary" ]; then
-    msg="[GIT] Uncommitted changes detected in:$summary. Remind the user to commit and push before ending the session."
+    msg="[GIT] Uncommitted changes in standalone sub-repos:$summary. Commit and push before ending the session."
     jq -n --arg msg "$msg" '{"systemMessage": $msg}'
 fi
