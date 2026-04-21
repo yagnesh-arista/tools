@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.35 | 2026-04-21 12:54:25
+# settings v260421.40 | 2026-04-21 13:03:13
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -139,10 +139,12 @@ echo "$COMMIT_MSG" | grep -qE '^(chore: auto-commit|settings: (auto-sync|sync ex
 # ── Determine which files to show ────────────────────────────────────────────
 FILE_FILTER='CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|\.template$'
 
+DIFF_RANGE="HEAD~1 HEAD"  # default; updated below if push spans multiple commits
 if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
   prev_remote=$(git -C "$REPO" reflog show --format='%H' origin/main 2>/dev/null \
     | sed -n '2p')
   if [ -n "$prev_remote" ]; then
+    DIFF_RANGE="${prev_remote}..HEAD"
     CHANGED_FILES=$(git -C "$REPO" diff "$prev_remote"..HEAD --name-only 2>/dev/null \
       | grep -v "$FILE_FILTER")
   else
