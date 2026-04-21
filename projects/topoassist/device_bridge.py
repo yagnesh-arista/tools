@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.163 | 2026-04-21 18:45:09
+# topoassist v260421.165 | 2026-04-21 18:54:29
 """
 TopoAssist Device Bridge
 ========================
@@ -29,7 +29,9 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION           = "260421.5"
+VERBOSE = "-v" in sys.argv
+
+VERSION           = "260421.6"
 PORT              = 8765
 TIMEOUT           = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
@@ -334,19 +336,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             break
                         except subprocess.TimeoutExpired:
                             if attempt < PUSH_RETRIES:
+                                if VERBOSE: print(f"  [push] {dev} ({ip}): timeout, retrying (attempt {attempt+1})")
                                 time.sleep(PUSH_RETRY_DELAY); continue
+                            if VERBOSE: print(f"  [push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts")
                             with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                             break
                         except RuntimeError as e:
                             if ("connection refused" in str(e).lower()
                                     or "ssh failed" in str(e).lower()) and attempt < PUSH_RETRIES:
+                                if VERBOSE: print(f"  [push] {dev} ({ip}): {e}, retrying (attempt {attempt+1})")
                                 time.sleep(PUSH_RETRY_DELAY); continue
+                            if VERBOSE: print(f"  [push] {dev} ({ip}): error — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)}
                             break
                         except NotImplementedError as e:
+                            if VERBOSE: print(f"  [push] {dev} ({ip}): not implemented — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)}
                             break
                         except Exception as e:
+                            if VERBOSE: print(f"  [push] {dev} ({ip}): unexpected error — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
                             break
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
@@ -566,7 +574,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
                 raise RuntimeError(f"SSH failed: {err_text.strip()[:120]}")
-            print(f"  [push] {ip}: SSH connected")
+            if VERBOSE: print(f"  [push] {ip}: SSH connected")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
                     "EOS pending session limit reached — Device Bridge will auto-clean "
@@ -574,7 +582,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             diff = _extract_session_diff(output)
             action = "dry-run (aborted)" if dry_run else "committed"
             diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
-            print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
+            if VERBOSE: print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
             return {"ok": True, "diff": diff, "dry_run": dry_run}
 
         raise NotImplementedError(
@@ -676,7 +684,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, fmt, *args):
-        print(f"  [{self.client_address[0]}] {fmt % args}", flush=True)
+        if VERBOSE:
+            print(f"  [{self.client_address[0]}] {fmt % args}", flush=True)
 
 
 if __name__ == "__main__":
@@ -698,6 +707,7 @@ if __name__ == "__main__":
     elif METHOD == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s per device")
+    print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus")
     print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST  BRIDGE_TIMEOUT")
     print(f"  ─────────────────────────────────────")
