@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.75 | 2026-04-21 15:12:20 -->
+<!-- TopoAssist v260421.76 | 2026-04-21 15:12:38 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -724,6 +724,13 @@
     display: flex;
     align-items: center;
     gap: 2px
+  }
+  /* Bare strict checkbox sitting directly in .tb-btns */
+  .tb-btns > input[type="checkbox"] {
+    align-self: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin: 0 2px;
   }
 
   /* ================= 3.2 BUTTONS ================= */

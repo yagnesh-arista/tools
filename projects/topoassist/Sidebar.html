@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.75 | 2026-04-21 15:12:20 -->
+<!-- TopoAssist v260421.76 | 2026-04-21 15:13:41 -->
 <!DOCTYPE html>
 <html>
 
@@ -196,21 +196,11 @@
             <span class="tb-label">SEARCH</span>
             <div class="tb-btns">
               <div class="search-container">
-                <input type="text" class="mono-search" id="searchInp" placeholder="Filter or v10 to trace VLAN..." autocomplete="off">
+                <input type="text" class="mono-search" id="searchInp" placeholder="Filter or v10 to trace VLAN…" autocomplete="off">
                 <button id="searchClear" class="search-clear-btn" title="Clear search" style="display:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 <div id="search-autocomplete" class="search-autocomplete-list hidden"></div>
               </div>
-            </div>
-          </div>
-          <div class="tb-sep"></div>
-          <!-- FILTER -->
-          <div class="tb-section">
-            <span class="tb-label">FILTER</span>
-            <div class="tb-btns">
-              <div class="chk-wrapper">
-                <input type="checkbox" id="strictSearch" onchange="debouncedFilterTopology()">
-                <label for="strictSearch" class="mono-text">Strict</label>
-              </div>
+              <input type="checkbox" id="strictSearch" onchange="debouncedFilterTopology()" title="Strict match — keyword must appear exactly">
             </div>
           </div>
         </div>
@@ -963,7 +953,7 @@
     <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
 
       <input type="text" id="groupRectLabelInp" class="form-input" maxlength="16"
-             placeholder="e.g. Spine Tier, DC-A Leaf..."
+             placeholder="e.g. Spine Tier, DC-A Leaf"
              style="font-family:'JetBrains Mono',monospace; font-size:12px; padding:8px 10px;"
              onkeydown="if(event.key==='Enter') confirmGroupRect()">
 
@@ -1025,7 +1015,7 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="configSearch" placeholder="Filter (e.g. 'router bgp', 'Eth1')..." autocomplete="off">
+          <input type="text" id="configSearch" placeholder="Filter…" autocomplete="off">
           <button id="configSearchClear" class="btn-clear hidden" onclick="clearConfigSearch()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <span id="configMatchCount" class="match-badge hidden">0 matches</span>
@@ -1077,7 +1067,7 @@
       <button onclick="closeVlanSummaryModal()" class="btn-mono">Close</button>
     </div>
     <div style="padding:12px 16px 8px;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
-      <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN ID or device…"
+      <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN or device…"
         oninput="filterVlanSummary()"
         style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-main);font-family:'JetBrains Mono',monospace;font-size:12px;">
       <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
