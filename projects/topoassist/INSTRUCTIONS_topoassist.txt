@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (Input state taxonomy CSS: added .input-wrapper.has-error + .error-msg, input:disabled, input:read-only, .input-affix patterns to Sidebar-css.html; global rule 7c added to ui.md + Reference_Card.md. Files: Sidebar-css.html)
+  Last updated: 2026-04-21 (Fix holistic view model pills missing on direct load — getDeviceMetadata() is async so deviceMetadata was empty when renderHolistic() first ran; fix: re-call renderHolistic(currentData) in the getDeviceMetadata success handler when currentViewMode==='holistic'. Files: Sidebar-js.html)
+  Previous: 2026-04-21 (Input state taxonomy CSS: added .input-wrapper.has-error + .error-msg, input:disabled, input:read-only, .input-affix patterns to Sidebar-css.html; global rule 7c added to ui.md + Reference_Card.md. Files: Sidebar-css.html)
   Previous: 2026-04-21 (info-box--dim input styling: typed value now italic + font-weight:400 (readable but annotation-style); ::placeholder already #94a3b8 italic. Global rule updated in ui.md + memory. Files: Sidebar-css.html)
   Previous: 2026-04-21 (Fix ReferenceError: maxSavedX is not defined in holistic view — stale `maxSavedX -= shiftX` in auto-shift block was dead code left from old maxSavedX+PAD node-seeding approach; removed. Files: Sidebar-js.html)
   Previous: 2026-04-21 (Snake Test info-box dim UX: added ::placeholder rule — font-style/color don't cascade into input ::placeholder, so .info-box--dim .input-wrapper input::placeholder { color:#94a3b8; font-style:italic } added explicitly. Files: Sidebar-css.html)

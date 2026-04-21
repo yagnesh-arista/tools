@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.29 | 2026-04-21 12:58:06 -->
+<!-- TopoAssist v260421.31 | 2026-04-21 13:00:12 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.29";  // keep in sync with Code.gs
+const APP_VERSION = "260421.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8225,7 +8225,15 @@ function fetchData(force, autoVerify, silent) {
 
       // Pre-load device metadata so topology card model lines are populated before bridge runs
       google.script.run
-        .withSuccessHandler(meta => { if (meta) { Object.assign(deviceMetadata, meta); _refreshModelLines(); } })
+        .withSuccessHandler(meta => {
+          if (meta) {
+            Object.assign(deviceMetadata, meta);
+            _refreshModelLines();
+            // Re-render holistic pills — deviceMetadata was empty when renderHolistic first ran
+            // (getDeviceMetadata is async so it resolves after the initial render completes)
+            if (currentViewMode === 'holistic' && currentData) renderHolistic(currentData);
+          }
+        })
         .withFailureHandler(() => {})
         .getDeviceMetadata();
 
