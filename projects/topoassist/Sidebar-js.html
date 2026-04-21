@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.174 | 2026-04-21 19:26:51 -->
+<!-- TopoAssist v260421.175 | 2026-04-21 19:32:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.174";  // keep in sync with Code.gs
+const APP_VERSION = "260421.175";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -477,6 +477,8 @@ function initApp() {
       initLayoutObserver();
     }
 
+    // Apply drag to all standard (non-fullscreen) modals + bridge floating modal
+    document.querySelectorAll('.modal-std:not(.modal-large)').forEach(m => _makeDraggable(m));
     // Bridge: set up drag, restore icon state, silent startup check
     _initLldpModalDrag();
     _updateBridgeToolbarIcon('idle');
@@ -6229,7 +6231,7 @@ function showAuditResults(data) {
     const borderHead = vrfErrors.length > 0 ? '#fecaca' : '#fed7aa';
     html += `<div style="margin-bottom:15px;border:1px solid ${borderCol};background:#fff;border-radius:6px;overflow:hidden;">
 <div style="background:${bgHead};padding:8px 12px;font-weight:bold;color:${textHead};font-size:12px;border-bottom:1px solid ${borderHead};font-family:'JetBrains Mono',monospace;">
-${vrfErrors.length > 0 ? '✕' : '⚠'} Per-VLAN VRF Issues (${vrfIssues.length})
+${vrfErrors.length > 0 ? 'ERR' : 'WARN'} Per-VLAN VRF Issues (${vrfIssues.length})
 </div>
 <div style="padding:10px;font-size:11px;line-height:1.6;max-height:180px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
 ${vrfIssues.map(i => `<div style="margin-bottom:5px;color:${i.sev === 'error' ? '#b91c1c' : '#92400e'};">
@@ -6241,7 +6243,7 @@ ${vrfIssues.map(i => `<div style="margin-bottom:5px;color:${i.sev === 'error' ? 
   if (internalConflicts.length > 0) {
     html += `<div style="margin-bottom:15px;border:1px solid #f97316;background:#fff7ed;border-radius:6px;overflow:hidden;">
 <div style="background:#ffedd5;padding:8px 12px;font-weight:bold;color:#c2410c;font-size:12px;border-bottom:1px solid #fed7aa;font-family:'JetBrains Mono',monospace;">
-⚠ Internal VLAN Conflicts (${internalConflicts.length} port${internalConflicts.length > 1 ? 's' : ''})
+WARN Internal VLAN Conflicts (${internalConflicts.length} port${internalConflicts.length > 1 ? 's' : ''})
 </div>
 <div style="padding:10px;font-size:11px;color:#9a3412;line-height:1.6;max-height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
 ${internalConflicts.map(c => `<div style="margin-bottom:6px;border-bottom:1px solid #fed7aa;padding-bottom:4px;">
@@ -9248,15 +9250,6 @@ if __name__ == "__main__":
 
 function openBridgeModal() {
   const modal = document.getElementById('bridgeModal');
-  // Restore last dragged position (default: top-right via CSS)
-  try {
-    const savedPos = JSON.parse(localStorage.getItem('bridgeModalPos') || 'null');
-    if (savedPos && typeof savedPos.left === 'string' && typeof savedPos.top === 'string' &&
-        parseFloat(savedPos.left) >= 0 && parseFloat(savedPos.top) >= 0) {
-      modal.style.left = savedPos.left; modal.style.top = savedPos.top;
-      modal.style.right = 'auto'; modal.style.transform = 'none';
-    }
-  } catch (e) { localStorage.removeItem('bridgeModalPos'); }
   modal.style.display = 'flex';
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
@@ -9480,38 +9473,9 @@ function toggleBridgeMinimize() {
     : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
 }
 
-// Make the bridge modal draggable by its header.
+// Make the bridge modal draggable — delegates to unified _makeDraggable.
 function _initLldpModalDrag() {
-  const modal  = document.getElementById('bridgeModal');
-  const header = document.getElementById('bridgeModalHeader');
-  if (!header || !modal) return;
-  header.addEventListener('mousedown', e => {
-    if (e.target.closest('button')) return; // buttons stay clickable
-    e.preventDefault();
-    // Anchor to absolute top/left if currently using default CSS right/transform
-    if (!modal.style.left || modal.style.left === 'auto') {
-      const r = modal.getBoundingClientRect();
-      modal.style.left = r.left + 'px'; modal.style.top = r.top + 'px';
-      modal.style.right = 'auto'; modal.style.transform = 'none';
-    }
-    const startX = e.clientX - modal.offsetLeft;
-    const startY = e.clientY - modal.offsetTop;
-    document.body.style.cursor = 'grabbing';
-    const onMove = ev => {
-      const tb     = document.querySelector('.toolbar');
-      const minTop = tb ? tb.getBoundingClientRect().bottom + 4 : 0;
-      modal.style.left = Math.min(Math.max(0, ev.clientX - startX), window.innerWidth  - modal.offsetWidth)  + 'px';
-      modal.style.top  = Math.min(Math.max(minTop, ev.clientY - startY), window.innerHeight - modal.offsetHeight) + 'px';
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
-      document.body.style.cursor = '';
-      localStorage.setItem('bridgeModalPos', JSON.stringify({ left: modal.style.left, top: modal.style.top }));
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-  });
+  _makeDraggable('bridgeModal', { saveKey: 'bridgeModalPos', noReset: true, toolbarGap: true });
 }
 
 // Auto-detect management IPs from Ma0/Management0 entries in allNodesData.
@@ -9972,7 +9936,6 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   }
   body.innerHTML = html;
   modal.style.display = 'flex';
-  _makeDraggable('pushConfirmModal');
 }
 
 // Write push phase status to both #status (sidebar) and #cfgPushStatus (config modal footer)
@@ -10009,7 +9972,7 @@ async function commitPushConfig() {
     `<span id="${id}" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${initColor};">${initText}</span></div>`;
 
   if (bodyEl) bodyEl.innerHTML =
-    _ptRowHtml('Phase 1: Dry-run', 'pt1', '#10b981', '✓ diff ready') +
+    _ptRowHtml('Phase 1: Dry-run', 'pt1', '#10b981', 'diff ready') +
     _ptRowHtml('Phase 2: Commit',  'pt2', '#94a3b8', 'committing…') +
     _ptRowHtml('Phase 3: Verify',  'pt3', '#64748b', 'pending…') +
     '<div id="pt_detail" style="margin-top:6px;"></div>';
@@ -10059,7 +10022,7 @@ async function commitPushConfig() {
       const errMsg = reachable
         ? 'Push timed out — device reachable, verify config manually'
         : 'No response — device unreachable or push timed out';
-      _ptSet('pt2', '#f87171', '✗ timed out');
+      _ptSet('pt2', '#f87171', 'timed out');
       _ptSet('pt3', '#475569', '—');
       _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(errMsg)}</div>`);
       if (titleEl) titleEl.textContent = 'Push Timed Out';
@@ -10070,7 +10033,7 @@ async function commitPushConfig() {
     } else if (res.ok) {
       // Phase 2 success → start Phase 3
       const retryNote = lastAttempt > 1 ? ` (${lastAttempt - 1} retr${lastAttempt === 2 ? 'y' : 'ies'})` : '';
-      _ptSet('pt2', '#10b981', `✓ committed${retryNote}`);
+      _ptSet('pt2', '#10b981', `committed${retryNote}`);
       _ptSet('pt3', '#94a3b8', 'verifying…');
       if (commitBtn) commitBtn.style.display = 'none';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
@@ -10087,7 +10050,7 @@ async function commitPushConfig() {
           const rem = (vRes.diff || '').split('\n')
             .filter(l => l.startsWith('+') || l.startsWith('-')).length;
           if (rem === 0) {
-            _ptSet('pt3', '#10b981', '✓ no diff remaining');
+            _ptSet('pt3', '#10b981', 'no diff remaining');
             if (titleEl) titleEl.textContent = 'Push Successful';
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
               `<span style="color:#10b981;font-weight:600;">Push successful, no config diff</span>`);
@@ -10099,7 +10062,7 @@ async function commitPushConfig() {
           } else {
             // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
-            _ptSet('pt3', '#f59e0b', `⚠ ${rem} line${rem !== 1 ? 's' : ''} still differ`);
+            _ptSet('pt3', '#f59e0b', `${rem} line${rem !== 1 ? 's' : ''} still differ`);
             if (titleEl) titleEl.textContent = 'Partial Push';
             let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#0f172a;border-radius:4px;` +
               `padding:8px;overflow-x:auto;max-height:220px;white-space:pre;margin:0;">`;
@@ -10115,13 +10078,13 @@ async function commitPushConfig() {
             _setPushStatus(`<b>${label || deviceName}</b> — ` +
               `<span style="color:#f59e0b;font-weight:600;">${rem} line${rem !== 1 ? 's' : ''} still differ after push</span>`);
             if (btn) {
-              btn.textContent = '⚠ Partial';
+              btn.textContent = 'Partial';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 4000);
             }
           }
         } else {
           const vErrSafe = escapeHtml(vRes.error || 'something went wrong');
-          _ptSet('pt3', '#f87171', '✗ verify failed');
+          _ptSet('pt3', '#f87171', 'verify failed');
           if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
           _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
           if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
@@ -10131,7 +10094,7 @@ async function commitPushConfig() {
         }
       } catch (verifyErr) {
         const vErrSafe = escapeHtml(verifyErr.message);
-        _ptSet('pt3', '#f87171', '✗ verify error');
+        _ptSet('pt3', '#f87171', 'verify error');
         if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
         _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
         if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
@@ -10142,7 +10105,7 @@ async function commitPushConfig() {
     } else {
       // Phase 2 explicit device error
       const errSafe = escapeHtml(res.error || 'something went wrong');
-      _ptSet('pt2', '#f87171', '✗ push failed');
+      _ptSet('pt2', '#f87171', 'push failed');
       _ptSet('pt3', '#475569', '—');
       _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}</div>`);
       if (titleEl) titleEl.textContent = 'Push Failed';
@@ -10154,7 +10117,7 @@ async function commitPushConfig() {
   } catch (err) {
     // Network/bridge error
     const errSafe = escapeHtml(err.message);
-    _ptSet('pt2', '#f87171', '✗ network error');
+    _ptSet('pt2', '#f87171', 'network error');
     _ptSet('pt3', '#475569', '—');
     _ptDetail(
       `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}<br>` +
@@ -10171,67 +10134,88 @@ async function commitPushConfig() {
 }
 
 
-function _makeDraggable(modalId) {
-  const modal = document.getElementById(modalId);
+/**
+ * _makeDraggable(elOrId, opts) — unified drag-by-header for all modals/panels.
+ *
+ * opts.headerSel  {string}  CSS selector for drag handle (default: '.modal-header')
+ * opts.saveKey    {string}  localStorage key — saves on drag end, restores at init
+ * opts.noReset    {bool}    if true, keep position when element is hidden (floating panels)
+ * opts.toolbarGap {bool}    if true, clamp top to below .toolbar bottom edge
+ */
+function _makeDraggable(elOrId, opts) {
+  const o     = opts || {};
+  const modal = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
   if (!modal) return;
-  const header = modal.querySelector('.modal-header');
-  if (!header) return;
-  // Guard against double-attach across re-opens
-  if (header.dataset.draggable) return;
+  const header = modal.querySelector(o.headerSel || '.modal-header');
+  if (!header || header.dataset.draggable) return; // guard double-attach
   header.dataset.draggable = '1';
   modal.classList.add('modal-draggable');
 
-  // Convert from transform-centered to explicit top/left on first drag
-  function _anchorModal() {
-    const r = modal.getBoundingClientRect();
-    modal.style.transform = 'none';
-    modal.style.top  = r.top  + 'px';
-    modal.style.left = r.left + 'px';
+  // Restore persisted position for panels that save across sessions
+  if (o.saveKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(o.saveKey) || 'null');
+      if (saved && typeof saved.left === 'string' && typeof saved.top === 'string' &&
+          parseFloat(saved.left) >= 0 && parseFloat(saved.top) >= 0) {
+        modal.style.left      = saved.left;
+        modal.style.top       = saved.top;
+        modal.style.right     = '';
+        modal.style.bottom    = '';
+        modal.style.transform = 'none';
+      }
+    } catch (e) { localStorage.removeItem(o.saveKey); }
   }
 
-  function _clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+  // Auto-reset to CSS-centered position whenever the element is hidden
+  if (!o.noReset) {
+    new MutationObserver(() => {
+      const d = modal.style.display;
+      if (d === 'none' || d === '') {
+        modal.style.transform = '';
+        modal.style.top       = '';
+        modal.style.left      = '';
+      }
+    }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+  }
 
-  let dragging = false, startX, startY, startL, startT;
+  // On first drag: convert right/bottom or transform-centered to explicit top/left
+  function _anchor() {
+    if (modal.style.left && modal.style.left !== 'auto') return;
+    const r           = modal.getBoundingClientRect();
+    modal.style.transform = 'none';
+    modal.style.right     = '';
+    modal.style.bottom    = '';
+    modal.style.left      = r.left + 'px';
+    modal.style.top       = r.top  + 'px';
+  }
 
   header.addEventListener('mousedown', function(e) {
-    // Don't drag when clicking buttons inside header
     if (e.target.closest('button')) return;
     e.preventDefault();
-    if (modal.style.transform !== 'none') _anchorModal();
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    startL = parseFloat(modal.style.left) || 0;
-    startT = parseFloat(modal.style.top)  || 0;
+    _anchor();
+    const startX = e.clientX, startY = e.clientY;
+    const startL = parseFloat(modal.style.left) || 0;
+    const startT = parseFloat(modal.style.top)  || 0;
     header.style.cursor = 'grabbing';
-  });
 
-  document.addEventListener('mousemove', function(e) {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    const mw = modal.offsetWidth;
-    const mh = modal.offsetHeight;
-    const maxL = window.innerWidth  - mw;
-    const maxT = window.innerHeight - mh;
-    modal.style.left = _clamp(startL + dx, 0, maxL) + 'px';
-    modal.style.top  = _clamp(startT + dy, 0, maxT) + 'px';
-  });
-
-  document.addEventListener('mouseup', function() {
-    if (dragging) {
-      dragging = false;
-      header.style.cursor = '';
+    function onMove(ev) {
+      const mw = modal.offsetWidth, mh = modal.offsetHeight;
+      const tb = o.toolbarGap ? document.querySelector('.toolbar') : null;
+      const minTop = tb ? tb.getBoundingClientRect().bottom + 4 : 0;
+      modal.style.left = Math.max(0,      Math.min(startL + ev.clientX - startX, window.innerWidth  - mw)) + 'px';
+      modal.style.top  = Math.max(minTop, Math.min(startT + ev.clientY - startY, window.innerHeight - mh)) + 'px';
     }
+    function onUp() {
+      header.style.cursor = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      if (o.saveKey) {
+        localStorage.setItem(o.saveKey, JSON.stringify({ left: modal.style.left, top: modal.style.top }));
+      }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
   });
-}
-
-function _resetModalPosition(modalId) {
-  const modal = document.getElementById(modalId);
-  if (!modal) return;
-  modal.style.transform = '';
-  modal.style.top  = '';
-  modal.style.left = '';
 }
 
 function toggleModalMinimize(modalId) {
@@ -10268,7 +10252,6 @@ function closePushConfirmModal() {
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
   if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
-  _resetModalPosition('pushConfirmModal');
 }
 
 function pushLinkSide(side) {
@@ -11613,7 +11596,7 @@ function submitCustomView() {
   setBtnLoading(btn, true, "Applying...");
   google.script.run
     .withSuccessHandler(() => {
-      btn.innerText = "✓ Applied";
+      btn.innerText = "Applied";
       btn.style.background = "var(--success)";
       btn.disabled = false;
       setTimeout(() => {
@@ -11967,7 +11950,7 @@ function _copyToClipboard(text, btnEl) {
   const doFeedback = () => {
     if (!btnEl) return;
     const orig = btnEl.innerText;
-    btnEl.innerText = '✔ Copied';
+    btnEl.innerText = 'Copied';
     btnEl.style.color = '#10b981';
     setTimeout(() => { btnEl.innerText = orig; btnEl.style.color = ''; }, 2000);
   };
@@ -12312,13 +12295,11 @@ function openGenerateAllModal() {
   btn.innerText = 'Generate All';
   document.getElementById('generateAllModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
-  _makeDraggable('generateAllModal');
 }
 
 function closeGenerateAllModal() {
   document.getElementById('generateAllModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
-  _resetModalPosition('generateAllModal');
 }
 
 function runGenerateAll() {
@@ -13394,50 +13375,8 @@ function applyDeviceVisibility() {
 }
 
 
+// DevVis panel drag — delegates to unified _makeDraggable.
 function initDevVisPanelDrag() {
-  const panel = document.getElementById('devVisPanel');
-  if (!panel || panel._dragInit) return;
-  panel._dragInit = true;
-
-  // Convert right/bottom CSS to left/top once so top-clamping is straightforward
-  function anchorToLeftTop() {
-    if (panel.style.left) return;
-    const r = panel.getBoundingClientRect();
-    panel.style.right  = '';
-    panel.style.bottom = '';
-    panel.style.left   = r.left + 'px';
-    panel.style.top    = r.top  + 'px';
-  }
-
-  panel.addEventListener('mousedown', e => {
-    // Allow scroll inside device list and normal interaction on buttons/inputs
-    if (e.target.closest('button, input, .dev-vis-list')) return;
-    e.preventDefault();
-    anchorToLeftTop();
-
-    const r        = panel.getBoundingClientRect();
-    const startX   = e.clientX;
-    const startY   = e.clientY;
-    const startL   = r.left;
-    const startT   = r.top;
-    panel.style.transition = 'none';
-    document.body.style.cursor = 'grabbing';
-
-    const onMove = ev => {
-      const tb      = document.querySelector('.toolbar');
-      const minTop  = tb ? tb.getBoundingClientRect().bottom + 4 : 0;
-      const maxLeft = window.innerWidth  - panel.offsetWidth;
-      const maxTop  = window.innerHeight - panel.offsetHeight;
-      panel.style.left = Math.min(Math.max(0,      startL + (ev.clientX - startX)), maxLeft) + 'px';
-      panel.style.top  = Math.min(Math.max(minTop, startT + (ev.clientY - startY)), maxTop)  + 'px';
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
-      document.body.style.cursor = '';
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-  });
+  _makeDraggable('devVisPanel', { headerSel: '.dev-vis-header', noReset: true, toolbarGap: true });
 }
 </script >

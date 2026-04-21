@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.169 | 2026-04-21 19:04:17
+# topoassist v260421.175 | 2026-04-21 19:28:13
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260421.1","port":8765}
+  GET  /health      → {"status":"ok","version":"260421.9","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff

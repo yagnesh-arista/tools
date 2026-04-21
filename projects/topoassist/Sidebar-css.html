@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.174 | 2026-04-21 19:26:51 -->
+<!-- TopoAssist v260421.175 | 2026-04-21 19:32:27 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3375,9 +3375,11 @@
   .modal-minimized > *:not(.modal-header) { display: none !important; }
   .modal-minimized { min-height: 0 !important; height: auto !important; }
 
-  /* Draggable modal header — show move cursor */
-  .modal-draggable .modal-header { cursor: move; }
-  .modal-draggable .modal-header button { cursor: pointer; }
+  /* Draggable modal/panel header — show move cursor */
+  .modal-draggable .modal-header,
+  .modal-draggable .dev-vis-header { cursor: move; }
+  .modal-draggable .modal-header button,
+  .modal-draggable .dev-vis-header button { cursor: pointer; }
 
   .btn-primary-mono {
     background: #3b82f6;
@@ -4868,8 +4870,6 @@
   }
   .dev-vis-panel.is-open { display: flex; }
 
-  .dev-vis-panel.is-open { cursor: grab; }
-  .dev-vis-panel.is-open:active { cursor: grabbing; }
   .dev-vis-panel button,
   .dev-vis-panel input { cursor: pointer; }
   .dev-vis-list { cursor: default; }
