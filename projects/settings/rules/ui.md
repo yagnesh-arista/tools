@@ -52,14 +52,25 @@ Static reference panels (hint text, examples, formula keys, auto-derived value p
 ## Placeholder Text Must Be Styled Explicitly (Never Inherited)
 `::placeholder` does NOT inherit `color`, `font-style`, `font-weight`, or `opacity` from any parent element — the browser resets all inherited styles on `::placeholder`.
 
-**Rule:** Whenever a container applies color or font-style to dim/annotate its content (e.g. `info-box--dim`), any `<input>` inside must also have an explicit `::placeholder` rule to match:
+**Rule:** Whenever a container applies color or font-style to dim/annotate its content (e.g. `info-box--dim`), any `<input>` inside needs two explicit rules:
+
+1. **Typed value** — readable but soft: italic + normal weight signals annotation context without sacrificing legibility:
+```css
+.my-dim-container input {
+  font-style: italic;
+  font-weight: 400;   /* override the default bold 600 */
+}
+```
+
+2. **Placeholder** — `::placeholder` resets ALL inherited styles; must be explicit:
 ```css
 .my-dim-container input::placeholder {
   color: #94a3b8;
   font-style: italic;
 }
 ```
-**Checklist:** After adding any color/font-style rule to a container that holds inputs — always add the matching `::placeholder` rule. Never assume it will cascade.
+
+**Checklist:** After adding any color/font-style rule to a container that holds inputs — always add both rules above. Never assume either cascades.
 
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.

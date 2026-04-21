@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.26 | 2026-04-21 12:51:39 -->
+<!-- TopoAssist v260421.27 | 2026-04-21 12:52:37 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3057,7 +3057,8 @@
   /* ip-row labels inside dim boxes (e.g. Snake Test) — override the default #64748b */
   .info-box--dim .ip-label { color: #94a3b8; font-weight: 500; }
   .info-box--dim .input-wrapper label { color: #94a3b8; }
-  .info-box--dim .input-wrapper input { background: var(--bg-body); }
+  /* Typed value: readable (full contrast) but italic + normal weight signals annotation context */
+  .info-box--dim .input-wrapper input { background: var(--bg-body); font-style: italic; font-weight: 400; }
   /* Placeholder text — font-style/color don't cascade into ::placeholder, must be explicit */
   .info-box--dim .input-wrapper input::placeholder { color: #94a3b8; font-style: italic; }
   /* Auto-derived box */
