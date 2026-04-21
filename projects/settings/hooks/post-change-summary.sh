@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.25 | 2026-04-21 12:34:41
+# settings v260421.26 | 2026-04-21 12:34:52
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -213,7 +213,9 @@ CLASP_MARKER=/tmp/topoassist_clasp_last_push
 if echo "$cmd_unquoted" | grep -qE 'clasp\s+push'; then
   clasp_status="${clasp_label} push ran ✓"
 elif [ "$gas_changed" -eq 1 ]; then
-  # Check if clasp was pushed recently by the edit hook
+  # All CLASP_MARKER reads, clasp push, and CLASP_MARKER writes under one lock
+  exec 8>/tmp/clasp-topoassist.lock
+  flock -x 8
   recently_pushed=0
   if [ -f "$CLASP_MARKER" ]; then
     last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
@@ -236,6 +238,7 @@ elif [ "$gas_changed" -eq 1 ]; then
       clasp_status="${clasp_label} auto-push FAILED — run clasp push manually ✗"
     fi
   fi
+  exec 8>&-   # release clasp lock
 else
   clasp_status="N/A (no GAS files changed)"
 fi
