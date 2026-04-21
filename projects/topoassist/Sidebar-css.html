@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.65 | 2026-04-21 14:50:49 -->
+<!-- TopoAssist v260421.67 | 2026-04-21 14:55:51 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1408,6 +1408,49 @@
     background: #fef9c3;
     color: #854d0e;
     border: 1px solid #fef08a;
+  }
+
+  .type-port {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+  }
+
+  /* Search autocomplete section header (Devices / Ports) */
+  .search-section-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 12px 3px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-light);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Matched substring highlight inside autocomplete items */
+  .search-hl {
+    background: #fef08a;
+    color: #713f12;
+    border-radius: 2px;
+    padding: 0 1px;
+    font-style: normal;
+  }
+
+  /* Secondary context line inside autocomplete item (which field matched) */
+  .search-item-ctx {
+    display: block;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
   }
 
   .search-no-results {

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.65 | 2026-04-21 14:54:04 -->
+<!-- TopoAssist v260421.67 | 2026-04-21 14:58:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.65";  // keep in sync with Code.gs
+const APP_VERSION = "260421.67";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3410,6 +3410,7 @@ function filterTopology() {
   let visibleMaxY = 0;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   let hasMatch = false;
+  let deviceMatchCount = 0;
   let matchedPortIds = new Set();
 
   nodes.forEach(function (n) {
@@ -3486,6 +3487,7 @@ function filterTopology() {
         if ((nodeTop + nodeHeight) > visibleMaxY) visibleMaxY = nodeTop + nodeHeight;
 
         hasMatch = true;
+        deviceMatchCount++;
         if (nodeLeft < minX) minX = nodeLeft;
         if (nodeTop < minY) minY = nodeTop;
         if (nodeLeft + nodeWidth > maxX) maxX = nodeLeft + nodeWidth;
@@ -3532,7 +3534,8 @@ function filterTopology() {
 
     let st = document.getElementById("status");
     if (st) {
-      st.innerText = "Showing " + matchedPortIds.size + " matches";
+      const portCount = matchedPortIds.size;
+      st.innerText = deviceMatchCount + " device" + (deviceMatchCount !== 1 ? "s" : "") + " · " + portCount + " port" + (portCount !== 1 ? "s" : "");
       st.classList.remove("status-error");
     }
   } else if (!hasMatch && input !== "") {
@@ -5031,6 +5034,19 @@ function checkSearchMatch(fullText, term) {
     // LOOSE MODE: Standard includes
     return fullText.includes(term);
   }
+}
+
+/* Wrap the first occurrence of query in the label with <mark class="search-hl"> */
+function highlightMatch(text, query) {
+  if (!query || !text) return _escHtml(text || '');
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return _escHtml(text);
+  return _escHtml(text.slice(0, idx))
+    + '<mark class="search-hl">' + _escHtml(text.slice(idx, idx + query.length)) + '</mark>'
+    + _escHtml(text.slice(idx + query.length));
+}
+function _escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function highlightPort(portId, isActive) {
@@ -6682,6 +6698,15 @@ function bindGlobalSearchListeners() {
       searchInp.focus();
     });
   }
+
+  // "/" shortcut: focus search from anywhere (skip if already in an input)
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/") return;
+    const tag = (document.activeElement || {}).tagName || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    e.preventDefault();
+    searchInp && searchInp.focus();
+  });
 }
 
 /**
@@ -11655,7 +11680,15 @@ function copyInterfaceConfig() {
       const deviceLabel = port.device || '';
       const hasIp = /\d+\.\d+\.\d+/.test(searchText);
       const category = hasIp ? 'ip' : d.vlan_ ? 'vlan' : 'port';
-      results.push({ type: category, label: `${deviceLabel} → ${port.name}`, portId, target: portEl, parentNode, className: `type-${category}` });
+      // Determine which field drove the match for context display
+      const fieldChecks = [
+        { key: 'desc', val: d.desc_ }, { key: 'vrf', val: d.vrf_ },
+        { key: 'vlan', val: d.vlan_ }, { key: 'mode', val: d.sp_mode_ },
+        { key: 'ip', val: d.ip_type_ }, { key: 'po', val: d.po_ },
+      ];
+      const mf = fieldChecks.find(f => f.val && String(f.val).toLowerCase().includes(query));
+      const matchCtx = (mf && !port.name.toLowerCase().includes(query)) ? `${mf.key}: ${mf.val}` : null;
+      results.push({ type: category, label: `${deviceLabel} → ${port.name}`, portId, target: portEl, parentNode, className: `type-${category}`, matchCtx });
     });
 
     if (results.length === 0) {
@@ -11671,11 +11704,24 @@ function copyInterfaceConfig() {
     // Auto-select first item when there's only one match — feels "complete"
     if (total === 1) selectedIdx = 0;
 
+    let lastSection = null;
     results.slice(0, 12).forEach(res => {
+      // Section header: Devices / Ports — insert when section changes
+      const section = (res.type === 'node' || res.type === 'trace') ? 'Devices' : 'Ports';
+      if (section !== lastSection) {
+        const hdr = document.createElement('div');
+        hdr.className = 'search-section-header';
+        hdr.textContent = section;
+        list.appendChild(hdr);
+        lastSection = section;
+      }
+
       const item = document.createElement('div');
       item.className = 'search-item';
-      const badge = res.badge ? `<span class="item-role-badge">${res.badge}</span>` : '';
-      item.innerHTML = `<span>${res.label}${badge}</span><span class="item-type ${res.className}">${res.type}</span>`;
+      const hlLabel = highlightMatch(res.label, query);
+      const badge = res.badge ? `<span class="item-role-badge">${_escHtml(res.badge)}</span>` : '';
+      const ctx = res.matchCtx ? `<span class="search-item-ctx">${_escHtml(res.matchCtx)}</span>` : '';
+      item.innerHTML = `<span>${hlLabel}${badge}${ctx}</span><span class="item-type ${res.className}">${res.type}</span>`;
       item.onclick = () => {
         list.classList.add('hidden');
         selectedIdx = -1;
