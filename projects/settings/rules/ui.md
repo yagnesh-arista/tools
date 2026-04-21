@@ -49,28 +49,38 @@ Static reference panels (hint text, examples, formula keys, auto-derived value p
 - Warning/error banners (colored background) are excluded — never apply dim styling to those.
 - Proactively add info boxes to every modal/panel; ask the user if content is unclear.
 
-## Placeholder Text Must Be Styled Explicitly (Never Inherited)
-`::placeholder` does NOT inherit `color`, `font-style`, `font-weight`, or `opacity` from any parent element — the browser resets all inherited styles on `::placeholder`.
+## Input Text State Taxonomy
 
-**Rule:** Whenever a container applies color or font-style to dim/annotate its content (e.g. `info-box--dim`), any `<input>` inside needs two explicit rules:
+Every `<input>` has distinct text states. Each must be styled explicitly — none inherit reliably from parent containers.
 
-1. **Typed value** — readable but soft: italic + normal weight signals annotation context without sacrificing legibility:
+| State | When | Target | Required styles |
+|---|---|---|---|
+| **Label** | Always visible beside input | `<label>`, `.ip-label` | `font-family`, `font-size`, `color`, `user-select: none` |
+| **Placeholder** | Input is empty | `::placeholder` | `color: #94a3b8`, `font-style: italic` — **never inherits**, always explicit |
+| **Value** | User has typed | `input` element | `font-family`, `font-size`, `color: var(--text-main)` |
+| **Focus** | Input has keyboard focus | `input:focus` | `border-color: #3b82f6`, `box-shadow: 0 0 0 2px rgba(59,130,246,0.1)`, `outline: none` |
+| **Error** | Validation failed | `input-wrapper.has-error input` + `.error-msg` span | Input: `border-color: #ef4444`, box-shadow tint. Error text: `color: #ef4444`, `font-size: 11px`, `font-weight: 500` |
+| **Disabled** | `input:disabled` | `input:disabled` | `color: #94a3b8`, `background: var(--bg-body)`, `cursor: not-allowed`, `opacity: 0.6` |
+| **Read-only** | `input:read-only` | `input:read-only` | `color: var(--text-main)`, `background: var(--bg-body)`, `cursor: default`, `user-select: text` (copyable) |
+| **Prefix / Suffix** | Static unit beside input | `.input-affix` span | `color: #94a3b8`, `font-size: 12px`, `font-weight: 400`, `user-select: none` |
+| **Helper / Info** | Annotation outside input | `info-box info-box--dim` | Left-accent border, `font-style: italic`, `color: #94a3b8` |
+
+### Dim-container rule (e.g. `info-box--dim`)
+When inputs live inside an annotation container, override both the value AND placeholder explicitly — neither cascades:
 ```css
-.my-dim-container input {
-  font-style: italic;
-  font-weight: 400;   /* override the default bold 600 */
-}
+.my-dim-container input            { font-style: italic; font-weight: 400; }
+.my-dim-container input::placeholder { color: #94a3b8; font-style: italic; }
 ```
 
-2. **Placeholder** — `::placeholder` resets ALL inherited styles; must be explicit:
-```css
-.my-dim-container input::placeholder {
-  color: #94a3b8;
-  font-style: italic;
-}
+### Error pattern
+Add `.has-error` to the `.input-wrapper`; place a `.error-msg` span immediately after the input:
+```html
+<div class="input-wrapper has-error">
+  <label>Field</label>
+  <input type="text" ...>
+  <span class="error-msg">Required</span>
+</div>
 ```
-
-**Checklist:** After adding any color/font-style rule to a container that holds inputs — always add both rules above. Never assume either cascades.
 
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.

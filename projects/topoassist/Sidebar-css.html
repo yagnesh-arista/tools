@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.27 | 2026-04-21 12:52:37 -->
+<!-- TopoAssist v260421.29 | 2026-04-21 12:58:06 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3179,6 +3179,51 @@
     border-color: #3b82f6;
     background: var(--bg-card);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1)
+  }
+
+  /* Error state — add .has-error to the .input-wrapper */
+  .input-wrapper.has-error input {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1)
+  }
+  .input-wrapper .error-msg {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: #ef4444;
+    margin-top: 2px;
+    user-select: none;
+    -webkit-user-select: none
+  }
+
+  /* Disabled state */
+  .input-wrapper input:disabled {
+    color: #94a3b8;
+    background: var(--bg-body);
+    border-color: var(--border-light);
+    cursor: not-allowed;
+    opacity: 0.6
+  }
+  .input-wrapper input:disabled::placeholder { color: #b8c5d6; }
+
+  /* Read-only state — selectable/copyable, visually distinct from editable */
+  .input-wrapper input:read-only {
+    color: var(--text-main);
+    background: var(--bg-body);
+    border-color: var(--border-light);
+    cursor: default;
+    user-select: text;
+    -webkit-user-select: text
+  }
+
+  /* Prefix / Suffix — static unit text beside an input */
+  .input-affix {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    color: #94a3b8;
+    user-select: none;
+    -webkit-user-select: none
   }
 
   .ip-section-rows {
