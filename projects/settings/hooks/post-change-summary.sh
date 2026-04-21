@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.23 | 2026-04-21 12:34:21
+# settings v260421.25 | 2026-04-21 12:34:41
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -181,7 +181,10 @@ done <<< "$CHANGED_FILES"
 unpushed=$(git -C "$REPO" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
 if echo "$cmd_unquoted" | grep -qE 'git\s+commit' && ! echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
   if [ "$unpushed" -gt 0 ]; then
+    exec 9>/tmp/claude-git.lock
+    flock -x 9
     git -C "$REPO" push >/dev/null 2>&1 && unpushed=0
+    exec 9>&-   # release git lock before clasp
   fi
 fi
 
