@@ -248,31 +248,6 @@ function initLayoutObserver() {
   window.adjustLayout = adjustTop;
 }
 
-// --- TOOLBAR COLLAPSE ---
-let isToolbarCollapsed = false;
-
-function initToolbarCollapse() {
-  const saved = localStorage.getItem('portmap-toolbar-collapsed');
-  if (saved === 'true') {
-    isToolbarCollapsed = true;
-    applyToolbarCollapse(false); // layout triggered later by initLayoutObserver
-  }
-}
-
-function toggleToolbarCollapse() {
-  isToolbarCollapsed = !isToolbarCollapsed;
-  localStorage.setItem('portmap-toolbar-collapsed', isToolbarCollapsed);
-  applyToolbarCollapse(true);
-}
-
-function applyToolbarCollapse(triggerLayout) {
-  const toolbar = document.getElementById('mainToolbar');
-  const secondaryRow = document.querySelector('.secondary-row');
-  if (secondaryRow) secondaryRow.style.display = isToolbarCollapsed ? 'none' : '';
-  if (toolbar) toolbar.classList.toggle('toolbar-collapsed', isToolbarCollapsed);
-  if (triggerLayout && typeof window.adjustLayout === 'function') window.adjustLayout();
-}
-
 // --- THEME MANAGEMENT ---
 function initTheme() {
   const saved = localStorage.getItem('portmap-theme');
@@ -326,7 +301,6 @@ function syncToolbarTooltips() {
 
 function initApp() {
   initTheme();
-  initToolbarCollapse();
   syncToolbarTooltips();
   applyValidationState();
   applyBoldTextPref();
