@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.166 | 2026-04-21 18:58:27 -->
+<!-- TopoAssist v260421.167 | 2026-04-21 19:02:12 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -863,6 +863,22 @@
   .icon-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed
+  }
+
+  /* Segmented-group host for panel 1 icon-btn groups — no individual borders, dividers instead */
+  .segmented-group .icon-btn {
+    border: none;
+    border-radius: 4px;
+  }
+  .segmented-group .icon-btn:not(:last-child) {
+    border-right: 1px solid var(--border);
+    border-radius: 4px 0 0 4px;
+  }
+  .segmented-group .icon-btn:not(:first-child) {
+    border-radius: 0 4px 4px 0;
+  }
+  .segmented-group .icon-btn:not(:first-child):not(:last-child) {
+    border-radius: 0;
   }
 
   .btn-action {
@@ -1872,19 +1888,6 @@
     background: rgba(245, 158, 11, 0.08) !important;
   }
   .dev-label-pill { cursor: pointer; }
-  .audit-group-box {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    gap: 0;
-  }
-  .audit-group-box .icon-btn {
-    border-radius: 0;
-    border: none;
-  }
-  .audit-group-box .icon-btn + .icon-btn { border-left: 1px solid var(--border); }
   #btnAuditOnly.active {
     background: #ef4444 !important;
     color: white !important;
