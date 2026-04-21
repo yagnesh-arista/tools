@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.39 | 2026-04-21 13:24:32 -->
+<!-- TopoAssist v260421.40 | 2026-04-21 13:33:05 -->
 <!DOCTYPE html>
 <html>
 
@@ -60,18 +60,12 @@
         </div>
 
         <div class="ui-group right-group">
-          <!-- Edit group -->
+          <!-- Edit -->
           <button class="icon-btn" id="editModeBtn" onclick="toggleEditMode()" title="Edit Interface">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
           </button>
           <div class="divider-v"></div>
-          <!-- Appearance group -->
-          <button class="icon-btn" id="boldTextBtn" onclick="toggleBoldText()" title="Toggle bold node labels" style="font-weight:900;">B</button>
-          <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch to dark mode">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
-          <div class="divider-v"></div>
-          <!-- Modals group -->
+          <!-- Config -->
           <button class="icon-btn" data-modal="techModal" onclick="openTechModal()" title="Network Tech Stack">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg>
           </button>
@@ -81,29 +75,29 @@
           <button class="icon-btn" data-modal="globalCfgModal" onclick="openGlobalCfgModal()" title="Global Configuration Template">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg>
           </button>
+          <button class="icon-btn" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="Generate All Configs">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          <div class="divider-v"></div>
+          <!-- View -->
           <button class="icon-btn" data-modal="vlanSummaryModal" onclick="openVlanSummaryModal()" title="VLAN Summary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
           </button>
           <button class="icon-btn" id="devVisPanelBtn" onclick="toggleDevVisPanelOpen()" title="Device Visibility Panel">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          <button id="btnBridgeToolbar" class="icon-btn" onclick="onBridgeIconClick()" title="Device Bridge (double-click to enable/disable auto-check)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
-            <span id="bridgeOrphanBadge" class="audit-badge bridge-orphan-badge hidden"></span>
-          </button>
-          <div class="divider-v"></div>
-          <!-- Export group -->
           <button class="icon-btn" onclick="downloadPNG(this)" title="Topology Snapshot">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
           </button>
           <button class="icon-btn" data-modal="cablingModal" onclick="openCablingModal()" title="Export Cabling Report">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg>
           </button>
-          <button class="icon-btn" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="Generate All Configs">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          </button>
           <div class="divider-v"></div>
-          <!-- Audit group (outlined box) -->
+          <!-- Audit -->
+          <button id="btnBridgeToolbar" class="icon-btn" onclick="onBridgeIconClick()" title="Device Bridge (double-click to enable/disable auto-check)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+            <span id="bridgeOrphanBadge" class="audit-badge bridge-orphan-badge hidden"></span>
+          </button>
           <div class="audit-group-box">
             <button class="icon-btn" data-modal="auditModal" id="validateBtn" onclick="toggleValidationMode()" title="Configuration Audit">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -113,6 +107,12 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </button>
           </div>
+          <div class="divider-v"></div>
+          <!-- Appearance -->
+          <button class="icon-btn" id="boldTextBtn" onclick="toggleBoldText()" title="Toggle bold node labels" style="font-weight:900;">B</button>
+          <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch to dark mode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
           <div class="divider-v"></div>
           <!-- Help -->
           <button class="icon-btn" onclick="openHelpModal()" title="Shortcuts">
