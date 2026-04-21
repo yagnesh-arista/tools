@@ -29,9 +29,9 @@ cd tools/projects/topoassist
 **3. Install clasp & authenticate**
 ```bash
 npm install -g @google/clasp
-clasp login
+clasp login --no-localhost
 ```
-A browser window opens — sign in with the Google account that owns the sheet.
+Clasp prints a Google OAuth URL — open it in a browser, sign in with the Google account that owns the sheet, then paste the redirect URL back into the terminal. Use `--no-localhost` so the flow works on remote/SSH machines where localhost:8888 is not reachable.
 
 **4. Point clasp at your script & push**
 

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.3 | 2026-04-21 11:33:32 -->
+<!-- TopoAssist v260421.4 | 2026-04-21 11:51:00 -->
 <!DOCTYPE html>
 <html>
 
@@ -330,8 +330,8 @@ cd tools/projects/topoassist</pre>
     <div class="step-box">
       <span class="step-num">Step 3 — Install clasp &amp; authenticate</span>
       <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">npm install -g @google/clasp
-clasp login</pre>
-      <p style="margin-top:6px;">A browser window opens — sign in with the Google account that owns the sheet.</p>
+clasp login --no-localhost</pre>
+      <p style="margin-top:6px;">Clasp prints a Google OAuth URL — open it in a browser, sign in with the Google account that owns the sheet, then paste the redirect URL back into the terminal. Use <code>--no-localhost</code> so the flow works on remote/SSH machines where localhost:8888 is not reachable.</p>
     </div>
 
     <div class="step-box">

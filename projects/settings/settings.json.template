@@ -1,6 +1,9 @@
 {
   "apiKeyHelper": "~/.claude/api-key-helper.sh",
   "includeCoAuthoredBy": false,
+  "permissions": {
+    "defaultMode": "auto"
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -8,13 +11,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/topoassist-stamp.sh",
-            "statusMessage": "Stamping TopoAssist file with version/date/commit..."
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/project-stamp.sh",
-            "statusMessage": "Stamping project file with version/date/commit..."
+            "command": "bash ~/.claude/hooks/stamp.sh",
+            "statusMessage": "Stamping file with version/date..."
           },
           {
             "type": "command",
@@ -40,11 +38,6 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/topoassist-pytest-check.sh",
             "statusMessage": "Running TopoAssist pytest + checking test coverage..."
-          },
-          {
-            "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ \"$f\" = \"$HOME/claude/projects/topoassist/device_bridge.py\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"[SYNC] device_bridge.py changed \u2014 you MUST also update the embedded template inside downloadBridgeScript() in Sidebar-js.html and do a GAS push. VERSION must match in both files.\\\"}}\"; fi 2>/dev/null || true",
-            "statusMessage": "Checking device_bridge.py / Sidebar-js.html template sync..."
           },
           {
             "type": "command",
@@ -84,6 +77,11 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/post-change-summary.sh",
             "statusMessage": "Building change summary..."
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rollback-logger.sh",
+            "statusMessage": "Checking for revert/rollback to log..."
           }
         ]
       },
@@ -114,7 +112,7 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/winnow-auth-check.sh",
-            "statusMessage": "Winnow tool failure \u2014 checking auth..."
+            "statusMessage": "Winnow tool failure — checking auth..."
           }
         ]
       }
@@ -125,17 +123,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); content=$(echo \"$input\" | jq -r '.tool_input.content // .tool_input.new_string // \"\"'); if [ -n \"$content\" ]; then ext=\"${f##*.}\"; issues=\"\"; sec=$(echo \"$content\" | grep -icE '(password|secret|api_key|apikey|token|auth_token)\\s*=' 2>/dev/null); [ \"${sec:-0}\" -gt 0 ] && issues=\"$issues [POSSIBLE_SECRETS:$sec]\"; skip_debug=0; case \"$ext\" in md|txt|json|yaml|yml|toml) skip_debug=1 ;; esac; echo \"$f\" | grep -q '/.claude/hooks/' && skip_debug=1; if [ \"$skip_debug\" -eq 0 ]; then dbg=$(echo \"$content\" | grep -cE 'console\\.(log|debug|warn|error)\\(|debugger;|pdb\\.set_trace|breakpoint\\(\\)|var_dump\\(' 2>/dev/null); todo=$(echo \"$content\" | grep -cE '\\b(TODO|FIXME|HACK|XXX)\\b' 2>/dev/null); [ \"${dbg:-0}\" -gt 0 ] && issues=\"$issues [DEBUG_STATEMENTS:$dbg]\"; [ \"${todo:-0}\" -gt 0 ] && issues=\"$issues [UNRESOLVED_TODOS:$todo]\"; fi; if [ -n \"$issues\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"PRE-WRITE SCAN FAILED:$issues \u2014 fix these before writing this file.\\\"}}\"; fi; fi",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); content=$(echo \"$input\" | jq -r '.tool_input.content // .tool_input.new_string // \"\"'); if [ -n \"$content\" ]; then ext=\"${f##*.}\"; issues=\"\"; sec=$(echo \"$content\" | grep -icE '(password|secret|api_key|apikey|token|auth_token)\\s*=' 2>/dev/null); [ \"${sec:-0}\" -gt 0 ] && issues=\"$issues [POSSIBLE_SECRETS:$sec]\"; skip_debug=0; case \"$ext\" in md|txt|json|yaml|yml|toml) skip_debug=1 ;; esac; echo \"$f\" | grep -q '/.claude/hooks/' && skip_debug=1; if [ \"$skip_debug\" -eq 0 ]; then dbg=$(echo \"$content\" | grep -cE 'console\\.(log|debug|warn|error)\\(|debugger;|pdb\\.set_trace|breakpoint\\(\\)|var_dump\\(' 2>/dev/null); todo=$(echo \"$content\" | grep -cE '\\b(TODO|FIXME|HACK|XXX)\\b' 2>/dev/null); [ \"${dbg:-0}\" -gt 0 ] && issues=\"$issues [DEBUG_STATEMENTS:$dbg]\"; [ \"${todo:-0}\" -gt 0 ] && issues=\"$issues [UNRESOLVED_TODOS:$todo]\"; fi; if [ -n \"$issues\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"PRE-WRITE SCAN FAILED:$issues — fix these before writing this file.\\\"}}\"; fi; fi",
             "statusMessage": "Scanning content for debug code, secrets, TODOs..."
           },
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -q '/claude/projects/topoassist/' && ! echo \"$f\" | grep -q 'INSTRUCTIONS_' && ! echo \"$f\" | grep -q 'CLAUDE.md'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You are about to modify a TopoAssist file. Before proceeding, confirm you have read INSTRUCTIONS_topoassist.txt (especially Section 24: HARD DESIGN CONSTRAINTS). Key rules: (1) canonicalizeInterface() is duplicated in Code.gs+Sidebar-js.html \u2014 keep in sync; (2) generateConfig() needs exactly 5 params; (3) use hasKey() not .has() for device names; (4) bump VERSION in both device_bridge.py AND Sidebar-js.html template.\\\"}}\"; fi",
-            "statusMessage": "Checking TopoAssist pre-edit requirements..."
-          },
-          {
-            "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ -n \"$f\" ] && [ -f \"$f\" ] && echo \"$f\" | grep -q '$HOME/claude/projects/'; then if ! git -C \"$(dirname \"$f\")\" rev-parse --git-dir > /dev/null 2>&1; then proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); bdir=\"$proj/.claude/backups\"; mkdir -p \"$bdir\"; ts=$(date +%Y%m%d_%H%M%S); fname=$(basename \"$f\"); cp \"$f\" \"$bdir/${fname}.${ts}.bak\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"[WARNING] $(basename $proj) has no git repo \u2014 this project is unprotected. Run: git init $proj && git -C $proj add -A && git -C $proj commit -m 'Initial commit'. Backup created: .claude/backups/${fname}.${ts}.bak\\\"}}\"; fi; fi",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ -n \"$f\" ] && [ -f \"$f\" ] && echo \"$f\" | grep -q '$HOME/claude/projects/'; then if ! git -C \"$(dirname \"$f\")\" rev-parse --git-dir > /dev/null 2>&1; then proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); bdir=\"$proj/.claude/backups\"; mkdir -p \"$bdir\"; ts=$(date +%Y%m%d_%H%M%S); fname=$(basename \"$f\"); cp \"$f\" \"$bdir/${fname}.${ts}.bak\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"[WARNING] $(basename $proj) has no git repo — this project is unprotected. Run: git init $proj && git -C $proj add -A && git -C $proj commit -m 'Initial commit'. Backup created: .claude/backups/${fname}.${ts}.bak\\\"}}\"; fi; fi",
             "statusMessage": "Backing up file before edit (non-git project)..."
           }
         ]
@@ -147,16 +140,6 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/commit-guard.sh",
             "statusMessage": "Scanning staged diff before commit..."
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/rollback-logger.sh",
-            "statusMessage": "Checking for revert/rollback to log..."
           }
         ]
       },
@@ -190,6 +173,15 @@
             "statusMessage": "Checking for uncommitted changes..."
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/post-change-summary.sh",
+            "statusMessage": "Checking for uncommitted changes after skill completion..."
+          }
+        ]
       }
     ],
     "Notification": [
@@ -206,8 +198,5 @@
   },
   "enabledPlugins": {},
   "autoUpdatesChannel": "stable",
-  "skipAutoPermissionPrompt": true,
-  "permissions": {
-    "defaultMode": "auto"
-  }
+  "skipAutoPermissionPrompt": true
 }
