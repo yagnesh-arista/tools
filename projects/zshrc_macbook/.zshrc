@@ -1,4 +1,4 @@
-# zshrc_macbook v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
+# zshrc_macbook v260421.1 | 2026-04-21 10:53:08
 # Managed via ~/claude/projects/zshrc_macbook/ on bus-home
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
@@ -11,6 +11,12 @@ bus0() {
     echo -ne "\033]0;bus-home\007"
     arista-ssh check-auth >/dev/null 2>&1 || arista-ssh login >/dev/null 2>&1
     ssh bus-home
+}
+
+busclaude() {
+    echo -ne "\033]0;bus-claude\007"
+    arista-ssh check-auth >/dev/null 2>&1 || arista-ssh login >/dev/null 2>&1
+    ssh -t bus-home 'cd ~/claude && ./lclaude'
 }
 
 bus() {
