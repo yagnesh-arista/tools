@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.137 | 2026-04-21 17:29:37 -->
+<!-- TopoAssist v260421.137 | 2026-04-21 17:30:32 -->
 <!DOCTYPE html>
 <html>
 
@@ -391,7 +391,7 @@
   <div id="techModal" class="modal-std" style="width: 640px;">
     <div class="modal-header">
       <div class="modal-header-title">Network Tech Stack</div>
-      <button onclick="closeTechModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeTechModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 18px 22px; font-family: 'JetBrains Mono', monospace;">
 
@@ -506,7 +506,7 @@
   <div id="ipConfigModal" class="modal-std modal-medium" style="width: 620px;">
     <div class="modal-header">
       <div class="modal-header-title">Auto Config</div>
-      <button onclick="closeIpModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeIpModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="ip-modal-body">
 
@@ -715,6 +715,7 @@
         <div class="modal-header-title">Global Configuration Template</div>
         <div class="modal-header-subtitle">Commands prepended to every Arista device config (NTP, logging, AAA, etc.)</div>
       </div>
+      <button class="btn-modal-close" onclick="closeGlobalCfgModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="gcfg-find-bar">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;color:var(--text-muted)">
@@ -755,7 +756,7 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button id="btnBridgeMinimize" onclick="toggleBridgeMinimize()" class="btn-mono" title="Minimize" style="padding:2px 8px;font-size:14px;line-height:1;">−</button>
-        <button onclick="closeBridgeModal()" class="btn-mono">Close</button>
+        <button class="btn-modal-close" onclick="closeBridgeModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
     </div>
     <div id="bridgeModalBody" style="padding:14px 16px;overflow-y:auto;max-height:430px;">
@@ -802,7 +803,6 @@
       </div>
     </div>
     <div class="modal-actions right-align">
-      <button class="btn-mono" onclick="closeBridgeModal()">Close</button>
       <button class="btn-mono" onclick="downloadBridgeScript()">Download Bridge</button>
       <button class="btn-primary-mono" id="btnRunBridge" onclick="runBridgeCheck()" disabled>Run Checks</button>
     </div>
@@ -815,7 +815,7 @@
         <div id="pushConfirmTitle" class="modal-header-title">Confirm Config Push</div>
         <div class="modal-header-subtitle" id="pushConfirmSubtitle" style="font-family:'JetBrains Mono',monospace;"></div>
       </div>
-      <button id="btnCancelPushHdr" onclick="cancelPushConfig()" class="btn-mono">Cancel</button>
+      <button class="btn-modal-close" onclick="cancelPushConfig()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="pushConfirmBody" style="padding:14px 16px;overflow-y:auto;max-height:360px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div>
     <div class="modal-actions right-align">
@@ -828,7 +828,7 @@
   <div id="cablingModal" class="modal-std modal-body-padded">
     <div class="modal-header">
       <div class="modal-header-title">Export Cabling Report</div>
-      <button onclick="closeCablingModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeCablingModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 20px;">
       <div class="export-title">⬡ Topology Patching List</div>
@@ -870,7 +870,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h6"/></svg>
         Shortcuts Help
       </div>
-      <button onclick="closeHelpModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeHelpModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
 
@@ -903,10 +903,7 @@
             <div class="legend-grid">
               <div class="shortcut-row"><kbd>`</kbd><span>Reset view &amp; clear all filters<span class="shortcut-ctx">Always active — works even while typing</span></span></div>
               <div class="shortcut-row"><kbd>c</kbd><span>Clear traces &amp; reset<span class="shortcut-ctx">Disabled while typing in an input</span></span></div>
-              <div class="shortcut-row">
-                <code class="search-ex">×</code>
-                <span>Clear search<span class="shortcut-ctx">Button inside search box (appears when text present)</span></span>
-              </div>
+
               <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
@@ -1000,10 +997,10 @@
   <div id="editModal" class="modal-std">
     <div class="modal-header">
       <div class="modal-header-title" id="modalTitle">Edit Interface</div>
-      <button class="btn-mono" onclick="closeEditModal()">Close</button>
+      <button class="btn-modal-close" onclick="closeEditModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="modalContent" class="modal-body-scroll"></div>
-    <div class="modal-actions">
+    <div class="modal-actions right-align">
       <button id="btnDelete" class="btn-danger-mono" style="margin-right:auto; display:none;" onclick="deletePort()">Delete</button>
       <button class="btn-mono" onclick="closeEditModal()">Cancel</button>
       <button id="btnSaveEdit" class="btn-success-mono" onclick="saveEdit()">Save</button>
@@ -1014,7 +1011,7 @@
   <div id="auditModal" class="modal-std modal-medium">
     <div class="modal-header">
       <div class="modal-header-title">Configuration Audit</div>
-      <button onclick="closeAuditModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeAuditModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="auditContent" class="audit-body">
       <div style="text-align:center; padding:30px; color:#94a3b8;">
@@ -1029,6 +1026,7 @@
   <div id="groupRectModal" class="modal-std" style="width: 380px;">
     <div class="modal-header">
       <div class="modal-header-title">Group</div>
+      <button class="btn-modal-close" onclick="closeGroupRectModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
 
@@ -1087,7 +1085,7 @@
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.7;flex-shrink:0;"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/></svg>
           <span id="configModalTitle" class="mono-text">Config: ...</span>
         </div>
-        <button class="btn-primary-mono btn-sm" onclick="closeConfigModal()">Close</button>
+        <button class="btn-modal-close" onclick="closeConfigModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
       <div class="config-header-actions">
         <div class="search-input-wrapper">
@@ -1115,7 +1113,7 @@
   <div id="generateAllModal" class="modal-std" style="width:900px;max-width:95vw;">
     <div class="modal-header">
       <div class="modal-header-title">All Device Config</div>
-      <button onclick="closeGenerateAllModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeGenerateAllModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <!-- Action section -->
     <div class="genall-actions">
@@ -1143,7 +1141,7 @@
   <div id="vlanSummaryModal" class="modal-std" style="width:680px;max-width:96vw;">
     <div class="modal-header">
       <div class="modal-header-title">VLAN Summary</div>
-      <button onclick="closeVlanSummaryModal()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="closeVlanSummaryModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding:12px 16px 8px;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
       <input id="vlanSummaryFilter" type="text" placeholder="Filter by VLAN or device…"
@@ -1172,6 +1170,7 @@
   <div id="reorderModal" class="modal-std modal-large">
     <div class="reorder-header">
       <span>Device Manager</span>
+      <button class="reorder-header-close btn-modal-close" onclick="attemptCloseManager()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="reorder-toolbar">
       <input type="text" id="newDeviceInput" placeholder="e.g. Leaf[1-4] or Spine1" class="form-input flex-1">
@@ -1217,7 +1216,7 @@
         <div class="modal-header-title">Manage Column & Formatting</div>
         <div class="modal-header-subtitle">Define order and data types</div>
       </div>
-      <button class="btn-mono" onclick="attemptCloseSchema()">Close</button>
+      <button class="btn-modal-close" onclick="attemptCloseSchema()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="schemaBody"></div>
     <div class="schema-add-row">
@@ -1257,7 +1256,7 @@
   <div id="viewCustomContainer" class="modal-std modal-large">
     <div class="modal-header">
       <div class="modal-header-title">Sheet Custom View Managers</div>
-      <button onclick="google.script.host.close()" class="btn-mono">Close</button>
+      <button class="btn-modal-close" onclick="google.script.host.close()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="view-toolbar">
       <span class="view-label">Presets:</span>
