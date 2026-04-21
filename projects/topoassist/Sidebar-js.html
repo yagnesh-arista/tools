@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.87 | 2026-04-21 15:28:57 -->
+<!-- TopoAssist v260421.88 | 2026-04-21 15:30:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.87";  // keep in sync with Code.gs
+const APP_VERSION = "260421.88";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7490,8 +7490,8 @@ function updateTopoButtons(activeMode) {
     if (!editActive && isEditMode) toggleEditMode();
   }
 
-  // 3b. LAYOUT + CABLE sections — not applicable in holistic (no cards/cables rendered)
-  ['tbSectionLayout', 'tbSectionCable'].forEach(id => {
+  // 3b. LAYOUT + CABLE + SORT sections — not applicable in holistic (no cards/cables rendered)
+  ['tbSectionLayout', 'tbSectionCable', 'tbSectionSort'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const active = (activeMode !== 'simple');
