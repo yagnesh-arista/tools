@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.69 | 2026-04-21 15:01:32 -->
+<!-- TopoAssist v260421.70 | 2026-04-21 15:03:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.69";  // keep in sync with Code.gs
+const APP_VERSION = "260421.70";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -414,7 +414,7 @@ function initApp() {
       restoreCameraForMode(currentViewMode);
 
       let st = document.getElementById("status");
-      if (st) st.innerText = "Topology restored from cache (Checking for updates…)";
+      setStatus("Topology restored from cache (Checking for updates…)");
 
       // Background Fetch — auto-verify to confirm session cache == actual.
       // silent=true: topology already visible, keep "Topology restored from cache" in status.
@@ -2107,7 +2107,7 @@ function toggleValidationMode() {
   const statusEl = document.getElementById("status");
   if (isValidationMode) {
     runValidation();
-    if (statusEl) statusEl.innerText = "Audit Mode: Enabled";
+    setStatus("Audit Mode: Enabled");
   } else {
     validationErrors = {};
     isAuditOnlyView = false;
@@ -2115,8 +2115,7 @@ function toggleValidationMode() {
     if (btn) btn.classList.remove('active');
     applyAuditOnlyView();
     if (statusEl) {
-      statusEl.innerText = getReadyStatus();
-      statusEl.classList.remove("status-error");
+      setStatus(getReadyStatus());
     }
   }
 
@@ -2421,8 +2420,7 @@ function runValidation() {
           const msg = `[FAIL] MLAG Peer-Link Missing: No physical connection found between ${deviceId} and ${myPeer}.`;
           portErrorCount++;
           if (statusEl) {
-            statusEl.innerText = msg;
-            statusEl.classList.add("status-error");
+            setStatus(msg, "status-error");
           }
         }
       }
@@ -2637,9 +2635,7 @@ function runValidation() {
 
   // UPDATE UI
   if (statusEl && !statusEl.innerText.includes("MLAG Peer-Link Missing")) {
-    statusEl.innerText = portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`;
-    if (portErrorCount > 0) statusEl.classList.add("status-error");
-    else statusEl.classList.remove("status-error");
+    setStatus(portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`, portErrorCount > 0 ? "status-error" : "");
   }
 
   applyAuditOnlyView();
@@ -2699,9 +2695,9 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
 
   if (st && shouldShowStatus) {
     if (customSuccessMsg) {
-      st.innerText = "Tech Settings Saved & Fetching new config...";
+      setStatus("Tech Settings Saved & Fetching new config...");
     } else {
-      st.innerText = "Fetching " + deviceName + "...";
+      setStatus("Fetching " + deviceName + "...");
     }
   }
 
@@ -2734,12 +2730,10 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
 
         if (st && (isStillSelected || customSuccessMsg)) {
           // Use custom message if provided (e.g. "Tech Change"), else default
-          st.innerHTML = customSuccessMsg || "<b>New Config Fetched</b>";
-          st.style.color = "#15803d"; // Success Green
+          setStatus(customSuccessMsg || "<b>New Config Fetched</b>", "status-ok");
 
           setTimeout(() => {
-            st.style.color = "";
-            st.innerText = getReadyStatus();
+            setStatus(getReadyStatus());
             if (typeof isValidationMode !== 'undefined' && isValidationMode) runValidation();
           }, 4000);
         }
@@ -2989,12 +2983,12 @@ function saveLayoutPreferences() {
     google.script.run
       .withSuccessHandler(function (res) {
         const status = document.getElementById("status");
-        if (status) status.innerText = "Preferences Saved";
+        setStatus("Preferences Saved", "status-ok");
       })
       .withFailureHandler(function (err) {
         console.error("Prefs Save Failed:", err.message);
         const status = document.getElementById("status");
-        if (status) status.innerText = "Save Failed";
+        setStatus("Save Failed", "status-error");
       })
       .savePreferences(w, dg, o, t, r, a);
 
@@ -3111,8 +3105,7 @@ function toggleEditMode() {
     }
 
     if (statusEl) {
-      statusEl.innerText = "Edit Mode Active";
-      statusEl.classList.add("status-edit-mode");
+      setStatus("Edit Mode Active", "status-edit-mode");
     }
 
     if (appEl) appEl.classList.add("edit-mode-active");
@@ -3132,8 +3125,7 @@ function toggleEditMode() {
     }
 
     if (statusEl) {
-      statusEl.innerText = getReadyStatus();
-      statusEl.classList.remove("status-edit-mode");
+      setStatus(getReadyStatus());
     }
 
     if (appEl) appEl.classList.remove("edit-mode-active");
@@ -3173,11 +3165,11 @@ function toggleGroupRectMode() {
 
   if (isGroupRectMode) {
     if (btn) { btn.classList.add("active"); btn.style.background = "#8b5cf6"; btn.style.color = "white"; }
-    if (statusEl) statusEl.innerText = "Group Mode — Drag to draw, Dbl-click rect to edit/delete";
+    setStatus("Group Mode — Drag to draw, Dbl-click rect to edit/delete");
     if (vp) vp.style.cursor = "crosshair";
   } else {
     if (btn) { btn.classList.remove("active"); btn.style.background = ""; btn.style.color = ""; }
-    if (statusEl) statusEl.innerText = getReadyStatus();
+    setStatus(getReadyStatus());
     if (vp) vp.style.cursor = "grab";
   }
 }
@@ -3433,7 +3425,7 @@ function filterTopology() {
     searchActiveLinks.clear();
     traceVlan(vlanTraceMatch[1].trim());
     const st = document.getElementById("status");
-    if (st) { st.innerText = `Tracing VLAN ${vlanTraceMatch[1].trim()}`; st.classList.remove("status-error"); }
+    setStatus(`Tracing VLAN ${vlanTraceMatch[1].trim()}`);
     return;
   }
 
@@ -3595,14 +3587,12 @@ function filterTopology() {
     let st = document.getElementById("status");
     if (st) {
       const portCount = matchedPortIds.size;
-      st.innerText = deviceMatchCount + " device" + (deviceMatchCount !== 1 ? "s" : "") + " · " + portCount + " port" + (portCount !== 1 ? "s" : "");
-      st.classList.remove("status-error");
+      setStatus(deviceMatchCount + " device" + (deviceMatchCount !== 1 ? "s" : "") + " · " + portCount + " port" + (portCount !== 1 ? "s" : ""));
     }
   } else if (!hasMatch && input !== "") {
     let st = document.getElementById("status");
     if (st) {
-      st.innerText = "No matches found for '" + input + "'";
-      st.classList.add("status-error");
+      setStatus("No matches found for '" + input + "'", "status-error");
     }
 
     zoomLevel = 1;
@@ -3613,8 +3603,7 @@ function filterTopology() {
   } else {
     let st = document.getElementById("status");
     if (st) {
-      st.innerText = getReadyStatus();
-      st.classList.remove("status-error");
+      setStatus(getReadyStatus());
     }
   }
 }
@@ -4162,6 +4151,7 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_gw_v6_last").value = prefs.gw_v6_last;
     document.getElementById("ip_gw_v6_mask").value = prefs.gw_v6_mask;
     document.getElementById("ip_lo_base").value = prefs.lo_base || "0";
+    document.getElementById("ip_mlag_base").value = prefs.mlag_peer_base || "1";
     document.getElementById("ip_vni_base").value = prefs.vni_base || "10000";
     document.getElementById("ip_bgp_asn_base").value = prefs.bgp_asn_base || "65000";
     document.getElementById("ip_bridge_mac").value = prefs.bridge_mac || "";
@@ -4231,6 +4221,7 @@ function saveIpConfig() {
     gw_v6_last: gw_v6_last || '1',
     gw_v6_mask: document.getElementById("ip_gw_v6_mask").value || '/64',
     lo_base: document.getElementById("ip_lo_base").value || '0',
+    mlag_peer_base: document.getElementById("ip_mlag_base").value || '1',
     vni_base: document.getElementById("ip_vni_base").value || '10000',
     bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000',
     bridge_mac:  (document.getElementById("ip_bridge_mac").value  || '').trim(),
@@ -4554,9 +4545,8 @@ function saveGlobalCfgFromSidebar() {
       } else {
         const st = document.getElementById('status');
         if (st) {
-          st.innerHTML = '<b>Global config saved</b>';
-          st.style.color = '#15803d';
-          setTimeout(function() { st.style.color = ''; st.innerText = getReadyStatus(); }, 3000);
+          setStatus('<b>Global config saved</b>', 'status-ok');
+          setTimeout(function() { setStatus(getReadyStatus()); }, 3000);
         }
       }
 
@@ -4635,9 +4625,8 @@ function saveTechSettings() {
         hideGlobalLoading();
         const st = document.getElementById("status");
         if (st) {
-          st.innerHTML = "<b>Tech Settings Saved</b>";
-          st.style.color = "#15803d";
-          setTimeout(() => { st.style.color = ""; st.innerText = getReadyStatus(); }, 3000);
+          setStatus("<b>Tech Settings Saved</b>", "status-ok");
+          setTimeout(() => { setStatus(getReadyStatus()); }, 3000);
         }
       }
 
@@ -4951,7 +4940,7 @@ function clearVlanTrace() {
 
   // Update Toolbar Status
   const st = document.getElementById("status");
-  if (st) st.innerText = "View Reset";
+  setStatus("View Reset");
 
   const legend = document.getElementById("vlan-legend");
   if (legend) legend.classList.remove("visible");
@@ -5247,17 +5236,13 @@ function selectDevice(deviceId) {
 
     if (devErrors.size > 0) {
       // Show Red Warning with Count
-      status.innerHTML = `△ ${deviceId} <span style="opacity:0.8; font-weight:normal;">(${devErrors.size} Issues Found)</span>`;
-      status.style.color = "#b91c1c"; // Strong Red
-      status.style.fontWeight = "bold";
+      setStatus(`△ ${deviceId} <span style="opacity:0.8; font-weight:normal;">(${devErrors.size} Issues Found)</span>`, "status-error");
       // Tooltip shows the actual error list
-      status.title = Array.from(devErrors).join("\n");
+      document.getElementById("status").title = Array.from(devErrors).join("\n");
     } else {
       // Standard Blue Selection Text
-      status.innerText = "Selected Device: " + deviceId;
-      status.style.color = "";
-      status.style.fontWeight = "";
-      status.title = "";
+      setStatus("Selected Device: " + deviceId);
+      document.getElementById("status").title = "";
     }
   }
 
@@ -5265,7 +5250,7 @@ function selectDevice(deviceId) {
   if (copyGroup) copyGroup.style.display = "flex";
 
   let st = document.getElementById("status");
-  if (st && st.innerText.includes("△")) st.innerText = getReadyStatus();
+  if (statusLog.length > 0 && statusLog[statusLog.length-1].msg.includes("△")) setStatus(getReadyStatus());
 }
 
 /**
@@ -5350,7 +5335,7 @@ function selectLine(id) {
         statusEl.title = validationErrors[id].join("\n");
       } else {
         // No errors, clear the status text
-        statusEl.innerText = "";
+        setStatus("");
         statusEl.style.color = "";
         statusEl.title = "";
       }
@@ -6551,7 +6536,7 @@ function setupCanvasInteraction() {
         document.getElementById("copyGroup").style.display = "none";
         document.getElementById("selectionStatus").innerText = "";
         let st = document.getElementById("status");
-        if (st) { st.innerText = getReadyStatus(); st.classList.remove("status-error"); }
+        setStatus(getReadyStatus());
         requestAnimationFrame(redrawLinks);
       }
     }
@@ -7206,7 +7191,7 @@ function render(data) {
 
   } catch (e) {
     let st = document.getElementById("status");
-    if (st) { st.innerText = "Render Error: " + e.message; st.style.color = "red"; }
+    setStatus("Render Error: " + e.message, "status-error");
     console.error(e);
   }
 }
@@ -8080,15 +8065,14 @@ function startBackgroundPrefetch() {
 
       // Show subtle completion message in status bar
       if (st) {
-        st.innerText = "All configs cached locally!";
-        st.style.color = "#15803d"; // Green
+        setStatus("All configs cached locally!", "status-ok");
 
         // Revert back to Ready after 3 seconds
         setTimeout(() => {
           // Only revert if it hasn't been overwritten by a user click/error
           if (st.innerText.includes("All configs")) {
-            st.innerText = getReadyStatus();
-            st.style.color = "";
+            setStatus(getReadyStatus());
+            // color cleared by setStatus above
           }
         }, 3000);
       }
@@ -8106,8 +8090,8 @@ function startBackgroundPrefetch() {
     if (!configCache[nextDev]) {
       // Update the status bar text dynamically (Non-blocking)
       if (st && !st.innerText.includes("△") && !st.innerText.includes("Error")) {
-        st.innerText = `🔄 Background caching: ${nextDev} (${currentCount} of ${prefetchTotal})`;
-        st.style.color = "#0284c7"; // Subtle UI blue
+        setStatus(`🔄 Background caching: ${nextDev} (${currentCount} of ${prefetchTotal})`, 'status-info');
+        // status-info color applied via setStatus above
       }
 
       // Fetch silently
@@ -8205,9 +8189,8 @@ function fetchData(force, autoVerify, silent) {
     _topologyReady = false; // block auto-Bridge until fresh data arrives
 
     if (!silent && !savedSelectionId && !selectedDeviceId && statusEl) {
-      statusEl.innerText = "🚀 Requesting Topology Data.. no local cache";
-      statusEl.style.color = "#334155";
-      statusEl.classList.remove("highlighted");
+      setStatus("🚀 Requesting Topology Data.. no local cache");
+      document.getElementById("status").classList.remove("highlighted");
     }
 
     // Reset all port filters on topology reload to default (all selected)
@@ -8244,7 +8227,7 @@ function fetchData(force, autoVerify, silent) {
       if (typeof google !== 'undefined' && google.script) {
         google.script.run.withSuccessHandler(msg => {
           if (isTopologyLoading && statusEl && msg) {
-            statusEl.innerText = msg;
+            setStatus(msg);
           }
         }).getProgressStatus();
       }
@@ -8278,12 +8261,12 @@ function fetchData(force, autoVerify, silent) {
       if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
 
       if (data.error) {
-        if (statusEl) statusEl.innerText = "Error: " + data.error;
+        setStatus("Error: " + data.error, "status-error");
         return;
       }
 
       if (!data.nodes || !data.links) {
-        if (statusEl) statusEl.innerText = "Error: Invalid topology data received.";
+        setStatus("Error: Invalid topology data received.", "status-error");
         console.error("fetchData: Missing nodes or links in server response.", data);
         return;
       }
@@ -8331,17 +8314,14 @@ function fetchData(force, autoVerify, silent) {
       if (statusEl) {
         if (data.fromCache) {
           // Cache hit: always show cache message (overrides "Audit Clean.")
-          statusEl.innerText = autoVerify ? "⚡ Loaded from cache — verifying..." : "⚡ Loaded from cache";
-          statusEl.classList.remove("status-error");
+          setStatus(autoVerify ? "⚡ Loaded from cache — verifying..." : "⚡ Loaded from cache");
         } else if (!isValidationMode) {
           // Fresh fetch, audit mode off: show ready status, or pending non-Arista notice
           if (_nonAristaSyncNotice && _nonAristaSyncNotice.length > 0) {
-            statusEl.innerText = `ℹ ${_nonAristaSyncNotice.join(', ')}: IXIA/SPIRENT role set — run Force Sync to collapse to 1 column`;
-            statusEl.classList.remove("status-error");
+            setStatus(`ℹ ${_nonAristaSyncNotice.join(', ')}: IXIA/SPIRENT role set — run Force Sync to collapse to 1 column`);
             _nonAristaSyncNotice = null;
           } else {
-            statusEl.innerText = getReadyStatus();
-            statusEl.classList.remove("status-error");
+            setStatus(getReadyStatus());
           }
         }
         // Fresh fetch + audit mode on: leave "Audit Clean." that runValidation() wrote
@@ -8392,14 +8372,14 @@ function fetchData(force, autoVerify, silent) {
       isTopologyLoading = false;
       clearInterval(progressTimer);
       if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
-      if (statusEl) { statusEl.innerText = "Server Error: " + err.message; statusEl.style.color = "red"; }
+      setStatus("Server Error: " + err.message, "status-error");
     }).getTopologyData(force, isColorEnabled);
 
   } catch (e) {
     hideGlobalLoading();
     isFetching = false;
     let st = document.getElementById("status");
-    if (st) st.innerText = "Init Error: " + e.message;
+    setStatus("Init Error: " + e.message, "status-error");
   }
 }
 
@@ -9155,7 +9135,7 @@ function _autoRunBridge() {
   dbg('Auto-Bridge: triggered — running LLDP + device status check');
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
-  if (st)  { st.innerHTML = 'Running Bridge check\u2026'; st.style.color = '#0369a1'; }
+  setStatus('Running Bridge check\u2026', 'status-info');
   if (btn) { btn.classList.add('bridge-scanning'); }
   _lastBridgeLinkSig = _getLinkSig(); // snapshot cabling — next config-only fetchData won't re-trigger
   const _done = () => { if (btn) btn.classList.remove('bridge-scanning'); };
@@ -9217,8 +9197,8 @@ function _autoRunBridge() {
       _dbChkMsg += ` \u00b7 ${_autoOrphanCount} extra cable${_autoOrphanCount !== 1 ? 's' : ''} found`;
       _dbChkColor = '#d97706';
     }
-    if (st) { st.innerHTML = '<b>' + _dbChkMsg + '</b>'; st.style.color = _dbChkColor; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 4000); }
-  }).catch(err => { _done(); dbg('Auto-Bridge: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
+    setStatus('<b>' + _dbChkMsg + '</b>', '', _dbChkColor); setTimeout(() => { setStatus(getReadyStatus()); }, 4000);
+  }).catch(err => { _done(); dbg('Auto-Bridge: unexpected error —', err); setStatus(getReadyStatus()); });
 }
 
 function toggleBridgeMinimize() {
@@ -9589,7 +9569,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   if (_pendingPush) return; // another push is already pending confirm
   if (allDevicesData[deviceName] && allDevicesData[deviceName].type === 'non-arista') {
     const st = document.getElementById('status');
-    if (st) st.innerText = `Push not available — ${deviceName} is a non-EOS device`;
+    setStatus(`Push not available — ${deviceName} is a non-EOS device`, "status-error");
     return;
   }
   const btn      = document.getElementById(btnId);
@@ -9613,7 +9593,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   const { config: fullConfig, error } = await _fetchConfigForPush(deviceName);
   if (!fullConfig) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    if (st) st.innerText = `Push failed: ${error || 'could not fetch config for ' + deviceName}`;
+    setStatus(`Push failed: ${error || 'could not fetch config for ' + deviceName}`, "status-error");
     return;
   }
 
@@ -9623,7 +9603,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const ifBlock = _extractInterfaceBlock(fullConfig, portFilter);
     if (!ifBlock) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      if (st) st.innerText = `Push: interface ${portFilter} not found in ${deviceName} config`;
+      setStatus(`Push: interface ${portFilter} not found in ${deviceName} config`, "status-error");
       return;
     }
     config = ifBlock;
@@ -9644,7 +9624,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       const errMsg = res.error || 'something went wrong';
-      if (st) st.innerText = `${label}: ${errMsg}`;
+      setStatus(`${label}: ${errMsg}`, "status-error");
       return;
     }
     // Empty diff = already in sync — show modal briefly then auto-close
@@ -9658,7 +9638,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     _showPushConfirmModal(label, res.diff);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    if (st) st.innerText = `Push error: ${err.message} — is device_bridge.py running?`;
+    setStatus(`Push error: ${err.message} — is device_bridge.py running?`, 'status-error');
   }
 }
 
@@ -9724,8 +9704,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
 
 // Write push phase status to both #status (sidebar) and #cfgPushStatus (config modal footer)
 function _setPushStatus(html) {
-  const st = document.getElementById('status');
-  if (st) st.innerHTML = html;
+  setStatus(html);
   const cfgSt = document.getElementById('cfgPushStatus');
   if (cfgSt) {
     const modal = document.getElementById('configModal');
@@ -9844,7 +9823,7 @@ async function commitPushConfig() {
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
             }
             _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 5000);
-            setTimeout(() => { const st = document.getElementById('status'); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } }, 5000);
+            setTimeout(() => { setStatus(getReadyStatus()); }, 5000);
           } else {
             // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
@@ -11061,6 +11040,7 @@ function resetIpConfig() {
   document.getElementById("ip_gw_v6_last").value = "1";
   document.getElementById("ip_gw_v6_mask").value = "/64";
   document.getElementById("ip_lo_base").value = "0";
+  document.getElementById("ip_mlag_base").value = "1";
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
   document.getElementById("ip_bridge_mac").value  = "";
@@ -11442,7 +11422,7 @@ function openConfigFromButton(target) {
     if (currentDeviceConfig && currentDeviceConfig !== "") {
       showConfigModal(selectedDeviceId, currentDeviceConfig);
     } else {
-      if (statusEl) statusEl.innerText = "Fetching full config for " + selectedDeviceId + "...";
+      setStatus("Fetching full config for " + selectedDeviceId + "...");
       fetchFullConfig(selectedDeviceId, () => showConfigModal(selectedDeviceId, currentDeviceConfig));
     }
     return;
@@ -11461,7 +11441,7 @@ function openConfigFromButton(target) {
       if (currentLeftConfig) {
         showConfigModal(devNameL, currentLeftConfig);
       } else {
-        if (statusEl) statusEl.innerText = "⏳ Loading End A config...";
+        setStatus("⏳ Loading End A config...");
       }
     } else if (target === 'right') {
       const devNameR = link.v.split(':')[0];
@@ -11471,7 +11451,7 @@ function openConfigFromButton(target) {
       if (currentRightConfig) {
         showConfigModal(devNameR, currentRightConfig);
       } else {
-        if (statusEl) statusEl.innerText = "⏳ Loading End B config...";
+        setStatus("⏳ Loading End B config...");
       }
     }
     return;
@@ -11479,9 +11459,8 @@ function openConfigFromButton(target) {
 
   // CASE 3: Guard (Nothing selected)
   if (statusEl) {
-    statusEl.innerText = "△ Select a device or link first";
-    statusEl.classList.add("status-error");
-    setTimeout(() => statusEl.classList.remove("status-error"), 2000);
+    setStatus("△ Select a device or link first", "status-error");
+    setTimeout(() => setStatus(getReadyStatus()), 2000);
   }
 }
 
@@ -11514,7 +11493,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
   if (_pendingPush) return; // another push is already pending confirm
   if (allDevicesData[deviceName] && allDevicesData[deviceName].type === 'non-arista') {
     const st = document.getElementById('status');
-    if (st) st.innerText = `Push not available — ${deviceName} is a non-EOS device`;
+    setStatus(`Push not available — ${deviceName} is a non-EOS device`, "status-error");
     return;
   }
   const btn      = document.getElementById(btnId);
@@ -11547,7 +11526,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       const errMsg = res.error || 'something went wrong';
-      if (st) st.innerText = `${label}: ${errMsg}`;
+      setStatus(`${label}: ${errMsg}`, "status-error");
       _updatePushPreviewError(errMsg);
       return;
     }
@@ -11563,10 +11542,10 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     const modal = document.getElementById('pushConfirmModal');
     if (!modal || modal.style.display === 'none') {
-      if (st) st.innerText = `Push error: ${err.message} — is device_bridge.py running?`;
+      setStatus(`Push error: ${err.message} — is device_bridge.py running?`, "status-error");
       return;
     }
-    if (st) st.innerText = `Push error: ${err.message} — is device_bridge.py running?`;
+    setStatus(`Push error: ${err.message} — is device_bridge.py running?`, "status-error");
     _updatePushPreviewError(`${err.message} — is device_bridge.py running?`);
   }
 }
@@ -11593,7 +11572,7 @@ function cfgModalPushInterface() {
     const ifConfig = _extractAllInterfaceBlocks(currentRawConfig);
     if (!ifConfig.trim()) {
       const st = document.getElementById('status');
-      if (st) st.innerText = `Push: no interface blocks found in ${deviceName} config`;
+      setStatus(`Push: no interface blocks found in ${deviceName} config`, "status-error");
       return;
     }
     _pushConfigText(deviceName, ifConfig, `${deviceName} — interfaces`, 'btnCfgPushIface');

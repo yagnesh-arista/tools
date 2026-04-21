@@ -1,10 +1,10 @@
-// TopoAssist v260421.69 | 2026-04-21 15:01:32
+// TopoAssist v260421.70 | 2026-04-21 15:01:47
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.69";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.70";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5091,8 +5091,9 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   const partnerName = partnerObj.name;
 
   const isLower = (localId < partnerId);
-  const localIpBit = isLower ? 0 : 1;
-  const peerIpBit = isLower ? 1 : 0;
+  const mlagBase = parseInt(ipPrefs && ipPrefs.mlag_peer_base) || 1;
+  const localIpBit = isLower ? mlagBase : mlagBase + 1;
+  const peerIpBit = isLower ? mlagBase + 1 : mlagBase;
   const priority = isLower ? 10 : 20;
 
   const lowerId = Math.min(localId, partnerId);

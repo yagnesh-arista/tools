@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.69 | 2026-04-21 15:01:32 -->
+<!-- TopoAssist v260421.70 | 2026-04-21 15:02:34 -->
 <!DOCTYPE html>
 <html>
 
@@ -547,14 +547,14 @@
 
           <span class="auto-fixed-label">MLAG Ctrl (Vlan4094)</span>
           <div class="auto-fixed-val">
-            <span class="auto-fixed-formula">169.254.0.<span class="f-dyn">0</span>/31 &harr; 169.254.0.<span class="f-dyn">1</span>/31</span>
-            <span class="auto-fixed-eg">lower Device ID &rarr; .0 &middot; higher Device ID &rarr; .1</span>
+            <span class="auto-fixed-formula">169.254.0.<span class="f-dyn">base</span>/31 &harr; 169.254.0.<span class="f-dyn">base+1</span>/31</span>
+            <span class="auto-fixed-eg">lower Device ID &rarr; .base &middot; higher &rarr; .base+1 (default: .1 / .2)</span>
           </div>
 
           <span class="auto-fixed-label">MLAG L3 (Vlan4093)</span>
           <div class="auto-fixed-val">
-            <span class="auto-fixed-formula">169.254.1.<span class="f-dyn">0</span>/31 &harr; 169.254.1.<span class="f-dyn">1</span>/31</span>
-            <span class="auto-fixed-eg">lower Device ID &rarr; .0 &middot; higher Device ID &rarr; .1</span>
+            <span class="auto-fixed-formula">169.254.1.<span class="f-dyn">base</span>/31 &harr; 169.254.1.<span class="f-dyn">base+1</span>/31</span>
+            <span class="auto-fixed-eg">lower Device ID &rarr; .base &middot; higher &rarr; .base+1 (default: .1 / .2)</span>
           </div>
 
         </div>
@@ -574,6 +574,13 @@
       <div class="ip-row" style="--label-w:130px"><span class="ip-label">Loopback</span>
         <div class="ip-inputs">
           <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_lo_base" placeholder="0" style="width:56px"></div>
+        </div>
+      </div>
+
+      <div class="section-header">MLAG PEER LINK</div>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Peer Link Base</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base (lower gets .base, higher .base+1)</label><input type="text" id="ip_mlag_base" placeholder="1" style="width:56px"></div>
         </div>
       </div>
 
