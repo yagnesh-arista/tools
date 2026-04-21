@@ -9825,13 +9825,15 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   }
   if (!ip) ip = deviceName; // fall back to device name as hostname (DNS)
 
+  const label = portFilter ? `${deviceName} : ${portFilter}` : deviceName;
   if (btn) { btn.disabled = true; btn.textContent = 'Previewing…'; }
+  _showPushConfirmModal(label, null);  // show modal immediately with loading state
 
-  // Fetch full device config (uses cache when available)
+  // Phase 1: fetch full device config (uses cache when available)
   const { config: fullConfig, error } = await _fetchConfigForPush(deviceName);
   if (!fullConfig) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    setStatus(`Push failed: ${error || 'could not fetch config for ' + deviceName}`, "status-error");
+    _updatePushPreviewError(error || 'could not fetch config for ' + deviceName);
     return;
   }
 
@@ -9841,15 +9843,13 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const ifBlock = _extractInterfaceBlock(fullConfig, portFilter);
     if (!ifBlock) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      setStatus(`Push: interface ${portFilter} not found in ${deviceName} config`, "status-error");
+      _updatePushPreviewError(`Interface ${portFilter} not found in ${deviceName} config`);
       return;
     }
     config = ifBlock;
   }
 
-  const label = portFilter ? `${deviceName} : ${portFilter}` : deviceName;
-
-  // Phase 1: dry-run to get diff preview (no commit)
+  // Phase 2: dry-run to get diff preview (no commit)
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
@@ -9861,8 +9861,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const res  = data[deviceName] || {};
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      const errMsg = res.error || 'something went wrong';
-      setStatus(`${label}: ${errMsg}`, "status-error");
+      _updatePushPreviewError(res.error || 'something went wrong');
       return;
     }
     // Empty diff = already in sync — show modal briefly then auto-close
@@ -9876,7 +9875,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     _showPushConfirmModal(label, res.diff);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    setStatus(`Push error: ${err.message} — is device_bridge.py running?`, 'status-error');
+    _updatePushPreviewError(`${err.message} — is device_bridge.py running?`);
   }
 }
 
@@ -9896,7 +9895,10 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     if (commitBtn)  { commitBtn.style.display = 'inline-block'; commitBtn.disabled = true; commitBtn.textContent = 'Commit'; }
     if (cancelHdr)  { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
     if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
-    body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">Fetching diff\u2026</div>`;
+    body.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted,#94a3b8);">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="animation:spin 1s linear infinite;flex-shrink:0;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>` +
+      `<span style="font-style:italic;">Fetching diff\u2026</span>` +
+      `</div>`;
     modal.style.display = 'flex';
     return;
   }
