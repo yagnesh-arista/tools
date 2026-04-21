@@ -5,42 +5,37 @@
 # Fires after any mcp__winnow__* tool call.
 
 input=$(cat)
-tool_name=$(echo "$input" | jq -r '.tool_name // ""')
 
-# Only run for Winnow MCP tools
-echo "$tool_name" | grep -q 'mcp__winnow__' || exit 0
+# Only run for Winnow MCP tools (bash glob, no subprocess)
+tool_name=$(jq -r '.tool_name // ""' <<< "$input")
+[[ "$tool_name" == mcp__winnow__* ]] || exit 0
 
-# Extract the response — MCP tools may return a plain string or a JSON object
-response=$(echo "$input" | jq -r '.tool_response // ""')
+# MCP tools may return a plain string or a JSON object
+response=$(jq -r '.tool_response // ""' <<< "$input")
 
 # Detect auth failure: empty/null response, or auth-failure keywords
-is_empty=0
-is_auth_err=0
-
+is_auth_failure=false
 if [ -z "$response" ] || [ "$response" = "null" ]; then
-    is_empty=1
-fi
-
-if echo "$response" | grep -qiE \
+    is_auth_failure=true
+elif echo "$response" | grep -qiE \
     '(401|403|Unauthorized|Authentication required|Please log in|Session expired|Forbidden|Not authenticated|Invalid token|Access denied|Login required|credentials)'; then
-    is_auth_err=1
+    is_auth_failure=true
 fi
 
-if [ "$is_empty" -eq 0 ] && [ "$is_auth_err" -eq 0 ]; then
-    exit 0  # No auth issue — nothing to do
-fi
+[ "$is_auth_failure" = true ] || exit 0
 
-# Attempt silent token refresh (succeeds when token can be renewed automatically)
-login_out=$(timeout 15 winnow login 2>&1)
+# Attempt silent token refresh; 15s covers a normal OIDC refresh round-trip
+timeout 15 winnow login >/dev/null 2>&1
 login_exit=$?
 
 if [ "$login_exit" -eq 0 ]; then
-    msg="[WINNOW AUTH] Token refreshed automatically (winnow login succeeded). "
-    msg+="Please retry the Winnow query now."
+    msg="[WINNOW AUTH] Token refreshed automatically. Please retry the Winnow query now."
+elif [ "$login_exit" -eq 124 ]; then
+    msg="[WINNOW AUTH] winnow login timed out — device-code flow likely required. "
+    msg+="Run '! winnow login' in the Claude Code terminal, then tell me to 'retry'."
 else
-    msg="[WINNOW AUTH] Winnow auth failed and automatic login did not succeed "
-    msg+="(winnow login exited $login_exit: ${login_out}). "
-    msg+="Please run '! winnow login' in the Claude Code terminal to complete "
+    msg="[WINNOW AUTH] Automatic login failed (exit $login_exit). "
+    msg+="Run '! winnow login' in the Claude Code terminal to complete "
     msg+="the device-code authentication flow, then tell me to 'retry'."
 fi
 
