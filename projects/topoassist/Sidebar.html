@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.98 | 2026-04-21 15:52:28 -->
+<!-- TopoAssist v260421.101 | 2026-04-21 15:55:38 -->
 <!DOCTYPE html>
 <html>
 
@@ -212,8 +212,16 @@
         <div class="ui-group right-group" style="align-items:stretch; flex: 1;">
           <div class="tb-section" style="flex: 1;">
             <span class="tb-label">STATUS LOGS</span>
-            <div class="tb-btns">
-              <div id="status" class="mono-status" onclick="toggleStatusLog()" title="Click to view status history">Ready</div>
+            <div class="tb-btns" style="width:100%;">
+              <div id="status" class="mono-status">Ready</div>
+              <button class="slg-view-btn" onclick="toggleStatusLog()" title="Open status log">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                  <rect x="2" y="7" width="8" height="2" rx="1" fill="currentColor"/>
+                  <rect x="2" y="11" width="10" height="2" rx="1" fill="currentColor"/>
+                </svg>
+                Log
+              </button>
             </div>
           </div>
         </div>

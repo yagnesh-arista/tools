@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.98 | 2026-04-21 15:51:58 -->
+<!-- TopoAssist v260421.101 | 2026-04-21 15:55:59 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -611,15 +611,36 @@
     color: var(--text-muted);
     font-style: italic;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: "JetBrains Mono";
     text-align: right;
-    width: 100%;
-    cursor: pointer;
+    flex: 1;
+    min-width: 0;
     user-select: none;
     -webkit-user-select: none;
     transition: color 0.15s;
   }
-  .mono-status:hover { text-decoration: underline; text-decoration-style: dashed; }
+  .slg-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent, #3b82f6);
+    background: transparent;
+    border: 1px solid var(--accent, #3b82f6);
+    border-radius: 3px;
+    padding: 1px 5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s;
+  }
+  .slg-view-btn:hover { background: rgba(59,130,246,0.08); }
   .mono-status.status-ok    { color: #15803d !important; font-style: normal; }
   .mono-status.status-error { color: #ef4444 !important; font-style: normal; }
   .mono-status.status-edit-mode { color: #3b82f6 !important; font-style: normal; }
