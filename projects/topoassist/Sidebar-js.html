@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.137 | 2026-04-21 17:29:37 -->
+<!-- TopoAssist v260421.139 | 2026-04-21 17:32:50 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.137";  // keep in sync with Code.gs
+const APP_VERSION = "260421.139";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6220,7 +6220,6 @@ function showAuditResults(data) {
   // --- 0a. VRF ISSUES (per-VLAN VRF mismatches/warnings from server) ---
   if (vrfIssues.length > 0) {
     const vrfErrors = vrfIssues.filter(i => i.sev === 'error');
-    const vrfWarns  = vrfIssues.filter(i => i.sev === 'warn');
     const borderCol = vrfErrors.length > 0 ? '#ef4444' : '#f97316';
     const bgHead    = vrfErrors.length > 0 ? '#fee2e2' : '#ffedd5';
     const textHead  = vrfErrors.length > 0 ? '#b91c1c' : '#c2410c';
