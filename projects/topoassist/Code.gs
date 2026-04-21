@@ -1,10 +1,10 @@
-// TopoAssist v260421.47 | 2026-04-21 14:02:14
+// TopoAssist v260421.50 | 2026-04-21 14:07:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.47";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.50";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4220,17 +4220,19 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
   let lines = [];
 
   // System IDs
-  lines.push(`! System IDs (Derived from ID: ${deviceId})`);
+  const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+  const loId = deviceId + loBase;
+  lines.push(`! System IDs (Derived from ID: ${deviceId}${loBase ? ` + base ${loBase}` : ''})`);
   lines.push(`interface Loopback0`);
-  lines.push(` ip address ${deviceId}.${deviceId}.${deviceId}.${deviceId}/32`);
+  lines.push(` ip address ${loId}.${loId}.${loId}.${loId}/32`);
   if (hasP2pIpv6) {
-    lines.push(` ipv6 address ${deviceId}:${deviceId}:${deviceId}::${deviceId}/128`);
+    lines.push(` ipv6 address ${loId}:${loId}:${loId}::${loId}/128`);
   }
   lines.push(`!`);
   lines.push(`router general`);
-  lines.push(` router-id ipv4 ${deviceId}.${deviceId}.${deviceId}.${deviceId}`);
+  lines.push(` router-id ipv4 ${loId}.${loId}.${loId}.${loId}`);
   if (hasP2pIpv6) {
-    lines.push(` router-id ipv6 ${deviceId}:${deviceId}:${deviceId}::${deviceId}`);
+    lines.push(` router-id ipv6 ${loId}:${loId}:${loId}::${loId}`);
   }
   lines.push(`!`);
 
