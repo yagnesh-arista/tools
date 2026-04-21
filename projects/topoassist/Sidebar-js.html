@@ -10169,6 +10169,19 @@ async function commitPushConfig() {
   }
 }
 
+
+function toggleModalMinimize(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  const btn = modal.querySelector('.btn-modal-minimize');
+  const isMin = modal.classList.toggle('modal-minimized');
+  if (btn) {
+    btn.innerHTML = isMin
+      ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    btn.title = isMin ? 'Restore' : 'Minimize';
+  }
+}
 function cancelPushConfig() {
   if (_pendingPush) {
     const btn = document.getElementById(_pendingPush.btnId);
@@ -10363,7 +10376,7 @@ async function pushAllConfigs() {
       const rowEl    = document.getElementById(rowId);
 
       // ── Phase 0: fetch config (cache hit = instant; cache miss = getDeviceConfig()) ──
-      if (rowEl) { const sp = rowEl.querySelector('span:last-child'); if (sp) sp.textContent = configCache[name] ? 'pushing…' : 'fetching config…'; }
+      if (rowEl) { const sp = rowEl.querySelector('span:last-child'); if (sp) { sp.textContent = configCache[name] ? 'pushing…' : 'fetching config…'; sp.style.color = '#60a5fa'; } }
       const { config, error: fetchError } = await _fetchConfigForPush(name);
       if (!config) {
         completed++;
@@ -10373,13 +10386,13 @@ async function pushAllConfigs() {
       }
 
       // ── Phase 2: actual push (commit) — up to 3 retries on server-side timeout ──
-      if (rowEl) { const sp = rowEl.querySelector('span:last-child'); if (sp) sp.textContent = 'pushing…'; }
+      if (rowEl) { const sp = rowEl.querySelector('span:last-child'); if (sp) { sp.textContent = 'pushing…'; sp.style.color = '#60a5fa'; } }
       let res = null;
       const PUSH_MAX_RETRIES = 3;
       for (let attempt = 1; attempt <= 1 + PUSH_MAX_RETRIES; attempt++) {
         if (rowEl) {
           const sp = rowEl.querySelector('span:last-child');
-          if (sp) sp.textContent = attempt === 1 ? 'pushing…' : `retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
+          if (sp) { sp.textContent = attempt === 1 ? 'pushing…' : `retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`; sp.style.color = attempt === 1 ? '#60a5fa' : '#f59e0b'; }
         }
         try {
           const resp = await fetch(BRIDGE_URL + '/pushconfig', {
@@ -10432,7 +10445,7 @@ async function pushAllConfigs() {
         `<div id="${rowId}" style="display:flex;justify-content:space-between;align-items:center;` +
         `padding:3px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">` +
         `<span style="color:var(--text-main);font-family:'JetBrains Mono',monospace;font-size:12px;">${safeName}</span>` +
-        `<span style="color:var(--text-muted);font-size:11px;">verifying…</span></div>`;
+        `<span style="color:#a78bfa;font-size:11px;">verifying…</span></div>`;
       const pushRowEl = document.getElementById(rowId);
       if (pushRowEl) pushRowEl.outerHTML = verifyPlaceholder;
 
