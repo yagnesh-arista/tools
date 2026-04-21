@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.1 | 2026-04-21
+# settings v260421.67 | 2026-04-21 17:32:56
 # topoassist-pytest-check.sh
 # Fires on device_bridge.py OR tests/test_device_bridge.py edits:
 #   1. Runs pytest and reports pass/fail count
