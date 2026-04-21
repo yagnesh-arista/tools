@@ -18,6 +18,7 @@ Last updated: 2026-04-18
 | 6 | `user-select: none` on non-editable elements — never on `body` | `rules/` | `rules/ui.md` |
 | 7 | Modal default background — white (`#ffffff`) by default; dark mode overrides via `--bg-modal` var | `rules/` | `rules/ui.md` |
 | 7a | All icons must be SVG — never Unicode | `rules/` | `rules/ui.md` |
+| 7b | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
 | 8 | New project structure — 7-question gate, `git init` mandatory, no files until all confirmed | `CLAUDE.md` + `commands/` + `hooks/` | `CLAUDE.md`, `commands/new-project.md` |
 | 9 | User feedback for long actions — status before, live elapsed timer, confirm on complete | `rules/` | `rules/quality.md` |
 | 10 | Code quality — no over/under-engineering, match existing conventions | `rules/` | `rules/quality.md` |

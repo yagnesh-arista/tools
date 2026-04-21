@@ -40,6 +40,15 @@ Never hardcode a dark background on a modal outside of a dark-mode rule.
 In projects with CSS variables: set `--bg-modal: #ffffff` as the base, and override with
 the dark card color only under the dark-mode selector.
 
+## Info / Help Text Boxes (info-box--dim)
+Static reference panels (hint text, examples, formula keys, auto-derived value panels) must be visually distinct from actual data values. Use the `info-box info-box--dim` pattern:
+- **Left-accent border only**: `border-left: 3px solid var(--border)` — no full border, no border-radius. Signals "aside/annotation".
+- **Italic text**: `font-style: italic` cascades to all children — universally reads as "note, not a value".
+- **Muted text color**: `#94a3b8` or equivalent dim gray.
+- Add `info-box--keep-colors` when the box contains a color legend that must stay distinguishable.
+- Warning/error banners (colored background) are excluded — never apply dim styling to those.
+- Proactively add info boxes to every modal/panel; ask the user if content is unclear.
+
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
