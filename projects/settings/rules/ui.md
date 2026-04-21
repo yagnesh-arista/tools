@@ -162,3 +162,34 @@ Every modal must have a close button as the last element in its header, using `.
 - Footer buttons: all share same height, font-size, and padding (`.btn-mono` scale)
 - Never duplicate the close/cancel across both header and footer
 - Never use text "Close" in the header when an SVG × button exists
+
+### Button ordering — always left-to-right
+
+```
+[Delete]  ·····················  [Cancel]  [Primary Action]
+ left, isolated                  right-aligned group
+ margin-right: auto
+ display: none (shown only when editing existing entity)
+```
+
+- **Primary action** (Save, Apply, Commit) is always the **rightmost** button
+- **Cancel** is always immediately left of the primary action
+- **Destructive Delete** is always isolated far-left with `margin-right: auto; display: none`
+  — never inline with the Cancel/Save group
+- **Secondary actions** (e.g. Reset Defaults, Download) go between Delete and Cancel
+
+### Esc key — every new modal must be in the LIFO close list
+
+Every modal added to the project must be registered in two places in the global `keydown` handler:
+1. The `modalOrder` array (determines close priority — put overlay modals first)
+2. The `closeFuncs` map (maps modal ID → its canonical close function)
+
+```javascript
+const modalOrder = [..., "myNewModal"];
+const closeFuncs = {
+  ...,
+  "myNewModal": closeMyModal
+};
+```
+
+Omitting either entry means Esc falls through to the global canvas reset instead of closing the modal.
