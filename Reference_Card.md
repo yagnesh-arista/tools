@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-18
+Last updated: 2026-04-21
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -56,13 +56,18 @@ jq . ~/.claude/settings.json > /dev/null && echo "valid" || echo "broken"
 ```
 Edit file
   → pre-write scan fires (debug/secrets/TODOs)
-  → auto-deploy fires (tmux.conf, tmux-studio, bashrc)
+  → stamp.sh stamps version (YYMMDD.N) on line 1/2
+  → auto-deploy fires (tmux.conf, tmux-studio, bashrc, topoassist GAS via clasp)
   → global config auto-syncs (hooks/, rules/, settings.json, CLAUDE.md)
   → INSTRUCTIONS reminder fires → update INSTRUCTIONS_<project>.txt
-/review          ← before every commit
-git add <files>
-git commit       ← commit guard fires automatically
-git push
+git commit -m "..."
+  → commit guard fires (blocks on secrets/debug)
+  → post-change-summary auto-pushes to GitHub
+  → post-change-summary auto-clasp-pushes GAS files (if not already done by edit hook)
+  → [CHANGE SUMMARY] shows in UI with file versions + Git/Clasp status
+Session end (Stop)
+  → any uncommitted tracked changes auto-committed + pushed
+  → GAS files auto-clasp-pushed if changed
 ```
 
 ---
@@ -77,20 +82,48 @@ git push
 
 ---
 
-## What's Fully Automatic (no action needed)
+## Deployment: What's Automatic vs. Manual
 
-| Trigger | What happens |
+### Fully Automatic (no action needed)
+
+| Trigger | What fires | Result |
+|---|---|---|
+| Any Write/Edit (code file) | `stamp.sh` | Version stamp YYMMDD.N on line 1/2 |
+| Any Write/Edit (code file) | Pre-write scan | Blocks on secrets/debug/TODOs |
+| Any Write/Edit (no git project) | Backup hook | `.claude/backups/` snapshot + `git init` warning |
+| Any Write/Edit (any project) | INSTRUCTIONS reminder | Prompt to update INSTRUCTIONS_<project>.txt |
+| Edit `~/.claude/**` or `~/claude/CLAUDE.md` | `settings-backup.sh` | Auto-syncs to `settings/` + commits + pushes |
+| Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written |
+| Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
+| Edit tmux-studio file | Inline hook | Copy to `~/.tmux-studio/tmux_studio.py` |
+| Edit `tmux.conf` project files | Inline hook | Copy to `~/.tmux/` + `tmux source-file` reload |
+| Edit `bashrc_bus-home/.bashrc` | Inline hook | Copy to `~/.bashrc` |
+| `git commit` | `commit-guard.sh` | Blocks on secrets/debug |
+| `git commit` (no push) | `post-change-summary.sh` | Auto `git push` + `[CHANGE SUMMARY]` in UI |
+| `git commit` with GAS files | `post-change-summary.sh` | Auto `clasp push` if not done by edit hook |
+| Session end (Stop) | `post-change-summary.sh` | Auto-commits + pushes any uncommitted tracked files |
+| Session end with GAS changes | `post-change-summary.sh` | Auto `clasp push` |
+| UserPromptSubmit | `settings-drift-check.sh` | Detects external `~/.claude/` edits, syncs + commits |
+
+### Requires Manual Action
+
+| Project | Manual step | Hook reminder? |
+|---|---|---|
+| `topoassist/device_bridge.py` | `scp bus-home:~/claude/projects/topoassist/device_bridge.py ~/device_bridge.py` | Yes — `topoassist-deploy-tracker.sh` prints this |
+| `zshrc_macbook/.zshrc` | `scp bus-home:~/claude/projects/zshrc_macbook/.zshrc ~/.zshrc && source ~/.zshrc` | Yes — always shown after edit |
+| `bashrc_bus-home/.bashrc` | `source ~/.bashrc` in the running shell | No — remind user after edit |
+
+### Lock Safety (parallel SSH sessions)
+
+All concurrent-write risks are flock-protected:
+
+| Lock file | Protects |
 |---|---|
-| Any Write/Edit (code files) | Pre-write scan: flags debug/secrets/TODOs |
-| Any Write/Edit (no git) | Backup to `.claude/backups/` + `git init` warning |
-| Any Write/Edit (any project) | INSTRUCTIONS sync reminder |
-| Edit `~/.claude/**` or `~/claude/CLAUDE.md` | Auto-sync to `settings/` backup + Reference_Card reminder |
-| `git commit` | Commit guard: blocks on secrets/debug |
-| Edit tmux-studio file | Auto-deploy to `~/.tmux-studio/` |
-| Edit tmux.conf file | Auto-deploy to `~/.tmux/` + reload tmux |
-| Edit `.bashrc` | Auto-deploy to `~/.bashrc` |
-| Edit `topoassist/device_bridge.py` | Auto-runs `pytest tests/ -v` and shows summary inline |
-| Edit `topoassist/Code.gs` | Reminds to update `Tests.gs` if pure functions changed |
+| `/tmp/claude-git.lock` | All `git add/commit/push` calls across all hooks |
+| `/tmp/clasp-topoassist.lock` | All `clasp push` calls + `CLASP_MARKER` reads/writes |
+| `/tmp/stamp-{project}.lock` | Version calculation + file stamping (per project) |
+| `/tmp/claude-rollback.lock` | Multi-line append to `ROLLBACKS.md` |
+| `/tmp/claude-commands.lock` | `cp` to `~/.claude/commands/` |
 
 ---
 
