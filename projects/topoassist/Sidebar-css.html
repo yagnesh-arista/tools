@@ -671,9 +671,9 @@
     border-radius: 3px;
     background: var(--bg-body);
     color: var(--text-main);
-    width: 160px;
+    flex: 1;
+    min-width: 120px;
     outline: none;
-    flex-shrink: 0;
   }
   .slg-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.12); }
   .slg-search::placeholder { color: #94a3b8; font-style: italic; }
@@ -1684,17 +1684,37 @@
     bottom: 16px;
     right: 16px;
     display: none; /* shown via JS when in holistic view */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-card);
+    border: 2px solid var(--accent, #3b82f6);
+    border-radius: 7px;
+    padding: 0;
+    z-index: 2500;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.18), 0 2px 6px rgba(0,0,0,0.12);
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+  #holistic-controls .hc-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+    background: var(--accent, #3b82f6);
+    text-align: center;
+    padding: 2px 8px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #holistic-controls .hc-btns {
+    display: flex;
     flex-direction: row;
     align-items: center;
     gap: 2px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
     padding: 4px;
-    z-index: 2500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    user-select: none;
-    -webkit-user-select: none;
   }
 
   .edit-mode-active #viewport {
