@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.51 | 2026-04-21 14:07:34 -->
+<!-- TopoAssist v260421.52 | 2026-04-21 14:11:21 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -846,14 +846,14 @@
     /* ── INT_MODE FILTER ───────────────────────────────── */
     var activeIntModeFilters = [];
     var INT_MODE_FILTER_ITEMS = [
-      { val: 'l2-et-access',  label: 'l2ea' },
-      { val: 'l2-et-trunk',   label: 'l2et' },
-      { val: 'l2-po-access',  label: 'l2pa' },
-      { val: 'l2-po-trunk',   label: 'l2pt' },
-      { val: 'l3-et-int',     label: 'l3ei' },
-      { val: 'l3-et-sub-int', label: 'l3es' },
-      { val: 'l3-po-int',     label: 'l3pi' },
-      { val: 'l3-po-sub-int', label: 'l3ps' }
+      { val: 'l2-et-access'  },
+      { val: 'l2-et-trunk'   },
+      { val: 'l2-po-access'  },
+      { val: 'l2-po-trunk'   },
+      { val: 'l3-et-int'     },
+      { val: 'l3-et-sub-int' },
+      { val: 'l3-po-int'     },
+      { val: 'l3-po-sub-int' }
     ];
 
     function initIntModeFilter(savedFilters) {
@@ -877,7 +877,7 @@
                ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
                (isHidden ? EYE_CLOSED : EYE_OPEN) +
                '</svg>' +
-               '<span class="item-name">' + item.label + '</span>' +
+               '<span class="item-name">' + item.val + '</span>' +
                '</div>';
       }).join('');
     }

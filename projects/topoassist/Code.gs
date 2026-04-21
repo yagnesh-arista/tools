@@ -1,10 +1,10 @@
-// TopoAssist v260421.51 | 2026-04-21 14:07:34
+// TopoAssist v260421.52 | 2026-04-21 14:07:52
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.51";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.52";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4968,9 +4968,11 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   const peerIpV6 = `${baseV6}:${oct2}:${oct3}::${peerId}`;
 
   if (!bgpNeighbors[peerObj.name]) {
+    const peerLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+    const peerLoId = peerId + peerLoBase;
     bgpNeighbors[peerObj.name] = {
       id: peerObj.sheetIndex,
-      loopbackV4: `${peerId}.${peerId}.${peerId}.${peerId}`,
+      loopbackV4: `${peerLoId}.${peerLoId}.${peerLoId}.${peerLoId}`,
       peerParams: []
     };
   }

@@ -4,6 +4,12 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-04-21 | topoassist | 5de81d1
+**Reverted _INT_MODE_ITEMS abbreviated→full labels in Sidebar-js.html — wrong target (Dev Vis "Topology View" panel, not SheetAssistPanel). Restored l2ea/l2et/etc. in topology Dev Vis filter; applied full names to SheetAssistPanel.html INT_MODE_FILTER_ITEMS instead.**  
+Files: projects/topoassist/Sidebar-js.html
+
+---
+
 ## 2026-04-17 | topoassist | 76d3da7
 **Revert fullscreen feature — GAS dialog size cap makes it non-functional**  
 Files: projects/topoassist/Sidebar.html, projects/topoassist/Sidebar-js.html, projects/topoassist/Sidebar-css.html, projects/topoassist/UserGuide.html
