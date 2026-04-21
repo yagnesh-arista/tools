@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.67 | 2026-04-21 14:58:25 -->
+<!-- TopoAssist v260421.68 | 2026-04-21 14:59:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.67";  // keep in sync with Code.gs
+const APP_VERSION = "260421.68";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -24,6 +24,66 @@ const APP_VERSION = "260421.67";  // keep in sync with Code.gs
     const linkCount = globalLinks.length;
     return `Ready | ${devCount} Devices · ${linkCount} Links`;
   }
+  // --- STATUS LOG ---
+  const STATUS_LOG_MAX = 5000;
+  const STATUS_CLASSES = ['status-error', 'status-edit-mode', 'status-ok', 'status-info'];
+  let statusLog = [];
+
+  function setStatus(msg, cls, rawColor) {
+    cls = cls || '';
+    rawColor = rawColor || '';
+    const logMsg = String(msg).replace(/<[^>]+>/g, ''); // strip tags for log entry
+    statusLog.push({ ts: Date.now(), msg: logMsg, cls });
+    if (statusLog.length > STATUS_LOG_MAX) statusLog.shift();
+    _updateStatusLogCount();
+    const el = document.getElementById('status');
+    if (!el) return;
+    el.style.color = rawColor;
+    el.style.fontWeight = '';
+    STATUS_CLASSES.forEach(c => el.classList.remove(c));
+    if (cls) el.classList.add(cls);
+    el.innerHTML = msg;
+  }
+
+  function _updateStatusLogCount() {
+    const badge = document.getElementById('statusLogCount');
+    if (badge) badge.textContent = statusLog.length + ' entr' + (statusLog.length === 1 ? 'y' : 'ies');
+  }
+
+  let _statusLogOpen = false;
+  function toggleStatusLog() {
+    _statusLogOpen = !_statusLogOpen;
+    const drawer = document.getElementById('status-log-drawer');
+    if (!drawer) return;
+    if (_statusLogOpen) {
+      renderStatusLog();
+      drawer.style.display = 'flex';
+      // next frame to trigger CSS transition
+      requestAnimationFrame(() => drawer.classList.add('open'));
+    } else {
+      drawer.classList.remove('open');
+      setTimeout(() => { drawer.style.display = 'none'; }, 220);
+    }
+  }
+
+  function renderStatusLog() {
+    const list = document.getElementById('statusLogList');
+    if (!list) return;
+    const entries = [...statusLog].reverse(); // newest first
+    list.innerHTML = entries.map(e => {
+      const d = new Date(e.ts);
+      const ts = d.toTimeString().slice(0, 8); // HH:MM:SS
+      const msg = e.msg || '&nbsp;';
+      return `<div class="slg-entry${e.cls ? ' ' + e.cls : ''}"><span class="slg-ts">${ts}</span><span class="slg-msg">${msg}</span></div>`;
+    }).join('');
+    _updateStatusLogCount();
+  }
+
+  function clearStatusLog() {
+    statusLog = [];
+    renderStatusLog();
+  }
+
   let nodeIndexMap = {};
   let currentLeftConfig = "";
   let currentRightConfig = "";
@@ -6058,13 +6118,14 @@ function initResizer(el, nodeId) {
   resizer.className = "resizer";
   resizer.title = "Drag to resize";
   el.appendChild(resizer);
-  resizer.addEventListener("mousedown", function (e) { initDrag(e, el); });
+  resizer.addEventListener("mousedown", function (e) { initDrag(e, el, nodeId); });
 }
-let startX, startWidth, resizableEl;
-function initDrag(e, el) {
+let startX, startWidth, resizableEl, _resizeNodeId;
+function initDrag(e, el, nodeId) {
   startX = e.clientX;
   startWidth = parseInt(document.defaultView.getComputedStyle(el).width, 10);
   resizableEl = el;
+  _resizeNodeId = nodeId || null;
   document.documentElement.addEventListener("mousemove", doDrag, false);
   document.documentElement.addEventListener("mouseup", stopDrag, false);
   e.stopPropagation(); e.preventDefault();
@@ -6077,6 +6138,11 @@ function doDrag(e) {
 function stopDrag(e) {
   document.documentElement.removeEventListener("mousemove", doDrag, false);
   document.documentElement.removeEventListener("mouseup", stopDrag, false);
+  if (_resizeNodeId) {
+    const widths = JSON.parse(localStorage.getItem('nb_card_width') || '{}');
+    widths[_resizeNodeId] = parseInt(resizableEl.style.width, 10);
+    localStorage.setItem('nb_card_width', JSON.stringify(widths));
+  }
 }
 
 // --- DRAWING ---
@@ -6881,6 +6947,8 @@ function render(data) {
       if (estimatedHeight > maxNodeY) maxNodeY = estimatedHeight;
 
       initResizer(el, node.id);
+      const _savedW = (JSON.parse(localStorage.getItem('nb_card_width') || '{}'))[node.id];
+      if (_savedW) el.style.width = _savedW + 'px';
       resizeObserver.observe(el);
       el.onclick = function (e) { e.stopPropagation(); };
 

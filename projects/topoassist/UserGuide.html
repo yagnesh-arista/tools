@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.67 | 2026-04-21 14:55:51 -->
+<!-- TopoAssist v260421.68 | 2026-04-21 15:00:48 -->
 <!DOCTYPE html>
 <html>
 
@@ -529,7 +529,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span></td>
-        <td><b>Device Bridge</b> — SSH bridge to lab devices. Verifies LLDP cabling, reads EOS version &amp; platform, checks interface op-status, and verifies device hostnames. Requires <code>device_bridge.py</code> running locally. See the <b>Device Bridge</b> section below.</td>
+        <td><b>Device Bridge</b> — SSH bridge to lab devices. Verifies LLDP cabling, reads EOS version &amp; platform, checks interface op-status, and verifies device hostnames. Requires <code>device_bridge.py</code> running locally. See the <b>Device Bridge</b> section below. <b>Double-click</b> the icon to toggle auto-check (runs automatically after each topology load when enabled).</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span></td>
@@ -1094,6 +1094,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li>The <b>Rename Sheet</b> option (<span class="menu-path">Sheet Manager &gt; Change Sheet Name</span>) safely renames the working tab and updates all internal references.</li>
       <li>Non-Arista devices (IXIA, Spirent) appear in the topology for cabling context but no EOS config is generated for them.</li>
       <li><b>Card Collapse</b> — double-click any device's header bar to collapse it to just its title row. Cables to/from that device are hidden while collapsed. Double-click again to expand. Single click still selects the device. Collapsed state is saved in browser localStorage per device.</li>
+      <li><b>Card Resize</b> — drag the right edge of any device card to adjust its width. Width is saved per card in browser localStorage and restored on the next load.</li>
       <li><b>Po Group Highlight</b> — clicking any port that has a <code>po_</code> value set will highlight all ports across the topology sharing the same Port-Channel number with an amber outline. Press Escape to clear.</li>
       <li><b>Role Pill Filter</b> — click a role badge (e.g. SPINE, LEAF) on any device header to filter the topology to devices with that role. Click the same badge again to clear the filter.</li>
       <li><b>Config Age</b> — the copy/view toolbar shows how long ago each device's config was fetched (e.g. "just now", "3m ago"). The age refreshes automatically every 30 seconds.</li>
