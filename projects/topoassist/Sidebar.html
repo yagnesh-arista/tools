@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.108 | 2026-04-21 16:07:32 -->
+<!-- TopoAssist v260421.109 | 2026-04-21 16:11:26 -->
 <!DOCTYPE html>
 <html>
 
@@ -55,11 +55,15 @@
           <!-- CABLE -->
           <div class="tb-section" id="tbSectionCable">
             <span class="tb-label">CABLE</span>
-            <div class="tb-btns">
-              <span class="mono-label" title="Cable Offset">O:</span>
-              <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
-              <span class="mono-label" title="Cable Top Margin">T:</span>
-              <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+            <div class="tb-btns" style="flex-direction:column;gap:3px;align-items:flex-start;">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span class="mono-label" title="Cable Offset">O:</span>
+                <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span class="mono-label" title="Cable Top Margin">T:</span>
+                <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+              </div>
             </div>
           </div>
         </div>
@@ -209,19 +213,17 @@
           </div>
           <div class="tb-sep"></div>
         </div>
-        <div class="ui-group right-group" style="align-items:stretch; flex: 1; padding-left: 8px;">
-          <div class="tb-section" style="flex: 1;">
-            <span class="tb-label">STATUS LOGS</span>
-            <div class="tb-btns" style="width:100%;">
-              <div id="status" class="mono-status">Ready</div>
-              <button class="slg-view-btn" onclick="toggleStatusLog()" title="Open status log">
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
-                  <rect x="2" y="7" width="8" height="2" rx="1" fill="currentColor"/>
-                  <rect x="2" y="11" width="10" height="2" rx="1" fill="currentColor"/>
-                </svg>
-                Log History
-              </button>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 12px; overflow:hidden;">
+          <div id="status" class="mono-status" style="text-align:center; max-width:100%; overflow:hidden; text-overflow:ellipsis;">Ready</div>
+        </div>
+        <div class="ui-group right-group" style="align-items:stretch;">
+          <div class="tb-sep"></div>
+          <div class="tb-section">
+            <span class="tb-label">LOGS</span>
+            <div class="tb-btns">
+              <div class="segmented-group">
+                <button class="icon-toggle sort-toggle" style="width:auto;padding:0 8px;" onclick="toggleStatusLog()" title="Open log history">LOG HISTORY</button>
+              </div>
             </div>
           </div>
         </div>
