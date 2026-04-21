@@ -82,6 +82,40 @@ Add `.has-error` to the `.input-wrapper`; place a `.error-msg` span immediately 
 </div>
 ```
 
+## Font Scale — Extended (Section Headers)
+The 3-level scale (10/11/12px) covers control text. Modal and panel section headers sit above it:
+- **13px** — sub-section headers, card titles, collapsible group labels
+- **14px** — modal section headers, primary panel titles
+
+Never use arbitrary sizes. Every text element must land on one of these five levels: 10 / 11 / 12 / 13 / 14px.
+
+## `<textarea>` States
+`<textarea>` follows the same state taxonomy as `<input>` — all states must be styled explicitly:
+- **Placeholder**: `::placeholder { color: #94a3b8; font-style: italic }` — never inherits
+- **Value**: `font-family`, `font-size: 12px`, `color: var(--text-main)`
+- **Focus**: same as input — `border-color: #3b82f6`, blue box-shadow, `outline: none`
+- **Disabled**: `color: #94a3b8`, `background: var(--bg-body)`, `cursor: not-allowed`, `opacity: 0.6`
+- **Read-only**: `color: var(--text-main)`, `background: var(--bg-body)`, `user-select: text`
+- **Resize**: always set explicitly — `resize: vertical` (user-adjustable height) or `resize: none` (fixed layout). Never leave as browser default.
+- **Dim-container override**: same pair as input — explicit `font-style: italic; font-weight: 400` + `::placeholder` rule.
+
+## Inline Code / Config Text
+For EOS commands, config snippets, or technical strings displayed inline in labels, descriptions, or info boxes:
+```css
+code, .inline-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;          /* secondary scale — it's reference text, not a control */
+  background: var(--bg-body);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--text-main);
+  user-select: text;        /* always copyable */
+  -webkit-user-select: text;
+}
+```
+Never use `<code>` without explicit font-family — it defaults to the browser serif mono, not JetBrains Mono.
+
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
