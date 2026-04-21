@@ -6,7 +6,7 @@ Last updated: 2026-04-21
 
 ---
 
-## 19 Global Rules
+## 20 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -35,6 +35,7 @@ Last updated: 2026-04-21
 | 17 | Git workflow — every project gets `git init`, commit after every change, push always | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync — edits to hooks/, rules/, commands/, settings.json, CLAUDE.md auto-propagate to settings backup | `hooks/` | `settings.json` (PostToolUse) |
 | 19 | Rollback Logging — every revert/rollback logged to ROLLBACKS.md; git revert handled by hook, manual rollbacks written by Claude | `hooks/` + `CLAUDE.md` | `hooks/rollback-logger.sh`, `CLAUDE.md` |
+| 20 | GAS loading overlay guard — every `showGlobalLoading()` must have a `_guard = setTimeout(hideGlobalLoading+setStatus, N)`; both handlers `clearTimeout(_guard)` first; timeouts: 15s read/save, 20s fetchFullConfig, 60s sync | `rules/` | `rules/gas.md` |
 
 ---
 
@@ -162,6 +163,7 @@ All concurrent-write risks are flock-protected:
 | Always loaded | `~/claude/CLAUDE.md` | All 19 global rules |
 | UI rules | `~/.claude/rules/ui.md` | Font, symmetry, canvas, icons, user-select |
 | Quality rules | `~/.claude/rules/quality.md` | Progress timer, code quality, refactoring |
+| GAS rules | `~/.claude/rules/gas.md` | GAS loading guard pattern (Rule 20) |
 | Security rules | `~/.claude/rules/security.md` | Injection, secrets, boundaries |
 | Test rules | `~/.claude/rules/testing.md` | Isolation, mocking, coverage |
 | Commands | `~/.claude/commands/new-project.md` | New project gate |
