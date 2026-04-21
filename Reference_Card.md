@@ -6,7 +6,7 @@ Last updated: 2026-04-21
 
 ---
 
-## 20 Global Rules
+## 21 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -36,6 +36,7 @@ Last updated: 2026-04-21
 | 18 | Global config auto-sync — edits to hooks/, rules/, commands/, settings.json, CLAUDE.md auto-propagate to settings backup | `hooks/` | `settings.json` (PostToolUse) |
 | 19 | Rollback Logging — every revert/rollback logged to ROLLBACKS.md; git revert handled by hook, manual rollbacks written by Claude | `hooks/` + `CLAUDE.md` | `hooks/rollback-logger.sh`, `CLAUDE.md` |
 | 20 | GAS loading overlay guard — every `showGlobalLoading()` must have a `_guard = setTimeout(hideGlobalLoading+setStatus, N)`; both handlers `clearTimeout(_guard)` first; timeouts: 15s read/save, 20s fetchFullConfig, 60s sync | `rules/` | `rules/gas.md` |
+| 21 | Modal button standard — header always has SVG × `.btn-modal-close` (never text "Close"); view-only modals: no footer; edit modals: `.modal-actions right-align` with Delete-left · Cancel · Save; no duplicate close/cancel across header+footer | `rules/` | `rules/ui.md` |
 
 ---
 

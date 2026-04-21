@@ -162,6 +162,25 @@ google.script.run
 - Callback queues (`fetchQueue`) must also be flushed inside the guard timeout
 - Full pattern: `~/.claude/rules/gas.md`
 
+## 21. Modal Button Standard
+
+Every modal header must have an SVG × close button (`.btn-modal-close`) as the rightmost element — never a text "Close" button or Unicode character.
+
+```html
+<button class="btn-modal-close" onclick="closeMyModal()" title="Close">
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+</button>
+```
+
+Footer layout by modal type:
+- **View-only** (help, audit, read-only viewers): no footer — header × only
+- **Edit/confirm**: `.modal-actions right-align` — Delete left (`.btn-danger-mono`, hidden) · Cancel · Save
+- **Action-only**: `.modal-actions right-align` — action buttons only, no close button needed
+- Never duplicate close/cancel across both header AND footer
+- Full pattern: `~/.claude/rules/ui.md` (Rule 21)
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.

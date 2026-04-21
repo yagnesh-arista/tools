@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (Help modal: removed × clear-search entry from Reset & Clear section — button is self-evident in the UI. File: Sidebar.html)
+  Last updated: 2026-04-21 (Modal button standard (Rule 21): all 16 modal headers now use .btn-modal-close SVG × button instead of text "Close"; added CSS for .btn-modal-close (28×28px, transparent bg, hover tint); fixed: globalCfgModal/groupRectModal/reorderModal missing header close, bridgeModal/pushConfirmModal/editModal duplicate close removed from header or footer, editModal footer added right-align class. Files: Sidebar.html, Sidebar-css.html)
+  Previous: 2026-04-21 (Help modal: removed × clear-search entry from Reset & Clear section — button is self-evident in the UI. File: Sidebar.html)
   Previous: 2026-04-21 (test-device_bridge.md: expected pytest count updated 56→64. File: .claude/commands/test-device_bridge.md)
   Previous: 2026-04-21 (Per-VLAN VRF: vrf_ now accepts comma-separated list positionally matched to VLANs. _parseVrfList(vrfVal)→string[] and _resolveVrfAtIndex(list,idx)→string|null helpers added. getIpBlock(v, resolvedVrf) accepts optional per-VLAN VRF override. SVI loop, sub-int loop, Vx1/ANYCAST SVI all zip vrfList with VLAN index. auditSchemaVsSheet() now returns vrfIssues[]{sev,msg} covering: wrong mode, range+multi-VRF, count mismatch (sub-int vs vlan_, trunk vs svi_vlan_ or vlan_ when svi=all), no SVIs+multi-VRF. showAuditResults() renders vrfIssues section. Tests added for _parseVrfList and _resolveVrfAtIndex. Files: Code.gs, Tests.gs, Sidebar-js.html)
   Previous: 2026-04-21 (Help modal polish: width→880px; title→"Shortcuts Help"; header→standard white (removed dark #334155); × SVG→<code class="search-ex">×</code> text badge (matches dbl-click/drag style). Files: Sidebar.html)
