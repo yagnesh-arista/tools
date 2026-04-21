@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.167 | 2026-04-21 19:01:36
+# topoassist v260421.169 | 2026-04-21 19:04:17
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260421.8"
+VERSION           = "260421.9"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -714,9 +714,8 @@ if __name__ == "__main__":
     -h            Show this help and exit
 
   Examples:
-    python device_bridge.py                          # defaults
-    python device_bridge.py -u admin -b "" -t 30    # direct SSH, 30s timeout
-    python device_bridge.py -b bastion -v            # custom jump host + verbose
+    python device_bridge.py -u root -b jumphost -t 30 -v
+    python device_bridge.py -u admin -b ""             # direct SSH, no jump
 """)
         sys.exit(0)
 
@@ -740,7 +739,7 @@ if __name__ == "__main__":
     print(f"  Timeout   : {TIMEOUT}s per device")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus")
-    print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST  BRIDGE_TIMEOUT")
+    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -v  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")

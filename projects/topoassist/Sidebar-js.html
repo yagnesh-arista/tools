@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.168 | 2026-04-21 19:02:53 -->
+<!-- TopoAssist v260421.169 | 2026-04-21 19:04:38 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.168";  // keep in sync with Code.gs
+const APP_VERSION = "260421.169";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8730,7 +8730,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260421.8"
+VERSION = "260421.9"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9184,6 +9184,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(f"""
+  TopoAssist Device Bridge  v{VERSION}
+  -----------------------------------------
+  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-v] [-h]
+
+  Options:
+    -u USER       SSH username          default: admin
+    -b JUMP_HOST  Jump host for SSH     default: bus-home
+                  Use -b "" for direct SSH (no jump host)
+    -t TIMEOUT    Per-device timeout    default: 15  (seconds)
+    -v            Verbose -- print SSH connect, session, retry, error, and timeout logs
+    -h            Show this help and exit
+
+  Examples:
+    python device_bridge.py -u root -b jumphost -t 30 -v
+    python device_bridge.py -u admin -b ""             # direct SSH, no jump
+""")
+        sys.exit(0)
+
     server    = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
     jump_info = f"via {JUMP_HOST}" if JUMP_HOST else "direct"
     gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
@@ -9202,8 +9222,9 @@ if __name__ == "__main__":
     elif METHOD == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s per device")
+    print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus")
-    print(f"  Overrides : BRIDGE_SSH_USER  BRIDGE_JUMP_HOST  BRIDGE_TIMEOUT")
+    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -v  (run -h for details)")
     print(f"  -----------------------------------------")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
