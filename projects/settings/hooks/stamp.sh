@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.1 | 2026-04-21
+# settings v260421.5 | 2026-04-21 11:51:02
 # stamp.sh — unified version stamp hook (replaces topoassist-stamp.sh + project-stamp.sh)
 # PostToolUse Write|Edit
 #
@@ -34,6 +34,10 @@ case "$f" in
     project=$(echo "$proj_rel" | cut -d'/' -f1) ;;
   *) exit 0 ;;
 esac
+
+# ── Exclusive lock: prevent version collision from parallel sessions ───────────
+exec 9>/tmp/stamp-"${project}".lock
+flock -x 9
 
 # ── Calculate version: YYMMDD.N ───────────────────────────────────────────────
 YYMMDD=$(date "+%y%m%d")
