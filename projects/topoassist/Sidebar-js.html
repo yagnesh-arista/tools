@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.15 | 2026-04-21 12:21:49 -->
+<!-- TopoAssist v260421.18 | 2026-04-21 12:23:03 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.15";  // keep in sync with Code.gs
+const APP_VERSION = "260421.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3109,7 +3109,24 @@ function toggleEditMode() {
     });
   }
 
+  // Suppress canvas resize on this redraw — toggling edit mode shows/hides the
+  // node-add-btn which can cause redrawLinks to miscalculate contentMaxY.
+  _suppressCanvasResize = true;
   requestAnimationFrame(redrawLinks);
+}
+
+function adjustHolisticNodeSize(delta) {
+  holisticNodeR = Math.max(36, Math.min(72, holisticNodeR + delta));
+  localStorage.setItem('holistic_node_r', holisticNodeR);
+  _updateNodeSizeBtns();
+  if (currentViewMode === 'holistic' && currentData) renderHolistic(currentData);
+}
+
+function _updateNodeSizeBtns() {
+  const minBtn = document.getElementById('nodeSizeMinusBtn');
+  const plusBtn = document.getElementById('nodeSizePlusBtn');
+  if (minBtn) minBtn.disabled = holisticNodeR <= 36;
+  if (plusBtn) plusBtn.disabled = holisticNodeR >= 72;
 }
 
 function toggleGroupRectMode() {
@@ -6149,7 +6166,11 @@ function redrawLinks() {
   const currentW = surface.offsetWidth;
   const currentH = surface.offsetHeight;
 
-  if (Math.abs(targetW - currentW) > 2 || Math.abs(targetH - currentH) > 2 || cvs.width !== Math.floor(targetW * dpr)) {
+  // Suppress resize when triggered by edit-mode toggle — prevents spurious canvas growth
+  const suppressResize = _suppressCanvasResize;
+  _suppressCanvasResize = false;
+
+  if (!suppressResize && (Math.abs(targetW - currentW) > 2 || Math.abs(targetH - currentH) > 2 || cvs.width !== Math.floor(targetW * dpr))) {
     surface.style.width = targetW + "px";
     surface.style.height = targetH + "px";
 
@@ -7751,7 +7772,7 @@ function renderHolistic(data) {
     const getPillsForNode = (d) => {
       const role = (d.role || '').toUpperCase();
       const labels = d.labels || [];
-      const modelStr = d.model ? (d.model.length > 14 ? d.model.substring(0, 13) + '\u2026' : d.model) : '';
+      const modelStr = d.model ? (d.model.length > 18 ? d.model.substring(0, 17) + '\u2026' : d.model) : '';
       return [
         ...(modelStr ? [{ lbl: modelStr, isModel: true }] : []),
         ...(role ? [{ lbl: role, isModel: false }] : []),
@@ -7760,7 +7781,7 @@ function renderHolistic(data) {
     };
     const maxLabelLen = nodesData.reduce((max, d) =>
       Math.max(max, ...getPillsForNode(d).map(p => p.lbl.length), 0), 0);
-    const uniformPillW = Math.max(52, Math.ceil(maxLabelLen * 4.8) + 10);
+    const uniformPillW = Math.max(60, Math.ceil(maxLabelLen * 6) + 10);
 
     nodeNodes.each(function(d) {
       const pills = getPillsForNode(d);
@@ -7768,12 +7789,12 @@ function renderHolistic(data) {
       const el = d3.select(this);
       pills.forEach(({ lbl, isModel }, i) => {
         const c = isModel ? MODEL_PILL : (ROLE_COLORS[lbl] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' });
-        const pillH = 13, pillX = -uniformPillW / 2, pillY = NODE_R + 6 + i * 16;
+        const pillH = 16, pillX = -uniformPillW / 2, pillY = NODE_R + 8 + i * 20;
         el.append("rect").attr("x", pillX).attr("y", pillY).attr("width", uniformPillW).attr("height", pillH)
           .attr("rx", 3).attr("fill", c.bg).attr("stroke", c.border).attr("stroke-width", 1);
-        el.append("text").attr("x", 0).attr("y", pillY + pillH - 3)
-          .attr("text-anchor", "middle").attr("font-size", "8px").attr("font-weight", isModel ? "500" : "700")
-          .attr("fill", c.text).text(lbl);
+        el.append("text").attr("x", 0).attr("y", pillY + pillH - 4)
+          .attr("text-anchor", "middle").attr("font-size", "10px").attr("font-weight", isModel ? "500" : "700")
+          .attr("font-family", "'JetBrains Mono', monospace").attr("fill", c.text).text(lbl);
       });
     });
 
