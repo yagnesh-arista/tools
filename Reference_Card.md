@@ -6,7 +6,7 @@ Last updated: 2026-04-21
 
 ---
 
-## 18 Global Rules
+## 19 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -30,6 +30,7 @@ Last updated: 2026-04-21
 | 16 | Claude Code anatomy reference — layer table mapping rules to files | `CLAUDE.md` | `CLAUDE.md` |
 | 17 | Git workflow — every project gets `git init`, commit after every change, push always | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync — edits to hooks/, rules/, commands/, settings.json, CLAUDE.md auto-propagate to settings backup | `hooks/` | `settings.json` (PostToolUse) |
+| 19 | Rollback Logging — every revert/rollback logged to ROLLBACKS.md; git revert handled by hook, manual rollbacks written by Claude | `hooks/` + `CLAUDE.md` | `hooks/rollback-logger.sh`, `CLAUDE.md` |
 
 ---
 
@@ -74,11 +75,27 @@ Session end (Stop)
 
 ## Commands
 
+### Global
+
 | When | Command |
 |---|---|
 | New project | `/new-project` — 7-question gate, `git init` runs first |
 | Before committing | `/review-global` → `/fix-and-commit` |
 | New machine | `bash ~/claude/projects/settings/setup.sh` |
+
+### TopoAssist
+
+| Command | What it does |
+|---|---|
+| `/project:topoassist-review-code-design` | TopoAssist-specific compliance review (Sidebar-js, CSS, Code.gs, UI rules) |
+| `/project:topoassist-review-code-full` | Full review: TopoAssist-specific checks + global review |
+| `/project:topoassist-review-deploy` | Three-way sync check: git → local → GAS remote + commit history |
+| `/project:topoassist-review-userguide` | Update UserGuide.html to match current session changes |
+| `/project:topoassist-deploy-gas-clasp` | Deploy TopoAssist to Google Apps Script via `clasp push` |
+| `/project:topoassist-deploy-git` | Push TopoAssist changes to GitHub |
+| `/project:topoassist-deploy-inst-device_bridge` | Instructions: `scp device_bridge.py` to Mac |
+| `/project:topoassist-deploy-inst-gas-clasp` | Instructions: re-authenticate `clasp` for headless/SSH sessions |
+| `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
 
 ---
 
@@ -94,16 +111,23 @@ Session end (Stop)
 | Any Write/Edit (any project) | INSTRUCTIONS reminder | Prompt to update INSTRUCTIONS_<project>.txt |
 | Edit `~/.claude/**` or `~/claude/CLAUDE.md` | `settings-backup.sh` | Auto-syncs to `settings/` + commits + pushes |
 | Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written |
+| Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in Tests.gs; lists gaps |
+| Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
 | Edit tmux-studio file | Inline hook | Copy to `~/.tmux-studio/tmux_studio.py` |
 | Edit `tmux.conf` project files | Inline hook | Copy to `~/.tmux/` + `tmux source-file` reload |
 | Edit `bashrc_bus-home/.bashrc` | Inline hook | Copy to `~/.bashrc` |
 | `git commit` | `commit-guard.sh` | Blocks on secrets/debug |
+| `git revert` (any rollback) | `rollback-logger.sh` | Appends entry to `ROLLBACKS.md` (flock-protected) |
 | `git commit` (no push) | `post-change-summary.sh` | Auto `git push` + `[CHANGE SUMMARY]` in UI |
 | `git commit` with GAS files | `post-change-summary.sh` | Auto `clasp push` if not done by edit hook |
+| Session end (Stop) | `git-uncommitted-check.sh` | Warns about uncommitted changes in standalone sub-repos |
 | Session end (Stop) | `post-change-summary.sh` | Auto-commits + pushes any uncommitted tracked files |
 | Session end with GAS changes | `post-change-summary.sh` | Auto `clasp push` |
 | UserPromptSubmit | `settings-drift-check.sh` | Detects external `~/.claude/` edits, syncs + commits |
+| UserPromptSubmit | `prompt-secrets-scan.sh` | Scans user prompt for accidentally pasted secrets/tokens |
+| Any `mcp__winnow__*` call | `winnow-auth-check.sh` | Detects Winnow auth failures, attempts auto-login |
+| Claude Code notification | `notify.sh` | Routes notification to system (`notify-send` or tmux status) |
 
 ### Requires Manual Action
 
@@ -131,7 +155,7 @@ All concurrent-write risks are flock-protected:
 
 | Layer | File | Covers |
 |---|---|---|
-| Always loaded | `~/claude/CLAUDE.md` | All 18 global rules |
+| Always loaded | `~/claude/CLAUDE.md` | All 19 global rules |
 | UI rules | `~/.claude/rules/ui.md` | Font, symmetry, canvas, icons, user-select |
 | Quality rules | `~/.claude/rules/quality.md` | Progress timer, code quality, refactoring |
 | Security rules | `~/.claude/rules/security.md` | Injection, secrets, boundaries |
