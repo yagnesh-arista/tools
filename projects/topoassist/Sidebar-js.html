@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.31 | 2026-04-21 13:00:12 -->
+<!-- TopoAssist v260421.32 | 2026-04-21 13:04:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.31";  // keep in sync with Code.gs
+const APP_VERSION = "260421.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7411,7 +7411,17 @@ function updateTopoButtons(activeMode) {
     }
   }
 
-  // 3. Group Rect + node-size buttons — only active in holistic (simple) mode
+  // 3. Edit Mode button — only active in detailed/flexible (not holistic)
+  const editBtn = document.getElementById("editModeBtn");
+  if (editBtn) {
+    const editActive = (activeMode !== 'simple');
+    editBtn.style.opacity = editActive ? "1" : "0.35";
+    editBtn.style.pointerEvents = editActive ? "" : "none";
+    // Exit edit mode if switching into holistic while edit is on
+    if (!editActive && isEditMode) toggleEditMode();
+  }
+
+  // 3b. Group Rect + node-size buttons — only active in holistic (simple) mode
   const grBtn = document.getElementById("groupRectBtn");
   if (grBtn) grBtn.style.opacity = (activeMode === 'simple') ? "1" : "0.35";
   const nsOp = (activeMode === 'simple') ? "1" : "0.35";
