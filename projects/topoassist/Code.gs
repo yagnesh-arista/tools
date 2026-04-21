@@ -1,10 +1,10 @@
-// TopoAssist v260421.115 | 2026-04-21 16:16:22
+// TopoAssist v260421.116 | 2026-04-21 16:18:21
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.115";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.116";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -38,16 +38,16 @@ function onOpen() {
     .addSeparator()
     // 3. Sheet Data & Schema Management (Submenu)
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet Manager')
-      .addItem('▤ Manage Column & Formatting', 'showDeviceDataUi')
-      .addItem('▣ Change Sheet Name', 'promptRenameSheet')
+      .addItem('Manage Column & Formatting', 'showDeviceDataUi')
+      .addItem('Change Sheet Name', 'promptRenameSheet')
       .addSeparator()
-      .addItem('▦ Create Sheet Checkpoint', 'createTopologySnapshot')
-      .addItem('▧ Restore Sheet Checkpoint', 'showRestoreWizard')
+      .addItem('Create Sheet Checkpoint', 'createTopologySnapshot')
+      .addItem('Restore Sheet Checkpoint', 'showRestoreWizard')
       .addSeparator()
-      .addItem('▫ New Project — Reset All Data', 'showNewProjectDialog'))
+      .addItem('New Project — Reset All Data', 'showNewProjectDialog'))
     .addSeparator()
     // 4. Device & Config Management
-    .addItem('▥ Device Manager', 'showDeviceManagerUi')
+    .addItem('Device Manager', 'showDeviceManagerUi')
     .addSeparator()
     // 5. Help
     .addItem('User Guide', 'openUserGuide')
