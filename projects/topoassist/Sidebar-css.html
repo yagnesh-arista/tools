@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.41 | 2026-04-21 13:49:08 -->
+<!-- TopoAssist v260421.42 | 2026-04-21 13:51:00 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -358,7 +358,44 @@
     justify-content: flex-end;
     margin-left: auto;
     min-width: 120px;
-    display: flex
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* --- Ribbon Toolbar Sections --- */
+  .tb-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px;
+    padding: 2px 3px;
+  }
+
+  .tb-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.07em;
+    opacity: 0.65;
+    user-select: none;
+    -webkit-user-select: none;
+    white-space: nowrap;
+  }
+
+  .tb-btns {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .tb-sep {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+    margin: 4px 4px;
+    flex-shrink: 0;
   }
 
   /* --- FLOATING LEGEND STYLES (New) --- */
