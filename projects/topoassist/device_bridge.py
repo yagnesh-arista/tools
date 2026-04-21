@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.160 | 2026-04-21 18:28:31
+# topoassist v260421.163 | 2026-04-21 18:45:09
 """
 TopoAssist Device Bridge
 ========================
@@ -29,7 +29,7 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION           = "260421.3"
+VERSION           = "260421.5"
 PORT              = 8765
 TIMEOUT           = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
@@ -534,12 +534,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
-        # Pre-cleanup stale sessions; best-effort, capped at 5s so it cannot
-        # consume the push thread's join budget (which is TIMEOUT * 2 + 5).
-        _ct = threading.Thread(target=lambda: self._abort_stale_sessions(ip),
-                               daemon=True)
-        _ct.start()
-        _ct.join(timeout=min(5, TIMEOUT))
+        # Pre-cleanup stale sessions only on commit pushes — dry_run always
+        # aborts the session so it cannot leave a pending stale session behind.
+        # Skipping on dry_run removes an entire SSH round-trip from the preview path.
+        if not dry_run:
+            _ct = threading.Thread(target=lambda: self._abort_stale_sessions(ip),
+                                   daemon=True)
+            _ct.start()
+            _ct.join(timeout=min(5, TIMEOUT))
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
@@ -564,11 +566,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
                 raise RuntimeError(f"SSH failed: {err_text.strip()[:120]}")
+            print(f"  [push] {ip}: SSH connected")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
                     "EOS pending session limit reached — Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
             diff = _extract_session_diff(output)
+            action = "dry-run (aborted)" if dry_run else "committed"
+            diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
+            print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
             return {"ok": True, "diff": diff, "dry_run": dry_run}
 
         raise NotImplementedError(
