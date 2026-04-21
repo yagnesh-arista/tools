@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.142 | 2026-04-21 17:33:57 -->
+<!-- TopoAssist v260421.143 | 2026-04-21 17:34:12 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2084,6 +2084,19 @@
     font-size: 11px;
     background: var(--bg-secondary);
     color: #7c3aed;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Gesture/action badges (dbl-click, drag) — same box as search-ex but dark text */
+  .action-ex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg-secondary);
+    color: var(--text-main);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 2px 6px;
