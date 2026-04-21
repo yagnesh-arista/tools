@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.80 | 2026-04-21 15:16:06 -->
+<!-- TopoAssist v260421.85 | 2026-04-21 15:26:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.80";  // keep in sync with Code.gs
+const APP_VERSION = "260421.85";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7490,7 +7490,16 @@ function updateTopoButtons(activeMode) {
     if (!editActive && isEditMode) toggleEditMode();
   }
 
-  // 3b. Holistic canvas controls — show floating panel only in holistic mode
+  // 3b. LAYOUT + CABLE sections — not applicable in holistic (no cards/cables rendered)
+  ['tbSectionLayout', 'tbSectionCable'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const active = (activeMode !== 'simple');
+    el.style.opacity = active ? '' : '0.35';
+    el.style.pointerEvents = active ? '' : 'none';
+  });
+
+  // 3c. Holistic canvas controls — show floating panel only in holistic mode
   const holisticCtrl = document.getElementById('holistic-controls');
   if (holisticCtrl) holisticCtrl.style.display = (activeMode === 'simple') ? 'flex' : 'none';
   if (activeMode === 'simple') _updateNodeSizeBtns();
@@ -12103,7 +12112,8 @@ function _applyVlanFilterSort(sorted, vlanMap, q) {
   if (_vlanConflictsOnly) {
     result = result.filter(vid => {
       const info = vlanMap[vid];
-      return info.ports.length > 0 && info.internalOn && info.internalOn.length > 0;
+      const portDevs = new Set(info.ports.map(p => p.device));
+      return (info.internalOn || []).some(d => portDevs.has(d));
     });
   }
   result = result.slice();
