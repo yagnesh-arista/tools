@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.147 | 2026-04-21 17:38:47 -->
+<!-- TopoAssist v260421.150 | 2026-04-21 17:45:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -703,6 +703,55 @@ clasp login --no-localhost</pre>
       <b>Note:</b> After editing conditional format rules, always run <b>Save &amp; Sync</b> from the Schema Manager to push the changes to the sheet.
     </div>
 
+    <h3>Schema Audit (Check Sync)</h3>
+    <p style="font-size:13px;">The <b>Check Sync</b> button in the Schema Manager footer compares the live sheet columns against the Device Manager configuration and reports any drift. Run this after adding or removing devices, or after a manual column edit outside the schema manager.</p>
+    <ul style="font-size:13px;">
+      <li><b>Missing columns</b> — a column defined in the schema is absent from the sheet. The sheet is out of sync and config generation may silently skip fields. Fix by running <b>Save &amp; Sync</b>.</li>
+      <li><b>Extra columns</b> — a column exists in the sheet that is not in the schema. These are orphaned columns — they will be removed on the next Save &amp; Sync (confirmation required).</li>
+      <li><b>Per-VLAN VRF issues</b> — when <code>vrf_</code> contains a comma-separated list, the count must match the VLAN count exactly. Errors reported:
+        <ul style="margin-top:4px;">
+          <li>VRF count ≠ VLAN count (e.g. 3 VLANs, 2 VRF entries)</li>
+          <li>VLAN range (<code>10-20</code>) combined with multiple VRF values — expand the range to an explicit list first</li>
+          <li>Port mode is not sub-interface or trunk SVI — per-VLAN VRF has no effect on access or pure-L2 ports</li>
+          <li>Trunk port has multiple VRF entries but <code>svi_vlan_</code> is blank (per-VLAN VRF only applies to SVIs)</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="info-box info-box--dim">
+      Check Sync is read-only — it reports issues but does not modify the sheet. Use <b>Save &amp; Sync</b> to repair missing or orphaned columns.
+    </div>
+
+    <h3>Live Sheet Validation</h3>
+    <p style="font-size:13px;">TopoAssist automatically validates and cleans sheet data on every manual edit — no explicit action required. Three layers run in sequence:</p>
+    <ul style="font-size:13px;">
+      <li>
+        <b>onEdit (real-time)</b> — fires on every manual cell change:
+        <ul style="margin-top:4px;">
+          <li><b>Column A guard</b> — Column A is reserved for row visibility markers. Any accidental edit is automatically reverted.</li>
+          <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank), PO format (<code>Po10</code> pattern) and interface name patterns are checked. A toast warning appears for invalid values.</li>
+          <li><b>Cell background rules</b> — <code>po_</code> is grayed when the mode is Ethernet (N/A); <code>svi_vlan_</code> is grayed when the mode is L3 (N/A). Applied automatically after each edit.</li>
+        </ul>
+      </li>
+      <li>
+        <b>validateAndCleanData (field-level)</b> — called from onEdit for each changed cell:
+        <ul style="margin-top:4px;">
+          <li>Normalises PO values (<code>Port-Channel10</code> → <code>Po10</code>)</li>
+          <li>Validates VLAN syntax — rejects values that don't match the allowed pattern</li>
+        </ul>
+      </li>
+      <li>
+        <b>runFullSheetCleanup (background)</b> — runs automatically on background fetch and can also be triggered manually:
+        <ul style="margin-top:4px;">
+          <li>Interface name normalisation: <code>Ethernet1</code> → <code>Et1</code>, <code>Port-Channel10</code> → <code>Po10</code></li>
+          <li>SVI VLAN standardisation: <code>true</code> / <code>1</code> / <code>yes</code> / <code>active</code> → <code>all</code></li>
+          <li>Returns a count of cells changed; no-op if the sheet is already clean</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="info-box info-box--dim">
+      These functions clean <i>format</i> issues only. Configuration logic errors (mode conflicts, VLAN mismatches, duplicate interfaces) are flagged by the Audit Engine — they are intentionally not auto-corrected.
+    </div>
+
     <h3>Checkpoints (Snapshots)</h3>
     <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
     <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Use <b>Restore Sheet Checkpoint</b> to roll back to any saved snapshot.</p>
@@ -1069,6 +1118,30 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       </li>
     </ul>
     <p style="font-size:13px;">Card indicators survive topology redraws — re-rendered automatically after each refresh.</p>
+
+    <h3>Interface Operational State (St Column)</h3>
+    <p style="font-size:13px;">The <b>St</b> column on each topology card shows the live EOS interface operational state, fetched via <code>show interfaces status</code> during a bridge check. This is separate from LLDP — a port can be LLDP-matched but still be operationally down.</p>
+    <table class="legend-table" style="margin-top:8px;">
+      <tr>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;"></span></td>
+        <td><b>connected</b> — link is up and the interface is operational. Physical signal detected, SFP present.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;vertical-align:middle;"></span></td>
+        <td><b>notconnect</b> — interface is enabled but no physical signal detected. Common causes: unplugged cable, missing or faulty SFP, peer port is down.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;"></span></td>
+        <td><b>errdisabled</b> — EOS has administratively disabled the port due to a fault condition (e.g. BPDU guard, storm control, LACP timeout, port security). The port will not recover automatically — it requires <code>shutdown</code> / <code>no shutdown</code> to clear, after the root cause is resolved.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span></td>
+        <td><b>disabled / other</b> — interface is administratively shut, or the state string returned is unrecognised. Gray is also shown when no bridge data is available for that port.</td>
+      </tr>
+    </table>
+    <div class="info-box info-box--dim" style="margin-top:8px;">
+      Interface state data requires a bridge check with <code>METHOD = "ssh"</code> or <code>"eapi"</code>. <code>rest</code> and <code>gnmi</code> transports do not expose interface operational state via the bridge.
+    </div>
 
     <h3>Internal VLANs</h3>
     <p style="font-size:13px;">After a bridge check (<code>METHOD = "ssh"</code> or <code>"eapi"</code> only), the bridge also runs <code>show vlan internal</code> on each device and stores the results in the topology database. EOS auto-allocates internal VLANs for L3 sub-interfaces, MLAG peer-links, VXLAN underlay, and other platform features — they are not user-configured and do not appear in any port column.</p>

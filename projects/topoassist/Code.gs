@@ -1,10 +1,10 @@
-// TopoAssist v260421.147 | 2026-04-21 17:38:47
+// TopoAssist v260421.150 | 2026-04-21 17:43:20
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.147";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.150";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3850,6 +3850,92 @@ function _resolveVrfAtIndex(vrfList, idx) {
   if (!vrfList || vrfList.length === 0) return null;
   if (vrfList.length === 1) return vrfList[0];
   return vrfList[idx] || null;
+}
+
+/**
+ * Pure helper — scan sheet data rows for per-VLAN VRF issues.
+ * Extracted from auditSchemaVsSheet() so it can be unit-tested.
+ *
+ * @param {Array[]} rows         — data rows to check (sheet data starting after the header, i.e. data.slice(2))
+ * @param {string[]} headers     — flat header row (data[1] mapped to strings)
+ * @param {Array}    aristaDevices — [{name, type}] already filtered to non-'non-arista'
+ * @param {number}   [rowOffset] — sheet row number of the first element in rows (default 3)
+ * @returns {{sev:string, msg:string}[]}
+ */
+function _auditVrfIssues(rows, headers, aristaDevices, rowOffset) {
+  const offset = (rowOffset !== undefined) ? rowOffset : 3;
+  const issues = [];
+
+  rows.forEach(function(rowData, i) {
+    const rowNum = offset + i;
+    aristaDevices.forEach(function(dv) {
+      const devName = dv.name;
+      const getCol = function(key) {
+        const idx = headers.indexOf(key + '_' + devName);
+        return idx >= 0 ? String(rowData[idx] || '').trim() : '';
+      };
+
+      const vrfRaw  = getCol('vrf');
+      const vlanRaw = getCol('vlan');
+      const sviRaw  = getCol('svi_vlan');
+      const mode    = getCol('sp_mode').toLowerCase();
+      if (!vrfRaw) return;
+
+      const vrfList = _parseVrfList(vrfRaw);
+      if (vrfList.length <= 1) return; // single VRF always valid
+
+      const label = 'Row ' + rowNum + ' / ' + devName;
+      const isSubInt   = mode.includes('-sub-int');
+      const isTrunk    = mode === 'l2-et-trunk' || mode === 'l2-po-trunk';
+      const isAccess   = mode === 'l2-et-access' || mode === 'l2-po-access';
+      const isL3Routed = mode === 'l3-et-int' || mode === 'l3-po-int';
+
+      // Wrong mode — multi-VRF has no effect
+      if (isAccess || isL3Routed) {
+        issues.push({ sev: 'warn', msg: label + ': multi-VRF has no effect on ' + mode + ' (only sub-int and l2-trunk SVIs use per-VLAN VRF)' });
+        return;
+      }
+
+      // Range in vlan_ — positional mapping is ambiguous
+      const hasRange = vlanRaw.includes('-');
+      const hasList  = vlanRaw.includes(',');
+      if (hasRange) {
+        const detail = hasList ? 'mixed range+list (e.g. 10-20,25)' : 'range (e.g. 10-20)';
+        issues.push({ sev: 'warn', msg: label + ': expand VLAN ' + detail + ' before using per-VLAN VRF — positional mapping is ambiguous with ranges' });
+        return;
+      }
+
+      if (isSubInt) {
+        // nv<N> tokens don't generate sub-interfaces — exclude them from the count
+        const pvSub = parseVlanWithNative(vlanRaw);
+        const vlanList = String(pvSub.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        if (vrfList.length !== vlanList.length) {
+          issues.push({ sev: 'error', msg: label + ': sub-int VRF count (' + vrfList.length + ') must match VLAN count (' + vlanList.length + ') — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+        }
+      } else if (isTrunk) {
+        const sviNorm  = sviRaw.toLowerCase();
+        const sviIsAll = sviNorm === 'all' || sviNorm === 'yes' || sviNorm === '1' || sviNorm === 'true';
+
+        if (!sviRaw) {
+          issues.push({ sev: 'warn', msg: label + ': multi-VRF on trunk but svi_vlan is empty — no SVIs will be created, VRF list has no effect' });
+        } else if (sviIsAll) {
+          const pv = parseVlanWithNative(vlanRaw);
+          const expanded = Array.from(expandVlanString(String(pv.vlans || '')));
+          if (pv.native) expanded.push(String(pv.native));
+          if (vrfList.length !== expanded.length) {
+            issues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match VLAN count (' + expanded.length + ') when svi_vlan=all — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+          }
+        } else {
+          const sviList = sviRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+          if (vrfList.length !== sviList.length) {
+            issues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match svi_vlan count (' + sviList.length + ') — got svi_vlan=' + sviRaw + ', vrf=' + vrfRaw });
+          }
+        }
+      }
+    });
+  });
+
+  return issues;
 }
 
 /* REPLACE IN Code.gs */
