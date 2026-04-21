@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.76 | 2026-04-21 15:12:38 -->
+<!-- TopoAssist v260421.76 | 2026-04-21 15:13:18 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
 const APP_VERSION = "260421.76";  // keep in sync with Code.gs
@@ -11917,13 +11917,12 @@ function closeIpModal() {
 
 function openGenerateAllModal() {
   document.getElementById('generateAllLeft').innerHTML =
-    '<div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
-    + 'Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.</div>';
+    '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>';
   document.getElementById('generateAllRight').style.display = 'none';
   document.getElementById('btnCopyAllConfigs').style.display = 'none';
   const btn = document.getElementById('btnRunGenerateAll');
   btn.disabled = false;
-  btn.innerText = 'Generate';
+  btn.innerText = 'Generate All';
   document.getElementById('generateAllModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
 }
@@ -11946,7 +11945,7 @@ function runGenerateAll() {
   google.script.run
     .withSuccessHandler(function(result) {
       btn.disabled = false;
-      btn.innerText = 'Re-Generate';
+      btn.innerText = 'Re-Generate All';
       if (result.error) {
         document.getElementById('generateAllLeft').innerHTML =
           '<div style="color:var(--error-text,#ef4444);padding:20px;font-family:\'JetBrains Mono\',monospace;font-size:12px;"><b>Error:</b> ' + result.error + '</div>';
