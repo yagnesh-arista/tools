@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.18 | 2026-04-21 12:23:03 -->
+<!-- TopoAssist v260421.20 | 2026-04-21 12:23:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.18";  // keep in sync with Code.gs
+const APP_VERSION = "260421.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7411,9 +7411,15 @@ function updateTopoButtons(activeMode) {
     }
   }
 
-  // 3. Group Rect button — only active in holistic (simple) mode
+  // 3. Group Rect + node-size buttons — only active in holistic (simple) mode
   const grBtn = document.getElementById("groupRectBtn");
   if (grBtn) grBtn.style.opacity = (activeMode === 'simple') ? "1" : "0.35";
+  const nsOp = (activeMode === 'simple') ? "1" : "0.35";
+  const minBtn = document.getElementById('nodeSizeMinusBtn');
+  const plusBtn = document.getElementById('nodeSizePlusBtn');
+  if (minBtn) minBtn.style.opacity = nsOp;
+  if (plusBtn) plusBtn.style.opacity = nsOp;
+  if (activeMode === 'simple') _updateNodeSizeBtns();
 
   // 4. Collapse/Expand all — only meaningful in detailed/flexible (cards exist)
   const toggleBtn = document.getElementById('btnToggleCards');
