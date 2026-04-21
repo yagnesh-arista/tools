@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.38 | 2026-04-21 13:22:06
+# topoassist v260421.44 | 2026-04-21 13:57:57
 """
 TopoAssist Device Bridge
 ========================
@@ -29,9 +29,11 @@ Endpoints:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
 
-VERSION = "260421.1"
-PORT    = 8765
-TIMEOUT = 15  # seconds per device
+VERSION           = "260421.2"
+PORT              = 8765
+TIMEOUT           = 15  # seconds per SSH attempt
+PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
+PUSH_RETRY_DELAY  = 4   # seconds between retries
 
 # ── Active transport ───────────────────────────────────────────────────────────
 METHOD = "ssh"      # ssh | eapi | rest | gnmi
@@ -325,20 +327,34 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     with lock: results[dev] = {"ok": False, "error": "No IP configured"}
                     return
                 with sem:
-                    try:
-                        with lock: results[dev] = self._push_config(ip, config, dry_run=dry_run)
-                    except subprocess.TimeoutExpired:
-                        with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
-                    except NotImplementedError as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)}
-                    except Exception as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+                    for attempt in range(PUSH_RETRIES + 1):
+                        try:
+                            res = self._push_config(ip, config, dry_run=dry_run)
+                            with lock: results[dev] = res
+                            break
+                        except subprocess.TimeoutExpired:
+                            if attempt < PUSH_RETRIES:
+                                time.sleep(PUSH_RETRY_DELAY); continue
+                            with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                            break
+                        except RuntimeError as e:
+                            if ("connection refused" in str(e).lower()
+                                    or "ssh failed" in str(e).lower()) and attempt < PUSH_RETRIES:
+                                time.sleep(PUSH_RETRY_DELAY); continue
+                            with lock: results[dev] = {"ok": False, "error": str(e)}
+                            break
+                        except NotImplementedError as e:
+                            with lock: results[dev] = {"ok": False, "error": str(e)}
+                            break
+                        except Exception as e:
+                            with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+                            break
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
                        for d, v in ip_map.items()]
             for t in threads: t.start()
-            # Allow cleanup (≤5s) + main push (≤TIMEOUT) + overhead; daemon threads
-            # that outlast the join continue in background but their result is lost.
-            for t in threads: t.join(timeout=TIMEOUT * 2 + 5)
+            # Budget: TIMEOUT per attempt × (retries+1) + retry delays + overhead
+            join_budget = TIMEOUT * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
+            for t in threads: t.join(timeout=join_budget)
             # Any thread that didn't finish gets a descriptive timeout error instead
             # of null, so the JS never falls through to the generic 'something went wrong'.
             for dev in results:
