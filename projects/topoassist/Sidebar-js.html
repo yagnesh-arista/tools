@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.42 | 2026-04-21 13:51:00 -->
+<!-- TopoAssist v260421.43 | 2026-04-21 13:54:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.42";  // keep in sync with Code.gs
+const APP_VERSION = "260421.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9603,9 +9603,19 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
+  // ── Loading state: show modal immediately before diff is fetched ─────────────
+  if (diff === null) {
+    if (titleEl)    titleEl.textContent     = 'Confirm Config Push';
+    if (commitBtn)  { commitBtn.style.display = 'inline-block'; commitBtn.disabled = true; commitBtn.textContent = 'Commit'; }
+    if (cancelHdr)  { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
+    if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
+    body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">Fetching diff\u2026</div>`;
+    modal.style.display = 'flex';
+    return;
+  }
   const noCommit = readOnly || alreadyInSync;
   if (titleEl)    titleEl.textContent     = alreadyInSync ? 'Already in Sync' : (readOnly ? 'Verification Result' : 'Confirm Config Push');
-  if (commitBtn)  commitBtn.style.display = noCommit ? 'none' : 'inline-block';
+  if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
   if (cancelHdr)  cancelHdr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (alreadyInSync) {
@@ -9764,7 +9774,7 @@ async function commitPushConfig() {
               btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
             }
-            _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 2500);
+            _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 5000);
             setTimeout(() => { const st = document.getElementById('status'); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } }, 5000);
           } else {
             // Partial — show remaining diff in pt_detail
@@ -11451,6 +11461,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
   if (!ip) ip = deviceName;
 
   if (btn) { btn.disabled = true; btn.textContent = 'Previewing…'; }
+  _showPushConfirmModal(label, null);  // show modal immediately with loading state
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
@@ -11460,13 +11471,17 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
     const res  = data[deviceName] || {};
+    // Guard: user cancelled while fetch was in-flight
+    const modal = document.getElementById('pushConfirmModal');
+    if (!modal || modal.style.display === 'none') return;
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       const errMsg = res.error || 'something went wrong';
       if (st) st.innerText = `${label}: ${errMsg}`;
+      _updatePushPreviewError(errMsg);
       return;
     }
-    // Empty diff = already in sync — show modal briefly then auto-close
+    // Empty diff = already in sync — update modal for in-sync state
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _showPushConfirmModal(label, '', false, true);
@@ -11476,8 +11491,25 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     _showPushConfirmModal(label, res.diff);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
+    const modal = document.getElementById('pushConfirmModal');
+    if (!modal || modal.style.display === 'none') {
+      if (st) st.innerText = `Push error: ${err.message} — is device_bridge.py running?`;
+      return;
+    }
     if (st) st.innerText = `Push error: ${err.message} — is device_bridge.py running?`;
+    _updatePushPreviewError(`${err.message} — is device_bridge.py running?`);
   }
+}
+
+function _updatePushPreviewError(msg) {
+  const titleEl   = document.getElementById('pushConfirmTitle');
+  const bodyEl    = document.getElementById('pushConfirmBody');
+  const commitBtn = document.getElementById('btnCommitPush');
+  const cancelFtr = document.getElementById('btnCancelPushFtr');
+  if (titleEl)   titleEl.textContent = 'Push Preview Failed';
+  if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(msg)}</div>`;
+  if (commitBtn) commitBtn.style.display = 'none';
+  if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
 }
 
 function cfgModalPushInterface() {
