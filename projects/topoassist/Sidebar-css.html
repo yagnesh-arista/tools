@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.54 | 2026-04-21 14:12:13 -->
+<!-- TopoAssist v260421.59 | 2026-04-21 14:37:58 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3128,10 +3128,8 @@
   .info-box--dim .input-wrapper input { background: var(--bg-body); font-style: italic; font-weight: 400; }
   /* Placeholder text — font-style/color don't cascade into ::placeholder, must be explicit */
   .info-box--dim .input-wrapper input::placeholder { color: #94a3b8; font-style: italic; }
-  /* Snake Test inputs — muted label/placeholder without full info-box--dim box styling */
-  .snake-inputs .ip-label { color: #94a3b8; font-weight: 500; }
-  .snake-inputs .input-wrapper label { color: #94a3b8; }
-  .snake-inputs .input-wrapper input { background: var(--bg-body); font-style: italic; font-weight: 400; }
+  /* Snake Test inputs — italic value + muted placeholder; column labels match other sections */
+  .snake-inputs .input-wrapper input { font-style: italic; font-weight: 400; }
   .snake-inputs .input-wrapper input::placeholder { color: #94a3b8; font-style: italic; }
   /* Auto-derived box */
   .info-box--dim .auto-fixed-label { color: #94a3b8; }
