@@ -4968,7 +4968,7 @@ window.topologyKeyHandler = function (event) {
           "generateAllModal": closeGenerateAllModal,
           "vlanSummaryModal": closeVlanSummaryModal,
           "schemaContainer": attemptCloseSchema,
-          "viewCustomContainer": google.script.host.close
+          "viewCustomContainer": () => google.script.host.close()
         };
         if (typeof closeFuncs[id] === 'function') {
           closeFuncs[id]();
