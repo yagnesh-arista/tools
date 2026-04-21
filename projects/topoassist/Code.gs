@@ -1,10 +1,10 @@
-// TopoAssist v260421.50 | 2026-04-21 14:07:09
+// TopoAssist v260421.51 | 2026-04-21 14:07:34
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.50";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.51";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2645,6 +2645,7 @@ function getIpPreferences() {
     p2p_v6_first: '200', p2p_v6_mask: '/64',
     gw_v4_first: '100', gw_v4_last: '1', gw_v4_mask: '/24',
     gw_v6_first: '100', gw_v6_last: '1', gw_v6_mask: '/64',
+    lo_base: '0',
     vni_base: '10000',
     bgp_asn_base: '65000',
     bridge_mac: '',
