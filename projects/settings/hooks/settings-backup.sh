@@ -54,7 +54,12 @@ if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
   REPO_NAME=$(echo "$REMOTE_URL" | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
 
-  jq -n --arg ctx "[SETTINGS BACKUP] ${fname} auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude." \
+  if [ "${RULES_CHANGED:-0}" -eq 1 ]; then
+    msg="[SETTINGS BACKUP] ${fname} auto-synced. RULES CHANGED — update: (1) ~/claude/Reference_Card.md, (2) bump 'rules-synced' date in ~/.claude/commands/topoassist-review-code-design.md and add/update checks for any new rules. Then commit and push ~/claude."
+  else
+    msg="[SETTINGS BACKUP] ${fname} auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude."
+  fi
+  jq -n --arg ctx "$msg" \
     '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
 else
   # Synced but no git diff (file unchanged from git's perspective)
