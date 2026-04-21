@@ -36,11 +36,13 @@ done
 
 msg=""
 
-# Auto-push GAS files via clasp
+# Auto-push GAS files via clasp (flock: prevent concurrent clasp pushes from parallel sessions)
 if [ "$gas_changed" = "true" ]; then
   if [ ! -f "$TOPODIR/.clasp.json" ]; then
     msg="[DEPLOY] .clasp.json missing — run: cd $TOPODIR && clasp login --no-localhost, then create .clasp.json"
   else
+    exec 9>/tmp/clasp-topoassist.lock
+    flock -x 9
     push_out=$(cd "$TOPODIR" && clasp push 2>&1)
     push_exit=$?
     if [ $push_exit -eq 0 ]; then
