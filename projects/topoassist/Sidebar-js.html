@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.157 | 2026-04-21 18:06:56 -->
+<!-- TopoAssist v260421.159 | 2026-04-21 18:17:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.157";  // keep in sync with Code.gs
+const APP_VERSION = "260421.159";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9850,6 +9850,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   }
 
   // Phase 2: dry-run to get diff preview (no commit)
+  _setPushLoadingText('Computing diff\u2026');
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
@@ -9897,7 +9898,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
     body.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted,#94a3b8);">` +
       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="animation:spin 1s linear infinite;flex-shrink:0;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>` +
-      `<span style="font-style:italic;">Fetching diff\u2026</span>` +
+      `<span id="pushLoadingText" style="font-style:italic;">Fetching config\u2026</span>` +
       `</div>`;
     modal.style.display = 'flex';
     return;
@@ -9910,7 +9911,6 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   if (alreadyInSync) {
     body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
     modal.style.display = 'flex';
-    _pushAutoCloseTimeout = setTimeout(closePushConfirmModal, 5000);
     return;
   }
   const lines   = diff.split('\n');
@@ -10062,7 +10062,6 @@ async function commitPushConfig() {
               btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
             }
-            _pushAutoCloseTimeout = setTimeout(() => closePushConfirmModal(), 5000);
             setTimeout(() => { setStatus(getReadyStatus()); }, 5000);
           } else {
             // Partial — show remaining diff in pt_detail
@@ -11774,6 +11773,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
 
   if (btn) { btn.disabled = true; btn.textContent = 'Previewing…'; }
   _showPushConfirmModal(label, null);  // show modal immediately with loading state
+  _setPushLoadingText('Computing diff\u2026');
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
@@ -11822,6 +11822,11 @@ function _updatePushPreviewError(msg) {
   if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(msg)}</div>`;
   if (commitBtn) commitBtn.style.display = 'none';
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
+}
+
+function _setPushLoadingText(text) {
+  const el = document.getElementById('pushLoadingText');
+  if (el) el.textContent = text;
 }
 
 function cfgModalPushInterface() {
