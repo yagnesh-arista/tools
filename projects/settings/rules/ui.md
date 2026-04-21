@@ -49,6 +49,18 @@ Static reference panels (hint text, examples, formula keys, auto-derived value p
 - Warning/error banners (colored background) are excluded — never apply dim styling to those.
 - Proactively add info boxes to every modal/panel; ask the user if content is unclear.
 
+## Placeholder Text Must Be Styled Explicitly (Never Inherited)
+`::placeholder` does NOT inherit `color`, `font-style`, `font-weight`, or `opacity` from any parent element — the browser resets all inherited styles on `::placeholder`.
+
+**Rule:** Whenever a container applies color or font-style to dim/annotate its content (e.g. `info-box--dim`), any `<input>` inside must also have an explicit `::placeholder` rule to match:
+```css
+.my-dim-container input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+```
+**Checklist:** After adding any color/font-style rule to a container that holds inputs — always add the matching `::placeholder` rule. Never assume it will cascade.
+
 ## All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
