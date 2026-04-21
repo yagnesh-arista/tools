@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.141 | 2026-04-21 17:33:31 -->
+<!-- TopoAssist v260421.142 | 2026-04-21 17:33:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -943,6 +943,14 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
       <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS.</li>
+      <li><b>Per-VLAN VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
+        <ul style="margin-top:4px;">
+          <li><b>Error</b> — VRF count does not match VLAN count (e.g. 3 VLANs but 2 VRF entries).</li>
+          <li><b>Error</b> — VLAN range (<code>10-20</code>) combined with multiple VRF values — ranges expand to many VLANs making positional mapping ambiguous; use an explicit VLAN list instead.</li>
+          <li><b>Error</b> — Port mode is not sub-interface or trunk SVI; per-VLAN VRF has no effect on access or pure-L2 ports.</li>
+          <li><b>Warn</b> — Trunk port has multiple VRF values but no SVI VLANs configured (<code>svi_vlan_</code> is blank) — per-VLAN VRF on a trunk only applies to SVIs.</li>
+        </ul>
+      </li>
     </ul>
     <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
 
