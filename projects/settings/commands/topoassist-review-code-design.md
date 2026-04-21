@@ -304,6 +304,7 @@ TOPOASSIST CODE REVIEW
 14 — Font scale            ✓ / ✗ / ⚠
 15 — Textarea resize       ✓ / ✗ / ⚠
 16 — Inline code font      ✓ / ✗ / ⚠
+17 — GAS loading guard     ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
