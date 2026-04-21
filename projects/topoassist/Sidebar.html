@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.74 | 2026-04-21 15:11:55 -->
+<!-- TopoAssist v260421.75 | 2026-04-21 15:12:20 -->
 <!DOCTYPE html>
 <html>
 
@@ -1041,25 +1041,32 @@
     <div id="cfgPushStatus" class="cfg-push-status-bar" style="display:none;"></div>
   </div>
 
-  <!-- All Device Config - Generate & Push Modal -->
+  <!-- All Device Config Modal -->
   <div id="generateAllModal" class="modal-std" style="width:900px;max-width:95vw;">
     <div class="modal-header">
-      <div class="modal-header-title">All Device Config - Generate &amp; Push</div>
+      <div class="modal-header-title">All Device Config</div>
       <button onclick="closeGenerateAllModal()" class="btn-mono">Close</button>
     </div>
-    <div style="display:flex;max-height:55vh;background:var(--bg-modal,#ffffff);">
+    <!-- Action section -->
+    <div class="genall-actions">
+      <div class="genall-action-card">
+        <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()">Generate All</button>
+        <span class="genall-desc">Build EOS configs for all visible Arista devices and write them to the Configs sheet.</span>
+      </div>
+      <div class="genall-action-card">
+        <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()">Push All</button>
+        <span class="genall-desc">Push all device configs to the lab via Device Bridge. Run Generate All first.</span>
+      </div>
+    </div>
+    <!-- Results section -->
+    <div style="display:flex;max-height:50vh;background:var(--bg-modal,#ffffff);">
       <div id="generateAllLeft" style="flex:1;padding:20px;overflow-y:auto;border-right:1px solid var(--border);">
-        <div style="text-align:center;color:var(--text-muted);padding:30px 0;font-family:'JetBrains Mono',monospace;font-size:12px;">
-          Click <b>Generate</b> to build EOS configs for all visible Arista devices and write them to the <b>Configs</b> sheet tab.
-        </div>
+        <div style="color:var(--text-muted);padding:20px 0;font-family:'JetBrains Mono',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>
       </div>
-      <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;">
-      </div>
+      <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;"></div>
     </div>
     <div class="modal-actions right-align">
       <button class="btn-mono" id="btnCopyAllConfigs" onclick="copyAllConfigs()" style="display:none;">Copy All</button>
-      <button class="btn-mono" id="btnPushAllConfigs" onclick="pushAllConfigs()">Push All</button>
-      <button class="btn-success-mono" id="btnRunGenerateAll" onclick="runGenerateAll()">Generate</button>
     </div>
   </div>
 
