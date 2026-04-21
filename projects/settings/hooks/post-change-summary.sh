@@ -83,12 +83,16 @@ if [ -z "$cmd" ]; then
       short_id=$(echo "$script_id" | cut -c1-12)
       clasp_label="${script_name} [${short_id}...]"
     fi
+    exec 8>/tmp/clasp-topoassist.lock
+    flock -x 8
     push_out=$(cd "$gas_project_dir" && clasp push 2>&1)
     if echo "$push_out" | grep -q 'Pushed\|pushed'; then
       clasp_note="${clasp_label} auto-pushed ✓"
+      date +%s > /tmp/topoassist_clasp_last_push
     else
       clasp_note="${clasp_label} push FAILED — run clasp push manually ✗"
     fi
+    exec 8>&-   # release clasp lock
   fi
 
   SUMMARY="[AUTO-COMMITTED] session changes committed + pushed
