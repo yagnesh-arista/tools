@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.126 | 2026-04-21 16:43:12 -->
+<!-- TopoAssist v260421.127 | 2026-04-21 16:43:49 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1976,6 +1976,29 @@
     border-top: 1px solid var(--border-light);
   }
 
+  /* Two-column layout for help modal shortcut body */
+  .help-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: none;
+  }
+
+  .help-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .help-col + .help-col {
+    border-left: 1px solid var(--border-light);
+  }
+
+  /* Search examples 2-col grid (full-width section) */
+  .help-examples-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+  }
+
   .shortcut-section {
     padding: 14px 20px;
     background: var(--bg-secondary);
@@ -1993,7 +2016,7 @@
 
   .shortcut-row {
     display: grid;
-    grid-template-columns: 96px 1fr;
+    grid-template-columns: 110px 1fr;
     align-items: start;
     gap: 10px;
     font-size: 12px;
@@ -2004,8 +2027,9 @@
   .kbd-group {
     display: flex;
     gap: 4px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;   /* keep all keys on one line */
     align-items: center;
+    white-space: nowrap;
   }
 
   .kbd-or {
