@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.169 | 2026-04-21 19:03:21 -->
+<!-- TopoAssist v260421.170 | 2026-04-21 19:10:06 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -866,6 +866,10 @@
   }
 
   /* Segmented-group host for panel 1 icon-btn groups — no individual borders, dividers instead */
+  .segmented-group {
+    align-items: center;
+    gap: 2px;
+  }
   .segmented-group .icon-btn {
     border: none;
     border-radius: 4px;
@@ -879,6 +883,22 @@
   }
   .segmented-group .icon-btn:not(:first-child):not(:last-child) {
     border-radius: 0;
+  }
+
+  /* Segmented-group with label+input pairs (LAYOUT, CABLE sections) */
+  .segmented-group .mono-input {
+    border: none;
+    height: 24px;
+    background: transparent;
+  }
+  .segmented-group .mono-label {
+    padding: 0 2px;
+  }
+  /* Left-border divider between the two label+input pairs */
+  .seg-inner-sep {
+    border-left: 1px solid var(--border);
+    padding-left: 5px;
+    margin-left: 1px;
   }
 
   .btn-action {

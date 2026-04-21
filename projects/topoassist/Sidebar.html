@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.169 | 2026-04-21 19:03:21 -->
+<!-- TopoAssist v260421.170 | 2026-04-21 19:09:40 -->
 <!DOCTYPE html>
 <html>
 
@@ -45,10 +45,12 @@
           <div class="tb-section" id="tbSectionLayout">
             <span class="tb-label">LAYOUT</span>
             <div class="tb-btns">
-              <span class="mono-label" title="Card Width">W:</span>
-              <input type="number" class="mono-input" id="cardWidthInp" value="<?= defaultWidth ?>" step="10" oninput="saveLayoutPreferences()" title="Card Width">
-              <span class="mono-label" title="Device Gap">G:</span>
-              <input type="number" class="mono-input" id="deviceGapInp" value="<?= defaultDevGap ?>" step="10" oninput="saveLayoutPreferences()" title="Device Gap">
+              <div class="segmented-group">
+                <span class="mono-label" title="Card Width">W:</span>
+                <input type="number" class="mono-input" id="cardWidthInp" value="<?= defaultWidth ?>" step="10" oninput="saveLayoutPreferences()" title="Card Width">
+                <span class="mono-label seg-inner-sep" title="Device Gap">G:</span>
+                <input type="number" class="mono-input" id="deviceGapInp" value="<?= defaultDevGap ?>" step="10" oninput="saveLayoutPreferences()" title="Device Gap">
+              </div>
             </div>
           </div>
           <div class="tb-sep"></div>
@@ -56,10 +58,12 @@
           <div class="tb-section" id="tbSectionCable">
             <span class="tb-label">CABLE</span>
             <div class="tb-btns">
-              <span class="mono-label" title="Cable Offset">O:</span>
-              <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
-              <span class="mono-label" title="Cable Top Margin">T:</span>
-              <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+              <div class="segmented-group">
+                <span class="mono-label" title="Cable Offset">O:</span>
+                <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
+                <span class="mono-label seg-inner-sep" title="Cable Top Margin">T:</span>
+                <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+              </div>
             </div>
           </div>
           <div class="tb-sep"></div>
