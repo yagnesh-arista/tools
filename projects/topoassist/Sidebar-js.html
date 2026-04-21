@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.103 | 2026-04-21 16:00:38 -->
+<!-- TopoAssist v260421.104 | 2026-04-21 16:04:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.103";  // keep in sync with Code.gs
+const APP_VERSION = "260421.104";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6087,6 +6087,26 @@ function saveEdit() {
 AUDIT LOGIC (Copy & Paste this block)
 ========================================== */
 
+// Scan allNodesData against deviceInternalVlans.
+// Returns [{device, port, vlans:[...conflicting ids]}] — empty if no bridge data or no conflicts.
+function _scanInternalVlanConflicts() {
+  if (!Object.keys(deviceInternalVlans).length) return [];
+  const hits = [];
+  for (const nodeId in allNodesData) {
+    const node = allNodesData[nodeId];
+    if (!node || !node.details) continue;
+    const intVlans = deviceInternalVlans[(node.device || '').toLowerCase()] || [];
+    if (!intVlans.length) continue;
+    const pvj = parseVlanWithNative(node.details.vlan_);
+    const vlanStr = [pvj.vlans, pvj.native].filter(Boolean).join(',');
+    if (!vlanStr) continue;
+    const portVlans = [...parseVlanInput(vlanStr)].map(v => parseInt(v)).filter(v => !isNaN(v));
+    const conflicts = portVlans.filter(v => intVlans.includes(v));
+    if (conflicts.length) hits.push({ device: node.device, port: node.name, vlans: conflicts });
+  }
+  return hits;
+}
+
 function runSchemaAudit() {
   const btn = document.getElementById("btnAudit");
   dbg("runSchemaAudit triggered");
@@ -6136,8 +6156,23 @@ function showAuditResults(data) {
   const extra = data.extra || [];
   const conflicts = data.conflicts || [];
   const debugLogs = data.debugLog || []; // Get logs from server
+  const internalConflicts = _scanInternalVlanConflicts();
 
   let html = "";
+
+  // --- 0. INTERNAL VLAN CONFLICTS (client-side, requires bridge data) ---
+  if (internalConflicts.length > 0) {
+    html += `<div style="margin-bottom:15px;border:1px solid #f97316;background:#fff7ed;border-radius:6px;overflow:hidden;">
+<div style="background:#ffedd5;padding:8px 12px;font-weight:bold;color:#c2410c;font-size:12px;border-bottom:1px solid #fed7aa;font-family:'JetBrains Mono',monospace;">
+⚠ Internal VLAN Conflicts (${internalConflicts.length} port${internalConflicts.length > 1 ? 's' : ''})
+</div>
+<div style="padding:10px;font-size:11px;color:#9a3412;line-height:1.6;max-height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
+${internalConflicts.map(c => `<div style="margin-bottom:6px;border-bottom:1px solid #fed7aa;padding-bottom:4px;">
+<b>${c.device}</b> / ${c.port}<br>
+<span style="color:#ea580c">VLAN${c.vlans.length > 1 ? 's' : ''} ${c.vlans.join(', ')} auto-allocated by EOS as internal VLANs</span>
+</div>`).join('')}
+</div></div>`;
+  }
 
   // --- 1. CRITICAL CONFLICTS ---
   if (conflicts.length > 0) {
@@ -6175,7 +6210,7 @@ ${conflicts.map(c => `
   }
 
   // --- 3. SUCCESS CASE ---
-  if (missing.length === 0 && extra.length === 0 && conflicts.length === 0) {
+  if (missing.length === 0 && extra.length === 0 && conflicts.length === 0 && internalConflicts.length === 0) {
     html += `
 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 20px; text-align:center; background:var(--success-bg); border:1px solid var(--success); border-radius:8px; min-height:100px;">
 <div style="margin-bottom:10px;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -6201,7 +6236,7 @@ ${debugLogs.map(l => `<div>> ${l}</div>`).join("")}
   overlay.style.display = "block";
   modal.style.display = "flex";
 
-  const totalIssues = conflicts.length + missing.length + extra.length;
+  const totalIssues = conflicts.length + missing.length + extra.length + internalConflicts.length;
   const badge = document.getElementById("auditBadge");
   if (badge) {
     if (totalIssues > 0) {
