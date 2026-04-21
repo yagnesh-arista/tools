@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.112 | 2026-04-21 16:12:41 -->
+<!-- TopoAssist v260421.112 | 2026-04-21 16:13:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
 const APP_VERSION = "260421.112";  // keep in sync with Code.gs
@@ -4237,11 +4237,11 @@ function openIpConfigModal(btn) {
     checkIpDirty();
     checkSnakeTrafficWarning();
 
-    hideGlobalLoading();
     document.getElementById("editOverlay").style.display = "block";
     document.getElementById("ipConfigModal").style.display = "flex";
 
   }).withFailureHandler(err => {
+    clearTimeout(_guard);
     hideGlobalLoading();
     alert("Failed to load settings: " + err);
   }).getIpPreferences();
