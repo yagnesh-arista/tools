@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.102 | 2026-04-21 15:58:05 -->
+<!-- TopoAssist v260421.103 | 2026-04-21 16:00:55 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -4722,8 +4722,9 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 230px;
-    max-width: calc(100vw - 40px);
+    min-width: 230px;
+    width: max-content;
+    max-width: min(480px, calc(100vw - 40px));
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 8px;
@@ -4858,7 +4859,7 @@
 
   .dev-vis-list {
     overflow-y: auto;
-    max-height: 300px;
+    max-height: calc(100vh - 280px);
     padding: 3px 0;
   }
 
