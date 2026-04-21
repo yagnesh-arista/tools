@@ -331,6 +331,34 @@ grep -B2 -A5 'btn-danger-mono.*margin-right:auto' ~/claude/projects/topoassist/S
 
 ---
 
+## Check 19 — Search / Filter Input Height (Rule 22)
+
+Every search or filter input in a compact context (panel, toolbar, list) must have explicit height — never rely on browser UA default (~26px).
+
+```bash
+# Find compact search/filter inputs — they should NOT have top/bottom padding without height
+grep -n "search-inp\|filter-inp\|search.*input\|input.*search" \
+  ~/claude/projects/topoassist/Sidebar-css.html | head -20
+
+# Confirm explicit height is set (not just padding)
+grep -A10 "dev-vis-search-inp\|search-inp" \
+  ~/claude/projects/topoassist/Sidebar-css.html | grep -E "height|padding|line-height"
+```
+
+Required pattern for compact inputs:
+```css
+height: 20px;          /* explicit — never rely on browser UA */
+padding: 0 7px;        /* horizontal only */
+line-height: 20px;
+box-sizing: border-box;
+```
+
+✗ FAIL if a compact search/filter input has top/bottom padding but no explicit `height`
+✗ FAIL if `box-sizing: border-box` is missing when `height` is set
+⚠ WARN if input height visually exceeds adjacent icon buttons or list row heights
+
+---
+
 ## Output Format
 
 ```
