@@ -32,22 +32,36 @@
     <!-- Toolbar Structure -->
     <div class="toolbar" id="mainToolbar">
       <div class="toolbar-row primary-row">
-        <div class="ui-group">
-          <button class="mono-btn btn-yellow" onclick="toggleMinimize()" title="Minimize">－</button>
-          <div class="divider-v"></div>
-          <button id="manualRefreshBtn" class="icon-btn" onclick="fetchData(true)" title="Refresh Data">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          </button>
-          <div class="divider-v"></div>
-          <span class="mono-label" title="Card Width">W:</span>
-          <input type="number" class="mono-input" id="cardWidthInp" value="<?= defaultWidth ?>" step="10" oninput="saveLayoutPreferences()" title="Card Width">
-          <span class="mono-label" title="Device Gap">G:</span>
-          <input type="number" class="mono-input" id="deviceGapInp" value="<?= defaultDevGap ?>" step="10" oninput="saveLayoutPreferences()" title="Device Gap">
-          <div class="divider-v"></div>
-          <span class="mono-label" title="Cable Offset">O:</span>
-          <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
-          <span class="mono-label" title="Cable Top Margin">T:</span>
-          <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+        <div class="ui-group" style="align-items:stretch;">
+          <!-- APP -->
+          <div class="tb-section">
+            <span class="tb-label">APP</span>
+            <div class="tb-btns">
+              <button class="mono-btn btn-yellow" onclick="toggleMinimize()" title="Minimize">－</button>
+            </div>
+          </div>
+          <div class="tb-sep"></div>
+          <!-- LAYOUT -->
+          <div class="tb-section">
+            <span class="tb-label">LAYOUT</span>
+            <div class="tb-btns">
+              <span class="mono-label" title="Card Width">W:</span>
+              <input type="number" class="mono-input" id="cardWidthInp" value="<?= defaultWidth ?>" step="10" oninput="saveLayoutPreferences()" title="Card Width">
+              <span class="mono-label" title="Device Gap">G:</span>
+              <input type="number" class="mono-input" id="deviceGapInp" value="<?= defaultDevGap ?>" step="10" oninput="saveLayoutPreferences()" title="Device Gap">
+            </div>
+          </div>
+          <div class="tb-sep"></div>
+          <!-- CABLE -->
+          <div class="tb-section">
+            <span class="tb-label">CABLE</span>
+            <div class="tb-btns">
+              <span class="mono-label" title="Cable Offset">O:</span>
+              <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
+              <span class="mono-label" title="Cable Top Margin">T:</span>
+              <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
+            </div>
+          </div>
         </div>
 
         <div class="ui-group right-group">
@@ -65,6 +79,9 @@
           <div class="tb-section">
             <span class="tb-label">CONFIG</span>
             <div class="tb-btns">
+              <button id="manualRefreshBtn" class="icon-btn" onclick="fetchData(true)" title="Refresh Data">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
               <button class="icon-btn" data-modal="techModal" onclick="openTechModal()" title="Network Tech Stack">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg>
               </button>
