@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.145 | 2026-04-21 17:35:00 -->
+<!-- TopoAssist v260421.146 | 2026-04-21 17:38:28 -->
 <!DOCTYPE html>
 <html>
 
@@ -874,14 +874,14 @@
     </div>
     <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
 
-      <!-- Two-column shortcut grid -->
-      <div class="shortcut-legend help-two-col">
+      <!-- SEARCH section: shortcuts + examples side by side -->
+      <div class="shortcut-section" style="border-top: 1px solid var(--border-light);">
+        <div class="shortcut-section-label">Search</div>
+        <div class="help-search-inner">
 
-        <!-- LEFT COLUMN -->
-        <div class="help-col">
-
-          <div class="shortcut-section">
-            <div class="shortcut-section-label">Navigation</div>
+          <!-- Left: search shortcuts + autocomplete -->
+          <div>
+            <div class="help-sub-label">Shortcuts</div>
             <div class="legend-grid">
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>/</kbd><span class="kbd-or">or</span><kbd>f</kbd></div>
@@ -891,19 +891,47 @@
                 <kbd>v</kbd>
                 <span>VLAN trace mode<span class="shortcut-ctx">Prefills search with "v" — type VLAN ID to trace</span></span>
               </div>
+              <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search</span></div>
               <div class="shortcut-row">
-                <kbd>s</kbd>
-                <span>Toggle strict search</span>
+                <div class="kbd-group"><kbd>&#x2191;</kbd><kbd>&#x2193;</kbd></div>
+                <span>Navigate suggestions</span>
               </div>
+              <div class="shortcut-row">
+                <kbd>Enter</kbd>
+                <span>Select suggestion<span class="shortcut-ctx">Or jump to first match if none highlighted</span></span>
+              </div>
+              <div class="shortcut-row"><kbd>Esc</kbd><span>Dismiss suggestion list</span></div>
             </div>
           </div>
 
+          <!-- Right: search examples -->
+          <div>
+            <div class="help-sub-label">Examples</div>
+            <div class="legend-grid">
+              <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Filter by device name</span></div>
+              <div class="shortcut-row"><code class="search-ex">SPINE</code><span>Filter by role label</span></div>
+              <div class="shortcut-row"><code class="search-ex">l2-et-trunk</code><span>Filter by port mode</span></div>
+              <div class="shortcut-row"><code class="search-ex">vrf-mgmt</code><span>Filter by VRF</span></div>
+              <div class="shortcut-row"><code class="search-ex">v10</code><span>Trace VLAN 10</span></div>
+              <div class="shortcut-row"><code class="search-ex">v10,20</code><span>Trace multiple VLANs</span></div>
+              <div class="shortcut-row"><code class="search-ex">v10-20</code><span>Trace VLAN range</span></div>
+              <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded</span></span></div>
+            </div>
+          </div>
+
+        </div><!-- /help-search-inner -->
+      </div>
+
+      <!-- REST: 2-column grid -->
+      <div class="help-two-col" style="border-top: 1px solid var(--border-light);">
+
+        <!-- Left: Reset & Clear + General -->
+        <div class="help-col">
           <div class="shortcut-section">
             <div class="shortcut-section-label">Reset &amp; Clear</div>
             <div class="legend-grid">
               <div class="shortcut-row"><kbd>`</kbd><span>Reset view &amp; clear all filters<span class="shortcut-ctx">Always active — works even while typing</span></span></div>
               <div class="shortcut-row"><kbd>c</kbd><span>Clear traces &amp; reset<span class="shortcut-ctx">Disabled while typing in an input</span></span></div>
-
               <div class="shortcut-row"><kbd>Esc</kbd><span>Close top modal</span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>Esc</kbd><kbd>Esc</kbd></div>
@@ -911,7 +939,6 @@
               </div>
             </div>
           </div>
-
           <div class="shortcut-section">
             <div class="shortcut-section-label">General</div>
             <div class="legend-grid">
@@ -922,27 +949,10 @@
               </div>
             </div>
           </div>
-
         </div><!-- /help-col left -->
 
-        <!-- RIGHT COLUMN -->
+        <!-- Right: Config Find Bar + Card Interactions -->
         <div class="help-col">
-
-          <div class="shortcut-section">
-            <div class="shortcut-section-label">Search Autocomplete</div>
-            <div class="legend-grid">
-              <div class="shortcut-row">
-                <div class="kbd-group"><kbd>&#x2191;</kbd><kbd>&#x2193;</kbd></div>
-                <span>Navigate suggestions</span>
-              </div>
-              <div class="shortcut-row">
-                <kbd>Enter</kbd>
-                <span>Select suggestion<span class="shortcut-ctx">Or jump to first match if no item highlighted</span></span>
-              </div>
-              <div class="shortcut-row"><kbd>Esc</kbd><span>Dismiss suggestion list</span></div>
-            </div>
-          </div>
-
           <div class="shortcut-section">
             <div class="shortcut-section-label">Config Find Bar</div>
             <div class="legend-grid">
@@ -954,7 +964,6 @@
               <div class="shortcut-row"><kbd>Esc</kbd><span>Clear find &amp; close bar</span></div>
             </div>
           </div>
-
           <div class="shortcut-section">
             <div class="shortcut-section-label">Card Interactions</div>
             <div class="legend-grid">
@@ -968,26 +977,9 @@
               </div>
             </div>
           </div>
-
         </div><!-- /help-col right -->
-      </div><!-- /help-two-col -->
 
-      <!-- Full-width search examples -->
-      <div class="shortcut-legend" style="border-top: 1px solid var(--border-light);">
-        <div class="shortcut-section">
-          <div class="shortcut-section-label">Search Examples</div>
-          <div class="help-examples-grid">
-            <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Filter by device name</span></div>
-            <div class="shortcut-row"><code class="search-ex">SPINE</code><span>Filter by role label</span></div>
-            <div class="shortcut-row"><code class="search-ex">l2-et-trunk</code><span>Filter by port mode</span></div>
-            <div class="shortcut-row"><code class="search-ex">vrf-mgmt</code><span>Filter by VRF</span></div>
-            <div class="shortcut-row"><code class="search-ex">v10</code><span>Trace VLAN 10</span></div>
-            <div class="shortcut-row"><code class="search-ex">v10,20</code><span>Trace multiple VLANs</span></div>
-            <div class="shortcut-row"><code class="search-ex">v10-20</code><span>Trace VLAN range</span></div>
-            <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded (auto-loads in background)</span></span></div>
-          </div>
-        </div>
-      </div>
+      </div><!-- /help-two-col -->
 
       <div class="help-footer-note">Backtick ` and Esc are always active — all other shortcuts are disabled while typing in an input.</div>
     </div>
