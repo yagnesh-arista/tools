@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.23 | 2026-04-21 12:29:36 -->
+<!-- TopoAssist v260421.24 | 2026-04-21 12:38:18 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3054,6 +3054,10 @@
     color: #b0bec5;
     font-weight: normal;
   }
+  /* ip-row labels inside dim boxes (e.g. Snake Test) — override the default #64748b */
+  .info-box--dim .ip-label { color: #94a3b8; font-weight: 500; }
+  .info-box--dim .input-wrapper label { color: #94a3b8; }
+  .info-box--dim .input-wrapper input { background: var(--bg-body); }
   /* Auto-derived box */
   .info-box--dim .auto-fixed-label { color: #94a3b8; }
   .info-box--dim .auto-fixed-formula { color: #94a3b8; font-weight: 500; }
