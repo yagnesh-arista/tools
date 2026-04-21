@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.163 | 2026-04-21 18:43:01 -->
+<!-- TopoAssist v260421.164 | 2026-04-21 18:51:48 -->
 <!DOCTYPE html>
 <html>
 
@@ -894,7 +894,7 @@
                 <kbd>v</kbd>
                 <span>VLAN trace<span class="shortcut-ctx">Type v&lt;VLAN ID&gt; to trace, e.g. v10 or v10,20</span></span>
               </div>
-              <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search</span></div>
+              <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search<span class="shortcut-ctx">Exact match — "leaf01" won't match "leaf01a"; port text matched as whole token</span></span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>&#x2191;</kbd><kbd>&#x2193;</kbd></div>
                 <span>Navigate suggestions</span>
@@ -919,6 +919,7 @@
               <div class="shortcut-row"><code class="search-ex">v10,20</code><span>Trace multiple VLANs</span></div>
               <div class="shortcut-row"><code class="search-ex">v10-20</code><span>Trace VLAN range</span></div>
               <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded</span></span></div>
+              <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Strict: exact name only<span class="shortcut-ctx">Won't match leaf01a or spine-leaf01 — press s to toggle</span></span></div>
             </div>
           </div>
 
