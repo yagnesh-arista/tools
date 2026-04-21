@@ -53,6 +53,11 @@ fi
 [ -z "$project" ] && project="global"
 
 ROLLBACK_FILE="$REPO/ROLLBACKS.md"
+
+# flock: multi-line append is not atomic — prevent interleaved writes
+exec 9>/tmp/claude-rollback.lock
+flock -x 9
+
 [ ! -f "$ROLLBACK_FILE" ] && \
   printf "# Rollback Log\n\nReverts and rollbacks across all projects, with reasons.\n\n---\n\n" \
     > "$ROLLBACK_FILE"

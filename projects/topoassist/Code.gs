@@ -1,10 +1,10 @@
-// TopoAssist v260421.11 | 2026-04-21 12:17:17
+// TopoAssist v260421.12 | 2026-04-21 12:18:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.11";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.12";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4754,8 +4754,10 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
   const ep2Nh     = ipPrefs.ep2_nh       || '';
   const ep2Mac    = ipPrefs.ep2_mac      || '';
   // Routes emitted only when subnet is configured; null = no route for that direction.
-  const fwdRoute = ipPrefs.ep2_subnet ? `${ipPrefs.ep2_subnet}.0/24` : null;
-  const revRoute = ipPrefs.ep1_subnet ? `${ipPrefs.ep1_subnet}.0/24` : null;
+  // Accepts full CIDR ("10.99.99.0/24") or legacy 3-octet prefix ("10.99.99" → "10.99.99.0/24").
+  const _toRoute = v => { if (!v) return null; v = String(v).trim(); return v.includes('/') ? v : `${v}.0/24`; };
+  const fwdRoute = _toRoute(ipPrefs.ep2_subnet);
+  const revRoute = _toRoute(ipPrefs.ep1_subnet);
 
   if (!bridgeMac) {
     return [
