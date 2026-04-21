@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.88 | 2026-04-21 15:29:48 -->
+<!-- TopoAssist v260421.89 | 2026-04-21 15:30:47 -->
 <!DOCTYPE html>
 <html>
 
@@ -191,7 +191,7 @@
             </div>
           </div>
           <div class="tb-sep"></div>
-          <!-- SEARCH -->
+          <!-- SEARCH + STRICT -->
           <div class="tb-section">
             <span class="tb-label">SEARCH</span>
             <div class="tb-btns">
@@ -200,16 +200,13 @@
                 <button id="searchClear" class="search-clear-btn" title="Clear search" style="display:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 <div id="search-autocomplete" class="search-autocomplete-list hidden"></div>
               </div>
+              <label class="strict-btn" for="strictSearch" title="Strict match — keyword must appear exactly">
+                <input type="checkbox" id="strictSearch" onchange="debouncedFilterTopology()">
+                <span>STRICT</span>
+              </label>
             </div>
           </div>
           <div class="tb-sep"></div>
-          <!-- STRICT -->
-          <div class="tb-section">
-            <span class="tb-label">STRICT</span>
-            <div class="tb-btns" style="justify-content:center;">
-              <input type="checkbox" id="strictSearch" onchange="debouncedFilterTopology()" title="Strict match — keyword must appear exactly">
-            </div>
-          </div>
         </div>
         <div class="ui-group right-group" style="align-items:stretch; flex: 1;">
           <div class="tb-section" style="flex: 1;">
@@ -1052,10 +1049,12 @@
       <div class="genall-action-card">
         <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()">Generate All</button>
         <span class="genall-desc">Build EOS configs for all visible Arista devices and write them to the Configs sheet.</span>
+        <button class="btn-mono genall-btn" id="btnStopGenerate" disabled>Stop</button>
       </div>
       <div class="genall-action-card">
         <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()">Push All</button>
         <span class="genall-desc">Push all device configs to the lab via Device Bridge. Run Generate All first.</span>
+        <button class="btn-mono genall-btn" id="btnStopPush" disabled>Stop</button>
       </div>
     </div>
     <!-- Results section -->
@@ -1064,9 +1063,6 @@
         <div style="color:var(--text-muted);padding:20px 0;font-family:'JetBrains Mono',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>
       </div>
       <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;"></div>
-    </div>
-    <div class="modal-actions right-align">
-      <button class="btn-mono" id="btnCopyAllConfigs" onclick="copyAllConfigs()" style="display:none;">Copy All</button>
     </div>
   </div>
 

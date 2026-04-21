@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.88 | 2026-04-21 15:29:48 -->
+<!-- TopoAssist v260421.89 | 2026-04-21 15:31:09 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -732,6 +732,32 @@
     cursor: pointer;
     margin: 0 2px;
   }
+  /* STRICT toggle pill — same height as search input */
+  .strict-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-body);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .strict-btn input[type="checkbox"] { display: none; }
+  .strict-btn:has(input:checked) {
+    border-color: #3b82f6;
+    background: rgba(59,130,246,0.10);
+    color: #3b82f6;
+  }
+  .strict-btn:hover { border-color: #94a3b8; }
 
   /* ================= 3.2 BUTTONS ================= */
   .btn {
@@ -5123,6 +5149,7 @@
     flex: 1;
   }
   .genall-btn { width: 100%; }
+  .genall-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .genall-desc {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
