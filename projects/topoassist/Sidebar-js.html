@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.134 | 2026-04-21 17:21:02 -->
+<!-- TopoAssist v260421.135 | 2026-04-21 17:24:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.134";  // keep in sync with Code.gs
+const APP_VERSION = "260421.135";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6212,11 +6212,30 @@ function showAuditResults(data) {
   const extra = data.extra || [];
   const conflicts = data.conflicts || [];
   const debugLogs = data.debugLog || []; // Get logs from server
+  const vrfIssues = data.vrfIssues || [];
   const internalConflicts = _scanInternalVlanConflicts();
 
   let html = "";
 
-  // --- 0. INTERNAL VLAN CONFLICTS (client-side, requires bridge data) ---
+  // --- 0a. VRF ISSUES (per-VLAN VRF mismatches/warnings from server) ---
+  if (vrfIssues.length > 0) {
+    const vrfErrors = vrfIssues.filter(i => i.sev === 'error');
+    const vrfWarns  = vrfIssues.filter(i => i.sev === 'warn');
+    const borderCol = vrfErrors.length > 0 ? '#ef4444' : '#f97316';
+    const bgHead    = vrfErrors.length > 0 ? '#fee2e2' : '#ffedd5';
+    const textHead  = vrfErrors.length > 0 ? '#b91c1c' : '#c2410c';
+    const borderHead = vrfErrors.length > 0 ? '#fecaca' : '#fed7aa';
+    html += `<div style="margin-bottom:15px;border:1px solid ${borderCol};background:#fff;border-radius:6px;overflow:hidden;">
+<div style="background:${bgHead};padding:8px 12px;font-weight:bold;color:${textHead};font-size:12px;border-bottom:1px solid ${borderHead};font-family:'JetBrains Mono',monospace;">
+${vrfErrors.length > 0 ? '✕' : '⚠'} Per-VLAN VRF Issues (${vrfIssues.length})
+</div>
+<div style="padding:10px;font-size:11px;line-height:1.6;max-height:180px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
+${vrfIssues.map(i => `<div style="margin-bottom:5px;color:${i.sev === 'error' ? '#b91c1c' : '#92400e'};">
+<b>${i.sev === 'error' ? 'ERROR' : 'WARN'}</b> — ${i.msg}</div>`).join('')}
+</div></div>`;
+  }
+
+  // --- 0b. INTERNAL VLAN CONFLICTS (client-side, requires bridge data) ---
   if (internalConflicts.length > 0) {
     html += `<div style="margin-bottom:15px;border:1px solid #f97316;background:#fff7ed;border-radius:6px;overflow:hidden;">
 <div style="background:#ffedd5;padding:8px 12px;font-weight:bold;color:#c2410c;font-size:12px;border-bottom:1px solid #fed7aa;font-family:'JetBrains Mono',monospace;">

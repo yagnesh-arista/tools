@@ -1,10 +1,10 @@
-// TopoAssist v260421.134 | 2026-04-21 17:21:02
+// TopoAssist v260421.135 | 2026-04-21 17:22:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.134";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.135";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -956,11 +956,87 @@ function auditSchemaVsSheet() {
   const missing = expectedHeaders.filter(h => !actualHeaders.includes(h));
   const extra = actualHeaders.filter(h => !expectedHeaders.includes(h));
 
+  // 2. Per-VLAN VRF audit
+  const vrfIssues = [];
+  const aristaDevices = devices.filter(function(dv) { return dv.type !== 'non-arista'; });
+
+  for (let row = 2; row < data.length; row++) {
+    const rowData = data[row];
+    aristaDevices.forEach(function(dv) {
+      const devName = dv.name;
+      const getCol = function(key) {
+        const idx = headers.indexOf(key + '_' + devName);
+        return idx >= 0 ? String(rowData[idx] || '').trim() : '';
+      };
+
+      const vrfRaw  = getCol('vrf');
+      const vlanRaw = getCol('vlan');
+      const sviRaw  = getCol('svi_vlan');
+      const mode    = getCol('sp_mode').toLowerCase();
+      if (!vrfRaw) return;
+
+      const vrfList = _parseVrfList(vrfRaw);
+      if (vrfList.length <= 1) return; // single VRF always valid
+
+      const label = 'Row ' + (row + 1) + ' / ' + devName;
+      const isSubInt  = mode.includes('-sub-int');
+      const isTrunk   = mode === 'l2-et-trunk' || mode === 'l2-po-trunk';
+      const isAccess  = mode === 'l2-et-access' || mode === 'l2-po-access';
+      const isL3Routed = mode === 'l3-et-int' || mode === 'l3-po-int';
+
+      // Check: wrong mode — multi-VRF has no effect
+      if (isAccess || isL3Routed) {
+        vrfIssues.push({ sev: 'warn', msg: label + ': multi-VRF has no effect on ' + mode + ' (only sub-int and l2-trunk SVIs use per-VLAN VRF)' });
+        return;
+      }
+
+      // Check: range with multi-VRF (flag any - in vlanRaw)
+      const hasRange  = vlanRaw.includes('-');
+      const hasList   = vlanRaw.includes(',');
+      if (hasRange) {
+        const detail = hasRange && hasList ? 'mixed range+list (e.g. 10-20,25)' : 'range (e.g. 10-20)';
+        vrfIssues.push({ sev: 'warn', msg: label + ': expand VLAN ' + detail + ' before using per-VLAN VRF — positional mapping is ambiguous with ranges' });
+        return; // can't count accurately when ranges present
+      }
+
+      if (isSubInt) {
+        // Sub-int: VRF count must match vlan_ count
+        const vlanList = vlanRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        if (vrfList.length !== vlanList.length) {
+          vrfIssues.push({ sev: 'error', msg: label + ': sub-int VRF count (' + vrfList.length + ') must match VLAN count (' + vlanList.length + ') — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+        }
+      } else if (isTrunk) {
+        const sviNorm = sviRaw.toLowerCase();
+        const sviIsAll = sviNorm === 'all' || sviNorm === 'yes' || sviNorm === '1' || sviNorm === 'true';
+
+        if (!sviRaw) {
+          // No SVIs — multi-VRF has no effect
+          vrfIssues.push({ sev: 'warn', msg: label + ': multi-VRF on trunk but svi_vlan is empty — no SVIs will be created, VRF list has no effect' });
+        } else if (sviIsAll) {
+          // svi_vlan=all → compare against vlan_ count (including native if present)
+          const pv = parseVlanWithNative(vlanRaw);
+          const expanded = Array.from(expandVlanString(String(pv.vlans || '')));
+          if (pv.native) expanded.push(String(pv.native));
+          if (vrfList.length !== expanded.length) {
+            vrfIssues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match VLAN count (' + expanded.length + ') when svi_vlan=all — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+          }
+        } else {
+          // Explicit svi_vlan list — compare against it
+          const sviList = sviRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+          if (vrfList.length !== sviList.length) {
+            vrfIssues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match svi_vlan count (' + sviList.length + ') — got svi_vlan=' + sviRaw + ', vrf=' + vrfRaw });
+          }
+        }
+      }
+    });
+  }
+
   // RETURN EMPTY CONFLICTS (Logic moved to Client-Side runValidation)
   return {
     extra: extra,
     missing: missing,
     conflicts: [], // <--- Force Empty
+    vrfIssues: vrfIssues,
     totalActual: actualHeaders.length,
     totalExpected: expectedHeaders.length
   };
@@ -3984,14 +4060,16 @@ function getDeviceConfig(deviceName) {
         const apVlans = expandVlanString(String(_pvAp.vlans || ""));
         if (_pvAp.native) apVlans.add(parseInt(_pvAp.native));
         const apSviVlans = _parseSviVlans(d.svi_vlan_, Array.from(apVlans));
+        const apVrfList = _parseVrfList(d.vrf_);
         if (apSviVlans.length > 0) {
-          apSviVlans.forEach(v => {
+          apSviVlans.forEach((v, i) => {
             const oct2 = Math.floor(v / 100);
             const oct3 = v % 100;
+            const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
             sviLines.push([
               "!",
               `interface Vlan${v}`,
-              d.vrf_ ? ` vrf ${d.vrf_}` : null,
+              effectiveVrf ? ` vrf ${effectiveVrf}` : null,
               ` description ANYCAST_GW_${v}`,
               ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`,
               ` default ipv6 address virtual`,
@@ -4534,22 +4612,25 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4) && !d.isSnakePrimary && !d.isSnakeSecondary;
   const addOspfV6 = !!(netSettings && netSettings.ospf_ipv6) && !d.isSnakePrimary && !d.isSnakeSecondary;
 
-  // Helper to build the IP config lines
-  const getIpBlock = (v) => {
+  // Helper to build the IP config lines.
+  // resolvedVrf: per-VLAN VRF override (string or null). When provided, replaces d.vrf_.
+  // Omit (undefined) to fall back to d.vrf_ (legacy single-VRF behaviour).
+  const getIpBlock = (v, resolvedVrf) => {
     let val = parseInt(v);
     if (isNaN(val)) return "";
 
     let lines = [];
 
-    // --- VRF assignment priority: IXIA role > snake primary/secondary > sheet vrf_ ---
+    // --- VRF assignment priority: IXIA role > snake > per-VLAN resolvedVrf > sheet vrf_ ---
     if (d.ixiaRole === 'in' && d.snakeFirstPrimary) {
       lines.push(` vrf SNAKE_${d.snakeFirstPrimary}`);
     } else if (d.ixiaRole === 'out' && d.snakeLastSecondary) {
       lines.push(` vrf SNAKE_${d.snakeLastSecondary}`);
     } else if (d.isSnakePrimary || d.isSnakeSecondary) {
       lines.push(` vrf SNAKE_${portName}`);
-    } else if (d.vrf_) {
-      lines.push(` vrf ${d.vrf_}`);
+    } else {
+      const effectiveVrf = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
+      if (effectiveVrf) lines.push(` vrf ${effectiveVrf}`);
     }
 
     let ipType = (d.ip_type_ || "").toLowerCase();
@@ -4625,11 +4706,14 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
 
   let block = "";
 
+  // Pre-parse per-VLAN VRF list once for this row
+  const _vrfList = _parseVrfList(d.vrf_);
+
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlansForSvi);
   if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakePrimary && !d.isSnakeSecondary) {
-    sviVlans.forEach(v => {
-      block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+    sviVlans.forEach((v, i) => {
+      block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n no shutdown\n";
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
@@ -4642,8 +4726,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   }
   // 2. Sub-Interfaces (Router on a Stick)
   else if (mode.includes("-sub-int")) {
-    vlans.forEach(v => {
-      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n" + getIpBlock(v) + "\n no shutdown\n";
+    vlans.forEach((v, i) => {
+      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n no shutdown\n";
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";

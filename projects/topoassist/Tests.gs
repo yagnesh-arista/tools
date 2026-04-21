@@ -1,4 +1,4 @@
-// TopoAssist v260421.134 | 2026-04-21 17:21:02
+// TopoAssist v260421.135 | 2026-04-21 17:23:28
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -149,6 +149,33 @@ function test_parseSviVlans() {
   ];
 }
 
+
+// ── _parseVrfList ──────────────────────────────────────────────────────────────
+
+function test_parseVrfList() {
+  const t = assert_;
+  return [
+    t("empty string → []",          _parseVrfList(''),            []),
+    t("null → []",                  _parseVrfList(null),          []),
+    t("single VRF → ['A']",         _parseVrfList('VRF_A'),       ['VRF_A']),
+    t("comma list → array",         _parseVrfList('VRF_A,VRF_B'), ['VRF_A', 'VRF_B']),
+    t("whitespace trimmed",         _parseVrfList('A , B , C'),   ['A', 'B', 'C']),
+    t("trailing comma ignored",     _parseVrfList('A,B,'),        ['A', 'B']),
+  ];
+}
+
+// ── _resolveVrfAtIndex ─────────────────────────────────────────────────────────
+
+function test_resolveVrfAtIndex() {
+  const t = assert_;
+  return [
+    t("empty list → null",                   _resolveVrfAtIndex([], 0),           null),
+    t("single entry → always that VRF",      _resolveVrfAtIndex(['A'], 5),        'A'),
+    t("multi: index 0",                      _resolveVrfAtIndex(['A','B'], 0),    'A'),
+    t("multi: index 1",                      _resolveVrfAtIndex(['A','B'], 1),    'B'),
+    t("multi: out-of-bounds → null",         _resolveVrfAtIndex(['A','B'], 2),    null),
+  ];
+}
 
 // ── parseVlanWithNative ────────────────────────────────────────────────────────
 
@@ -992,6 +1019,8 @@ function runAllTests() {
     { name: "normalizePo",               fn: test_normalizePo },
     { name: "isValidPort",               fn: test_isValidPort },
     { name: "_parseSviVlans",            fn: test_parseSviVlans },
+    { name: "_parseVrfList",             fn: test_parseVrfList },
+    { name: "_resolveVrfAtIndex",        fn: test_resolveVrfAtIndex },
     { name: "parseVlanWithNative",       fn: test_parseVlanWithNative },
     { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
     { name: "compressPortList",          fn: test_compressPortList },
