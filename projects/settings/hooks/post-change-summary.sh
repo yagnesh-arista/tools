@@ -60,6 +60,7 @@ if [ -z "$cmd" ]; then
   git -C "$REPO" commit -m "chore: auto-commit session changes" >/dev/null 2>&1
   push_result=0
   git -C "$REPO" push >/dev/null 2>&1 || push_result=$?
+  exec 9>&-   # release git lock before clasp
 
   REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
   REPO_NAME=$(echo "$REMOTE_URL" \
