@@ -447,6 +447,41 @@ CLIENT INIT (sidebar load):
   → startSmartPolling()
 
 --------------------------------------------------------------------------------
+SECTION 0C: TERMINOLOGY (READ BEFORE EVERY CHANGE)
+--------------------------------------------------------------------------------
+
+Two completely separate HTML dialogs open in different contexts. Never confuse them.
+
+  "Sheet View" / "sheet view"
+      File:    SheetAssistPanel.html
+      Opens:   showSheetAssistPanel() — appears as a modeless panel INSIDE the
+               Google Sheet (not the sidebar topology dialog)
+      Title:   "Sheet View" (490×420 dialog)
+      Purpose: Device visibility toggles (show/hide sheet rows per device) +
+               Column view selector (hide/show sheet columns)
+      Filter panels: ip_type, int_mode, svi_vlan filters — all SheetAssistPanel.html
+      User terms: "sheet view", "sheet panel", "Sheet View"
+
+  "Topology View" / "topology view"
+      Files:   Sidebar.html + Sidebar-js.html + Sidebar-css.html
+      Opens:   showSidebar() — appears as the TOPOLOGY SIDEBAR (1600×900 dialog)
+      Purpose: Visual network topology (port cards, D3 holistic graph, edit mode,
+               config push, validation, device/schema managers)
+      Sub-modes (currentViewMode):
+        'detailed'  — left port-card list + D3 canvas (the default)
+        'holistic'  — D3 force-graph only (circle nodes, no port cards)
+        'simple'    — same as holistic but the Dev Vis floating panel calls it
+                      "Topology View" in its header
+      Dev Vis panel: floating panel labeled "Topology View" inside the sidebar —
+                     its int_mode filter uses SHORT labels (l2ea, l2et…) because
+                     the panel is compact; full names live in SheetAssistPanel.
+      User terms: "topology view", "sidebar", "canvas"
+
+  RULE: If the user says "sheet view" → SheetAssistPanel.html.
+        If the user says "topology view" or "sidebar" → Sidebar.html / Sidebar-js.html.
+        If unsure, ASK before touching code.
+
+--------------------------------------------------------------------------------
 SECTION 1: PROJECT OVERVIEW
 --------------------------------------------------------------------------------
 
