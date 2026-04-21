@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.110 | 2026-04-21 16:11:50 -->
+<!-- TopoAssist v260421.110 | 2026-04-21 16:12:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
 const APP_VERSION = "260421.110";  // keep in sync with Code.gs
@@ -4455,8 +4455,16 @@ function validateTechSettings() {
 function openTechModal() {
   showModalLoading("techModal");
 
+  // Safety net: if the GAS call hangs (auth expiry, quota, network error at framework level),
+  // auto-recover the loading overlay after 15s so the UI is not permanently blocked.
+  const _guard = setTimeout(() => {
+    hideGlobalLoading();
+    setStatus("Network Tech Stack load timed out — try again", "status-error");
+  }, 15000);
+
   google.script.run
     .withSuccessHandler(settings => {
+      clearTimeout(_guard);
       hideGlobalLoading();
 
       // 1. Derive P2P mode from stored flags (5-mode)
@@ -4511,6 +4519,7 @@ function openTechModal() {
                      modal.style.opacity = '1'; modal.style.visibility = 'visible'; }
     })
     .withFailureHandler(err => {
+      clearTimeout(_guard);
       hideGlobalLoading();
       alert("Server Error: " + err.message);
     })
