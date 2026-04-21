@@ -137,6 +137,31 @@ Files: <files affected>
 ```
 The git hook (`rollback-logger.sh`) handles `git revert` automatically. For non-git rollbacks (editing a file back, restoring a backup), Claude must write the entry manually. Never skip this — the log exists so the same failed approach is not attempted again.
 
+## 20. GAS Loading Overlay Guard (Google Apps Script projects)
+
+GAS framework-level failures (auth expiry, quota exhaustion, network drop) fire **neither**
+`withSuccessHandler` nor `withFailureHandler`. The overlay stays up forever. Script-level
+errors DO reach `withFailureHandler` — framework failures are completely silent.
+
+**Rule: Every `showGlobalLoading()` call must be paired with a `_guard` timeout.**
+
+```javascript
+showGlobalLoading("Doing something...");
+const _guard = setTimeout(() => {
+  hideGlobalLoading();
+  setStatus("Operation timed out — try again", "status-error");
+}, 15000); // 15s read/save | 20s fetchFullConfig | 60s sync ops
+google.script.run
+  .withSuccessHandler(result => { clearTimeout(_guard); hideGlobalLoading(); /* ... */ })
+  .withFailureHandler(err => { clearTimeout(_guard); hideGlobalLoading(); alert(err.message); })
+  .yourGasFunction();
+```
+
+- `clearTimeout(_guard)` must be the FIRST statement in both handlers
+- `hideGlobalLoading()` must immediately follow in modal-open handlers (before DOM ops)
+- Callback queues (`fetchQueue`) must also be flushed inside the guard timeout
+- Full pattern: `~/.claude/rules/gas.md`
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
