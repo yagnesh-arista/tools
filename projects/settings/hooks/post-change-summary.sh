@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.43 | 2026-04-20 16:36:39
+# settings v260421.1 | 2026-04-21
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -11,11 +11,11 @@ input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // ""')
 
 # ── STOP MODE: called from Stop hook (no Bash command) ───────────────────────
-# Shows uncommitted changes with file details when a skill finishes without committing.
+# Auto-commits and pushes any uncommitted tracked changes.
 if [ -z "$cmd" ]; then
   REPO="$HOME/claude"
-  uncommitted=$(git -C "$REPO" status --porcelain 2>/dev/null | grep -v '^??' )
-  [ -z "$uncommitted" ] && exit 0   # nothing to report — stay silent
+  uncommitted=$(git -C "$REPO" status --porcelain 2>/dev/null | grep -v '^??')
+  [ -z "$uncommitted" ] && exit 0
 
   GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
   file_lines=""
@@ -24,7 +24,6 @@ if [ -z "$cmd" ]; then
 
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    st="${line:0:2}"
     rel="${line:3}"
     full="$REPO/$rel"
     fname=$(basename "$rel")
@@ -49,23 +48,49 @@ if [ -z "$cmd" ]; then
 
   [ -z "$file_lines" ] && exit 0
 
-  clasp_label="GAS project"
-  if [ -n "$gas_project_dir" ] && [ -f "$gas_project_dir/.clasp.json" ]; then
-    script_id=$(jq -r '.scriptId // ""' "$gas_project_dir/.clasp.json" 2>/dev/null)
-    script_name=$(basename "$gas_project_dir")
-    short_id=$(echo "$script_id" | cut -c1-12)
-    clasp_label="${script_name} [${short_id}...]"
-  fi
+  # Auto-commit tracked changes
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    rel="${line:3}"
+    git -C "$REPO" add -- "$REPO/$rel" 2>/dev/null
+  done <<< "$uncommitted"
 
-  if [ "$gas_changed" -eq 1 ]; then
-    clasp_note="${clasp_label} — check if clasp push needed ⚠"
+  git -C "$REPO" commit -m "chore: auto-commit session changes" >/dev/null 2>&1
+  push_result=0
+  git -C "$REPO" push >/dev/null 2>&1 || push_result=$?
+
+  REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
+  REPO_NAME=$(echo "$REMOTE_URL" \
+    | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
+  [ -z "$REPO_NAME" ] && REPO_NAME="origin/main"
+
+  if [ "$push_result" -eq 0 ]; then
+    git_note="auto-committed + pushed to github.com/${REPO_NAME} ✓"
   else
-    clasp_note="N/A (no GAS files changed)"
+    git_note="auto-committed but push FAILED — run: git push ✗"
   fi
 
-  SUMMARY="[UNCOMMITTED CHANGES] — commit and push before ending session
+  # Auto clasp push if GAS files changed
+  clasp_label="GAS project"
+  clasp_note="N/A (no GAS files changed)"
+  if [ "$gas_changed" -eq 1 ] && [ -n "$gas_project_dir" ]; then
+    if [ -f "$gas_project_dir/.clasp.json" ]; then
+      script_id=$(jq -r '.scriptId // ""' "$gas_project_dir/.clasp.json" 2>/dev/null)
+      script_name=$(basename "$gas_project_dir")
+      short_id=$(echo "$script_id" | cut -c1-12)
+      clasp_label="${script_name} [${short_id}...]"
+    fi
+    push_out=$(cd "$gas_project_dir" && clasp push 2>&1)
+    if echo "$push_out" | grep -q 'Pushed\|pushed'; then
+      clasp_note="${clasp_label} auto-pushed ✓"
+    else
+      clasp_note="${clasp_label} push FAILED — run clasp push manually ✗"
+    fi
+  fi
+
+  SUMMARY="[AUTO-COMMITTED] session changes committed + pushed
 Files:${file_lines}
-Git:   uncommitted — run: git add <files> && git commit && git push
+Git:   ${git_note}
 Clasp: ${clasp_note}"
 
   LOG="$HOME/claude/.change-log"
@@ -83,7 +108,7 @@ echo "$cmd_unquoted" | grep -qE 'git\s+(commit|push)|clasp\s+push' || exit 0
 
 REPO="$HOME/claude"
 
-# ── Repo name from remote URL (e.g. github.com/yagnesh-arista/claude) ─────────
+# ── Repo name from remote URL ─────────────────────────────────────────────────
 REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
 REPO_NAME=$(echo "$REMOTE_URL" \
   | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
@@ -94,8 +119,6 @@ COMMIT_HASH=$(git -C "$REPO" log -1 --format="%h" 2>/dev/null)
 COMMIT_MSG=$(git -C "$REPO" log -1 --format="%s" 2>/dev/null | cut -c1-60)
 
 # ── Determine which files to show ────────────────────────────────────────────
-# git push → all files across every pushed commit via reflog (prev origin/main..HEAD)
-# git commit only, or clasp push → last commit only (HEAD~1..HEAD)
 FILE_FILTER='CLAUDE\.md\|MEMORY\.md\|ROLLBACKS\.md\|\.template$'
 
 if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
@@ -125,7 +148,6 @@ while IFS= read -r rel; do
   fname=$(basename "$rel")
   [ -f "$full" ] || continue
 
-  # Version stamp: line 2 for shebang files, line 1 otherwise
   line1=$(head -1 "$full" 2>/dev/null)
   if echo "$line1" | grep -q '^#!'; then
     stamp_line=$(sed -n '2p' "$full" 2>/dev/null)
@@ -137,37 +159,39 @@ while IFS= read -r rel; do
 
   file_lines="${file_lines}"$'\n'"  ${fname}  ${ver}"
 
-  # Track GAS files and which project dir they're in
   if echo "$rel" | grep -q 'topoassist/' && echo "$GAS_NAMES" | grep -qw "$fname"; then
     gas_changed=1
     gas_project_dir=$(dirname "$full")
   fi
 done <<< "$CHANGED_FILES"
 
-[ -z "$file_lines" ] && exit 0   # nothing meaningful changed
+[ -z "$file_lines" ] && exit 0
+
+# ── Auto-push if git commit ran without git push ──────────────────────────────
+unpushed=$(git -C "$REPO" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
+if echo "$cmd_unquoted" | grep -qE 'git\s+commit' && ! echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
+  if [ "$unpushed" -gt 0 ]; then
+    git -C "$REPO" push >/dev/null 2>&1 && unpushed=0
+  fi
+fi
 
 # ── Git push status ───────────────────────────────────────────────────────────
-unpushed=$(git -C "$REPO" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
-if echo "$cmd_unquoted" | grep -qE 'git\s+push'; then
+if echo "$cmd_unquoted" | grep -qE 'git\s+push' || [ "$unpushed" -eq 0 ]; then
   if [ "$unpushed" -eq 0 ]; then
     git_status="pushed to github.com/${REPO_NAME} ✓"
   else
     git_status="push to github.com/${REPO_NAME} FAILED — still ${unpushed} commit(s) ahead ✗"
   fi
 else
-  if [ "$unpushed" -gt 0 ]; then
-    git_status="committed (not pushed — ${unpushed} ahead of github.com/${REPO_NAME})"
-  else
-    git_status="committed — already in sync with github.com/${REPO_NAME}"
-  fi
+  git_status="committed (not pushed — ${unpushed} ahead of github.com/${REPO_NAME})"
 fi
 
 # ── Clasp script info from .clasp.json ───────────────────────────────────────
 clasp_label="GAS project"
 if [ -n "$gas_project_dir" ] && [ -f "$gas_project_dir/.clasp.json" ]; then
   script_id=$(jq -r '.scriptId // ""' "$gas_project_dir/.clasp.json" 2>/dev/null)
-  script_name=$(basename "$gas_project_dir")   # e.g. "topoassist"
-  short_id=$(echo "$script_id" | cut -c1-12)   # first 12 chars of scriptId
+  script_name=$(basename "$gas_project_dir")
+  short_id=$(echo "$script_id" | cut -c1-12)
   clasp_label="${script_name} [${short_id}...]"
 fi
 
@@ -200,9 +224,7 @@ Files:${file_lines}
 Git:   ${git_status}
 Clasp: ${clasp_status}"
 
-# Write to log file (visible via `cat ~/claude/.change-log` or read by Claude in response)
 LOG="$HOME/claude/.change-log"
 echo "$SUMMARY" > "$LOG"
 
-# Also feed to Claude as additionalContext so it can quote it in its response
 jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'

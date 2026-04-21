@@ -4,6 +4,9 @@
 # Claude internal memory (project-specific runtime data)
 projects/-home-yagnesh-claude/
 
+# Runtime status artifact — written by hooks, no git history needed
+.change-log
+
 # Arista internal tooling (not for public repo)
 lclaude
 
