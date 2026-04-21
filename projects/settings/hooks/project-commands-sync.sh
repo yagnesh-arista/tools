@@ -14,9 +14,13 @@ if echo "$f" | grep -qP '/claude/projects/[^/]+/\.claude/commands/[^/]+\.md$'; t
   dest="$HOME/.claude/commands/${proj}-${name}"
   bkp="$HOME/claude/projects/settings/commands/${proj}-${name}"
 
+  # flock: prevent interleaved writes if two sessions sync commands simultaneously
+  exec 9>/tmp/claude-commands.lock
+  flock -x 9
   cp "$f" "$dest"
   mkdir -p "$(dirname "$bkp")"
   cp "$f" "$bkp"
+  exec 9>&-
 
   jq -n --arg ctx "[CMD SYNC] ${name} → global as ${proj}-${name}" \
     '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
