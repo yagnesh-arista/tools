@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-21 (Rule 20: GAS loading guard added) -->
+<!-- rules-synced: 2026-04-21 (Rule 21: Modal button standard added) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
