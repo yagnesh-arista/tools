@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.46 | 2026-04-21 13:59:55 -->
+<!-- TopoAssist v260421.47 | 2026-04-21 14:02:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.46";  // keep in sync with Code.gs
+const APP_VERSION = "260421.47";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12664,14 +12664,14 @@ function toggleTopoIpFilter(val) {
 
 // ── int_mode filter (sp_mode_) ─────────────────────────────────────────────
 const _INT_MODE_ITEMS = [
-  { val: 'l2-et-access',  label: 'l2ea' },
-  { val: 'l2-et-trunk',   label: 'l2et' },
-  { val: 'l2-po-access',  label: 'l2pa' },
-  { val: 'l2-po-trunk',   label: 'l2pt' },
-  { val: 'l3-et-int',     label: 'l3ei' },
-  { val: 'l3-et-sub-int', label: 'l3es' },
-  { val: 'l3-po-int',     label: 'l3pi' },
-  { val: 'l3-po-sub-int', label: 'l3ps' },
+  { val: 'l2-et-access'  },
+  { val: 'l2-et-trunk'   },
+  { val: 'l2-po-access'  },
+  { val: 'l2-po-trunk'   },
+  { val: 'l3-et-int'     },
+  { val: 'l3-et-sub-int' },
+  { val: 'l3-po-int'     },
+  { val: 'l3-po-sub-int' },
 ];
 
 function renderIntModeList() {
@@ -12687,7 +12687,7 @@ function renderIntModeList() {
            ' stroke-linecap="round" stroke-linejoin="round">' +
            (isHidden ? DEV_VIS_EYE_CLOSED : DEV_VIS_EYE_OPEN) +
            '</svg></div>' +
-           '<span class="dev-vis-name">' + item.label + '</span>' +
+           '<span class="dev-vis-name">' + item.val + '</span>' +
            '</div>';
   }).join('');
 }
