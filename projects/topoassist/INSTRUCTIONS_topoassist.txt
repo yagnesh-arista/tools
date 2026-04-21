@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (STATUS ribbon: tb-label → "Status Live Logs"; button text restored to "LOG HISTORY". File: Sidebar.html)
+  Last updated: 2026-04-21 (Sheet View menu: removed "+" prefix from Transceiver, Speed, Port Channel, Mode, Vlan, SVI items. File: Code.gs)
+  Previous: 2026-04-21 (STATUS ribbon: tb-label → "Status Live Logs"; button text restored to "LOG HISTORY". File: Sidebar.html)
   Previous: 2026-04-21 (CABLE toolbar: divider-v removed from inside tb-btns; replaced with tb-sep as sibling after the CABLE tb-section — now full-height like all other section separators. File: Sidebar.html)
   Previous: 2026-04-21 (Sheet View submenu flattened with descriptive labels — no nested submenus: Show All | sep | L1: Interface | L1: + Transceiver | L1: + Speed | sep | L1.5: + Port Channel | sep | L2/L3: + Mode | L2/L3: + Vlan | L2/L3: + SVI | sep | Custom View. File: Code.gs)
   Previous: 2026-04-21 (Sheet View submenu restructured into nested submenus: Show All (flat) | L1 → Int/Xcvr/Speed | L1.5 → Port Channel | L2 & L3 → Mode/Vlan/SVI | Custom View. Added viewSvi() = applyCustomView(['int','po','sp_mode','vlan','svi_vlan']). File: Code.gs)
