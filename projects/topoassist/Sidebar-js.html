@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.25 | 2026-04-21 12:45:13 -->
+<!-- TopoAssist v260421.26 | 2026-04-21 12:51:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.25";  // keep in sync with Code.gs
+const APP_VERSION = "260421.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7657,7 +7657,6 @@ function renderHolistic(data) {
           if (!savedNodePositions[n.id]) savedNodePositions[n.id] = {};
           savedNodePositions[n.id].x = n.x; savedNodePositions[n.id].y = n.y;
         });
-        maxSavedX -= shiftX;
       }
     }
 
