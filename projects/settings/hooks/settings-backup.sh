@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.37 | 2026-04-21 12:56:14
+# settings v260421.48 | 2026-04-21 13:08:10
 # settings-backup.sh
 # PostToolUse:Write|Edit — fires when Claude edits a settings file.
 # Syncs the file to ~/claude/projects/settings/, auto-commits, and pushes.
