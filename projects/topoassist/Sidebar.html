@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.6 | 2026-04-21 11:57:14 -->
+<!-- TopoAssist v260421.7 | 2026-04-21 11:58:07 -->
 <!DOCTYPE html>
 <html>
 
@@ -496,13 +496,13 @@
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200" style="width:56px"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24" style="width:46px"></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_p2p_v6_first" placeholder="200" style="width:56px"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64" style="width:46px"></div>
+            <div class="input-wrapper"><label>First Hextet</label><input type="text" id="ip_p2p_v6_first" placeholder="200" style="width:56px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64" style="width:46px"></div>
           </div>
         </div>
       </div>
@@ -512,15 +512,15 @@
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100" style="width:56px"></div>
-            <div class="input-wrapper"><label>Last Octet (GW)</label><input type="text" id="ip_gw_v4_last" placeholder="1" style="width:40px"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24" style="width:46px"></div>
+            <div class="input-wrapper"><label>Last Octet</label><input type="text" id="ip_gw_v4_last" placeholder="1" style="width:40px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24" style="width:46px"></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
-            <div class="input-wrapper"><label>Prefix</label><input type="text" id="ip_gw_v6_first" placeholder="100" style="width:56px"></div>
+            <div class="input-wrapper"><label>First Hextet</label><input type="text" id="ip_gw_v6_first" placeholder="100" style="width:56px"></div>
             <div class="input-wrapper"><label>Last Hextet</label><input type="text" id="ip_gw_v6_last" placeholder="1" style="width:40px"></div>
-            <div class="input-wrapper"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64" style="width:46px"></div>
           </div>
         </div>
       </div>
@@ -543,39 +543,41 @@
       <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">Bridge MAC</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>DUT system MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
+      <div style="--ip-label-w:100px">
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">Bridge MAC</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>DUT system MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port IP</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 traffic port IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port IP</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP1 traffic port IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port MAC</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 port MAC</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port MAC</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP1 port MAC</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Subnet</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP1 source subnet</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99" style="width:90px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Subnet</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP1 source subnet</label><input type="text" id="ip_ep1_subnet" placeholder="10.99.99" style="width:90px"><span style="font-size:11px;color:#94a3b8;font-family:'JetBrains Mono',monospace;white-space:nowrap;user-select:none;-webkit-user-select:none">.0/24</span></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port IP</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 traffic port IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port IP</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP2 traffic port IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port MAC</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 port MAC</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port MAC</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP2 port MAC</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
+          </div>
         </div>
-      </div>
-      <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Subnet</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>EP2 dest subnet</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99" style="width:90px"></div>
+        <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Subnet</span>
+          <div class="ip-inputs">
+            <div class="input-wrapper"><label>EP2 dest subnet</label><input type="text" id="ip_ep2_subnet" placeholder="10.99.99" style="width:90px"><span style="font-size:11px;color:#94a3b8;font-family:'JetBrains Mono',monospace;white-space:nowrap;user-select:none;-webkit-user-select:none">.0/24</span></div>
+          </div>
         </div>
       </div>
 
