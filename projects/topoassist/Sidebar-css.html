@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.7 | 2026-04-21 11:58:07 -->
+<!-- TopoAssist v260421.8 | 2026-04-21 12:02:35 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3028,8 +3028,15 @@
   }
 
   /* ── Dim info box (any static reference/info box) ── */
+  /* Override base .info-box full border → left-accent only; italic signals "annotation, not data" */
+  .info-box.info-box--dim {
+    border: none;
+    border-left: 3px solid var(--border);
+    border-radius: 0;
+  }
   .info-box--dim {
     padding: 8px 12px;
+    font-style: italic;
   }
   .info-box--dim .info-title {
     margin-bottom: 4px;
