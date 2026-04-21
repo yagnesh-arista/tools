@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.116 | 2026-04-21 16:18:21 -->
+<!-- TopoAssist v260421.117 | 2026-04-21 16:19:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -55,15 +55,12 @@
           <!-- CABLE -->
           <div class="tb-section" id="tbSectionCable">
             <span class="tb-label">CABLE</span>
-            <div class="tb-btns" style="flex-direction:column;gap:3px;align-items:flex-start;">
-              <div style="display:flex;align-items:center;gap:4px;">
-                <span class="mono-label" title="Cable Offset">O:</span>
-                <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
-              </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <span class="mono-label" title="Cable Top Margin">T:</span>
-                <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
-              </div>
+            <div class="tb-btns">
+              <span class="mono-label" title="Cable Offset">O:</span>
+              <input type="number" class="mono-input" id="cableOffsetInp" value="<?= defaultOffset ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Offset">
+              <div class="divider-v"></div>
+              <span class="mono-label" title="Cable Top Margin">T:</span>
+              <input type="number" class="mono-input" id="cableTopInp" value="<?= defaultTop ?>" step="5" oninput="saveLayoutPreferences()" title="Cable Top Margin">
             </div>
           </div>
         </div>
