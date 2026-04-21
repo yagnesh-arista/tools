@@ -120,3 +120,45 @@ Never use `<code>` without explicit font-family — it defaults to the browser s
 Use inline SVG for every icon.
 Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text
 baselines, and render inconsistently across platforms.
+
+## Modal Button Standard (Rule 21)
+
+### Header close button — always an SVG × icon
+Every modal must have a close button as the last element in its header, using `.btn-modal-close`:
+
+```html
+<button class="btn-modal-close" onclick="closeMyModal()" title="Close">
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+</button>
+```
+
+```css
+.btn-modal-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: none; background: transparent; border-radius: 4px;
+  cursor: pointer; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace; flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+  user-select: none; -webkit-user-select: none;
+}
+.btn-modal-close:hover { background: rgba(0,0,0,0.07); color: var(--text-main); }
+```
+
+- **Never** use a text "Close" button or a Unicode ✕ character as the header dismiss control
+- The SVG × must always be the **rightmost** element in the modal header
+- `.btn-modal-close` must be in the no-select list
+
+### Footer button standard
+
+| Modal type | Footer layout | Button classes |
+|---|---|---|
+| **Edit/confirm** | `.modal-actions right-align` | Delete (`.btn-danger-mono`, left, `margin-right:auto`, hidden by default) · Cancel (`.btn-mono`) · Save (`.btn-success-mono`) |
+| **Action-only** | `.modal-actions right-align` | One or more primary action buttons, no close needed |
+| **View-only** | **No footer** — header × only | — |
+
+- Footer buttons: all share same height, font-size, and padding (`.btn-mono` scale)
+- Never duplicate the close/cancel across both header and footer
+- Never use text "Close" in the header when an SVG × button exists
