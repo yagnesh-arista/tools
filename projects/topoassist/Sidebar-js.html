@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.104 | 2026-04-21 16:04:43 -->
+<!-- TopoAssist v260421.106 | 2026-04-21 16:06:21 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.104";  // keep in sync with Code.gs
+const APP_VERSION = "260421.106";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2141,7 +2141,7 @@ function applyValidationState() {
     btn.style.color = "";
   }
   const errBtn = document.getElementById('btnAuditOnly');
-  if (errBtn) errBtn.style.display = isValidationMode ? 'flex' : 'none';
+  if (errBtn) errBtn.disabled = !isValidationMode;
 }
 
 function toggleValidationMode() {
@@ -2149,7 +2149,7 @@ function toggleValidationMode() {
   applyValidationState();
 
   const errBtn = document.getElementById('btnAuditOnly');
-  if (errBtn) errBtn.style.display = isValidationMode ? 'flex' : 'none';
+  if (errBtn) errBtn.disabled = !isValidationMode;
 
   const statusEl = document.getElementById("status");
   if (isValidationMode) {

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.104 | 2026-04-21 16:03:29 -->
+<!-- TopoAssist v260421.106 | 2026-04-21 16:06:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -124,16 +124,16 @@
           <div class="tb-section">
             <span class="tb-label">AUDIT</span>
             <div class="tb-btns">
-              <button id="btnBridgeToolbar" class="icon-btn" onclick="onBridgeIconClick()" title="Device Bridge (double-click to enable/disable auto-check)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
-                <span id="bridgeOrphanBadge" class="audit-badge bridge-orphan-badge hidden"></span>
-              </button>
               <div class="audit-group-box">
+                <button id="btnBridgeToolbar" class="icon-btn" onclick="onBridgeIconClick()" title="Device Bridge (double-click to enable/disable auto-check)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+                  <span id="bridgeOrphanBadge" class="audit-badge bridge-orphan-badge hidden"></span>
+                </button>
                 <button class="icon-btn" data-modal="auditModal" id="validateBtn" onclick="toggleValidationMode()" title="Configuration Audit">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                   <span id="auditBadge" class="audit-badge hidden"></span>
                 </button>
-                <button class="icon-btn" id="btnAuditOnly" onclick="toggleAuditOnlyView()" title="Show only devices with errors" style="display:none;">
+                <button class="icon-btn" id="btnAuditOnly" onclick="toggleAuditOnlyView()" title="Show only devices with errors" disabled>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </button>
               </div>
@@ -209,7 +209,7 @@
           </div>
           <div class="tb-sep"></div>
         </div>
-        <div class="ui-group right-group" style="align-items:stretch; flex: 1;">
+        <div class="ui-group right-group" style="align-items:stretch; flex: 1; padding-left: 8px;">
           <div class="tb-section" style="flex: 1;">
             <span class="tb-label">STATUS LOGS</span>
             <div class="tb-btns" style="width:100%;">
@@ -220,7 +220,7 @@
                   <rect x="2" y="7" width="8" height="2" rx="1" fill="currentColor"/>
                   <rect x="2" y="11" width="10" height="2" rx="1" fill="currentColor"/>
                 </svg>
-                Log
+                Log History
               </button>
             </div>
           </div>
