@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
+# settings v260421.14 | 2026-04-21 12:18:48
 # Fires after any Bash command that reverts/rolls back code.
 # Appends an entry to ~/claude/ROLLBACKS.md for future reference.
 #
