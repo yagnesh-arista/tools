@@ -1,4 +1,4 @@
-// TopoAssist v260421.150 | 2026-04-21 17:43:20
+// TopoAssist v260421.150 | 2026-04-21 17:45:20
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -174,6 +174,80 @@ function test_resolveVrfAtIndex() {
     t("multi: index 0",                      _resolveVrfAtIndex(['A','B'], 0),    'A'),
     t("multi: index 1",                      _resolveVrfAtIndex(['A','B'], 1),    'B'),
     t("multi: out-of-bounds → null",         _resolveVrfAtIndex(['A','B'], 2),    null),
+  ];
+}
+
+// ── _auditVrfIssues ────────────────────────────────────────────────────────────
+
+function test_auditVrfIssues() {
+  const t = assert_;
+  const DEV  = 'D1';
+  const HDR  = ['vrf_D1', 'vlan_D1', 'svi_vlan_D1', 'sp_mode_D1'];
+  const DEVS = [{ name: DEV, type: 'arista' }];
+
+  // Build a single-row input and run the audit
+  function run_(vrf, vlan, svi, mode) {
+    return _auditVrfIssues([[vrf, vlan, svi, mode]], HDR, DEVS, 3);
+  }
+
+  return [
+    // ─── early-return paths (no issue expected) ───────────────────────
+    t("empty vrf → no issues",
+      run_('', '10,20', '', 'l3-et-sub-int').length, 0),
+    t("single VRF → no issues (all-VLAN path)",
+      run_('RED', '10,20', '', 'l3-et-sub-int').length, 0),
+
+    // ─── wrong mode → warn ────────────────────────────────────────────
+    t("l2-et-access + multi-VRF → warn",
+      run_('RED,BLUE', '10,20', '', 'l2-et-access')[0].sev, 'warn'),
+    t("l2-po-access + multi-VRF → warn",
+      run_('RED,BLUE', '10,20', '', 'l2-po-access')[0].sev, 'warn'),
+    t("l3-et-int + multi-VRF → warn",
+      run_('RED,BLUE', '10,20', '', 'l3-et-int')[0].sev, 'warn'),
+    t("l3-po-int + multi-VRF → warn",
+      run_('RED,BLUE', '10,20', '', 'l3-po-int')[0].sev, 'warn'),
+
+    // ─── range in vlan_ → warn ────────────────────────────────────────
+    t("pure range + multi-VRF → warn",
+      run_('RED,BLUE', '10-20', '', 'l3-et-sub-int')[0].sev, 'warn'),
+    t("pure range message contains 'range'",
+      run_('RED,BLUE', '10-20', '', 'l3-et-sub-int')[0].msg.includes('range'), true),
+    t("mixed range+list + multi-VRF → warn",
+      run_('RED,BLUE', '10-20,25', '', 'l3-et-sub-int')[0].sev, 'warn'),
+    t("mixed range+list message contains 'mixed'",
+      run_('RED,BLUE', '10-20,25', '', 'l3-et-sub-int')[0].msg.includes('mixed'), true),
+
+    // ─── sub-int ──────────────────────────────────────────────────────
+    t("sub-int: VRF count matches VLAN count → no issues",
+      run_('RED,BLUE', '10,20', '', 'l3-et-sub-int').length, 0),
+    t("sub-int: VRF count > VLAN count → error",
+      run_('RED,BLUE,GREEN', '10,20', '', 'l3-et-sub-int')[0].sev, 'error'),
+    t("sub-int: nv<N> token excluded from VLAN count",
+      run_('RED,BLUE', '10,20,nv100', '', 'l3-et-sub-int').length, 0),
+    t("sub-int: l3-po-sub-int also matched",
+      run_('RED,BLUE', '10,20', '', 'l3-po-sub-int').length, 0),
+
+    // ─── trunk: no SVIs ───────────────────────────────────────────────
+    t("trunk + empty svi_vlan + multi-VRF → warn",
+      run_('RED,BLUE', '10,20', '', 'l2-et-trunk')[0].sev, 'warn'),
+    t("l2-po-trunk also triggers trunk checks",
+      run_('RED,BLUE', '10,20', '', 'l2-po-trunk')[0].sev, 'warn'),
+
+    // ─── trunk: svi=all (and aliases) ─────────────────────────────────
+    t("trunk svi=all: count match → no issues",
+      run_('RED,BLUE', '10,20', 'all', 'l2-et-trunk').length, 0),
+    t("trunk svi=yes: treated as all → no issues",
+      run_('RED,BLUE', '10,20', 'yes', 'l2-et-trunk').length, 0),
+    t("trunk svi=1: treated as all → no issues",
+      run_('RED,BLUE', '10,20', '1', 'l2-et-trunk').length, 0),
+    t("trunk svi=all: VRF count mismatch → error",
+      run_('RED,BLUE,GREEN', '10,20', 'all', 'l2-et-trunk')[0].sev, 'error'),
+
+    // ─── trunk: explicit svi_vlan list ────────────────────────────────
+    t("trunk explicit svi_vlan: count match → no issues",
+      run_('RED,BLUE', '10,20,30', '10,20', 'l2-et-trunk').length, 0),
+    t("trunk explicit svi_vlan: VRF count mismatch → error",
+      run_('RED,BLUE,GREEN', '10,20,30', '10,20', 'l2-et-trunk')[0].sev, 'error'),
   ];
 }
 
@@ -1021,6 +1095,7 @@ function runAllTests() {
     { name: "_parseSviVlans",            fn: test_parseSviVlans },
     { name: "_parseVrfList",             fn: test_parseVrfList },
     { name: "_resolveVrfAtIndex",        fn: test_resolveVrfAtIndex },
+    { name: "_auditVrfIssues",           fn: test_auditVrfIssues },
     { name: "parseVlanWithNative",       fn: test_parseVlanWithNative },
     { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
     { name: "compressPortList",          fn: test_compressPortList },
