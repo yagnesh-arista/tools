@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.38 | 2026-04-21 13:23:37 -->
+<!-- TopoAssist v260421.39 | 2026-04-21 13:24:57 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1493,6 +1493,25 @@
   }
 
   /* ================= EDIT MODE ACTIVE STATE ================= */
+  /* Holistic-view canvas controls — floating panel bottom-right of viewport */
+  #holistic-controls {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    display: none; /* shown via JS when in holistic view */
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px;
+    z-index: 2500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
   .edit-mode-active #viewport {
     box-shadow: inset 0 0 0 3px #10b981;
     transition: box-shadow 0.2s ease;
