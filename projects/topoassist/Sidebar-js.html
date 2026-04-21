@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.92 | 2026-04-21 15:40:04 -->
+<!-- TopoAssist v260421.93 | 2026-04-21 15:41:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.92";  // keep in sync with Code.gs
+const APP_VERSION = "260421.93";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -749,6 +749,8 @@ ${deleteCell}
       }
     });
   }
+  // Resize dialog height to fit device count
+  requestAnimationFrame(autoResizePanelHeight);
 }
 
 // --- DEVICE LABEL HELPERS ---
