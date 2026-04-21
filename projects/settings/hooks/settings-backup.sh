@@ -53,15 +53,8 @@ if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
   REPO_NAME=$(echo "$REMOTE_URL" | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
 
-  SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — settings: auto-sync ${fname}
-Files:
-  ${fname}  (settings backup)
-Git:   pushed to github.com/${REPO_NAME} ✓
-Clasp: N/A (no GAS files changed)"
-
-  LOG="$HOME/claude/.change-log"
-  echo "$SUMMARY" > "$LOG"
-  jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
+  jq -n --arg ctx "[SETTINGS BACKUP] ${fname} auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude." \
+    '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
 else
   # Synced but no git diff (file unchanged from git's perspective)
   jq -n --arg ctx "[SETTINGS BACKUP] ${fname} synced (no git change)." \
