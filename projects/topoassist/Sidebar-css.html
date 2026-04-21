@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.150 | 2026-04-21 17:43:20 -->
+<!-- TopoAssist v260421.153 | 2026-04-21 17:50:41 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2039,19 +2039,25 @@
   .shortcut-row {
     display: grid;
     grid-template-columns: 110px 1fr;
-    align-items: start;
+    align-items: center;
     gap: 10px;
     font-size: 12px;
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
   }
 
+  /* Rows with a shortcut-ctx sub-line are taller — top-align so key stays with first line */
+  .shortcut-row:has(.shortcut-ctx) {
+    align-items: start;
+  }
+
   .kbd-group {
     display: flex;
-    gap: 4px;
-    flex-wrap: nowrap;   /* keep all keys on one line */
+    justify-content: space-between; /* 2-key combos spread to both edges */
+    flex-wrap: nowrap;
     align-items: center;
     white-space: nowrap;
+    width: 100%;
   }
 
   .kbd-or {
@@ -2125,15 +2131,18 @@
     flex-shrink: 0;
   }
 
-  .help-footer-note {
-    padding: 10px 20px;
+  /* Always-active notice — shown at top of help modal body */
+  .help-notice {
+    padding: 7px 20px;
     font-size: 10px;
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
     font-family: 'JetBrains Mono', monospace;
     text-align: center;
-    border-top: 1px solid var(--border-light);
     background: var(--bg-card);
+    border-bottom: 1px solid var(--border-light);
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Animation for Resetting View */

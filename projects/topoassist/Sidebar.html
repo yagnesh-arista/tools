@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.150 | 2026-04-21 17:43:20 -->
+<!-- TopoAssist v260421.153 | 2026-04-21 17:49:58 -->
 <!DOCTYPE html>
 <html>
 
@@ -874,14 +874,17 @@
     </div>
     <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
 
+      <!-- Always-active notice — shown at top -->
+      <div class="help-notice">Backtick ` and Esc are always active — all other shortcuts require focus outside an input.</div>
+
       <!-- SEARCH section: shortcuts + examples side by side -->
       <div class="shortcut-section" style="border-top: 1px solid var(--border-light);">
         <div class="shortcut-section-label">Search</div>
         <div class="help-search-inner">
 
-          <!-- Left: search shortcuts + autocomplete -->
+          <!-- Left: global search shortcuts + autocomplete -->
           <div>
-            <div class="help-sub-label">Shortcuts</div>
+            <div class="help-sub-label">Global</div>
             <div class="legend-grid">
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>/</kbd><span class="kbd-or">or</span><kbd>f</kbd></div>
@@ -951,12 +954,12 @@
           </div>
         </div><!-- /help-col left -->
 
-        <!-- Right: Config Find Bar + Card Interactions -->
+        <!-- Right: Config Search + Card Interactions -->
         <div class="help-col">
           <div class="shortcut-section">
-            <div class="shortcut-section-label">Config Find Bar</div>
+            <div class="shortcut-section-label">Config Search</div>
             <div class="legend-grid">
-              <div class="shortcut-row"><kbd>Enter</kbd><span>Next match</span></div>
+              <div class="shortcut-row"><kbd>Enter</kbd><span>Next match<span class="shortcut-ctx">Find bar inside the Global Config Template modal</span></span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>Shift</kbd><kbd>Enter</kbd></div>
                 <span>Previous match</span>
@@ -981,7 +984,6 @@
 
       </div><!-- /help-two-col -->
 
-      <div class="help-footer-note">Backtick ` and Esc are always active — all other shortcuts are disabled while typing in an input.</div>
     </div>
   </div>
 
