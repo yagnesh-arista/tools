@@ -1,6 +1,28 @@
+<!-- rules-synced: 2026-04-21 -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
+
+---
+
+## Check 0 — Rules Currency
+
+Verify this review command is in sync with the current global UI rules.
+
+```bash
+# Date this file was last updated
+grep "rules-synced:" ~/.claude/commands/topoassist-review-code-design.md
+
+# Date ui.md was last changed (git)
+git -C ~/claude log -1 --format="%as" -- projects/settings/rules/ui.md
+
+# Date CLAUDE.md was last changed
+git -C ~/claude log -1 --format="%as" -- CLAUDE.md
+```
+
+⚠ WARN if `rules-synced` date is older than the last git change to `ui.md` or `CLAUDE.md` —
+  the review may be missing checks for recently added rules.
+✗ FAIL if the dates differ by more than 7 days — cite the delta and which rules file is newer.
 
 ---
 
