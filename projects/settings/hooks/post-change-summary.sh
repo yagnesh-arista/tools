@@ -29,6 +29,13 @@ if [ -z "$cmd" ]; then
     fname=$(basename "$rel")
     [ -f "$full" ] || continue
 
+    # Skip stamp-only changes from display (still committed below)
+    nonstamp=$(git -C "$REPO" diff HEAD -- "$full" 2>/dev/null \
+      | grep '^[+-]' | grep -v '^[+-][+-][+-]' \
+      | grep -cvE 'v[0-9]{6}\.[0-9]+|[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' \
+      || true)
+    [ "${nonstamp:-0}" -eq 0 ] && continue
+
     line1=$(head -1 "$full" 2>/dev/null)
     if echo "$line1" | grep -q '^#!'; then
       stamp_line=$(sed -n '2p' "$full" 2>/dev/null)
@@ -46,9 +53,7 @@ if [ -z "$cmd" ]; then
     fi
   done <<< "$uncommitted"
 
-  [ -z "$file_lines" ] && exit 0
-
-  # Auto-commit tracked changes (flock: prevent index.lock conflict with parallel sessions)
+  # Auto-commit ALL uncommitted tracked changes (including stamp-only — don't leave staged changes behind)
   exec 9>/tmp/claude-git.lock
   flock -x 9
   while IFS= read -r line; do
@@ -61,6 +66,9 @@ if [ -z "$cmd" ]; then
   push_result=0
   git -C "$REPO" push >/dev/null 2>&1 || push_result=$?
   exec 9>&-   # release git lock before clasp
+
+  # Nothing meaningful to report — stamp-only changes committed silently
+  [ -z "$file_lines" ] && exit 0
 
   REMOTE_URL=$(git -C "$REPO" remote get-url origin 2>/dev/null)
   REPO_NAME=$(echo "$REMOTE_URL" \
