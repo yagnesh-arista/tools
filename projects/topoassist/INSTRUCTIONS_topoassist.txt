@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (Menu: "Topology Manager" submenu (single item) flattened — replaced with direct .addItem('▥ Device Manager', 'showDeviceManagerUi'). Device Manager dialog height 800 → 900px. File: Code.gs)
+  Last updated: 2026-04-21 (Device Manager dialog height 900 → 1000px. File: Code.gs)
+  Previous: 2026-04-21 (Menu: "Topology Manager" submenu (single item) flattened — replaced with direct .addItem('▥ Device Manager', 'showDeviceManagerUi'). Device Manager dialog height 800 → 900px. File: Code.gs)
   Previous: 2026-04-21 (GAS call timeout safety net: openTechModal() and openIpConfigModal() now set a 15s _guard timer that calls hideGlobalLoading()+setStatus(error) if neither success nor failure handler fires — prevents permanent loading overlay when GAS call hangs at framework level (auth expiry, quota). Both handlers clearTimeout(_guard) first. hideGlobalLoading() moved to first statement in openIpConfigModal() success handler (was last, after DOM ops). File: Sidebar-js.html)
   Previous: 2026-04-21 (VLAN Summary modal: vlanSummaryFilter height set to 24px (box-sizing:border-box, padding:0 10px) to match icon-btn and sort button heights. File: Sidebar.html)
   Previous: 2026-04-21 (STATUS LOGS secondary row redesign: #status moved to flex:1 center div (justify-content:center) between left-group and right-group; LOG HISTORY button changed from .slg-view-btn (blue accent) to icon-toggle sort-toggle inside segmented-group matching SHEET/MODE formatting; .slg-view-btn CSS removed from Sidebar-css.html as no longer used; right-group is now auto-width with leading tb-sep + LOGS label. Files: Sidebar.html, Sidebar-css.html)

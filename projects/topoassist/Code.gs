@@ -1,10 +1,10 @@
-// TopoAssist v260421.114 | 2026-04-21 16:15:32
+// TopoAssist v260421.115 | 2026-04-21 16:16:22
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.114";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.115";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -576,7 +576,7 @@ function showDeviceManagerUi() {
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
 
-  const html = template.evaluate().setWidth(1000).setHeight(900).setTitle('Device Manager');
+  const html = template.evaluate().setWidth(1000).setHeight(1000).setTitle('Device Manager');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Device Manager');
 }
 
