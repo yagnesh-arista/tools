@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.1 | 2026-04-21 11:23:42 -->
+<!-- TopoAssist v260421.1 | 2026-04-21 11:26:56 -->
 <!DOCTYPE html>
 <html>
 
@@ -948,6 +948,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <h3>Running a Check</h3>
     <p style="font-size:13px;">Open the modal, enter or confirm the <b>Host / IP</b> for each device (defaults to device name for DNS-resolvable hosts), then click <b>Run Checks</b>. The bridge queries all devices in parallel. A spinner shows progress and updates as each sweep completes (<i>LLDP done</i> → <i>LLDP + status done</i>).</p>
+    <p style="font-size:13px;"><b>Auto-check on connect:</b> when the bridge is running and the topology loads, LLDP + device status checks run automatically in the background. The status bar briefly shows the result. If extra cables are discovered (cables present on the devices but not in the sheet), the bridge toolbar icon gains an amber count badge — click the icon to open the modal and review them.</p>
 
     <h3>Device List — Status Dots</h3>
     <p style="font-size:13px;">Each device row shows two indicator dots after the IP field:</p>
@@ -1001,6 +1002,15 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         <td><b>Skip</b> — non-Arista device or non-Ethernet interface (LLDP check only covers Et↔Et Arista links).</td>
       </tr>
     </table>
+
+    <h3>Discovered — Not in Sheet</h3>
+    <p style="font-size:13px;">After a check, the bridge compares every LLDP-reported neighbor pair against the topology sheet. Cables that exist physically (both endpoints are topology devices) but have no matching row in the sheet appear in a <b>Discovered — not in sheet</b> section at the bottom of the modal, with a purple link count badge.</p>
+    <ul style="font-size:13px;">
+      <li>Each discovered cable is shown as a checkbox row: <code>DevA:Et1 ↔ DevB:Et2</code>.</li>
+      <li>Select one or more and click <b>Add to Sheet</b> to write them into the topology without leaving the modal.</li>
+      <li>If orphans are found, the bridge toolbar icon shows an amber count badge. The badge clears when you open the modal.</li>
+      <li>The status bar also shows an amber message: <i>"Device Bridge checks complete — N extra cables found"</i>.</li>
+    </ul>
 
     <h3>Topology Card Indicators</h3>
     <p style="font-size:13px;">After a check, results appear directly on topology device cards — no need to keep the modal open:</p>

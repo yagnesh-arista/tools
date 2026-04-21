@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.1 | 2026-04-21 11:23:42 -->
+<!-- TopoAssist v260421.1 | 2026-04-21 11:25:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
 const APP_VERSION = "260421.1";  // keep in sync with Code.gs
@@ -8898,6 +8898,7 @@ function openBridgeModal() {
     }
   } catch (e) { localStorage.removeItem('bridgeModalPos'); }
   modal.style.display = 'flex';
+  _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
   document.getElementById('bridgeResults').style.display = 'none';
   document.getElementById('bridgeRunStatus').style.display = 'none';
@@ -8999,6 +9000,15 @@ function _silentBridgeCheck() {
   }, 400);
 }
 
+// Show/hide amber orphan count badge on the bridge toolbar icon.
+// Call with n>0 to show, 0 to clear (e.g. on modal open).
+function _setBridgeOrphanBadge(n) {
+  const el = document.getElementById('bridgeOrphanBadge');
+  if (!el) return;
+  if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
+  else        { el.classList.add('hidden'); }
+}
+
 // Update toolbar bridge icon color based on enabled state + health.
 // state: 'up' (green), 'down' (yellow), 'idle' (enabled, state unknown = normal color)
 function _updateBridgeToolbarIcon(state) {
@@ -9053,9 +9063,11 @@ function _autoRunBridge() {
     fetch(BRIDGE_URL + '/devstatus', postOpts()).then(r => r.json())
   ]).then(([bridgeResult, devResult]) => {
     _done();
+    let _autoOrphanCount = 0;
     if (bridgeResult.status === 'fulfilled') {
       dbg('Auto-Bridge: LLDP results received');
       const { results, orphans } = _compareBridgeData(bridgeResult.value);
+      _autoOrphanCount = orphans.length;
       _renderLldpResults(results, orphans);
       applyLldpIndicators();
     } else {
@@ -9090,6 +9102,10 @@ function _autoRunBridge() {
       if (_total > 0) _dbChkMsg += ` \u2014 ${_reached}/${_total} reached`;
       if (_authFails) { _dbChkMsg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _dbChkColor = '#d97706'; }
       else if (_reached < _total) _dbChkColor = '#dc2626';
+    }
+    if (_autoOrphanCount > 0 && _dbChkColor !== '#dc2626') {
+      _dbChkMsg += ` \u00b7 ${_autoOrphanCount} extra cable${_autoOrphanCount !== 1 ? 's' : ''} found`;
+      _dbChkColor = '#d97706';
     }
     if (st) { st.innerHTML = '<b>' + _dbChkMsg + '</b>'; st.style.color = _dbChkColor; setTimeout(() => { st.style.color = ''; st.innerText = getReadyStatus(); }, 4000); }
   }).catch(err => { _done(); dbg('Auto-Bridge: unexpected error —', err); if (st) { st.style.color = ''; st.innerText = getReadyStatus(); } });
@@ -9360,6 +9376,7 @@ function runBridgeCheck() {
 
   Promise.allSettled([fetchLldp, fetchDev])
     .then(([bridgeResult, devResult]) => {
+      let _manualOrphanCount = 0;
       btn.disabled = false;
       btn.textContent = 'Run Checks';
       if (_bridgeBtn) _bridgeBtn.classList.remove('bridge-scanning');
@@ -9387,6 +9404,7 @@ function runBridgeCheck() {
         const { results, orphans } = _compareBridgeData(bridgeData);
         _renderLldpResults(results, orphans);
         applyLldpIndicators();
+        _manualOrphanCount = orphans.length;
       }
 
       if (dsData) {
@@ -9416,6 +9434,10 @@ function runBridgeCheck() {
         if (_total > 0) _msg += ` \u2014 ${_reached}/${_total} reached`;
         if (_authFails) { _msg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _msgColor = '#d97706'; }
         else if (_reached < _total) _msgColor = '#dc2626';
+      }
+      if (_manualOrphanCount > 0 && _msgColor !== '#dc2626') {
+        _msg += ` \u00b7 ${_manualOrphanCount} extra cable${_manualOrphanCount !== 1 ? 's' : ''} found`;
+        _msgColor = '#d97706';
       }
       if (bridgeResult.status === 'rejected') _msg += ' \u2014 LLDP endpoint error: ' + bridgeResult.reason.message;
       else if (devResult.status === 'rejected') _msg += ' \u2014 status endpoint error: ' + devResult.reason.message;
@@ -10224,6 +10246,7 @@ function _renderLldpResults(results, orphans) {
   }
 
   container.style.display = 'block';
+  _setBridgeOrphanBadge(orphans ? orphans.length : 0);
 }
 
 function addSelectedDiscovered() {
