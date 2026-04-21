@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.70 | 2026-04-21 15:03:32 -->
+<!-- TopoAssist v260421.72 | 2026-04-21 15:05:31 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.70";  // keep in sync with Code.gs
+const APP_VERSION = "260421.72";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12178,7 +12178,9 @@ function renderVlanSummaryTable(sorted, vlanMap) {
   sorted.forEach((vid, i) => {
     const info = vlanMap[vid];
     const isIntOnly = info.type === 'INT';
-    const hasConflict = info.ports.length > 0 && info.internalOn && info.internalOn.length > 0;
+    // Conflict only when the SAME device has the VLAN both user-configured and EOS-internal
+    const _portDevices = new Set(info.ports.map(p => p.device));
+    const hasConflict  = (info.internalOn || []).some(d => _portDevices.has(d));
     const typeColor = isIntOnly ? '#a855f7' : (info.type === 'L3' ? '#f59e0b' : '#60a5fa');
     let portsSummary = info.ports.map(p => p.device + ':' + p.port).join(', ');
     if (info.internalOn && info.internalOn.length) {
