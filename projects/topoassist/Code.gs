@@ -1,4 +1,4 @@
-// TopoAssist v260421.52 | 2026-04-21 14:07:52
+// TopoAssist v260421.52 | 2026-04-21 14:08:56
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
@@ -5041,7 +5041,7 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
       if (!peerLinkPort) {
         state.mlagConfigBlock = "!! ERROR: No Physical Peer-Link detected in Topology !!";
       } else {
-        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, settings);
+        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, settings, ipPrefs);
         state.mlagConfigBlock = mlagData.mlagConfigBlock;
       }
     }
@@ -5081,7 +5081,7 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
 * Helper: Generates MLAG Global Config, SVIs, and BGP Peering
 * Updates the bgpNeighbors object by reference.
 */
-function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings) {
+function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings, ipPrefs) {
   const isOspf = !!(settings && settings.ospf_ipv4);
   const hasMlagIpv6 = !settings || settings.int_ipv6 || settings.int_ipv6_unnum;
   const partnerId = partnerObj.sheetIndex;
@@ -5149,9 +5149,11 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   mlagLines.push("!");
 
   if (!bgpNeighbors[partnerName]) {
+    const mlagLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+    const mlagLoId = partnerId + mlagLoBase;
     bgpNeighbors[partnerName] = {
       id: partnerId,
-      loopbackV4: `${partnerId}.${partnerId}.${partnerId}.${partnerId}`,
+      loopbackV4: `${mlagLoId}.${mlagLoId}.${mlagLoId}.${mlagLoId}`,
       peerParams: []
     };
   }

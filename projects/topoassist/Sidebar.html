@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.52 | 2026-04-21 14:07:52 -->
+<!-- TopoAssist v260421.52 | 2026-04-21 14:10:41 -->
 <!DOCTYPE html>
 <html>
 
@@ -462,6 +462,15 @@
           <div class="ip-ex-peer-hdr">Device <span class="f-id">3</span></div>
           <div class="ip-ex-peer-hdr">Device <span class="f-id">4</span></div>
 
+          <div class="ip-ex-key">Loopback0</div>
+          <div class="ip-ex-val"><span class="f-id">3</span>.<span class="f-id">3</span>.<span class="f-id">3</span>.<span class="f-id">3</span>/32</div>
+          <div class="ip-ex-val"><span class="f-id">4</span>.<span class="f-id">4</span>.<span class="f-id">4</span>.<span class="f-id">4</span>/32</div>
+          <div class="ip-ex-key ip-ex-sub">&#x21b3; Router-ID</div>
+          <div class="ip-ex-val"><span class="f-id">3.3.3.3</span></div>
+          <div class="ip-ex-val"><span class="f-id">4.4.4.4</span></div>
+
+          <div class="ip-ex-peer-sep"></div>
+
           <div class="ip-ex-key">P2P IPv4</div>
           <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-id">3</span>/24</div>
           <div class="ip-ex-val"><span class="f-var">200</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-id">4</span>/24</div>
@@ -506,12 +515,6 @@
         <div class="info-title">Auto-derived &mdash; not configurable</div>
         <div class="auto-fixed-grid">
 
-          <span class="auto-fixed-label">Loopback / Router-ID</span>
-          <div class="auto-fixed-val">
-            <span class="auto-fixed-formula"><span class="f-dyn">ID</span>.<span class="f-dyn">ID</span>.<span class="f-dyn">ID</span>.<span class="f-dyn">ID</span>/32</span>
-            <span class="auto-fixed-eg">e.g. Device <span class="f-dyn">2</span> &rarr; Loopback0 <span class="f-dyn">2.2.2.2/32</span> &middot; Router-ID <span class="f-dyn">2.2.2.2</span></span>
-          </div>
-
           <span class="auto-fixed-label">MLAG Ctrl (Vlan4094)</span>
           <div class="auto-fixed-val">
             <span class="auto-fixed-formula">169.254.0.<span class="f-dyn">0</span>/31 &harr; 169.254.0.<span class="f-dyn">1</span>/31</span>
@@ -537,6 +540,13 @@
       </div>
 
       <!-- 4. CONFIGURABLE OPTIONS -->
+      <div class="section-header">LOOPBACK</div>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Loopback Base</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_lo_base" placeholder="0" style="width:56px"></div>
+        </div>
+      </div>
+
       <div class="section-header">POINT-TO-POINT (P2P) INTERFACE</div>
       <div class="ip-section-rows" style="--label-w:76px">
         <div class="ip-row"><span class="ip-label">IPv4</span>
