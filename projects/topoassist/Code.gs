@@ -1,10 +1,10 @@
-// TopoAssist v260421.119 | 2026-04-21 16:27:18
+// TopoAssist v260421.120 | 2026-04-21 16:30:33
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.119";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.120";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -28,16 +28,15 @@ function onOpen() {
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet View')
       .addItem('Show All', 'viewShowAll')
       .addSeparator()
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('L1')
-        .addItem('Int', 'viewCabling')
-        .addItem('Xcvr', 'viewTransceiver')
-        .addItem('Speed', 'viewSpeed'))
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('L1.5')
-        .addItem('Port Channel', 'viewPo'))
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('L2 & L3')
-        .addItem('Mode', 'viewMode')
-        .addItem('Vlan', 'viewVlan')
-        .addItem('SVI', 'viewSvi'))
+      .addItem('L1: Interface', 'viewCabling')
+      .addItem('L1: + Transceiver', 'viewTransceiver')
+      .addItem('L1: + Speed', 'viewSpeed')
+      .addSeparator()
+      .addItem('L1.5: + Port Channel', 'viewPo')
+      .addSeparator()
+      .addItem('L2/L3: + Mode', 'viewMode')
+      .addItem('L2/L3: + Vlan', 'viewVlan')
+      .addItem('L2/L3: + SVI', 'viewSvi')
       .addSeparator()
       .addItem('Custom View...', 'showSheetAssistPanel'))
     .addSeparator()
