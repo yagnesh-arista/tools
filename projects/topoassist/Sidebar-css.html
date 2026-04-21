@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.135 | 2026-04-21 17:21:25 -->
+<!-- TopoAssist v260421.136 | 2026-04-21 17:27:42 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -32,6 +32,7 @@
   .search-item,
   .schema-handle,
   .schema-del,
+  .btn-modal-close,
   .modal-header,
   .modal-header-title,
   #editOverlay,
@@ -3253,6 +3254,29 @@
 
   .btn-mono:hover {
     background: var(--bg-secondary);
+  }
+
+  /* Modal header close button — SVG × icon, always top-right */
+  .btn-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
+    transition: background 0.12s, color 0.12s;
+  }
+
+  .btn-modal-close:hover {
+    background: rgba(0, 0, 0, 0.07);
+    color: var(--text-main);
   }
 
   .btn-primary-mono {
