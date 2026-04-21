@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.154 | 2026-04-21 17:52:48 -->
+<!-- TopoAssist v260421.156 | 2026-04-21 18:00:58 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5066,6 +5066,8 @@
   #btnBridgeToolbar.bridge-disabled { opacity: 0.45; }   /* dimmed — integration disabled */
   @keyframes bridge-scan { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.9s ease-in-out infinite; }
+  /* Generate/Push toolbar icon — flashes while generate or push is running */
+  #btnGenerateAllToolbar.is-active    { animation: bridge-scan 0.9s ease-in-out infinite; }
 
   /* ================= 13. BRIDGE MODAL ================= */
   .bridge-settings-card {
@@ -5286,6 +5288,9 @@
   }
   .genall-btn { width: 100%; }
   .genall-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* Stop button — red when active (not disabled, not converted to Copy All) */
+  .genall-btn.stop-active             { background: #7f1d1d !important; color: #fca5a5 !important; border-color: #991b1b !important; }
+  .genall-btn.stop-active:hover       { background: #991b1b !important; }
   .genall-desc {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;

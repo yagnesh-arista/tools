@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.154 | 2026-04-21 17:52:48 -->
+<!-- TopoAssist v260421.156 | 2026-04-21 18:02:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.154";  // keep in sync with Code.gs
+const APP_VERSION = "260421.156";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10206,12 +10206,15 @@ async function pushAllConfigs() {
   _pushAllStopped = false;
   btn.disabled = true;
   btn.textContent = 'Pushing…';
+  _setGenToolbarActive(true);
 
   const stopPushBtn = document.getElementById('btnStopPush');
   stopPushBtn.disabled = false;
+  stopPushBtn.className = 'btn-mono genall-btn stop-active';
   stopPushBtn.textContent = 'Stop Push';
   stopPushBtn.onclick = function() {
     _pushAllStopped = true;
+    _setGenToolbarActive(false);
     _resetStopPushBtn();
   };
 
@@ -10438,6 +10441,7 @@ async function pushAllConfigs() {
 
   btn.disabled = false;
   btn.textContent = 'Push All';
+  _setGenToolbarActive(false);
   _resetStopPushBtn();
 }
 
@@ -12162,6 +12166,10 @@ function closeIpModal() {
 let _generateAllAborted = false;
 let _pushAllStopped     = false;
 
+function _setGenToolbarActive(on) {
+  const tb = document.getElementById('btnGenerateAllToolbar');
+  if (tb) tb.classList.toggle('is-active', on);
+}
 function _resetStopGenerateBtn() {
   const b = document.getElementById('btnStopGenerate');
   if (!b) return;
@@ -12174,6 +12182,7 @@ function _resetStopPushBtn() {
   const b = document.getElementById('btnStopPush');
   if (!b) return;
   b.disabled = true;
+  b.className = 'btn-mono genall-btn';
   b.textContent = 'Stop';
   b.onclick = null;
 }
@@ -12203,13 +12212,15 @@ function runGenerateAll() {
 
   btn.disabled = true;
   btn.innerText = 'Generating...';
+  _setGenToolbarActive(true);
 
   // Activate stop button
   stopBtn.disabled = false;
-  stopBtn.className = 'btn-mono genall-btn';
+  stopBtn.className = 'btn-mono genall-btn stop-active';
   stopBtn.textContent = 'Stop Generate';
   stopBtn.onclick = function() {
     _generateAllAborted = true;
+    _setGenToolbarActive(false);
     _resetStopGenerateBtn();
     btn.disabled = false;
     btn.innerText = 'Generate All';
@@ -12225,6 +12236,7 @@ function runGenerateAll() {
   google.script.run
     .withSuccessHandler(function(result) {
       if (_generateAllAborted) return;
+      _setGenToolbarActive(false);
       btn.disabled = false;
       btn.innerText = 'Re-Generate All';
       if (result.error) {
@@ -12249,7 +12261,7 @@ function runGenerateAll() {
         return '! === ' + c.name + ' ===\n' + c.text;
       }).join('\n!\n!\n');
       window._generateAllConfigs = configs;  // [{name, text}] — used by pushAllConfigs()
-      // Transform Stop → Copy All
+      // Transform Stop → Copy All (remove stop-active — no longer a stop control)
       stopBtn.disabled = false;
       stopBtn.className = 'btn-success-mono genall-btn';
       stopBtn.textContent = 'Copy All';
@@ -12257,6 +12269,7 @@ function runGenerateAll() {
     })
     .withFailureHandler(function(err) {
       if (_generateAllAborted) return;
+      _setGenToolbarActive(false);
       _resetStopGenerateBtn();
       btn.disabled = false;
       btn.innerText = 'Retry';
