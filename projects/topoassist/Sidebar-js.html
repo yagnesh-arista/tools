@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.72 | 2026-04-21 15:05:31 -->
+<!-- TopoAssist v260421.74 | 2026-04-21 15:11:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.72";  // keep in sync with Code.gs
+const APP_VERSION = "260421.74";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -45,9 +45,13 @@ const APP_VERSION = "260421.72";  // keep in sync with Code.gs
     el.innerHTML = msg;
   }
 
-  function _updateStatusLogCount() {
+  function _updateStatusLogCount(visible, total) {
     const badge = document.getElementById('statusLogCount');
-    if (badge) badge.textContent = statusLog.length + ' entr' + (statusLog.length === 1 ? 'y' : 'ies');
+    if (!badge) return;
+    if (visible !== undefined && visible !== total)
+      badge.textContent = visible + ' of ' + total + ' entr' + (total === 1 ? 'y' : 'ies');
+    else
+      badge.textContent = statusLog.length + ' entr' + (statusLog.length === 1 ? 'y' : 'ies');
   }
 
   let _statusLogOpen = false;
@@ -59,7 +63,11 @@ const APP_VERSION = "260421.72";  // keep in sync with Code.gs
       renderStatusLog();
       drawer.style.display = 'flex';
       // next frame to trigger CSS transition
-      requestAnimationFrame(() => drawer.classList.add('open'));
+      requestAnimationFrame(() => {
+        drawer.classList.add('open');
+        const inp = document.getElementById('statusLogSearch');
+        if (inp) inp.focus();
+      });
     } else {
       drawer.classList.remove('open');
       setTimeout(() => { drawer.style.display = 'none'; }, 220);
@@ -69,18 +77,25 @@ const APP_VERSION = "260421.72";  // keep in sync with Code.gs
   function renderStatusLog() {
     const list = document.getElementById('statusLogList');
     if (!list) return;
+    const q = (document.getElementById('statusLogSearch') || {}).value || '';
+    const filter = q.trim().toLowerCase();
     const entries = [...statusLog].reverse(); // newest first
-    list.innerHTML = entries.map(e => {
+    const visible = filter ? entries.filter(e => e.msg.toLowerCase().includes(filter)) : entries;
+    list.innerHTML = visible.map(e => {
       const d = new Date(e.ts);
       const ts = d.toTimeString().slice(0, 8); // HH:MM:SS
-      const msg = e.msg || '&nbsp;';
+      const raw = e.msg || '';
+      const msg = filter ? raw.replace(new RegExp(filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+        m => `<mark class="slg-hl">${m}</mark>`) : (raw || '&nbsp;');
       return `<div class="slg-entry${e.cls ? ' ' + e.cls : ''}"><span class="slg-ts">${ts}</span><span class="slg-msg">${msg}</span></div>`;
-    }).join('');
-    _updateStatusLogCount();
+    }).join('') || '<div class="slg-entry"><span class="slg-ts">—</span><span class="slg-msg" style="color:var(--text-muted);font-style:italic">No matches</span></div>';
+    _updateStatusLogCount(visible.length, statusLog.length);
   }
 
   function clearStatusLog() {
     statusLog = [];
+    const inp = document.getElementById('statusLogSearch');
+    if (inp) inp.value = '';
     renderStatusLog();
   }
 

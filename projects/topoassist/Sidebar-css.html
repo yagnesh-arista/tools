@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.72 | 2026-04-21 15:05:31 -->
+<!-- TopoAssist v260421.74 | 2026-04-21 15:11:30 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -662,6 +662,21 @@
     color: var(--text-muted);
     flex: 1;
   }
+  .slg-search {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    height: 20px;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg-body);
+    color: var(--text-main);
+    width: 160px;
+    outline: none;
+    flex-shrink: 0;
+  }
+  .slg-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.12); }
+  .slg-search::placeholder { color: #94a3b8; font-style: italic; }
   .slg-btn {
     font-family: "JetBrains Mono", monospace;
     font-size: 10px;
@@ -675,6 +690,7 @@
     -webkit-user-select: none;
   }
   .slg-btn:hover { background: var(--border-light); }
+  .slg-hl { background: #fef08a; color: #1e293b; border-radius: 2px; font-style: normal; }
 
   .slg-list {
     flex: 1;
@@ -5062,6 +5078,30 @@
   .cfg-push-no-change {
     font-family: 'JetBrains Mono', monospace; font-size: 10px;
     color: var(--text-muted); font-style: italic; margin: 3px 0 2px 26px;
+  }
+
+  /* ================= Generate All Modal ================= */
+  .genall-actions {
+    display: flex;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  .genall-action-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .genall-btn { width: 100%; }
+  .genall-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* ================= 13. COPY GROUP STRIP ================= */
