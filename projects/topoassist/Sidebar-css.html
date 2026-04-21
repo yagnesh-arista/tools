@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.24 | 2026-04-21 12:38:18 -->
+<!-- TopoAssist v260421.25 | 2026-04-21 12:45:13 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3058,6 +3058,8 @@
   .info-box--dim .ip-label { color: #94a3b8; font-weight: 500; }
   .info-box--dim .input-wrapper label { color: #94a3b8; }
   .info-box--dim .input-wrapper input { background: var(--bg-body); }
+  /* Placeholder text — font-style/color don't cascade into ::placeholder, must be explicit */
+  .info-box--dim .input-wrapper input::placeholder { color: #94a3b8; font-style: italic; }
   /* Auto-derived box */
   .info-box--dim .auto-fixed-label { color: #94a3b8; }
   .info-box--dim .auto-fixed-formula { color: #94a3b8; font-weight: 500; }
