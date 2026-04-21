@@ -342,6 +342,7 @@ TOPOASSIST CODE REVIEW
 15 — Textarea resize       ✓ / ✗ / ⚠
 16 — Inline code font      ✓ / ✗ / ⚠
 17 — GAS loading guard     ✓ / ✗ / ⚠
+18 — Modal button standard ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
