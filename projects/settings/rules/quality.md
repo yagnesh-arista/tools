@@ -16,6 +16,14 @@ Never run a long action silently.
 - New code must integrate cleanly with existing conventions — match style, naming, and structure without being asked.
 - Don't introduce new dependencies for things achievable with the existing stack.
 
+## Reuse and Enhance — Never Duplicate
+Before writing a new function, search for one that already does the same job.
+- If found: extend it with an optional `opts` parameter or a new argument — don't write a parallel implementation.
+- Make new parameters optional so existing callers are unchanged.
+- After enhancing, replace all old call sites with the unified function. Never leave parallel implementations alive.
+
+Example: three separate drag implementations were later unified into one `_makeDraggable(elOrId, opts)` with `opts.headerSel / opts.saveKey / opts.noReset / opts.toolbarGap`. That unification cost extra work that a search-first habit would have avoided.
+
 ## Refactoring
 - If you see a refactor or simplification opportunity, surface it.
 - Do NOT act on it unless explicitly asked.
