@@ -88,6 +88,12 @@ Never run a long action silently.
 ## 11. Refactoring
 - If you see a refactor or simplification opportunity, surface it. Don't act on it unless explicitly asked.
 
+## 11a. Reuse and Enhance — Never Duplicate
+Before writing a new function, search for one that already does the same job.
+- If found: extend it with an optional `opts` parameter or a new argument — don't write a parallel implementation.
+- Make new parameters optional so existing callers are unchanged.
+- After enhancing, replace all old call sites with the unified function. Never leave parallel implementations alive.
+
 ## 12. Security
 - At every system boundary (user input, external APIs, env vars): check for injection, unvalidated input, and credential exposure.
 - Flag any hardcoded secrets, tokens, or credentials as a blocker.
