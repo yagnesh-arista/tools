@@ -65,7 +65,7 @@ if [ -z "$cmd" ]; then
   # Build a descriptive commit message when real changes exist
   if [ -n "$file_lines" ]; then
     # Extract just filenames from file_lines (strip leading spaces and version)
-    changed_names=$(echo "$file_lines" | awk '{print $1}' | paste -sd', ' -)
+    changed_names=$(echo "$file_lines" | awk 'NF{print $1}' | paste -sd', ' -)
     commit_msg="chore: session-end commit — ${changed_names}"
   else
     commit_msg="chore: auto-commit session changes"
