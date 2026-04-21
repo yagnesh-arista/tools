@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260420.21 | 2026-04-20 03:34:18 | git commit: 62af944
+# settings v260420.29 | 2026-04-20 11:40:48
 # topoassist-pytest-check.sh
 # Fires on every device_bridge.py edit:
 #   1. Runs pytest and reports pass/fail count

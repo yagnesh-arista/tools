@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260421.6 | 2026-04-21 11:54:08
 # winnow-auth-check.sh
 # PostToolUse / PostToolUseFailure hook: detect Winnow auth failures, attempt
 # auto-login, and prompt user if re-auth still needed.

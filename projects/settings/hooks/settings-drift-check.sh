@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260421.8 | 2026-04-21 12:10:16
 # settings-drift-check.sh
 # UserPromptSubmit — runs on every user prompt.
 # Detects external edits to ~/.claude/ config files that bypassed the Edit hook,
