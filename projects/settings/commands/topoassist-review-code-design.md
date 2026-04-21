@@ -312,10 +312,21 @@ For each modal:
 - No duplicate close/cancel across both header AND footer
 - `.btn-modal-close` must be in the no-select list in Sidebar-css.html
 
+```bash
+# Verify Esc LIFO list covers all modals (expect 16 entries)
+grep "const modalOrder" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Verify button ordering in edit/confirm footers: Delete left, Cancel, Primary right
+grep -B2 -A5 'btn-danger-mono.*margin-right:auto' ~/claude/projects/topoassist/Sidebar.html
+```
+
 ✗ FAIL if any modal header still uses a text "Close" button (`.btn-mono`) instead of `.btn-modal-close`
 ✗ FAIL if any modal header is missing a close button entirely
 ✗ FAIL if `.btn-modal-close` CSS class is missing from Sidebar-css.html
 ✗ FAIL if the same dismiss action appears in both header AND footer as labeled buttons
+✗ FAIL if a new modal ID is missing from `modalOrder` or `closeFuncs` in the Esc handler
+✗ FAIL if a Delete button is not isolated left with `margin-right: auto` (i.e. inline with Cancel/Save)
+✗ FAIL if the primary action button is not the rightmost in its footer
 ⚠ WARN if a view-only modal has a `.modal-actions` footer with only a Close/status element
 
 ---
