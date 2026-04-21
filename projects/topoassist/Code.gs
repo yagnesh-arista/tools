@@ -1,10 +1,10 @@
-// TopoAssist v260421.133 | 2026-04-21 17:19:39
+// TopoAssist v260421.134 | 2026-04-21 17:21:02
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.133";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.134";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3748,6 +3748,29 @@ function _parseSviVlans(sviVlanVal, vlans) {
     }).filter(function(n) { return !isNaN(n); })
   );
   return arr.filter(x => requested.has(parseInt(x, 10)));
+}
+
+/**
+ * Parses vrf_ into an ordered array.
+ * Single value  → ['VRF_A']        (legacy, same VRF for all VLANs)
+ * Comma list    → ['VRF_A','VRF_B'] (per-VLAN mapping, positional)
+ * Empty/null    → []
+ */
+function _parseVrfList(vrfVal) {
+  if (!vrfVal) return [];
+  return String(vrfVal).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+}
+
+/**
+ * Resolves the effective VRF for a given VLAN index from a vrfList.
+ * vrfList=[]        → null (no VRF assigned via sheet)
+ * vrfList=['A']     → 'A' (single, applies to all)
+ * vrfList=['A','B'] → vrfList[idx] or null if out of bounds
+ */
+function _resolveVrfAtIndex(vrfList, idx) {
+  if (!vrfList || vrfList.length === 0) return null;
+  if (vrfList.length === 1) return vrfList[0];
+  return vrfList[idx] || null;
 }
 
 /* REPLACE IN Code.gs */
