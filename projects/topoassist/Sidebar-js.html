@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.52 | 2026-04-21 14:11:52 -->
+<!-- TopoAssist v260421.54 | 2026-04-21 14:12:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.52";  // keep in sync with Code.gs
+const APP_VERSION = "260421.54";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10993,6 +10993,7 @@ function resetIpConfig() {
   document.getElementById("ip_gw_v6_first").value = "100";
   document.getElementById("ip_gw_v6_last").value = "1";
   document.getElementById("ip_gw_v6_mask").value = "/64";
+  document.getElementById("ip_lo_base").value = "0";
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
   document.getElementById("ip_bridge_mac").value  = "";
