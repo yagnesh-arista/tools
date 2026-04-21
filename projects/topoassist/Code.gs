@@ -1,10 +1,10 @@
-// TopoAssist v260421.59 | 2026-04-21 14:37:58
+// TopoAssist v260421.61 | 2026-04-21 14:43:58
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260421.59";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260421.61";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3868,7 +3868,7 @@ function getDeviceConfig(deviceName) {
     };
 
     // [SECTION 001] SYSTEM
-    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings);
+    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings, ipPrefs);
     configMap["001_SYSTEM"] = {
       full: "!--- SYSTEM CONFIG ---\n" + sysBlock + "\n!--------------------",
       blockStatus: "System"
@@ -4209,7 +4209,7 @@ function getDeviceConfig(deviceName) {
   }
 }
 
-function generateSystemBlocks(deviceId, vrfs, vlans, netSettings) {
+function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   // Safety: Ensure inputs are Arrays
   const safeVrfs = Array.isArray(vrfs) ? vrfs : [];
   const safeVlans = Array.isArray(vlans) ? vlans : [];
