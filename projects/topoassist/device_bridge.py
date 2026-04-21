@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.165 | 2026-04-21 18:54:29
+# topoassist v260421.166 | 2026-04-21 18:58:16
 """
 TopoAssist Device Bridge
 ========================
@@ -31,7 +31,7 @@ import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, 
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260421.6"
+VERSION           = "260421.7"
 PORT              = 8765
 TIMEOUT           = int(os.environ.get("BRIDGE_TIMEOUT", "15"))  # override: export BRIDGE_TIMEOUT=30
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
@@ -689,6 +689,32 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(f"""
+  TopoAssist Device Bridge  v{VERSION}
+  ─────────────────────────────────────
+  Usage: python device_bridge.py [-v] [-h]
+
+  Options:
+    -v    Verbose — print SSH connect, session, retry, error, and timeout logs
+    -h    Show this help and exit
+
+  Environment variable overrides (set before running):
+    BRIDGE_SSH_USER    SSH username            default: admin
+                       export BRIDGE_SSH_USER=myuser
+
+    BRIDGE_JUMP_HOST   Jump host for SSH       default: bus-home
+                       export BRIDGE_JUMP_HOST=""      (direct SSH, no jump)
+                       export BRIDGE_JUMP_HOST=bastion (use a different host)
+
+    BRIDGE_TIMEOUT     Per-device SSH timeout  default: 15  (seconds)
+                       export BRIDGE_TIMEOUT=30
+
+  Example:
+    BRIDGE_SSH_USER=admin BRIDGE_JUMP_HOST="" python device_bridge.py -v
+""")
+        sys.exit(0)
+
     server    = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
     jump_info = f"via {JUMP_HOST}" if JUMP_HOST else "direct"
     gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
