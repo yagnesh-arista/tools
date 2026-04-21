@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.139 | 2026-04-21 17:32:50 -->
+<!-- TopoAssist v260421.141 | 2026-04-21 17:33:31 -->
 <!DOCTYPE html>
 <html>
 
@@ -896,6 +896,35 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>EP1 / EP2 descriptions</b> — set <code>desc_=TRAFFIC_SNAKE_EP1_L3</code> on one generator-connected port row and <code>desc_=TRAFFIC_SNAKE_EP2_L3</code> on the other. The snake VRF chain is built relative to these two anchors.</li>
     </ol>
     <p style="font-size:13px;">Everything else — VRF declarations, interface configs, ARP entries, and the full bidirectional routing chain — is generated automatically from the sheet data.</p>
+
+    <!-- ================================================================ -->
+    <h3>9. Per-VLAN VRF</h3>
+    <p style="font-size:13px;">The <code>vrf_</code> column supports assigning a <b>different VRF to each VLAN</b> on a trunk or sub-interface port by supplying a comma-separated VRF list that maps positionally to the VLAN list in <code>vlan_</code>.</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Single VRF (legacy behavior)</h4>
+    <p style="font-size:13px;">A single value in <code>vrf_</code> applies the same VRF to all VLANs on the port — unchanged from before:</p>
+    <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px;">vlan_ = 10,20,30 &nbsp;&nbsp; vrf_ = MGMT<br>→ all three VLANs placed in VRF MGMT</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Per-VLAN VRF (comma list)</h4>
+    <p style="font-size:13px;">Provide one VRF name per VLAN, in the same order as <code>vlan_</code>:</p>
+    <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px;">vlan_ = 10,20,30 &nbsp;&nbsp; vrf_ = RED,BLUE,GREEN<br>→ VLAN 10 → VRF RED &nbsp;|&nbsp; VLAN 20 → VRF BLUE &nbsp;|&nbsp; VLAN 30 → VRF GREEN</p>
+    <p style="font-size:13px;">Works on both:</p>
+    <ul style="font-size:13px;">
+      <li><b>Sub-interface mode</b> (<code>l3-routed-subint</code>) — each sub-interface (<code>EtX.10</code>, <code>EtX.20</code>, …) gets its own <code>vrf</code> statement from the positional mapping.</li>
+      <li><b>Trunk SVI mode</b> (<code>l2-*-trunk</code> + <code>svi_vlan_</code>) — each SVI (<code>interface Vlan10</code>, <code>interface Vlan20</code>, …) gets its own <code>vrf</code> statement from the positional mapping.</li>
+    </ul>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Constraints</h4>
+    <ul style="font-size:13px;">
+      <li><b>No range expansion with per-VLAN VRF</b> — ranges (<code>10-20</code>) expand to many VLANs; assigning individual VRFs to each would require listing all of them explicitly, which is ambiguous. The audit engine flags this combination as an error. Use explicit lists (<code>10,11,12,…</code>) when per-VLAN VRF is needed.</li>
+      <li><b>Count must match</b> — the number of VRF values must equal the number of VLANs. A mismatch is flagged as an error. Trailing commas and blank entries are ignored.</li>
+      <li><b>Native VLAN excluded</b> — the <code>nv&lt;N&gt;</code> token in <code>vlan_</code> (e.g. <code>10,20,nv100</code>) is not counted as a positional VLAN — it only sets the trunk native VLAN. VRF list length must match the non-native VLAN count only.</li>
+      <li><b>IXIA / snake VRFs take precedence</b> — if the port has <code>desc_=TRAFFIC_SNAKE_EP*</code> or <code>ip_type=anycast</code>, the snake/anycast VRF overrides the per-VLAN mapping.</li>
+    </ul>
+
+    <div class="info-box slate" style="font-size:12px;">
+      Per-VLAN VRF is most useful on uplink trunk ports where different customer VLANs need to be isolated into separate VRFs. For access ports or pure L2 trunks without SVIs, the <code>vrf_</code> column has no effect.
+    </div>
 
     <!-- ================================================================ -->
     <h2>Audit Engine</h2>
