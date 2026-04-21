@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.171 | 2026-04-21 19:13:27 -->
+<!-- TopoAssist v260421.173 | 2026-04-21 19:23:06 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3374,6 +3374,10 @@
   /* Minimized modal — collapses to header only */
   .modal-minimized > *:not(.modal-header) { display: none !important; }
   .modal-minimized { min-height: 0 !important; height: auto !important; }
+
+  /* Draggable modal header — show move cursor */
+  .modal-draggable .modal-header { cursor: move; }
+  .modal-draggable .modal-header button { cursor: pointer; }
 
   .btn-primary-mono {
     background: #3b82f6;
