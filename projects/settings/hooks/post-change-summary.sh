@@ -169,9 +169,9 @@ while IFS= read -r rel; do
   [ -f "$full" ] || continue
 
   # Skip files where the only diff is the version stamp line (no real changes)
-  nonstamp=$(git -C "$REPO" diff HEAD~1 HEAD -- "$full" 2>/dev/null \
+  nonstamp=$(git -C "$REPO" diff $DIFF_RANGE -- "$full" 2>/dev/null \
     | grep '^[+-]' | grep -v '^[+-][+-][+-]' \
-    | grep -cvE 'v[0-9]{6}\.[0-9]+|[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}|git commit: [0-9a-f]+' \
+    | grep -cvE 'v[0-9]{6}\.[0-9]+|[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' \
     || true)
   [ "${nonstamp:-0}" -eq 0 ] && continue
 
