@@ -22,7 +22,8 @@ case "$f" in
     mkdir -p "$SETTINGS_BACKUP/rules"
     cp "$f" "$SETTINGS_BACKUP/rules/"
     backup_path="$SETTINGS_BACKUP/rules/$(basename "$f")"
-    changed=1 ;;
+    changed=1
+    RULES_CHANGED=1 ;;
   "$HOME/.claude/commands/"*.md)
     mkdir -p "$SETTINGS_BACKUP/commands"
     cp "$f" "$SETTINGS_BACKUP/commands/"
