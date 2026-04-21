@@ -19,6 +19,7 @@ Last updated: 2026-04-21
 | 7 | Modal default background — white (`#ffffff`) by default; dark mode overrides via `--bg-modal` var | `rules/` | `rules/ui.md` |
 | 7a | All icons must be SVG — never Unicode | `rules/` | `rules/ui.md` |
 | 7b | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
+| 7c | Input text state taxonomy — Label, Placeholder, Value, Focus, Error, Disabled, Read-only, Prefix/Suffix each has explicit CSS; `::placeholder` never inherits; dim-container inputs need both value (`font-style:italic; font-weight:400`) and `::placeholder` rules | `rules/` | `rules/ui.md` |
 | 8 | New project structure — 7-question gate, `git init` mandatory, no files until all confirmed | `CLAUDE.md` + `commands/` + `hooks/` | `CLAUDE.md`, `commands/new-project.md` |
 | 9 | User feedback for long actions — status before, live elapsed timer, confirm on complete | `rules/` | `rules/quality.md` |
 | 10 | Code quality — no over/under-engineering, match existing conventions | `rules/` | `rules/quality.md` |
