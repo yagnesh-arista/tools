@@ -1,4 +1,4 @@
-<!-- TopoAssist v260421.12 | 2026-04-21 12:18:40 -->
+<!-- TopoAssist v260421.15 | 2026-04-21 12:21:33 -->
 <!DOCTYPE html>
 <html>
 
@@ -823,7 +823,7 @@ clasp login --no-localhost</pre>
       <tr><td><b>EP1 Subnet</b></td><td>No</td><td>Full CIDR of the EP1 connected subnet (e.g., <code>10.100.1.0/24</code>). Legacy three-octet prefix (e.g., <code>10.100.1</code>) is also accepted and treated as <code>{prefix}.0/24</code>.</td><td>When set: all reverse static routes use this subnet. When empty: no reverse static routes emitted (ARP skeleton only for that direction).</td></tr>
       <tr><td><b>EP2 NH IP</b></td><td>Soft</td><td>IP of the traffic generator's EP2 port. Must be in the same /24 subnet as the TRAFFIC_SNAKE_EP2_L3 interface.</td><td>Next-hop for the forward-chain terminal route at the last secondary VRF. If omitted, a placeholder comment is emitted and direct-connect is assumed.</td></tr>
       <tr><td><b>EP2 MAC</b></td><td>Indirect only</td><td>MAC address of the traffic generator's EP2 port interface.</td><td>Static ARP at the last secondary VRF — <code>arp vrf SNAKE_{lastSecondary} {ep2_nh} {ep2_mac} arpa</code>. Leave blank if EP2 is directly connected.</td></tr>
-      <tr><td><b>EP2 Subnet</b></td><td>No</td><td>Three-octet prefix of the EP2 connected subnet (e.g., <code>172.16.1</code>).</td><td>When set: all forward static routes use <code>{prefix}.0/24</code>. When empty: no forward static routes emitted (ARP skeleton only for that direction).</td></tr>
+      <tr><td><b>EP2 Subnet</b></td><td>No</td><td>Full CIDR of the EP2 connected subnet (e.g., <code>172.16.1.0/24</code>). Legacy three-octet prefix (e.g., <code>172.16.1</code>) is also accepted and treated as <code>{prefix}.0/24</code>.</td><td>When set: all forward static routes use this subnet. When empty: no forward static routes emitted (ARP skeleton only for that direction).</td></tr>
     </table>
     <p style="font-size:13px;">A soft <b>yellow warning</b> appears when snake pairs are detected but EP1/EP2 NH fields are empty — a reminder in case the endpoints are not directly connected. This does not block config generation.</p>
 
@@ -833,7 +833,7 @@ clasp login --no-localhost</pre>
       <li><b>001_SYSTEM</b> — <code>vrf instance SNAKE_Et2</code> + <code>ip routing vrf SNAKE_Et2</code> (one entry per port; no <code>ipv6 unicast-routing</code> in snake VRFs).</li>
       <li><b>050_EtX</b> — interface block per port: <code>vrf SNAKE_EtX</code>, <code>ip address {base}.oct2.oct3.1/24</code>, <code>no shutdown</code>. No OSPF (cannot form adjacency with yourself). Both the primary and secondary get their own <code>050_</code> block.</li>
       <li><b>050_TRAFFIC_SNAKE_EP1_L3 / 050_TRAFFIC_SNAKE_EP2_L3</b> — regular P2P interface blocks, placed in the first/last snake VRF respectively (auto-assigned from <code>desc_</code>).</li>
-      <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Routes only emitted when subnet configured: <code>fwdRoute = ep2_subnet.0/24</code> (forward, EP1→EP2), <code>revRoute = ep1_subnet.0/24</code> (reverse, EP2→EP1). No subnet = no routes for that direction (ARP skeleton only).</li>
+      <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Routes only emitted when subnet configured: <code>fwdRoute = ep2_subnet</code> (forward, EP1→EP2), <code>revRoute = ep1_subnet</code> (reverse, EP2→EP1). Accept full CIDR (e.g. <code>10.99.99.0/24</code>) or legacy 3-octet prefix (e.g. <code>10.99.99</code> → auto-expanded to <code>10.99.99.0/24</code>). No subnet = no routes for that direction (ARP skeleton only).</li>
       <li><b>081_SNAKE_PBR</b> — TTL reset via Policy-Based Routing: a shared <code>ip access-list SNAKE_TTL_MATCH</code> (permit ip any any) + <code>route-map SNAKE_SET_TTL permit 10</code> (set ip ttl 64), applied with <code>ip policy route-map SNAKE_SET_TTL</code> on every snake primary and secondary interface.</li>
       <li><b>082_SNAKE_TRAFFIC_POLICY</b> — TTL reset via Traffic Policy: a <code>traffic-policy SNAKE_TTL_POLICY</code> block matching all IPv4 and setting <code>set ip ttl 64</code>, applied <code>traffic-policy input/output</code> on every snake interface. Use either this or PBR — both reset TTL to 64 so the switch does not drop forwarded frames that have exhausted their hop count.</li>
     </ul>
@@ -892,7 +892,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Loopback cables</b> — one patch cable per snake pair (Et2↔Et3, Et4↔Et5, …).</li>
       <li><b>Bridge MAC</b> — set in <span class="menu-path">Auto Config</span> → Snake Test. Auto-detected if Device Bridge is running; otherwise read from EOS with <code style="font-size:11px;">show version | grep "System MAC"</code>.</li>
       <li><b>EP1/EP2 NH + MAC</b> (if indirect) — if the traffic generator is not directly cabled to the snake port (there is a router in between), set the NH IP and MAC for that endpoint. If directly connected, leave blank — the switch ARPs dynamically.</li>
-      <li><b>EP1/EP2 Subnet</b> (optional) — only set these if you want a custom test destination prefix other than <code>10.99.99</code>. Forward destination is <code>{ep2_subnet}.98/32</code>; reverse destination is <code>{ep1_subnet}.99/32</code>.</li>
+      <li><b>EP1/EP2 Subnet</b> (optional) — only set these if you want a custom test destination prefix. Enter a full CIDR (e.g. <code>10.99.99.0/24</code>) or a legacy 3-octet prefix (e.g. <code>10.99.99</code>). Forward destination is <code>{ep2_subnet network}.98/32</code>; reverse destination is <code>{ep1_subnet network}.99/32</code>. Leave blank for no static routes in that direction.</li>
       <li><b>EP1 / EP2 descriptions</b> — set <code>desc_=TRAFFIC_SNAKE_EP1_L3</code> on one generator-connected port row and <code>desc_=TRAFFIC_SNAKE_EP2_L3</code> on the other. The snake VRF chain is built relative to these two anchors.</li>
     </ol>
     <p style="font-size:13px;">Everything else — VRF declarations, interface configs, ARP entries, and the full bidirectional routing chain — is generated automatically from the sheet data.</p>

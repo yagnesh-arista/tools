@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.14 | 2026-04-21 12:19:04 -->
+<!-- TopoAssist v260421.15 | 2026-04-21 12:21:49 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.14";  // keep in sync with Code.gs
+const APP_VERSION = "260421.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -34,6 +34,8 @@ const APP_VERSION = "260421.14";  // keep in sync with Code.gs
   let resizeObserver = null;
   let debounceTimer;
   let isEditMode = false;
+  let holisticNodeR = parseInt(localStorage.getItem('holistic_node_r') || '52');
+  let _suppressCanvasResize = false;
   let editingPortId = null;
   let isAddMode = false;
   let isConnectMode = false;
@@ -7546,7 +7548,7 @@ function renderHolistic(data) {
   // and resetting the width before we start calculating positions.
   setTimeout(() => {
 
-    const NODE_R = 42;
+    const NODE_R = holisticNodeR;
     const PAD = (typeof UNIFIED_PAD !== 'undefined') ? UNIFIED_PAD : 100;
 
     // --- Links ---
