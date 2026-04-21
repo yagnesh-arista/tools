@@ -1,7 +1,10 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (CABLE toolbar: revert vertical stack; add divider-v between O: and T: inputs — same separator style as used elsewhere in toolbar. File: Sidebar.html)
+  Last updated: 2026-04-21 (toolbar polish: LOGS section → STATUS; button "LOG HISTORY" → "Status Live Logs"; #configSearch height 32→28px to match .btn-sm buttons in config modal header. Files: Sidebar.html, Sidebar-css.html)
+  Previous: 2026-04-21 (CABLE toolbar: divider-v moved to after T: input (end of section). File: Sidebar.html)
+  Previous: 2026-04-21 (Loading overlay safety net — comprehensive: all GAS-call sites that show showGlobalLoading() now have a _guard timeout that auto-calls hideGlobalLoading()+setStatus(error) if neither handler fires. Timeouts: 15s for modal open/save ops (openTechModal, openIpConfigModal, saveIpConfig, saveTechSettings); 60s for _runForceSyncNow (also clears syncPollTimer); 20s for fetchFullConfig (flushes fetchQueue callbacks including hideGlobalLoading). Safe sites with existing guards: saveSchemaChanges (30s schemaLockTimer). Pattern rule: every showGlobalLoading() call must be paired with a _guard = setTimeout(hideGlobalLoading+setStatus, N); both withSuccessHandler and withFailureHandler must clearTimeout(_guard) as their first act. File: Sidebar-js.html)
+  Previous: 2026-04-21 (CABLE toolbar: revert vertical stack; add divider-v between O: and T: inputs — same separator style as used elsewhere in toolbar. File: Sidebar.html)
   Previous: 2026-04-21 (Menu: removed Unicode icon prefixes from all Sheet Manager submenu items and Device Manager item. File: Code.gs)
   Previous: 2026-04-21 (Device Manager dialog height 900 → 1000px. File: Code.gs)
   Previous: 2026-04-21 (Menu: "Topology Manager" submenu (single item) flattened — replaced with direct .addItem('▥ Device Manager', 'showDeviceManagerUi'). Device Manager dialog height 800 → 900px. File: Code.gs)

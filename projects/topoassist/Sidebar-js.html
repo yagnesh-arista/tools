@@ -1,7 +1,7 @@
-<!-- TopoAssist v260421.117 | 2026-04-21 16:19:24 -->
+<!-- TopoAssist v260421.118 | 2026-04-21 16:22:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260421.117";  // keep in sync with Code.gs
+const APP_VERSION = "260421.118";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1826,8 +1826,19 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
     }).getSyncStatus();
   }, 600);
 
+  // Safety net: sync should never take more than 60s; if GAS hangs at framework level,
+  // auto-recover so the UI is not permanently blocked.
+  const _guard = setTimeout(() => {
+    clearInterval(syncPollTimer);
+    hideGlobalLoading();
+    setUiBusy(false);
+    btn.innerHTML = origHtml;
+    setStatus("Force Sync timed out — try again", "status-error");
+  }, 60000);
+
   google.script.run
     .withSuccessHandler(() => {
+      clearTimeout(_guard);
       clearInterval(syncPollTimer);
       hideGlobalLoading();
       btn.innerHTML = '<span class="btn-icon" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Synced!';
@@ -1839,6 +1850,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
       }, 1500);
     })
     .withFailureHandler((err) => {
+      clearTimeout(_guard);
       clearInterval(syncPollTimer);
       hideGlobalLoading();
       setUiBusy(false);
@@ -2748,9 +2760,21 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
     }
   }
 
+  // Safety net: if GAS call hangs at framework level (auth expiry, quota), flush the
+  // callback queue after 20s so callers like hideGlobalLoading() are always called.
+  const _fcGuard = setTimeout(() => {
+    pendingFetches.delete(deviceName);
+    if (fetchQueue[deviceName]) {
+      fetchQueue[deviceName].forEach(cb => cb('timeout'));
+      delete fetchQueue[deviceName];
+    }
+    if (customSuccessMsg) setStatus("Config fetch timed out for " + deviceName, "status-error");
+  }, 20000);
+
   // 4. Server Call
   google.script.run
     .withSuccessHandler(res => {
+      clearTimeout(_fcGuard);
       pendingFetches.delete(deviceName);
 
       if (res.error) {
@@ -2792,6 +2816,7 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
       }
     })
     .withFailureHandler(err => {
+      clearTimeout(_fcGuard);
       pendingFetches.delete(deviceName);
       if (fetchQueue[deviceName]) {
         fetchQueue[deviceName].forEach(cb => cb(err));
@@ -4290,7 +4315,13 @@ function saveIpConfig() {
 
   showGlobalLoading("Saving & Applying IPs...");
 
+  const _guard = setTimeout(() => {
+    hideGlobalLoading();
+    setStatus("IP Config save timed out — try again", "status-error");
+  }, 15000);
+
   google.script.run.withSuccessHandler(res => {
+    clearTimeout(_guard);
     hideGlobalLoading();
 
     // Update Snapshot (Now Clean)
@@ -4313,6 +4344,7 @@ function saveIpConfig() {
     if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
   })
     .withFailureHandler(err => {
+      clearTimeout(_guard);
       hideGlobalLoading();
       setTimeout(() => { alert("✗ Save Failed: " + err.message); }, 50);
     })
@@ -4732,8 +4764,14 @@ function saveTechSettings() {
 
   showGlobalLoading("Saving Technology Settings...");
 
+  const _guard = setTimeout(() => {
+    hideGlobalLoading();
+    setStatus("Tech Settings save timed out — try again", "status-error");
+  }, 15000);
+
   google.script.run
     .withSuccessHandler(() => {
+      clearTimeout(_guard);
       initialTechState = getCurrentTechState();
       checkTechDirty();
       closeTechModal();
@@ -4767,6 +4805,7 @@ function saveTechSettings() {
       if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
     })
     .withFailureHandler(err => {
+      clearTimeout(_guard);
       hideGlobalLoading();
       alert("Error saving: " + err.message);
     })
