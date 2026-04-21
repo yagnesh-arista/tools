@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (STATUS LOGS center section: wrapped #status in a proper tb-section with tb-label "STATUS LOGS" ribbon above it — matches the same column layout as TOPO/INT SORT/SEARCH sections. tb-btns justify-content:center so live text stays centered. File: Sidebar.html)
+  Last updated: 2026-04-21 (STATUS LOGS ribbon: swap label/button text — tb-label="STATUS LOGS", button="Status Live Logs" (was reversed). File: Sidebar.html)
+  Previous: 2026-04-21 (STATUS LOGS center section: wrapped #status in a proper tb-section with tb-label "STATUS LOGS" ribbon above it — matches the same column layout as TOPO/INT SORT/SEARCH sections. tb-btns justify-content:center so live text stays centered. File: Sidebar.html)
   Previous: 2026-04-21 (Sheet View menu: removed "+" prefix from Transceiver, Speed, Port Channel, Mode, Vlan, SVI items. File: Code.gs)
   Previous: 2026-04-21 (STATUS ribbon: tb-label → "Status Live Logs"; button text restored to "LOG HISTORY". File: Sidebar.html)
   Previous: 2026-04-21 (CABLE toolbar: divider-v removed from inside tb-btns; replaced with tb-sep as sibling after the CABLE tb-section — now full-height like all other section separators. File: Sidebar.html)
