@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (info-box audit: .bridge-hint updated — added font-style:italic + color:#94a3b8 to match annotation style. Files: Sidebar-css.html)
+  Last updated: 2026-04-21 (Snake Test EP1/EP2 Subnet: (1) field now accepts full CIDR (10.99.99.0/24) in addition to legacy 3-octet prefix (10.99.99 → auto-expanded via _toRoute() helper in Code.gs); removed hardcoded .0/24 suffix display from UI; widened subnet input to 140px; placeholder updated to "10.99.99.0/24"; (2) All Snake Test entry boxes wrapped in info-box info-box--dim container for visual annotation styling. Files: Sidebar.html, Code.gs, UserGuide.html)
+  Previous: 2026-04-21 (info-box audit: .bridge-hint updated — added font-style:italic + color:#94a3b8 to match annotation style. Files: Sidebar-css.html)
   Previous: 2026-04-21 (info-box--dim style update: left-accent border only + italic text to visually distinguish annotation/hint text from actual values. Global rule added to ~/.claude/rules/ui.md rule 7b. Files: Sidebar-css.html)
   Previous: 2026-04-21 (Auto Config modal UX: (1) EP subnet — add .0/24 suffix display so user sees full /24 route generated; (2) EP Port MAC/IP label column width — CSS var --ip-label-w on .ip-label (default 80px) + Snake Test rows wrapped in div with --ip-label-w:100px so "EP1/2 Port MAC" shows fully; (3) Rename "Last Octet (GW)" → "Last Octet" on GW IPv4; (4) Mask label-w narrowed to 36px on all Mask input-wrappers (was inheriting 76–108px) to reduce dead space; (5) Rename "Prefix" → "First Hextet" on P2P+GW IPv6 rows. Files: Sidebar.html, Sidebar-css.html)
   Previous: 2026-04-21 (UserGuide + README: update clasp login to use --no-localhost — works on SSH/headless machines; explains paste-back-URL flow. Files: UserGuide.html, README.md)
