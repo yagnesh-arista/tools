@@ -1,5 +1,6 @@
 INSTRUCTIONS — zshrc_macbook project
-Last updated: 2026-04-21 (Added busclaude(): like bus0 but ssh -t bus-home 'cd ~/claude && ./lclaude')
+Last updated: 2026-04-21 (busclaude: wrap command in bash -l -c to source login profile so ~/.local/bin/claude is in PATH)
+Previous: 2026-04-21 (Added busclaude(): like bus0 but ssh -t bus-home 'cd ~/claude && ./lclaude')
 Previous: 2026-04-18 (Review fixes: bus0 title; ls GNU/BSD conditional; drop redundant HIST_IGNORE_DUPS + HIST_APPEND)
 Previous: 2026-04-17 (Up arrow bound to fzf-history-widget in section 4, after source <(fzf --zsh); two bindkey lines: ^[[A (standard) and ^[OA (application mode/tmux) — matches bus-home up arrow behaviour)
 Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command))
@@ -27,7 +28,8 @@ FILE STRUCTURE
 CURRENT .zshrc SECTIONS
 ========================
 1. bus0()      — Quick direct shell on bus-home: sets terminal title "bus-home", arista-ssh check-auth || login, then ssh bus-home
-   busclaude() — Like bus0 but opens Claude Code: sets title "bus-claude", auth, then ssh -t bus-home 'cd ~/claude && ./lclaude'
+   busclaude() — Like bus0 but opens Claude Code: sets title "bus-claude", auth, then ssh -t bus-home 'bash -l -c "cd ~/claude && ./lclaude"'
+                 bash -l required: non-login SSH shells skip ~/.bashrc so ~/.local/bin (claude binary) is missing from PATH
    bus()       — Interactive tmux session menu for jump host (bus-home) via SSH multiplexing + expect
 2. wsc()  — Remote Wireshark live capture via SSH + named pipe (FIFO) to Wireshark app
            NOTE: ssh_error uses 2>&1 >/dev/null to capture stderr for host key change detection
