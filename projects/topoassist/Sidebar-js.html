@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.19 | 2026-04-22 12:15:51 -->
+<!-- TopoAssist v260422.20 | 2026-04-22 12:26:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.19";  // keep in sync with Code.gs
+const APP_VERSION = "260422.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5096,10 +5096,10 @@ function clearVlanTrace() {
     link.classList.remove("vlan-path-active", "trace-active");
   });
 
-  // Restore Nodes (Device Boxes)
+  // Restore Nodes (Device Boxes) — keep DevView-hidden nodes hidden
   document.querySelectorAll(".node").forEach(node => {
     node.style.opacity = "1";
-    node.style.display = "";
+    if (!hiddenDevices.has(node.dataset.id)) node.style.display = "";
     node.classList.remove("trace-dimmed", "dimmed", "trace-hidden");
   });
 
@@ -13177,6 +13177,8 @@ function _updateDevVisItem(deviceId) {
   if (eye) eye.innerHTML = isHidden ? DEV_VIS_EYE_CLOSED : DEV_VIS_EYE_OPEN;
 }
 
+const _DEV_VIS_MIN_IDS = ['devVisSelRow', 'devVisIpSection', 'devVisIntModeSection', 'devVisSviSection', 'devVisSearchRow', 'devVisList'];
+
 function toggleDevVisMinimize(e) {
   if (e) e.stopPropagation();
   const panel = document.getElementById('devVisPanel');
@@ -13184,13 +13186,12 @@ function toggleDevVisMinimize(e) {
   const btn = document.getElementById('devVisMinBtn');
   if (!panel || !header) return;
   const isMin = panel.classList.toggle('is-minimized');
-  if (isMin) {
-    panel.style.height = header.offsetHeight + 'px';
-    panel.style.overflow = 'hidden';
-  } else {
-    panel.style.height = '';
-    panel.style.overflow = '';
-  }
+  _DEV_VIS_MIN_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isMin ? 'none' : '';
+  });
+  header.style.borderBottom = isMin ? 'none' : '';
+  header.style.borderRadius = isMin ? '8px' : '';
   if (btn) btn.innerHTML = isMin
     ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
     : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
