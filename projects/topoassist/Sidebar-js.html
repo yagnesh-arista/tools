@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.29 | 2026-04-22 13:38:46 -->
+<!-- TopoAssist v260422.30 | 2026-04-22 13:45:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.29";  // keep in sync with Code.gs
+const APP_VERSION = "260422.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8789,7 +8789,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.18"
+VERSION = "260422.19"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9225,13 +9225,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _run_cmds(self, ip, *cmds):
         if METHOD == "ssh":  return self._ssh_cmds(ip, *cmds)
-        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds)
+        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds), {}
         raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
         if METHOD in ("ssh", "eapi"):
-            data = self._run_cmds(ip, "show lldp neighbors detail")[0]
+            (data,), cmd_errors = self._run_cmds(ip, "show lldp neighbors detail")
+            if cmd_errors:
+                raise list(cmd_errors.values())[0]
             return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
         if METHOD == "rest":
             return {"ok": True, "neighbors": _oc_lldp_to_eos(self._rest_get(ip, "openconfig-lldp:lldp/interfaces"))}
@@ -9241,10 +9243,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if METHOD in ("ssh", "eapi"):
-            ver, ifs, ivlans = self._run_cmds(
+            (ver, ifs, ivlans), cmd_errors = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
-            return _build_devstatus_ssh(ver, ifs, ivlans)
+            result = _build_devstatus_ssh(ver, ifs, ivlans)
+            if cmd_errors:
+                def _fmt(e):
+                    if isinstance(e, subprocess.CalledProcessError): return f"exit {e.returncode}"
+                    if isinstance(e, subprocess.TimeoutExpired): return "timeout"
+                    return str(e)[:80]
+                result["cmdErrors"] = {cmd: _fmt(exc) for cmd, exc in cmd_errors.items()}
+            return result
         if METHOD == "rest":
             plat  = self._rest_get(ip, "openconfig-platform:components")
             iface = self._rest_get(ip, "openconfig-interfaces:interfaces")
@@ -9887,11 +9896,24 @@ function runBridgeCheck() {
         _autoDetectBridgeMac(devStatusMap);
         _applyHostnameIndicators(devices);
         applyDevStatusToCards();
+        // Overlay orange dot on devices with partial cmd failures.
+        // Runs after bridgeData dot pass so green→orange upgrade is visible.
+        devices.forEach(n => {
+          const ds = dsData[n.id];
+          if (!ds || !ds.ok || !ds.cmdErrors) return;
+          const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const dot = document.getElementById('bridgeDot_' + safeId);
+          if (!dot) return;
+          const failed = Object.entries(ds.cmdErrors)
+            .map(([cmd, err]) => cmd.replace('show ', '') + ' (' + err + ')');
+          dot.className = 'bridge-dev-dot dot-orange';
+          dot.title = 'Partial — failed: ' + failed.join(', ');
+        });
       }
 
       if (isValidationMode) runValidation();
 
-      // Compute per-device summary with auth error detection
+      // Compute per-device summary with auth error and partial-failure detection
       const _chkData = bridgeData || dsData;
       let _msg = 'Device Bridge checks complete';
       let _msgColor = '#15803d';
@@ -9904,6 +9926,14 @@ function runBridgeCheck() {
         if (_total > 0) _msg += ` \u2014 ${_reached}/${_total} reached`;
         if (_authFails) { _msg += ` (${_authFails} auth error${_authFails > 1 ? 's' : ''})`; _msgColor = '#d97706'; }
         else if (_reached < _total) _msgColor = '#dc2626';
+      }
+      // Count partial command failures from devstatus (ok:true but some cmds failed)
+      const _cmdFails = Object.values(dsData || {})
+        .filter(d => d && d.ok && d.cmdErrors)
+        .reduce((sum, d) => sum + Object.keys(d.cmdErrors).length, 0);
+      if (_cmdFails > 0) {
+        _msg += ` \u00b7 ${_cmdFails} cmd failure${_cmdFails !== 1 ? 's' : ''}`;
+        if (_msgColor === '#15803d') _msgColor = '#d97706';
       }
       if (_manualOrphanCount > 0 && _msgColor !== '#dc2626') {
         _msg += ` \u00b7 ${_manualOrphanCount} extra cable${_manualOrphanCount !== 1 ? 's' : ''} found`;

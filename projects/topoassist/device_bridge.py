@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.29 | 2026-04-22 13:38:25
+# topoassist v260422.30 | 2026-04-22 13:43:57
 """
 TopoAssist Device Bridge
 ========================
@@ -119,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.18"
+VERSION           = "260422.19"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -546,12 +546,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # speed; per-command parallelism within a device is not needed.
         for i, cmd in enumerate(cmds):
             fetch(i, cmd)
-        # Re-raise the first per-slot exception so _run_parallel sees the right
-        # type (TimeoutExpired → "unreachable", CalledProcessError → "SSH failed").
-        for exc in errors:
-            if exc is not None:
-                raise exc
-        return results
+        # Return partial results alongside a cmd→error dict instead of raising.
+        # Callers decide whether partial failures are acceptable (devstatus keeps
+        # partial data; lldp re-raises because partial LLDP is unusable).
+        cmd_errors = {cmds[i]: errors[i] for i in range(len(cmds)) if errors[i] is not None}
+        return results, cmd_errors
 
     # ── Transport: eAPI ───────────────────────────────────────────────────────
     def _eapi_cmds(self, ip, *cmds):
@@ -755,14 +754,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     # ── Dispatch: run EOS show commands via active METHOD ─────────────────────
     def _run_cmds(self, ip, *cmds):
+        # _ssh_cmds returns (results, cmd_errors); _eapi_cmds raises on failure
+        # so wrap it to match the same tuple signature.
         if METHOD == "ssh":  return self._ssh_cmds(ip, *cmds)
-        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds)
+        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds), {}
         raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
 
     # ── Per-device checks ─────────────────────────────────────────────────────
     def _check_lldp(self, ip):
         if METHOD in ("ssh", "eapi"):
-            data = self._run_cmds(ip, "show lldp neighbors detail")[0]
+            (data,), cmd_errors = self._run_cmds(ip, "show lldp neighbors detail")
+            if cmd_errors:
+                raise list(cmd_errors.values())[0]   # partial LLDP is unusable — re-raise
             return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
 
         if METHOD == "rest":
@@ -777,10 +780,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if METHOD in ("ssh", "eapi"):
-            ver, ifs, ivlans = self._run_cmds(
+            (ver, ifs, ivlans), cmd_errors = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
-            return _build_devstatus_ssh(ver, ifs, ivlans)
+            result = _build_devstatus_ssh(ver, ifs, ivlans)
+            if cmd_errors:
+                def _fmt(e):
+                    if isinstance(e, subprocess.CalledProcessError):
+                        return f"exit {e.returncode}"
+                    if isinstance(e, subprocess.TimeoutExpired):
+                        return "timeout"
+                    return str(e)[:80]
+                result["cmdErrors"] = {cmd: _fmt(exc) for cmd, exc in cmd_errors.items()}
+            return result
 
         if METHOD == "rest":
             plat_raw  = self._rest_get(ip, "openconfig-platform:components")
