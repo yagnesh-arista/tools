@@ -1,10 +1,10 @@
-// TopoAssist v260422.17 | 2026-04-22 11:40:52
+// TopoAssist v260422.18 | 2026-04-22 11:41:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.17";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.18";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2535,7 +2535,6 @@ function getTopologyData(forceSync, isColorEnabled) {
         });
       }
     });
-    console.log("✓ Payload Ready.");
 
     // PHASE 6: CACHE & DONE
     safeCachePut(cache, 'TOPOLOGY_STATUS', `🔹 Phase 6/6: Caching result (${nodes.length} nodes, ${links.length} links)...`, 200);
