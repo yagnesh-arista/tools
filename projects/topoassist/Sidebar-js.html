@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.21 | 2026-04-22 12:30:42 -->
+<!-- TopoAssist v260422.22 | 2026-04-22 12:32:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.21";  // keep in sync with Code.gs
+const APP_VERSION = "260422.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2432,7 +2432,7 @@ function runValidation() {
 
     // K. VLAN CONFLICTS WITH EOS INTERNAL VLANS (requires bridge check data)
     const _intVlansForDev = deviceInternalVlans[(node.device || "").toLowerCase()] || [];
-    if (_intVlansForDev.length) {
+    if (bridgeAuditFlagInternalVlan && _intVlansForDev.length) {
       const _vlanStr = [_pvAuditJ.vlans, _pvAuditJ.native].filter(Boolean).join(',');
       if (_vlanStr) {
         const _portVlans = [...parseVlanInput(_vlanStr)].map(v => parseInt(v)).filter(v => !isNaN(v));
@@ -8671,7 +8671,8 @@ function toggleMinimize() {
 
 const BRIDGE_URL = 'http://localhost:8765';
 let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
-let bridgeAuditFlagMissing = localStorage.getItem('bridgeAuditFlagMissing') === 'true';
+let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
+let bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
 let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
 let deviceMetadata = {};        // devName → {model: "", rack: ""} — persisted in DocumentProperties DEVICE_METADATA
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
@@ -9321,6 +9322,8 @@ function openBridgeModal() {
   document.getElementById('btnRunBridge').disabled = true;
   const chk = document.getElementById('chkBridgeAuditMissing');
   if (chk) chk.checked = bridgeAuditFlagMissing;
+  const chkVlan = document.getElementById('chkBridgeAuditInternalVlan');
+  if (chkVlan) chkVlan.checked = bridgeAuditFlagInternalVlan;
   _syncBridgeEnableCheckbox();
   _populateLldpDevTable();
   _checkBridgeHealth();
@@ -9330,6 +9333,12 @@ function toggleBridgeAuditMissing(val) {
   bridgeAuditFlagMissing = val;
   localStorage.setItem('bridgeAuditFlagMissing', val);
   applyLldpIndicators();          // recolor missing dots: gray ↔ red
+  if (isValidationMode) runValidation();
+}
+
+function toggleBridgeAuditInternalVlan(val) {
+  bridgeAuditFlagInternalVlan = val;
+  localStorage.setItem('bridgeAuditFlagInternalVlan', val);
   if (isValidationMode) runValidation();
 }
 

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.21 | 2026-04-22 12:28:09 -->
+<!-- TopoAssist v260422.22 | 2026-04-22 12:33:32 -->
 <!DOCTYPE html>
 <html>
 
@@ -991,7 +991,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
-      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS.</li>
+      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Flag internal VLAN conflicts</b> in the Device Bridge modal.</li>
       <li><b>Per-VLAN VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
         <ul style="margin-top:4px;">
           <li><b>Error</b> — VRF count does not match VLAN count (e.g. 3 VLANs but 2 VRF entries).</li>
@@ -1153,11 +1153,12 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       Internal VLAN data is only available after a bridge check and is not persisted between sessions — re-run the check to refresh. <code>METHOD = "rest"</code> and <code>"gnmi"</code> do not support <code>show vlan internal</code>; those paths return no internal VLAN data.
     </div>
 
-    <h3>LLDP Audit Integration</h3>
-    <p style="font-size:13px;">The <b>LLDP Audit</b> row in the modal controls how LLDP results feed into Audit mode:</p>
+    <h3>Audit Flags</h3>
+    <p style="font-size:13px;">The <b>Audit flags</b> section in the modal controls which bridge-sourced checks are raised as errors in Audit mode. All flags default to <b>on</b>.</p>
     <ul>
       <li><b>Mismatches always flagged</b> — any LLDP mismatch is automatically raised as a red error in Audit mode. This cannot be disabled.</li>
-      <li><b>Flag missing neighbors</b> (checkbox) — when on, ports with no LLDP neighbor turn red and appear in Audit. Turn this <i>off</i> for early-stage labs where some interfaces are intentionally dark (not all cables patched yet).</li>
+      <li><b>LLDP — Flag missing neighbors</b> (checkbox) — when on, ports with no LLDP neighbor turn red and appear in Audit. Turn this <i>off</i> for early-stage labs where some interfaces are intentionally dark (not all cables patched yet). When off, missing ports still show a gray dot on the card.</li>
+      <li><b>VLAN — Flag internal VLAN conflicts</b> (checkbox) — when on, ports whose configured VLANs overlap with EOS-internal allocations are raised as errors in Audit. Turn this <i>off</i> if you know the internal VLAN ranges are intentionally reused in your topology.</li>
     </ul>
 
     <h3>Config Push</h3>
