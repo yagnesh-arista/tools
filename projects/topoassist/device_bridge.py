@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.27 | 2026-04-22 13:17:49
+# topoassist v260422.28 | 2026-04-22 13:32:00
 """
 TopoAssist Device Bridge
 ========================
@@ -28,20 +28,53 @@ Endpoints:
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re, shutil
+import atexit, stat as _stat, tempfile
 
 # sshpass is not available on all platforms (e.g. macOS without Homebrew).
-# Detect once at startup; if absent, fall back to key-based SSH (BatchMode=yes).
+# Detect once at startup; fall through to SSH_ASKPASS shim, then key-based.
 _SSHPASS_BIN = shutil.which("sshpass")
+
+# SSH_ASKPASS shim — empty-password auth without sshpass.
+# Creates a temp shell script that echoes nothing (= empty password) and
+# registers it as SSH_ASKPASS so SSH calls it instead of prompting.
+# Works on any platform with standard /bin/sh and OpenSSH 8.4+
+# (pre-8.4 needs DISPLAY set, which we include as a fallback).
+_ASKPASS_SCRIPT = None
+_SSH_ENV        = None   # subprocess env for SSH_ASKPASS mode; None = inherit
+if not _SSHPASS_BIN:
+    try:
+        _f = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.sh', delete=False, prefix='ta_askpass_')
+        _f.write('#!/bin/sh\necho\n')   # echo empty line = empty password
+        _f.flush(); _f.close()
+        os.chmod(_f.name, _stat.S_IRWXU)
+        _ASKPASS_SCRIPT = _f.name
+        _SSH_ENV = {**os.environ,
+                    "SSH_ASKPASS":         _ASKPASS_SCRIPT,
+                    "SSH_ASKPASS_REQUIRE": "force",                # OpenSSH 8.4+
+                    "DISPLAY":             os.environ.get("DISPLAY") or ":0"}  # pre-8.4 fallback
+        atexit.register(os.unlink, _ASKPASS_SCRIPT)
+    except Exception:
+        pass   # fall back to BatchMode=yes key-based auth
 
 def _ssh_base():
     """Return the base SSH command list.
-    With sshpass: password auth with empty password (typical EOS lab default).
-    Without sshpass: key-based auth via BatchMode=yes."""
+    sshpass (Linux): supplies empty password via wrapper binary.
+    SSH_ASKPASS shim (macOS/no sshpass): SSH_ASKPASS env supplies empty password.
+    Fallback: key-based auth via BatchMode=yes."""
     if _SSHPASS_BIN:
         return [_SSHPASS_BIN, "-p", "", "ssh",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
+                "-o", "ConnectTimeout=8"]
+    if _ASKPASS_SCRIPT:
+        return ["ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "BatchMode=no",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "NumberOfPasswordPrompts=1",
                 "-o", "ConnectTimeout=8"]
     return ["ssh",
             "-o", "StrictHostKeyChecking=no",
@@ -86,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.16"
+VERSION           = "260422.17"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -368,17 +401,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
-            # Only check SSH agent when using key-based SSH (no sshpass).
-            # arista-ssh check-auth is a live token validity check — when it
-            # returns ok, auth is genuinely valid.  Do not override with the
-            # dynamic exit-255 counter: exit 255 also fires for unreachable
-            # hosts, network drops, ProxyJump routing failures, etc. Letting
-            # the counter mask a valid auth check causes false "session expired"
-            # warnings when devices are simply unreachable.
-            if METHOD == "ssh" and not _SSHPASS_BIN:
+            # Only check arista-ssh credentials for pure key-based auth.
+            # Password-based modes (sshpass or SSH_ASKPASS shim) don't use
+            # arista-ssh certs, so the check is irrelevant.
+            if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
                 auth = _check_ssh_agent()
                 if auth["ok"]:
-                    # Auth confirmed valid — reset any accumulated failure counter.
                     _ssh_auth["failures"] = 0
                     _ssh_auth["ok"]  = True
                     _ssh_auth["msg"] = ""
@@ -483,7 +511,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
-                                              text=True, stderr=stderr_mode)
+                                              text=True, stderr=stderr_mode,
+                                              env=_SSH_ENV)
                 results[i] = json.loads(out)
                 _ssh_auth["failures"] = 0       # successful SSH → clear auth-failure state
                 _ssh_auth["ok"]  = True
@@ -604,7 +633,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                [*base, f"{SSH_USER}@{ip}"])
         with subprocess.Popen(cmd,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE) as proc:
+                              stderr=subprocess.PIPE, env=_SSH_ENV) as proc:
             try:
                 out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
             except subprocess.TimeoutExpired:
@@ -859,7 +888,9 @@ if __name__ == "__main__":
     print(f"  Listening : http://localhost:{PORT}")
     print(f"  Transport : {METHOD.upper()}")
     if METHOD == "ssh":
-        _auth_mode = "empty-password (sshpass)" if _SSHPASS_BIN else "key-based (sshpass not found)"
+        _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
+                      "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
+                      "key-based (arista-ssh)")
         print(f"  SSH user  : {SSH_USER}  auth: {_auth_mode}")
         print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")

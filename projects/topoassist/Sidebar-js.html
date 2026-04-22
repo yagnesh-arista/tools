@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.27 | 2026-04-22 13:18:16 -->
+<!-- TopoAssist v260422.28 | 2026-04-22 13:34:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.27";  // keep in sync with Code.gs
+const APP_VERSION = "260422.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8723,8 +8723,27 @@ Endpoints:
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re, shutil
+import atexit, stat as _stat, tempfile
 
 _SSHPASS_BIN = shutil.which("sshpass")
+
+_ASKPASS_SCRIPT = None
+_SSH_ENV        = None
+if not _SSHPASS_BIN:
+    try:
+        _f = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.sh', delete=False, prefix='ta_askpass_')
+        _f.write('#!/bin/sh\\necho\\n')
+        _f.flush(); _f.close()
+        os.chmod(_f.name, _stat.S_IRWXU)
+        _ASKPASS_SCRIPT = _f.name
+        _SSH_ENV = {**os.environ,
+                    "SSH_ASKPASS":         _ASKPASS_SCRIPT,
+                    "SSH_ASKPASS_REQUIRE": "force",
+                    "DISPLAY":             os.environ.get("DISPLAY") or ":0"}
+        atexit.register(os.unlink, _ASKPASS_SCRIPT)
+    except Exception:
+        pass
 
 def _arg(flag):
     try:
@@ -8734,27 +8753,43 @@ def _arg(flag):
         return None
 
 def _check_ssh_agent():
-    sock = os.environ.get("SSH_AUTH_SOCK")
-    if not sock:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+    if not shutil.which("arista-ssh"):
+        return {"ok": False, "msg": "arista-ssh not found — install arista-ssh or use sshpass"}
     try:
-        r = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True, timeout=3)
+        r = subprocess.run(["arista-ssh", "check-auth"],
+                           capture_output=True, text=True, timeout=5)
         if r.returncode == 0:
             return {"ok": True}
-        if r.returncode == 1:
-            return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
-    except FileNotFoundError:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+        return {"ok": False, "msg": "arista-ssh session expired — run: arista-ssh login"}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+        return {"ok": False, "msg": "arista-ssh check-auth timed out — run: arista-ssh login"}
+
+def _ssh_base():
+    if _SSHPASS_BIN:
+        return [_SSHPASS_BIN, "-p", "", "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "ConnectTimeout=8"]
+    if _ASKPASS_SCRIPT:
+        return ["ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "BatchMode=no",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "NumberOfPasswordPrompts=1",
+                "-o", "ConnectTimeout=8"]
+    return ["ssh",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=8"]
 
 _ssh_auth = {"ok": True, "msg": "", "failures": 0}
 _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.16"
+VERSION = "260422.17"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -8966,7 +9001,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
-            if METHOD == "ssh" and not _SSHPASS_BIN:
+            if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
                 auth = _check_ssh_agent()
                 if auth["ok"]:
                     _ssh_auth["failures"] = 0
@@ -9020,11 +9055,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         errors  = [None] * len(cmds)
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
-            base = ["sshpass", "-p", "", "ssh",
-                    "-o", "StrictHostKeyChecking=no",
-                    "-o", "PasswordAuthentication=yes",
-                    "-o", "PubkeyAuthentication=no",
-                    "-o", "ConnectTimeout=8"]
+            base = _ssh_base()
             exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
@@ -9032,7 +9063,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
-                                              text=True, stderr=stderr_mode)
+                                              text=True, stderr=stderr_mode,
+                                              env=_SSH_ENV)
                 results[i] = json.loads(out)
                 _ssh_auth["failures"] = 0
                 _ssh_auth["ok"]  = True
@@ -9092,17 +9124,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
         stdin_text = "\\n".join(cmds) + "\\n"
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
-        base = ["sshpass", "-p", "", "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "PasswordAuthentication=yes",
-                "-o", "PubkeyAuthentication=no",
-                "-o", "ConnectTimeout=8"]
+        base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
         proc = subprocess.Popen(cmd,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE, env=_SSH_ENV)
         try:
             out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
         except subprocess.TimeoutExpired:
@@ -9298,8 +9326,11 @@ if __name__ == "__main__":
     print(f"  Listening : http://localhost:{PORT}")
     print(f"  Transport : {METHOD.upper()}")
     if METHOD == "ssh":
-        print(f"  SSH user  : {SSH_USER} (no password)")
-        print(f"  Jump host : {JUMP_HOST or '(none -- direct SSH)'}")
+        _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
+                      "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
+                      "key-based (arista-ssh)")
+        print(f"  SSH user  : {SSH_USER}  auth: {_auth_mode}")
+        print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")
     elif METHOD == "eapi":
         print(f"  eAPI user : {EAPI_USER}  port: {EAPI_PORT}")
