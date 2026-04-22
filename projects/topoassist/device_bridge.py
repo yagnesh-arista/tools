@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.6 | 2026-04-22 10:32:22
+# topoassist v260422.8 | 2026-04-22 11:09:57
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.5"
+VERSION           = "260422.6"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -107,6 +107,21 @@ def _oc_lldp_to_eos(raw):
             },
         }]}
     return neighbors
+
+
+def _normalize_lldp_neighbors(raw_lldp_neighbors):
+    """Rename EOS native key 'lldpNeighborInfo' → 'bridgeNeighborInfo'.
+
+    EOS JSON (show lldp neighbors detail | json) uses 'lldpNeighborInfo' per
+    interface.  The client _compareBridgeData reads 'bridgeNeighborInfo' — the
+    single canonical key used across all transports (ssh/eapi/rest/gnmi).
+    Interfaces that already lack 'lldpNeighborInfo' are passed through as-is.
+    """
+    return {
+        iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
+        if "lldpNeighborInfo" in info else info
+        for iface, info in raw_lldp_neighbors.items()
+    }
 
 
 def _oc_version(raw):
@@ -618,15 +633,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _check_lldp(self, ip):
         if METHOD in ("ssh", "eapi"):
             data = self._run_cmds(ip, "show lldp neighbors detail")[0]
-            # EOS native JSON uses "lldpNeighborInfo"; normalize to "bridgeNeighborInfo"
-            # so the client _compareBridgeData uses one key regardless of transport.
-            raw = data.get("lldpNeighbors", {})
-            neighbors = {
-                iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
-                if "lldpNeighborInfo" in info else info
-                for iface, info in raw.items()
-            }
-            return {"ok": True, "neighbors": neighbors}
+            return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
 
         if METHOD == "rest":
             raw = self._rest_get(ip, "openconfig-lldp:lldp/interfaces")

@@ -1,4 +1,4 @@
-# topoassist v260422.5 | 2026-04-22 10:26:33
+# topoassist v260422.7 | 2026-04-22 11:08:59
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -124,6 +124,48 @@ class TestOcLldpToEos:
             "neighbors": {"neighbor": []},
         }]}}}
         assert db._oc_lldp_to_eos(raw) == {}
+
+
+# ── _normalize_lldp_neighbors ────────────────────────────────────────────────
+
+class TestNormalizeLldpNeighbors:
+    """EOS native JSON uses 'lldpNeighborInfo'; client expects 'bridgeNeighborInfo'.
+    This helper is the normalization layer — any regression here means silent
+    all-missing LLDP on device cards."""
+
+    def _eos_iface(self, sys_name, iface_id):
+        return {"lldpNeighborInfo": [{"systemName": sys_name,
+                                      "neighborInterfaceInfo": {"interfaceId_v2": iface_id}}]}
+
+    def test_renames_key(self):
+        raw = {"Ethernet1": self._eos_iface("Spine1", "Ethernet3")}
+        result = db._normalize_lldp_neighbors(raw)
+        assert "bridgeNeighborInfo" in result["Ethernet1"]
+        assert "lldpNeighborInfo" not in result["Ethernet1"]
+
+    def test_neighbor_data_preserved(self):
+        raw = {"Ethernet1": self._eos_iface("Spine1", "Ethernet3")}
+        nbr = db._normalize_lldp_neighbors(raw)["Ethernet1"]["bridgeNeighborInfo"][0]
+        assert nbr["systemName"] == "Spine1"
+        assert nbr["neighborInterfaceInfo"]["interfaceId_v2"] == "Ethernet3"
+
+    def test_multiple_interfaces(self):
+        raw = {
+            "Ethernet1": self._eos_iface("Spine1", "Ethernet3"),
+            "Ethernet2": self._eos_iface("Spine2", "Ethernet4"),
+        }
+        result = db._normalize_lldp_neighbors(raw)
+        assert "bridgeNeighborInfo" in result["Ethernet1"]
+        assert "bridgeNeighborInfo" in result["Ethernet2"]
+
+    def test_empty_neighbors(self):
+        assert db._normalize_lldp_neighbors({}) == {}
+
+    def test_iface_without_lldp_key_passthrough(self):
+        # Interface present in EOS JSON but no LLDP info (e.g. Management port)
+        raw = {"Management0": {"someOtherKey": []}}
+        result = db._normalize_lldp_neighbors(raw)
+        assert result["Management0"] == {"someOtherKey": []}
 
 
 # ── _oc_version ───────────────────────────────────────────────────────────────

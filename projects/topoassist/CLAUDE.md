@@ -19,7 +19,7 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **Native VLAN is encoded as `nv<N>` token inside the `vlan_` field** — there is no separate `n_vlan_` column. Example: `10,20,nv100` means allowed VLANs 10,20 with native VLAN 100. Always use `parseVlanWithNative(d.vlan_)` to split the native token before using the VLAN list or generating `switchport trunk native vlan` commands. Never re-introduce a standalone `n_vlan_` column.
 
-**generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 16-flag IP family settings object. Every call site must pass it — omitting silently drops all protocol-family-gated commands. **generateBGP() has 8 params** — `settings` is the 8th; gates peer group emission per flag.
+**generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 16-flag IP family settings object. Every call site must pass it — omitting silently drops all protocol-family-gated commands. **generateBGP() has 9 params** — `settings` is the 8th; `ipPrefs` is the 9th (provides loBase for loopback/ASN derivation). **generateBGPEvpnOverlay() has 7 params** — `settings` is the 6th, `ipPrefs` is the 7th.
 
 **16 network flags** in `getNetworkSettings()`: P2P (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM) + GW (GW_IPV4, GW_IPV6) + BGP (4) + OSPF (3) + VXLAN (2) + EVPN (2). P2P and GW are fully decoupled in `generateComplexL3Block()` — never use `useIpv6Explicit` to gate GW config. `hasP2pIpv6` gates Lo0 IPv6 / router-id ipv6; `hasAnyIpv6` (adds gw_ipv6) gates VRF `ipv6 unicast-routing`.
 

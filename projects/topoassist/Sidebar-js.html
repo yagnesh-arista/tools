@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.7 | 2026-04-22 11:09:10 -->
+<!-- TopoAssist v260422.8 | 2026-04-22 11:10:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.7";  // keep in sync with Code.gs
+const APP_VERSION = "260422.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8732,7 +8732,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.5"
+VERSION = "260422.6"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9136,13 +9136,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _check_lldp(self, ip):
         if METHOD in ("ssh", "eapi"):
             data = self._run_cmds(ip, "show lldp neighbors detail")[0]
-            raw = data.get("lldpNeighbors", {})
-            neighbors = {
-                iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
-                if "lldpNeighborInfo" in info else info
-                for iface, info in raw.items()
-            }
-            return {"ok": True, "neighbors": neighbors}
+            return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
         if METHOD == "rest":
             return {"ok": True, "neighbors": _oc_lldp_to_eos(self._rest_get(ip, "openconfig-lldp:lldp/interfaces"))}
         if METHOD == "gnmi":

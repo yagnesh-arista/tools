@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-21 (device_bridge.py push join_budget fix: budget formula was TIMEOUT*(RETRIES+1)+DELAY*RETRIES+5=58s but each _push_config attempt also blocks for _abort_stale_sessions cleanup thread join (up to min(5,TIMEOUT)=5s) before _ssh_stdin, making actual worst-case 68s. Fixed to (TIMEOUT+_abort_overhead)*(PUSH_RETRIES+1)+PUSH_RETRY_DELAY*PUSH_RETRIES+5=73s. Also added lock around the post-join None→error conversion to prevent race with lingering daemon threads. VERSION 260422.4→260422.5. Files: device_bridge.py, Sidebar-js.html)
+  Last updated: 2026-04-22 (LLDP key normalization refactor: extracted inline dict-rename in _check_lldp into pure module-level helper _normalize_lldp_neighbors(raw) — renames EOS native "lldpNeighborInfo"→"bridgeNeighborInfo" so client _compareBridgeData uses one key across all transports. 5 unit tests added (TestNormalizeLldpNeighbors): key rename, data preservation, multiple interfaces, empty input, passthrough for interfaces lacking the key. VERSION 260422.5→260422.6. Files: device_bridge.py, Sidebar-js.html, tests/test_device_bridge.py)
+  Previous: 2026-04-21 (device_bridge.py push join_budget fix: budget formula was TIMEOUT*(RETRIES+1)+DELAY*RETRIES+5=58s but each _push_config attempt also blocks for _abort_stale_sessions cleanup thread join (up to min(5,TIMEOUT)=5s) before _ssh_stdin, making actual worst-case 68s. Fixed to (TIMEOUT+_abort_overhead)*(PUSH_RETRIES+1)+PUSH_RETRY_DELAY*PUSH_RETRIES+5=73s. Also added lock around the post-join None→error conversion to prevent race with lingering daemon threads. VERSION 260422.4→260422.5. Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-22 (LLDP match fix: EOS native JSON (ssh/eapi) uses "lldpNeighborInfo" per interface but client _compareBridgeData reads "bridgeNeighborInfo" — caused all ports to show missing/no-visibility. _check_lldp now normalizes lldpNeighborInfo→bridgeNeighborInfo in output; _oc_lldp_to_eos in device_bridge.py also fixed to emit bridgeNeighborInfo (template was already correct). Tests updated. VERSION 260422.3→260422.4. Files: device_bridge.py, Sidebar-js.html, tests/test_device_bridge.py)
   Previous: 2026-04-22 (device_bridge.py crash fix: _ssh_stdin now catches TimeoutExpired, kills proc, and re-raises cleanly; _push_config cleanup thread replaced bare lambda with _safe_abort() that swallows all exceptions — eliminates noisy thread crash when device is unreachable during stale-session cleanup. VERSION 260422.1→260422.2. Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-22 (device_bridge.py _ssh_stdin: fix [Errno 7] Argument list too long when pushing large configs (50K+ lines) via jump host. Old approach base64-encoded the config and embedded it in argv — exceeded Linux ARG_MAX (~2MB). New approach uses ProxyCommand=ssh -W %h:%p JUMP_HOST so stdin is piped directly from local; sshpass handles device password as before. VERSION bumped 260421.9→260422.1 in device_bridge.py and downloadBridgeScript() template in Sidebar-js.html. Files: device_bridge.py, Sidebar-js.html)
@@ -2222,7 +2223,9 @@ SECTION 24: HARD DESIGN CONSTRAINTS (DO NOT CHANGE)
    The 5th param is the full netSettings object (13 IP family flags). MUST be passed by every
    caller — both getTopologyData() (as globalNetSettings) and getDeviceConfig() (as netSettings).
    Omitting it silently drops all protocol-family-gated commands from that config path.
-   generateBGP() has 8 params — settings is the 8th; all call sites must pass it.
+   generateBGP() has 9 params — settings is the 8th, ipPrefs is the 9th (provides loBase
+   for loopback/ASN derivation); all call sites must pass both.
+   generateBGPEvpnOverlay() has 7 params — settings is the 6th, ipPrefs is the 7th.
 
 7. VRRP is REMOVED: MLAG + L3 is invalid on Arista EOS. The guard covers all
    l3-* modes in generateConfig() and generateComplexL3Block().
@@ -2656,7 +2659,8 @@ MLAG + L3 is INVALID — output error comment block instead of config.
 
 CONFIG GENERATION:
 generateConfig(portName, d, ipPrefs, seenPos, netSettings) — 5 params. netSettings (13 IP family flags object) gates IPv6/OSPF/BGP/VXLAN/EVPN commands.
-generateBGP(..., settings) — 8 params; settings gates peer group emission per protocol family.
+generateBGP(..., settings, ipPrefs) — 9 params; settings gates peer group emission per protocol family; ipPrefs provides loBase for loopback/ASN derivation.
+generateBGPEvpnOverlay(..., settings, ipPrefs) — 7 params; settings and ipPrefs same roles as generateBGP.
 Auto-description (9-rule): physical → 'PeerDev-PeerPort'; Po → neighbor list;
 peer-link → append MLAG-PEER-LINK; child of Po → append PoX.
 IP from VLAN: VLAN 1050 → .10.50. Last octet = device DID. IPv6 same pattern (lab).
