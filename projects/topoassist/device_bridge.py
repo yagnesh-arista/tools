@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.8 | 2026-04-22 11:09:57
+# topoassist v260422.10 | 2026-04-22 11:14:01
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.6"
+VERSION           = "260422.7"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -408,6 +408,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         """Run EOS show commands via SSH — parallel connections when >1 command.
         Returns list of parsed JSON dicts, one per command."""
         results = [None] * len(cmds)
+        errors  = [None] * len(cmds)  # per-slot exception for re-raise
 
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
@@ -419,9 +420,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
             exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
-            out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
-                                          text=True, stderr=subprocess.DEVNULL)
-            results[i] = json.loads(out)
+            try:
+                out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
+                                              text=True, stderr=subprocess.DEVNULL)
+                results[i] = json.loads(out)
+            except Exception as e:
+                errors[i] = e  # saved for re-raise; suppress thread traceback
 
         if len(cmds) == 1:
             fetch(0, cmds[0])
@@ -430,6 +434,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                        for i, cmd in enumerate(cmds)]
             for t in threads: t.start()
             for t in threads: t.join(timeout=TIMEOUT)
+        # Re-raise the first per-slot exception so _run_parallel sees the right
+        # type (TimeoutExpired → "unreachable", CalledProcessError → "SSH failed").
+        for exc in errors:
+            if exc is not None:
+                raise exc
         return results
 
     # ── Transport: eAPI ───────────────────────────────────────────────────────
@@ -711,12 +720,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
     # ── Response helper ───────────────────────────────────────────────────────
     def _json(self, code, data):
         body = json.dumps(data).encode()
-        self.send_response(code)
-        self.send_header("Content-Type",   "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self._cors()
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type",   "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self._cors()
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # client closed connection before we responded (SSH took too long)
 
     def log_message(self, fmt, *args):
         if VERBOSE:
