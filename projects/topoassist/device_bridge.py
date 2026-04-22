@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.12 | 2026-04-22 11:20:32
+# topoassist v260422.14 | 2026-04-22 11:32:49
 """
 TopoAssist Device Bridge
 ========================
@@ -27,7 +27,26 @@ Endpoints:
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
+import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re, shutil
+
+# sshpass is not available on all platforms (e.g. macOS without Homebrew).
+# Detect once at startup; if absent, fall back to key-based SSH (BatchMode=yes).
+_SSHPASS_BIN = shutil.which("sshpass")
+
+def _ssh_base():
+    """Return the base SSH command list.
+    With sshpass: password auth with empty password (typical EOS lab default).
+    Without sshpass: key-based auth via BatchMode=yes."""
+    if _SSHPASS_BIN:
+        return [_SSHPASS_BIN, "-p", "", "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "ConnectTimeout=8"]
+    return ["ssh",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=8"]
 
 def _arg(flag):
     """Return the value after flag in sys.argv, or None if flag absent or has no value."""
@@ -39,7 +58,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.9"
+VERSION           = "260422.10"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -412,11 +431,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
-            base = ["sshpass", "-p", "", "ssh",
-                    "-o", "StrictHostKeyChecking=no",
-                    "-o", "PasswordAuthentication=yes",
-                    "-o", "PubkeyAuthentication=no",
-                    "-o", "ConnectTimeout=8"]
+            base = _ssh_base()
             exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
@@ -524,11 +539,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
-        base = ["sshpass", "-p", "", "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "PasswordAuthentication=yes",
-                "-o", "PubkeyAuthentication=no",
-                "-o", "ConnectTimeout=8"]
+        base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
@@ -789,7 +800,8 @@ if __name__ == "__main__":
     print(f"  Listening : http://localhost:{PORT}")
     print(f"  Transport : {METHOD.upper()}")
     if METHOD == "ssh":
-        print(f"  SSH user  : {SSH_USER} (no password)")
+        _auth_mode = "empty-password (sshpass)" if _SSHPASS_BIN else "key-based (sshpass not found)"
+        print(f"  SSH user  : {SSH_USER}  auth: {_auth_mode}")
         print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")
     elif METHOD == "eapi":

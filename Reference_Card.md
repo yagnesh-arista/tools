@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-21
+Last updated: 2026-04-22
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -171,7 +171,7 @@ All concurrent-write risks are flock-protected:
 | Test rules | `~/.claude/rules/testing.md` | Isolation, mocking, coverage |
 | Commands | `~/.claude/commands/new-project.md` | New project gate |
 | Commands | `~/.claude/commands/review-global.md` | Pre-commit review |
-| Commands | `~/.claude/commands/topoassist-review-memory.md` | INSTRUCTIONS + memory + hooks cross-check — prune stale, resolve conflicts, fill gaps |
+| Commands | `~/.claude/commands/topoassist-review-memory.md` | INSTRUCTIONS + memory + hooks cross-check — tier-aware: prune redundant (Tier 2 duplicating Tier 1), prune stale, resolve conflicts, fill gaps |
 | Hooks | `~/.claude/settings.json` | All automatic enforcement |
 | Backup | `~/claude/projects/settings/` | Restore kit for new machine |
 | Reference | `~/claude/Reference_Card.md` | This file — single source of truth |
