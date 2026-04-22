@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.10 | 2026-04-22 11:14:01
+# topoassist v260422.11 | 2026-04-22 11:19:19
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.7"
+VERSION           = "260422.8"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -420,12 +420,21 @@ class BridgeHandler(BaseHTTPRequestHandler):
             exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
+            if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
                                               text=True, stderr=subprocess.DEVNULL)
                 results[i] = json.loads(out)
+                if VERBOSE: print(f"  [show] {ip}: {cmd} → ok", flush=True)
+            except subprocess.TimeoutExpired as e:
+                if VERBOSE: print(f"  [show] {ip}: {cmd} → timeout", flush=True)
+                errors[i] = e
+            except subprocess.CalledProcessError as e:
+                if VERBOSE: print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode})", flush=True)
+                errors[i] = e
             except Exception as e:
-                errors[i] = e  # saved for re-raise; suppress thread traceback
+                if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
+                errors[i] = e
 
         if len(cmds) == 1:
             fetch(0, cmds[0])
@@ -512,6 +521,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         Raises subprocess.TimeoutExpired if the device doesn't respond within
         TIMEOUT — caller is responsible for catching and handling."""
         stdin_text = '\n'.join(cmds) + '\n'
+        # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
+        _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
+        if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         base = ["sshpass", "-p", "", "ssh",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
@@ -520,16 +532,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
-        proc = subprocess.Popen(cmd,
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        try:
-            out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.communicate()   # drain to avoid ResourceWarning
-            raise               # let caller decide — push path retries, cleanup swallows
-        return out.decode("utf-8", errors="replace"), err.decode("utf-8", errors="replace")
+        with subprocess.Popen(cmd,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE) as proc:
+            try:
+                out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.communicate()   # drain; __exit__ will close pipes + wait
+                if VERBOSE: print(f"  [stdin] {ip}: {_label} → timeout", flush=True)
+                raise           # let caller decide — push path retries, cleanup swallows
+        out_text = out.decode("utf-8", errors="replace")
+        err_text = err.decode("utf-8", errors="replace")
+        if VERBOSE:
+            _auth_errs = ("permission denied", "authentication failed", "no route to host",
+                          "connection refused", "connection timed out")
+            if not out_text.strip() and any(k in err_text.lower() for k in _auth_errs):
+                print(f"  [stdin] {ip}: {_label} → failed: {err_text.strip()[:80]}", flush=True)
+            else:
+                print(f"  [stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
+        return out_text, err_text
 
     # ── Stale session cleanup ─────────────────────────────────────────────────
     def _abort_stale_sessions(self, ip):
@@ -699,7 +721,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return
             with sem:
                 try:
-                    with lock: results[dev] = check_fn(ip)
+                    # SSH call outside the lock — allows threads to run in parallel.
+                    # Lock only protects the dict write.
+                    result = check_fn(ip)
+                    with lock: results[dev] = result
                 except subprocess.TimeoutExpired:
                     with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except subprocess.CalledProcessError:
