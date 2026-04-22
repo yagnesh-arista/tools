@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.32 | 2026-04-22 14:59:17 -->
+<!-- TopoAssist v260422.33 | 2026-04-22 15:08:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.32";  // keep in sync with Code.gs
+const APP_VERSION = "260422.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10914,20 +10914,22 @@ function _renderLldpResults(results, orphans) {
   const order = { mismatch: 0, partial: 1, unknown: 2, match: 3, skip: 4 };
   const sorted = [...results].sort((a, b) => order[a.status] - order[b.status]);
 
+  // Icons: check=ok, X=mismatch, orange?=partial(SSH fail), dashed-circle=not-queried, dash=skip
   const svgCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const svgX     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-  const svgQ     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  const svgPart  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  const svgUnk   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
   const svgSkip  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 
   list.innerHTML = sorted.map(r => {
-    let icon, cls, detail = '';
-    if      (r.status === 'match')    { icon = svgCheck; cls = 'bridge-row-ok'; }
-    else if (r.status === 'mismatch') { icon = svgX;     cls = 'bridge-row-fail'; detail = r.msg; }
-    else if (r.status === 'partial')  { icon = svgQ;     cls = 'bridge-row-part'; detail = r.msg; }
-    else if (r.status === 'unknown')  { icon = svgQ;     cls = 'bridge-row-unk';  detail = r.msg; }
-    else                              { icon = svgSkip;   cls = 'bridge-row-skip'; detail = r.msg; }
-    const clickable = r.status !== 'skip';
-    const clickAttr = clickable ? ` onclick="_selectBridgeLink('${r.u}','${r.v}')" title="Click to select this link in topology"` : '';
+    let icon, cls, detail = '', rowTitle = '';
+    if      (r.status === 'match')    { icon = svgCheck; cls = 'bridge-row-ok';   rowTitle = 'Click to select this link in topology'; }
+    else if (r.status === 'mismatch') { icon = svgX;     cls = 'bridge-row-fail'; detail = r.msg; rowTitle = 'LLDP mismatch — click to select link'; }
+    else if (r.status === 'partial')  { icon = svgPart;  cls = 'bridge-row-part'; detail = 'SSH failed — ' + r.msg; rowTitle = 'Partial: one or both sides unreachable via SSH'; }
+    else if (r.status === 'unknown')  { icon = svgUnk;   cls = 'bridge-row-unk';  detail = 'Not queried — no IP configured for either device'; rowTitle = 'Neither device was included in the bridge check (no IP set)'; }
+    else                              { icon = svgSkip;  cls = 'bridge-row-skip'; detail = r.msg; }
+    const clickable = r.status !== 'skip' && r.status !== 'unknown';
+    const clickAttr = clickable ? ` onclick="_selectBridgeLink('${r.u}','${r.v}')" title="${rowTitle}"` : (rowTitle ? ` title="${rowTitle}"` : '');
     return `<div class="bridge-result-row ${cls}"${clickAttr}>
       <span class="bridge-row-icon">${icon}</span>
       <span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>
@@ -10960,35 +10962,42 @@ function _renderLldpResults(results, orphans) {
 
 function addSelectedDiscovered() {
   const checked = Array.from(document.querySelectorAll('.bridge-disc-check:checked'));
-  if (!checked.length) return;
+  if (!checked.length) { setStatus('No links selected — check boxes first', 'status-error'); return; }
   const btn = document.getElementById('btnAddDiscovered');
   btn.disabled = true;
   btn.textContent = 'Adding…';
+  const n = checked.length;
+  setStatus(`Adding ${n} discovered link${n > 1 ? 's' : ''} to sheet…`, 'status-info');
 
-  let pending = checked.length, errors = [];
+  let pending = n, added = 0, errors = [];
   checked.forEach(cb => {
     const o = JSON.parse(decodeURIComponent(cb.dataset.pair));
     google.script.run
       .withSuccessHandler(res => {
         pending--;
         if (res && res.error) errors.push(o.localDev + ':' + o.localIf + ' — ' + res.error);
-        if (pending === 0) _onAddDiscoveredDone(btn, errors);
+        else added++;
+        if (pending === 0) _onAddDiscoveredDone(btn, added, errors);
       })
       .withFailureHandler(err => {
         pending--;
-        errors.push(o.localDev + ':' + o.localIf + ' — ' + (err.message || 'error'));
-        if (pending === 0) _onAddDiscoveredDone(btn, errors);
+        errors.push(o.localDev + ':' + o.localIf + ' — ' + (err.message || 'Server error'));
+        if (pending === 0) _onAddDiscoveredDone(btn, added, errors);
       })
       .addLinkPair(o.localDev, o.localIf, o.remDev, o.remIf, {}, {});
   });
 }
 
-function _onAddDiscoveredDone(btn, errors) {
+function _onAddDiscoveredDone(btn, added, errors) {
   btn.disabled = false;
   btn.textContent = 'Add Selected';
   if (errors.length) {
-    alert('Some links could not be added:\n' + errors.join('\n'));
+    const msg = `${added} link${added !== 1 ? 's' : ''} added · ${errors.length} failed`;
+    setStatus(msg, 'status-error');
+    alert('Could not add:\n' + errors.join('\n'));
+    if (added > 0) fetchData(true);
   } else {
+    setStatus(`${added} link${added !== 1 ? 's' : ''} added to sheet`, 'status-ok');
     fetchData(true);  // refresh topology so newly added links appear
   }
 }

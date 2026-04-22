@@ -1,10 +1,10 @@
-// TopoAssist v260422.32 | 2026-04-22 14:57:08
+// TopoAssist v260422.33 | 2026-04-22 15:06:49
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.32";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.33";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4218,7 +4218,7 @@ function getDeviceConfig(deviceName) {
         }
 
         {
-          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, settings);
+          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, settings, vx1VlanSet);
           if (pName.startsWith("Po")) {
             configMap["060_" + pName] = { full: cfg, blockStatus: "Logical" };
           } else {
@@ -4246,7 +4246,7 @@ function getDeviceConfig(deviceName) {
         // Peer info: secondary's peer is the primary on the same device
         const snakeLinkEntry = topo.globalLinkMap.get(deviceName + ":" + secondaryPort);
         if (snakeLinkEntry) { det.peerDev = snakeLinkEntry.dev; det.peerPort = snakeLinkEntry.port; }
-        const cfg2 = generateConfig(secondaryPort, det, ipPrefs, deviceSeenPos, settings);
+        const cfg2 = generateConfig(secondaryPort, det, ipPrefs, deviceSeenPos, settings, vx1VlanSet);
         configMap["050_" + secondaryPort] = { full: cfg2, blockStatus: "Physical (Snake Secondary)" };
       });
     }
@@ -4456,7 +4456,10 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
 * Generates configuration for an interface.
 * REFACTORED: Implements strict 9-rule description logic.
 */
-function generateConfig(portName, d, ipPrefs, seenPos, netSettings) {
+function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) {
+  // vx1VlanSet is optional — callers inside getDeviceConfig pass the real Set;
+  // callers from getTopologyData (config tooltips) pass nothing, so default to empty.
+  vx1VlanSet = vx1VlanSet || new Set();
   const isSubInt = String(portName).includes(".");
   const poVal = normalizePo(d.po_) || ""; // Local Port-Channel Name (e.g. Po10)
   const hasPo = (poVal !== "");
