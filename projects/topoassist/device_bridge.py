@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.24 | 2026-04-22 12:43:32
+# topoassist v260422.25 | 2026-04-22 12:53:39
 """
 TopoAssist Device Bridge
 ========================
@@ -49,31 +49,25 @@ def _ssh_base():
             "-o", "ConnectTimeout=8"]
 
 def _check_ssh_agent():
-    """Check whether the SSH agent (arista-ssh-agent or standard ssh-agent) has
-    valid credentials loaded.  Only meaningful when using key-based SSH auth
-    (i.e. sshpass is absent).
+    """Check arista-ssh credentials via 'arista-ssh check-auth'.
+    Only called when using key-based SSH auth (sshpass is absent).
 
-    ssh-add -l exit codes:
-      0 — identities present → auth OK
-      1 — agent running but no identities (session expired / not logged in)
-      2 — cannot connect to agent socket
+    arista-ssh check-auth exit codes:
+      0 — authenticated → ok
+      non-zero — session expired or not logged in
 
     Returns {"ok": True} or {"ok": False, "msg": "<reason>"}.
     """
-    sock = os.environ.get("SSH_AUTH_SOCK")
-    if not sock:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+    if not shutil.which("arista-ssh"):
+        return {"ok": False, "msg": "arista-ssh not found — install arista-ssh or set BRIDGE_SSH_USER / use sshpass"}
     try:
-        r = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True, timeout=3)
+        r = subprocess.run(["arista-ssh", "check-auth"],
+                           capture_output=True, text=True, timeout=5)
         if r.returncode == 0:
             return {"ok": True}
-        if r.returncode == 1:
-            return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
-    except FileNotFoundError:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+        return {"ok": False, "msg": "arista-ssh session expired — run: arista-ssh login"}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+        return {"ok": False, "msg": "arista-ssh check-auth timed out — run: arista-ssh login"}
 
 # Dynamic SSH auth observation — updated by _ssh_cmds on exit-255 detection.
 # arista-ssh-agent certificates can expire while still appearing in ssh-add -l
@@ -92,7 +86,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.13"
+VERSION           = "260422.14"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
