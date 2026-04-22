@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.25 | 2026-04-22 12:53:39
+# topoassist v260422.26 | 2026-04-22 13:01:22
 """
 TopoAssist Device Bridge
 ========================
@@ -86,7 +86,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.14"
+VERSION           = "260422.15"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -369,14 +369,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
             # Only check SSH agent when using key-based SSH (no sshpass).
-            # Two-layer detection: static (ssh-add -l) + dynamic (exit-255 counter).
-            # arista-ssh-agent certs can expire while still listed in ssh-add -l —
-            # the cert is present but EOS rejects it → SSH exits 255. The static
-            # check catches socket-not-running; the dynamic counter catches expired certs.
+            # arista-ssh check-auth is a live token validity check — when it
+            # returns ok, auth is genuinely valid.  Do not override with the
+            # dynamic exit-255 counter: exit 255 also fires for unreachable
+            # hosts, network drops, ProxyJump routing failures, etc. Letting
+            # the counter mask a valid auth check causes false "session expired"
+            # warnings when devices are simply unreachable.
             if METHOD == "ssh" and not _SSHPASS_BIN:
                 auth = _check_ssh_agent()
-                if auth["ok"] and not _ssh_auth["ok"]:
-                    auth = {"ok": False, "msg": _ssh_auth["msg"]}
+                if auth["ok"]:
+                    # Auth confirmed valid — reset any accumulated failure counter.
+                    _ssh_auth["failures"] = 0
+                    _ssh_auth["ok"]  = True
+                    _ssh_auth["msg"] = ""
                 health["auth"] = auth
             self._json(200, health)
         else:

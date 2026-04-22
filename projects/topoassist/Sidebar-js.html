@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.25 | 2026-04-22 12:53:51 -->
+<!-- TopoAssist v260422.26 | 2026-04-22 13:01:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.25";  // keep in sync with Code.gs
+const APP_VERSION = "260422.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8754,7 +8754,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.14"
+VERSION = "260422.15"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -8968,8 +8968,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
             if METHOD == "ssh" and not _SSHPASS_BIN:
                 auth = _check_ssh_agent()
-                if auth["ok"] and not _ssh_auth["ok"]:
-                    auth = {"ok": False, "msg": _ssh_auth["msg"]}
+                if auth["ok"]:
+                    _ssh_auth["failures"] = 0
+                    _ssh_auth["ok"]  = True
+                    _ssh_auth["msg"] = ""
                 health["auth"] = auth
             self._json(200, health)
         else:
