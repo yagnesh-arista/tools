@@ -1,10 +1,10 @@
-// TopoAssist v260422.15 | 2026-04-22 11:36:51
+// TopoAssist v260422.16 | 2026-04-22 11:40:02
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.15";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.16";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2547,8 +2547,19 @@ function getTopologyData(forceSync, isColorEnabled) {
       scriptProps.setProperty('DATA_VERSION', new Date().getTime().toString());
     }
 
+    // CACHE ACCURACY GUARD: snapshot the version immediately after any cleanup bump.
+    // GAS execution takes 2-6s; a user paste can bump DATA_VERSION during that window.
+    // If DATA_VERSION at cache-store time is newer than versionAfterCleanup, the
+    // computed data is accurate for versionAfterCleanup — NOT for the paste version.
+    // Cache under versionAfterCleanup so the client's next poll sees serverVersion >
+    // localDataVersion and triggers a fresh, correct fetch.
+    const versionAfterCleanup = scriptProps.getProperty('DATA_VERSION');
+
     const snakeTrafficHasIn = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_SNAKE_EP1_L3');
     const snakeTrafficHasOut = allCollectedNodes.some(n => (n.details.desc_ || '').trim() === 'TRAFFIC_SNAKE_EP2_L3');
+
+    const versionAtCacheTime = scriptProps.getProperty('DATA_VERSION');
+    const versionToUse = (versionAtCacheTime !== versionAfterCleanup) ? versionAfterCleanup : versionAtCacheTime;
 
     const result = {
       nodes: nodes,
@@ -2558,16 +2569,15 @@ function getTopologyData(forceSync, isColorEnabled) {
       schema: getSchemaConfig(),
       portFrequency: portFrequency,
       logs: topo.debugLogs,
-      version: scriptProps.getProperty('DATA_VERSION'),
+      version: versionToUse,
       snakeTrafficFlags: { hasIn: snakeTrafficHasIn, hasOut: snakeTrafficHasOut }
     };
 
     // Always store result in GAS cache (including forceSync/verify fetches) so the
     // next background fetch gets a warm cache hit instead of recomputing.
-    const currentVersion = scriptProps.getProperty('DATA_VERSION');
-    if (currentVersion) {
+    if (versionToUse) {
       try {
-        safeCachePut(cache, 'TOPO_' + currentVersion, JSON.stringify(result), 600);
+        safeCachePut(cache, 'TOPO_' + versionToUse, JSON.stringify(result), 600);
       } catch (e) {
         console.warn("Topology cache store skipped (payload too large):", e.message);
       }

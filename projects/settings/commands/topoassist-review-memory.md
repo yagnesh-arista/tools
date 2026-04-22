@@ -110,11 +110,30 @@ This is the most common issue. For EVERY memory file, ask:
   UserGuide update check (project CLAUDE.md), VERSION sync (project CLAUDE.md).
 
 ### S — Stale (documented but no longer true)
+
+**TopoAssist-specific staleness (verify against code):**
 - INSTRUCTIONS / CLAUDE.md mentions a function, param count, column name, or behavior
   that doesn't match what grep found in the actual code
-- A memory entry references a pattern that has since been renamed, removed, or superseded
 - A hook expects a code pattern (function name, file structure, test registration) that no longer exists
 - Any "Previous:" entry in INSTRUCTIONS that contradicts the current "Last updated"
+
+**Non-TopoAssist memory staleness (verify against filesystem + hooks):**
+```bash
+# Check all project dirs still exist at the documented paths
+ls ~/claude/projects/tmux-studio/ ~/claude/projects/tmux.conf/ \
+   ~/claude/projects/bashrc_bus-home/ ~/claude/projects/zshrc_macbook/ 2>&1
+
+# Check auto-deploy hook targets still match what memory files say
+grep -A3 'tmux_studio\|tmux.conf\|\.bashrc\|zshrc' ~/.claude/settings.json | head -30
+
+# Check user_profile.md machine names still match
+hostname; ls /home/yagnesh/
+```
+Flag as stale if:
+- A `project_*.md` describes a path or file structure that no longer exists
+- A `feedback_*_autodeploy.md` describes a hook target that differs from `settings.json`
+- A memory entry references a memory file that was deleted (orphaned MEMORY.md pointer)
+- `user_profile.md` machine names or role info is outdated
 
 ### C — Conflict (two sources disagree about the same thing)
 - INSTRUCTIONS says X, CLAUDE.md says Y about the same function/rule
