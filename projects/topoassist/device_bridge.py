@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260421.175 | 2026-04-21 19:28:13
+# topoassist v260422.1 | 2026-04-22 10:15:15
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260421.9","port":8765}
+  GET  /health      → {"status":"ok","version":"260422.1","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260421.9"
+VERSION           = "260422.1"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -484,14 +484,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
         Returns (stdout_text, stderr_text) as decoded strings."""
         stdin_text = '\n'.join(cmds) + '\n'
         if JUMP_HOST:
-            b64    = base64.b64encode(stdin_text.encode()).decode()
-            inner  = (f'sshpass -p "" ssh -o StrictHostKeyChecking=no'
-                      f' -o PasswordAuthentication=yes -o PubkeyAuthentication=no'
-                      f' -o ConnectTimeout=8 {SSH_USER}@{ip}')
-            remote = f"echo '{b64}' | base64 -d | {inner}"
-            proc   = subprocess.Popen(["ssh", JUMP_HOST, remote],
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = proc.communicate(timeout=TIMEOUT)
+            # Use ProxyCommand so stdin is piped directly from local — avoids
+            # embedding large configs in argv which hits Linux ARG_MAX (~2 MB).
+            proc = subprocess.Popen(
+                ["sshpass", "-p", "", "ssh",
+                 "-o", "StrictHostKeyChecking=no",
+                 "-o", "PasswordAuthentication=yes",
+                 "-o", "PubkeyAuthentication=no",
+                 "-o", "ConnectTimeout=8",
+                 "-o", f"ProxyCommand=ssh -W %h:%p {JUMP_HOST}",
+                 f"{SSH_USER}@{ip}"],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
         else:
             proc = subprocess.Popen(
                 ["sshpass", "-p", "", "ssh", "-o", "StrictHostKeyChecking=no",
