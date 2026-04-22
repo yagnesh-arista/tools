@@ -208,6 +208,19 @@ height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box;
 - Full-form modal inputs (with labels above) are exempt — use standard `padding: 5px 8px`
 - Full pattern: `~/.claude/rules/ui.md` (Rule 22)
 
+## 23. Memory Tiering — Never Duplicate Tier 1 in Memory
+
+The knowledge system has three tiers:
+- **Tier 1** (always loaded every session): `~/claude/CLAUDE.md` + `~/.claude/rules/*.md` + project `CLAUDE.md`
+- **Tier 2** (on recall only): `memory/*.md` files
+- **Tier 3** (on demand): `INSTRUCTIONS_<project>.txt`
+
+**Before writing a memory file:** verify the content is NOT already in any Tier 1 source. If it is, do NOT create a memory file — Tier 1 already enforces it every session. Memory files that restate Tier 1 rules create drift risk and wasted context with no benefit.
+
+**"Missing from memory" ≠ undocumented** — check Tier 1 first. If it's there, it's correctly in Tier 1.
+
+Memory belongs in Tier 2 only when it is contextual, historical, or project-specific — not a universal coding rule. When a Tier 2 feedback item proves universally applicable, promote it to Tier 1 (CLAUDE.md rule or rules/*.md entry) and delete the memory file.
+
 ## 15. Ambiguity
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
@@ -249,5 +262,6 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 16 | Claude Code anatomy reference | `CLAUDE.md` | `CLAUDE.md` |
 | 17 | Git workflow — every project must be a git repo | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync to settings backup | `hooks/` | `settings.json` (PostToolUse hook) |
+| 23 | Memory tiering — Tier 2 never duplicates Tier 1 | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.

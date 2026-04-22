@@ -1,10 +1,10 @@
-// TopoAssist v260422.16 | 2026-04-22 11:40:02
+// TopoAssist v260422.17 | 2026-04-22 11:40:52
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.16";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.17";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2521,7 +2521,6 @@ function getTopologyData(forceSync, isColorEnabled) {
 
     // Final Sanitization (Deep Clean)
     // We strip circular references to ensure successful JSON serialization
-    console.log("🧹 Starting Final Sanitization...");
     nodes.forEach(node => {
       if (node.ports) {
         node.ports.forEach(port => {

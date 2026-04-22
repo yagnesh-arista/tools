@@ -1,12 +1,12 @@
 # Claude Code Reference Card
-Last updated: 2026-04-22
+Last updated: 2026-04-22 (Rule 23 added)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
 
 ---
 
-## 22 Global Rules
+## 23 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -39,6 +39,7 @@ Last updated: 2026-04-22
 | 20 | GAS loading overlay guard — every `showGlobalLoading()` must have a `_guard = setTimeout(hideGlobalLoading+setStatus, N)`; both handlers `clearTimeout(_guard)` first; timeouts: 15s read/save, 20s fetchFullConfig, 60s sync | `rules/` | `rules/gas.md` |
 | 21 | Modal button standard — SVG × header (`.btn-modal-close`); footer order: Delete-isolated-left · Cancel · Primary-right; view-only = no footer; no duplicate close/cancel; every new modal must register in `modalOrder` + `closeFuncs` for Esc handling | `rules/` | `rules/ui.md` |
 | 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
+| 23 | Memory tiering — Tier 1 (CLAUDE.md+rules/+project CLAUDE.md) always loaded; Tier 2 (memory) only for things NOT in Tier 1; never write a memory file for something already in Tier 1; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
 
 ---
 
