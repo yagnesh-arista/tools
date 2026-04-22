@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.20 | 2026-04-22 12:26:00 -->
+<!-- TopoAssist v260422.21 | 2026-04-22 12:30:49 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5121,9 +5121,20 @@
   .modal-floating.modal-minimized .modal-actions { display: none !important; }
 
   /* Bridge toolbar icon states (SVG uses stroke=currentColor) */
-  #btnBridgeToolbar.bridge-down     { color: #f59e0b; }  /* yellow — enabled, bridge down */
-  #btnBridgeToolbar.bridge-up       { color: #22c55e; }  /* green  — enabled, bridge up   */
-  #btnBridgeToolbar.bridge-disabled { opacity: 0.45; }   /* dimmed — integration disabled */
+  #btnBridgeToolbar.bridge-down         { color: #f59e0b; }  /* yellow — enabled, bridge down        */
+  #btnBridgeToolbar.bridge-up           { color: #22c55e; }  /* green  — enabled, bridge up          */
+  #btnBridgeToolbar.bridge-disabled     { opacity: 0.45; }   /* dimmed — integration disabled        */
+  #btnBridgeToolbar.bridge-auth-expired { color: #f97316; }  /* orange — bridge up, SSH auth expired */
+
+  .bridge-auth-warn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #f97316;
+    margin-top: 4px;
+    padding: 2px 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
   @keyframes bridge-scan { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.9s ease-in-out infinite; }
   /* Generate/Push toolbar icon — flashes while generate or push is running */
@@ -5151,6 +5162,18 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  .bridge-audit-flags-grid {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 5px 6px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bridge-audit-cat {
+    color: #94a3b8; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    user-select: none; -webkit-user-select: none;
   }
   /* Global Config find bar */
   .gcfg-find-bar {

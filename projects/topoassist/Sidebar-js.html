@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.20 | 2026-04-22 12:26:22 -->
+<!-- TopoAssist v260422.21 | 2026-04-22 12:30:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.20";  // keep in sync with Code.gs
+const APP_VERSION = "260422.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8714,14 +8714,16 @@ Transport options (set METHOD below):
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"2.11","port":8765}
+  GET  /health      -> {"status":"ok","version":"260422.11","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re
+import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re, shutil
+
+_SSHPASS_BIN = shutil.which("sshpass")
 
 def _arg(flag):
     try:
@@ -8730,9 +8732,25 @@ def _arg(flag):
     except (ValueError, IndexError):
         return None
 
+def _check_ssh_agent():
+    sock = os.environ.get("SSH_AUTH_SOCK")
+    if not sock:
+        return {"ok": False, "msg": "SSH_AUTH_SOCK not set — run arista-ssh-agent"}
+    try:
+        r = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True, timeout=3)
+        if r.returncode == 0:
+            return {"ok": True}
+        if r.returncode == 1:
+            return {"ok": False, "msg": "SSH agent session expired — run arista-ssh-agent"}
+        return {"ok": False, "msg": "SSH agent not responding — run arista-ssh-agent"}
+    except FileNotFoundError:
+        return {"ok": False, "msg": "ssh-add not found"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "msg": "SSH agent check timed out"}
+
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.10"
+VERSION = "260422.11"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -8942,7 +8960,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._json(200, {"status": "ok", "version": VERSION, "port": PORT, "method": METHOD})
+            health = {"status": "ok", "version": VERSION,
+                      "port": PORT, "method": METHOD, "timeout": TIMEOUT}
+            if METHOD == "ssh" and not _SSHPASS_BIN:
+                health["auth"] = _check_ssh_agent()
+            self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
 
@@ -9312,12 +9334,14 @@ function toggleBridgeAuditMissing(val) {
 }
 
 function _checkBridgeHealth() {
-  const dot  = document.getElementById('bridgeDot');
-  const msg  = document.getElementById('bridgeMsg');
-  const cmd  = document.getElementById('bridgeCmd');
-  const btn  = document.getElementById('btnRunBridge');
+  const dot      = document.getElementById('bridgeDot');
+  const msg      = document.getElementById('bridgeMsg');
+  const cmd      = document.getElementById('bridgeCmd');
+  const btn      = document.getElementById('btnRunBridge');
+  const authWarn = document.getElementById('bridgeAuthWarn');
   dot.className = 'bridge-dev-dot';
   msg.textContent = 'Checking…';
+  if (authWarn) authWarn.style.display = 'none';
   fetch(BRIDGE_URL + '/health', { method: 'GET' })
     .then(r => r.json())
     .then(data => {
@@ -9327,7 +9351,13 @@ function _checkBridgeHealth() {
         cmd.style.display = 'none';
         btn.disabled = false;
         if (data.timeout) _bridgeDeviceTimeout = data.timeout;
-        _updateBridgeToolbarIcon('up');
+        // auth field present only when METHOD=ssh + key-based auth (no sshpass)
+        const authFailed = data.auth && data.auth.ok === false;
+        if (authFailed && authWarn) {
+          authWarn.textContent = '\u26a0 ' + data.auth.msg;
+          authWarn.style.display = 'block';
+        }
+        _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
       } else {
         throw new Error('unexpected response');
       }
@@ -9389,8 +9419,17 @@ function _silentBridgeCheck() {
     if (localStorage.getItem('bridgeEnabled') === 'false') return;
     fetch(BRIDGE_URL + '/health', { method: 'GET' })
       .then(r => r.json())
-      .then(data => { if (data.timeout) _bridgeDeviceTimeout = data.timeout; _updateBridgeToolbarIcon(data.status === 'ok' ? 'up' : 'down'); })
-      .catch(()  => _updateBridgeToolbarIcon('down'));
+      .then(data => {
+        if (data.timeout) _bridgeDeviceTimeout = data.timeout;
+        if (data.status === 'ok') {
+          // auth field present only when METHOD=ssh + key-based auth (no sshpass)
+          const authFailed = data.auth && data.auth.ok === false;
+          _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
+        } else {
+          _updateBridgeToolbarIcon('down');
+        }
+      })
+      .catch(() => _updateBridgeToolbarIcon('down'));
   }, 400);
 }
 
@@ -9404,16 +9443,19 @@ function _setBridgeOrphanBadge(n) {
 }
 
 // Update toolbar bridge icon color based on enabled state + health.
-// state: 'up' (green), 'down' (yellow), 'idle' (enabled, state unknown = normal color)
+// state: 'up' (green), 'down' (yellow), 'auth-expired' (orange), 'idle' (state unknown = normal)
 function _updateBridgeToolbarIcon(state) {
   const btn = document.getElementById('btnBridgeToolbar');
   if (!btn) return;
   const enabled = localStorage.getItem('bridgeEnabled') !== 'false';
-  btn.classList.remove('bridge-up', 'bridge-down', 'bridge-disabled');
-  if (!enabled)              btn.classList.add('bridge-disabled');
-  else if (state === 'up')   btn.classList.add('bridge-up');
-  else if (state === 'down') btn.classList.add('bridge-down');
+  btn.classList.remove('bridge-up', 'bridge-down', 'bridge-disabled', 'bridge-auth-expired');
+  if (!enabled)                       btn.classList.add('bridge-disabled');
+  else if (state === 'up')            btn.classList.add('bridge-up');
+  else if (state === 'down')          btn.classList.add('bridge-down');
+  else if (state === 'auth-expired')  btn.classList.add('bridge-auth-expired');
   // 'idle' = enabled but health unknown — no class (normal toolbar color)
+  // 'auth-expired' = bridge process is up but SSH agent session is expired;
+  //   does NOT set _bridgeUpState=true so auto-Bridge is suppressed (would fail anyway)
 
   // Auto-Bridge: trigger only on fresh connect (down/idle → up transition)
   const wasUp = _bridgeUpState;

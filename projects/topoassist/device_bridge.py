@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.14 | 2026-04-22 11:32:49
+# topoassist v260422.21 | 2026-04-22 12:27:54
 """
 TopoAssist Device Bridge
 ========================
@@ -48,6 +48,33 @@ def _ssh_base():
             "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=8"]
 
+def _check_ssh_agent():
+    """Check whether the SSH agent (arista-ssh-agent or standard ssh-agent) has
+    valid credentials loaded.  Only meaningful when using key-based SSH auth
+    (i.e. sshpass is absent).
+
+    ssh-add -l exit codes:
+      0 — identities present → auth OK
+      1 — agent running but no identities (session expired / not logged in)
+      2 — cannot connect to agent socket
+
+    Returns {"ok": True} or {"ok": False, "msg": "<reason>"}.
+    """
+    sock = os.environ.get("SSH_AUTH_SOCK")
+    if not sock:
+        return {"ok": False, "msg": "SSH_AUTH_SOCK not set — run arista-ssh-agent"}
+    try:
+        r = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True, timeout=3)
+        if r.returncode == 0:
+            return {"ok": True}
+        if r.returncode == 1:
+            return {"ok": False, "msg": "SSH agent session expired — run arista-ssh-agent"}
+        return {"ok": False, "msg": "SSH agent not responding — run arista-ssh-agent"}
+    except FileNotFoundError:
+        return {"ok": False, "msg": "ssh-add not found"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "msg": "SSH agent check timed out"}
+
 def _arg(flag):
     """Return the value after flag in sys.argv, or None if flag absent or has no value."""
     try:
@@ -58,7 +85,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.10"
+VERSION           = "260422.11"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -338,8 +365,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._json(200, {"status": "ok", "version": VERSION,
-                              "port": PORT, "method": METHOD, "timeout": TIMEOUT})
+            health = {"status": "ok", "version": VERSION,
+                      "port": PORT, "method": METHOD, "timeout": TIMEOUT}
+            # Only check SSH agent when using key-based SSH (no sshpass).
+            # arista-ssh-agent exposes credentials via SSH_AUTH_SOCK; when the
+            # session expires ssh-add -l returns exit 1 (no identities).
+            if METHOD == "ssh" and not _SSHPASS_BIN:
+                health["auth"] = _check_ssh_agent()
+            self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
 
