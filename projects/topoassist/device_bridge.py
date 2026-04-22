@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.2 | 2026-04-22 10:16:55
+# topoassist v260422.4 | 2026-04-22 10:22:37
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.2"
+VERSION           = "260422.3"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -391,16 +391,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
-            remote   = (f'sshpass -p "" ssh -o StrictHostKeyChecking=no'
-                        f' -o ConnectTimeout=8 {SSH_USER}@{ip} "{eos_cmd}"')
-            exec_cmd = ["ssh", JUMP_HOST, remote] if JUMP_HOST else [
-                "sshpass", "-p", "", "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "PasswordAuthentication=yes",
-                "-o", "PubkeyAuthentication=no",
-                "-o", "ConnectTimeout=8",
-                f"{SSH_USER}@{ip}", eos_cmd,
-            ]
+            base = ["sshpass", "-p", "", "ssh",
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "PasswordAuthentication=yes",
+                    "-o", "PubkeyAuthentication=no",
+                    "-o", "ConnectTimeout=8"]
+            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                        if JUMP_HOST else
+                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
             out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
                                           text=True, stderr=subprocess.DEVNULL)
             results[i] = json.loads(out)
@@ -485,24 +483,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
         Raises subprocess.TimeoutExpired if the device doesn't respond within
         TIMEOUT — caller is responsible for catching and handling."""
         stdin_text = '\n'.join(cmds) + '\n'
-        if JUMP_HOST:
-            # Use ProxyCommand so stdin is piped directly from local — avoids
-            # embedding large configs in argv which hits Linux ARG_MAX (~2 MB).
-            proc = subprocess.Popen(
-                ["sshpass", "-p", "", "ssh",
-                 "-o", "StrictHostKeyChecking=no",
-                 "-o", "PasswordAuthentication=yes",
-                 "-o", "PubkeyAuthentication=no",
-                 "-o", "ConnectTimeout=8",
-                 "-o", f"ProxyCommand=ssh -W %h:%p {JUMP_HOST}",
-                 f"{SSH_USER}@{ip}"],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        else:
-            proc = subprocess.Popen(
-                ["sshpass", "-p", "", "ssh", "-o", "StrictHostKeyChecking=no",
-                 "-o", "PasswordAuthentication=yes", "-o", "PubkeyAuthentication=no",
-                 "-o", "ConnectTimeout=8", f"{SSH_USER}@{ip}"],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        base = ["sshpass", "-p", "", "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "ConnectTimeout=8"]
+        cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
+               if JUMP_HOST else
+               [*base, f"{SSH_USER}@{ip}"])
+        proc = subprocess.Popen(cmd,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
         try:
             out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
         except subprocess.TimeoutExpired:
