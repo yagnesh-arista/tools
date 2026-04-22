@@ -182,21 +182,52 @@ Status: [N] redundant · [N] stale · [N] CONFLICTS (blocked) · [N] missing · 
 
 ---
 
-## Step 4 — Resolve Conflicts
+## Step 4 — Confirm Deletions (REQUIRED — never delete without user approval)
 
-For each conflict, ask the user explicitly. Do NOT guess. Wait for answers before proceeding.
+Before deleting ANY file, present the complete deletion list and wait for explicit approval:
+
+```
+PROPOSED DELETIONS
+==================
+The following files will be permanently deleted. Please confirm each:
+
+  [1] memory/feedback_foo.md — redundant (already in CLAUDE.md Rule N)
+  [2] memory/feedback_bar.md — stale (project dir no longer exists)
+  [3] memory/feedback_baz.md — duplicate of feedback_qux.md
+
+Type "yes delete all", "yes delete 1,3" (specific items), or "no" to cancel.
+```
+
+**Rules:**
+- NEVER delete a file without seeing "yes" from the user in this step
+- If the user says "no" or skips: keep all files, proceed only with non-destructive changes (edits, additions)
+- Ask all deletions in one prompt — do NOT delete one at a time without listing all first
+- If zero deletions proposed: skip this step entirely
 
 ---
 
-## Step 5 — Apply Cleanup
+## Step 5 — Resolve Conflicts (REQUIRED — never pick a side without user input)
 
-Apply in this order:
+For each conflict, ask the user explicitly. Do NOT guess. Wait for answers before proceeding.
 
-1. **Delete redundant memory files** — `rm` + remove MEMORY.md line. No cross-reference needed.
+Present all conflicts together in one AskUserQuestion call if possible:
+
+> "CONFLICT [N]: Source A ([file]) says '[X]'. Source B ([file]) says '[Y]'.
+> Which is the correct, authoritative version?"
+
+Do NOT proceed to Step 6 until every conflict has a user answer.
+
+---
+
+## Step 6 — Apply Cleanup
+
+Apply only what was approved in Steps 4 and 5. Order:
+
+1. **Delete approved files** — `rm` each confirmed file + remove its MEMORY.md line
 2. **Fix stale entries** — edit memory files / INSTRUCTIONS / CLAUDE.md in-place; remove orphaned MEMORY.md lines
 3. **Apply updates** — edit INSTRUCTIONS in-place (keep "Last updated" chain); edit memory files (keep frontmatter)
 4. **Add missing entries** — decide tier first; Tier 1 → CLAUDE.md or rules/*.md; Tier 2 → new memory file + MEMORY.md line; never add to both
-5. **Resolve duplicates** — keep authoritative; delete the other
+5. **Resolve duplicates** — keep authoritative; delete the other (only if approved in Step 4)
 6. **Update INSTRUCTIONS Last updated** to today's date with review summary
 
 ---
