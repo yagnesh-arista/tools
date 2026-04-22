@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.35 | 2026-04-22 15:29:25 -->
+<!-- TopoAssist v260422.36 | 2026-04-22 15:37:09 -->
 <!DOCTYPE html>
 <html>
 
@@ -812,8 +812,8 @@
         <div class="modal-header-title">Device Bridge</div>
         <div class="modal-header-subtitle">SSH bridge to lab devices — Bridge verification, device status & more</div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button id="btnBridgeMinimize" onclick="toggleBridgeMinimize()" class="btn-mono" title="Minimize" style="padding:2px 8px;font-size:14px;line-height:1;">−</button>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button class="btn-modal-minimize" onclick="toggleModalMinimize('bridgeModal')" title="Minimize"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         <button class="btn-modal-close" onclick="closeBridgeModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
     </div>
@@ -830,8 +830,19 @@
         <code class="bridge-cmd-code">python3 device_bridge.py</code>
       </div>
       <div id="bridgeAuthWarn" class="bridge-auth-warn" style="display:none;"></div>
-      <!-- Settings card: auto-check + audit -->
+      <!-- Settings card: bridge + audit -->
       <div class="bridge-settings-card">
+        <div class="bridge-audit-header">
+          <span class="bridge-audit-section">Bridge</span>
+        </div>
+        <div class="bridge-audit-flags-grid">
+          <span class="bridge-audit-cat">AUTO</span>
+          <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
+            <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
+            Enable on topology bring-up
+          </label>
+        </div>
+        <div class="bridge-settings-sep" style="margin:6px 0;"></div>
         <div class="bridge-audit-header">
           <span class="bridge-audit-section">Audit flags</span>
         </div>
@@ -851,14 +862,17 @@
             <input type="checkbox" id="chkBridgeAuditInternalVlan" onchange="toggleBridgeAuditInternalVlan(this.checked)">
             Flag internal VLAN conflicts
           </label>
-          <span class="bridge-audit-cat">BRIDGE</span>
-          <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
-            <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
-            Enable on topology bring-up
-          </label>
         </div>
       </div>
-      <div class="bridge-section-hdr" style="margin-top:10px;">Devices <span class="bridge-hint">IP defaults to device name via DNS — edit to override</span></div>
+      <!-- Devices: collapsible, preference saved in localStorage -->
+      <div class="bridge-section-hdr bridge-dev-hdr" style="margin-top:10px;" onclick="toggleBridgeDevSection()">
+        <span>Devices <span class="bridge-hint">IP defaults to device name via DNS — edit to override</span></span>
+        <button class="bridge-dev-toggle" id="btnBridgeDevToggle" title="Collapse/expand devices">
+          <svg id="svgBridgeDevChevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
       <div id="bridgeDevTable"></div>
       <div id="bridgeRunStatus" class="bridge-run-status" style="display:none;"></div>
       <div id="bridgeResults" style="display:none;">
