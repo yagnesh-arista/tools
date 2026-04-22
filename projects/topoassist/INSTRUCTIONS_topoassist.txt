@@ -1215,7 +1215,7 @@ OSPF UNDERLAY (generateOSPF + generateOSPFv3):
   - MLAG guard: generateOSPF/generateOSPFv3 called only when hasP2pForOspf —
     at least one non-MLAG peerParam. MLAG-only devices skip (avoids dead process).
 
-BGP EVPN OVERLAY ONLY (generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings)):
+BGP EVPN OVERLAY ONLY (generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, peerRoles, settings, ipPrefs)):
   - Used when OSPF is underlay + EVPN is enabled
   - Generates overlay-only BGP: loopback-to-loopback peers, no P2P sessions
   - Peer groups: OVERLAY_<PEER>_V4_LO_IP with update-source Loopback0 + ebgp-multihop 3
