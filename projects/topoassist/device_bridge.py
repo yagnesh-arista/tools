@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.26 | 2026-04-22 13:01:22
+# topoassist v260422.27 | 2026-04-22 13:17:49
 """
 TopoAssist Device Bridge
 ========================
@@ -86,7 +86,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.15"
+VERSION           = "260422.16"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -480,9 +480,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
+            stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
-                                              text=True, stderr=subprocess.DEVNULL)
+                                              text=True, stderr=stderr_mode)
                 results[i] = json.loads(out)
                 _ssh_auth["failures"] = 0       # successful SSH → clear auth-failure state
                 _ssh_auth["ok"]  = True
@@ -492,7 +493,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → timeout", flush=True)
                 errors[i] = e
             except subprocess.CalledProcessError as e:
-                if VERBOSE: print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode})", flush=True)
+                if VERBOSE:
+                    err = (e.stderr or "").strip().splitlines()[-1] if e.stderr else ""
+                    suffix = f"  [{err}]" if err else ""
+                    print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode}){suffix}", flush=True)
                 # exit 255 = SSH itself failed (auth/connection), not an EOS command error.
                 # arista-ssh-agent certs can expire while still appearing in ssh-add -l;
                 # the cert is listed but EOS rejects it → SSH exits 255 before any command.

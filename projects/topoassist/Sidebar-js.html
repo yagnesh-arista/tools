@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.26 | 2026-04-22 13:01:52 -->
+<!-- TopoAssist v260422.27 | 2026-04-22 13:18:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.26";  // keep in sync with Code.gs
+const APP_VERSION = "260422.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8754,7 +8754,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.15"
+VERSION = "260422.16"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9029,9 +9029,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         if JUMP_HOST else
                         [*base, f"{SSH_USER}@{ip}", eos_cmd])
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
+            stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
-                                              text=True, stderr=subprocess.DEVNULL)
+                                              text=True, stderr=stderr_mode)
                 results[i] = json.loads(out)
                 _ssh_auth["failures"] = 0
                 _ssh_auth["ok"]  = True
@@ -9041,7 +9042,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → timeout", flush=True)
                 errors[i] = e
             except subprocess.CalledProcessError as e:
-                if VERBOSE: print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode})", flush=True)
+                if VERBOSE:
+                    err = (e.stderr or "").strip().splitlines()[-1] if e.stderr else ""
+                    suffix = f"  [{err}]" if err else ""
+                    print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode}){suffix}", flush=True)
                 if e.returncode == 255:
                     _ssh_auth["failures"] += 1
                     if _ssh_auth["failures"] >= _SSH_AUTH_THRESHOLD:
