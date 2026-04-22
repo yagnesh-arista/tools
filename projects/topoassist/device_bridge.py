@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.5 | 2026-04-22 10:28:24
+# topoassist v260422.6 | 2026-04-22 10:32:22
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.4"
+VERSION           = "260422.5"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -370,17 +370,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
                        for d, v in ip_map.items()]
             for t in threads: t.start()
-            # Budget: TIMEOUT per attempt × (retries+1) + retry delays + overhead
-            join_budget = TIMEOUT * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
+            # Budget: each _push_config attempt blocks for stale-session cleanup
+            # (_abort_stale_sessions thread join — up to min(5,TIMEOUT)=5s) THEN
+            # _ssh_stdin communicate (up to TIMEOUT=15s), so per-attempt cost is
+            # TIMEOUT + min(5, TIMEOUT), not just TIMEOUT.
+            _abort_overhead = min(5, TIMEOUT)
+            join_budget = (TIMEOUT + _abort_overhead) * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
             for t in threads: t.join(timeout=join_budget)
             # Any thread that didn't finish gets a descriptive timeout error instead
             # of null, so the JS never falls through to the generic 'something went wrong'.
-            for dev in results:
-                if results[dev] is None:
-                    results[dev] = {
-                        "ok": False,
-                        "error": "Push timed out — verify config was applied manually",
-                    }
+            with lock:
+                for dev in results:
+                    if results[dev] is None:
+                        results[dev] = {
+                            "ok": False,
+                            "error": "Push timed out — verify config was applied manually",
+                        }
             self._json(200, results)
 
     # ── Transport: SSH ────────────────────────────────────────────────────────
