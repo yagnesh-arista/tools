@@ -1,10 +1,10 @@
-// TopoAssist v260422.31 | 2026-04-22 14:45:26
+// TopoAssist v260422.32 | 2026-04-22 14:57:08
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.31";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.32";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -469,6 +469,11 @@ function getNetworkSettings() {
     const v = props.getProperty(key);
     return v !== null ? v === 'true' : fallback;
   };
+  // Helper: read stored string, fall back to default if key not yet written
+  const getString = (key, fallback) => {
+    const v = props.getProperty(key);
+    return v !== null ? v : fallback;
+  };
 
   // ── Interface ────────────────────────────────────────────────────────────
   const int_ipv4      = get('INT_IPV4',      true);   // default true = legacy P2P always had IPv4
@@ -502,6 +507,14 @@ function getNetworkSettings() {
   const evpn_ipv4 = get('EVPN_IPV4', legacyEvpn);
   const evpn_ipv6 = get('EVPN_IPV6', false);
 
+  // ── EVPN Service Model + L3 GW Type ─────────────────────────────────────
+  // evpn_service: 'per-vlan' (default) | 'vlan-aware-bundle'
+  // gw_l3_type:   'anycast' (default, ip address virtual) | 'varp' (ip virtual-router address)
+  // varp_mac:     MAC address for ip virtual-router mac-address (VARP standalone only)
+  const evpn_service = getString('EVPN_SERVICE', 'per-vlan');
+  const gw_l3_type   = getString('GW_L3_TYPE',   'anycast');
+  const varp_mac     = getString('VARP_MAC',      '001c.7300.0099');
+
   // ── Derived scalar for legacy callers ────────────────────────────────────
   const hasBgp  = bgp_ipv4 || bgp_ipv6 || bgp_ipv6_unnum || bgp_rfc5549;
   const hasOspf = ospf_ipv4 || ospf_ipv6 || ospf_ipv6_unnum;
@@ -520,6 +533,8 @@ function getNetworkSettings() {
     vxlan_ipv4, vxlan_ipv6,
     // EVPN
     evpn_ipv4, evpn_ipv6,
+    // EVPN service model + L3 GW type
+    evpn_service, gw_l3_type, varp_mac,
     // Legacy derived (used by old call sites)
     underlay,
     vxlan: String(vxlan_ipv4 || vxlan_ipv6),
@@ -546,7 +561,10 @@ function saveNetworkSettings(settings) {
     'VXLAN_IPV4':     b(settings.vxlan_ipv4),
     'VXLAN_IPV6':     b(settings.vxlan_ipv6),
     'EVPN_IPV4':      b(settings.evpn_ipv4),
-    'EVPN_IPV6':      b(settings.evpn_ipv6)
+    'EVPN_IPV6':      b(settings.evpn_ipv6),
+    'EVPN_SERVICE':   settings.evpn_service   || 'per-vlan',
+    'GW_L3_TYPE':     settings.gw_l3_type     || 'anycast',
+    'VARP_MAC':       settings.varp_mac        || '001c.7300.0099'
   });
   return { success: true };
 }
@@ -3215,9 +3233,10 @@ function processRowLinks(nodes, rowIndex, linksArray, devicePortsMap) {
   }
 
   // 2. PROCESS ORPHAN
+  // Vx1 is a logical port (VTEP); it is never "disconnected" even when unpaired.
   if (nodes.length % 2 !== 0) {
     const last = nodes[nodes.length - 1];
-    if (devicePortsMap[last.deviceName]) {
+    if (devicePortsMap[last.deviceName] && canonicalizeInterface(last.port) !== "Vx1") {
       add(last.deviceName, last.port, false, last.rowId, last.details);
     }
   }
@@ -3994,7 +4013,7 @@ function getDeviceConfig(deviceName) {
 
     // [SECTION 000] GLOBAL
     configMap["000_GLOBAL"] = {
-      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings),
+      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings, mlagState.isActive),
       blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
     };
 
@@ -4074,9 +4093,15 @@ function getDeviceConfig(deviceName) {
         vx1Entries.push(d);
       }
     });
+    // vx1VlanSet: VLANs claimed by Vx1 rows — excluded from front-panel SVI generation
+    // (vx1 takes precedence when the same VLAN appears on both vx1 and a front-panel port)
+    const vx1VlanSet = new Set();
     if (vx1Entries.length > 0) {
       deviceSeenPos.add("Vx1");
       const cfg2 = ipPrefs || getIpPreferences();
+      const isEvpnActive = settings && (settings.evpn_ipv4 || settings.evpn_ipv6);
+      const gwType = (settings && settings.gw_l3_type) || 'anycast';
+      const gwHasIpv6vx1 = !settings || settings.gw_ipv6;
       const sviLines = [];
       vx1Entries.forEach(d => {
         const _pvAp = parseVlanWithNative(d.vlan_);
@@ -4086,17 +4111,29 @@ function getDeviceConfig(deviceName) {
         const apVrfList = _parseVrfList(d.vrf_);
         if (apSviVlans.length > 0) {
           apSviVlans.forEach((v, i) => {
+            vx1VlanSet.add(parseInt(v));
             const oct2 = Math.floor(v / 100);
             const oct3 = v % 100;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
+            const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
+            // GW command: anycast (ip address virtual) vs VARP (ip virtual-router address)
+            const useAnycast = isEvpnActive && gwType !== 'varp';
+            const gwCmdV4 = useAnycast
+              ? ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`
+              : ` ip virtual-router address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}`;
+            const gwCmdV6 = gwHasIpv6vx1
+              ? (useAnycast
+                  ? ` ipv6 address virtual ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`
+                  : ` ipv6 virtual-router address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}`)
+              : null;
             sviLines.push([
               "!",
               `interface Vlan${v}`,
               effectiveVrf ? ` vrf ${effectiveVrf}` : null,
-              ` description ANYCAST_GW_${v}`,
-              ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`,
-              ` default ipv6 address virtual`,
-              ` ipv6 address virtual ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`,
+              ` description ${desc}`,
+              gwCmdV4,
+              useAnycast && gwHasIpv6vx1 ? ` default ipv6 address virtual` : null,
+              gwCmdV6,
               ` no shutdown`
             ].filter(Boolean).join("\n"));
           });
@@ -4535,13 +4572,13 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings) {
       // It is now exclusively handled below by generateAttributesBlock(d)
 
       cfg += generateAttributesBlock(d);
-      cfg += generateComplexL3Block(poVal, d, ipPrefs, netSettings);
+      cfg += generateComplexL3Block(poVal, d, ipPrefs, netSettings, vx1VlanSet);
     }
   } else {
     // Virtual interfaces (Loopback, Vlan, etc)
     if (!hasPo && !portName.startsWith("Po")) {
       cfg += generateAttributesBlock(d);
-      cfg += generateComplexL3Block(portName, d, ipPrefs, netSettings);
+      cfg += generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet);
     }
   }
 
@@ -4592,7 +4629,7 @@ function generateAttributesBlock(d) {
   return block;
 }
 
-function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
+function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   if (!d.sp_mode_ || !d.vlan_) return "";
 
   const mode = String(d.sp_mode_).toLowerCase();
@@ -4630,6 +4667,12 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   // GW IPv6 — independent of P2P; null netSettings = backward-compat (explicit)
   const gwHasIpv4 = !netSettings || netSettings.gw_ipv4 !== false;           // default true (legacy)
   const gwHasIpv6 = !netSettings || netSettings.gw_ipv6;                     // explicit flag
+
+  // EVPN GW type — drives ip address virtual vs ip virtual-router address for GW SVIs
+  const isEvpnActive  = !!(netSettings && (netSettings.evpn_ipv4 || netSettings.evpn_ipv6));
+  const gwL3Type      = (netSettings && netSettings.gw_l3_type) || 'anycast';
+  const useAnycastGW  = isEvpnActive && gwL3Type !== 'varp';   // anycast: ip address virtual
+  const useVarpGW     = isEvpnActive && gwL3Type === 'varp';   // VARP:    ip virtual-router address
 
   // OSPF flags — suppressed for snake ports (cannot form OSPF adjacency with yourself)
   const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4) && !d.isSnakePrimary && !d.isSnakeSecondary;
@@ -4690,36 +4733,46 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
         }
       }
     }
-    // B. GATEWAY (SVI/Sub-Int/L3-routed) — GW uses explicit IPs for VARP; IPv6 unnum does not apply
+    // B. GATEWAY (SVI/Sub-Int/L3-routed)
+    // GW type is driven by EVPN settings: anycast (ip address virtual) or VARP (ip virtual-router address)
     else if (ipType.includes("gw")) {
-      if (d.isMlag) {
-        // MLAG Logic: Distinct Physical IPs + Virtual IP
-        // phySuffix = gwLast + sheetIndex guarantees:
-        //   (a) never equals gwLast (virtual-router IP) since sheetIndex >= 1
-        //   (b) unique per peer since sheetIndex is unique per device
-        const phySuffixV4 = gwLastV4 + sheetIndex;
-        const phySuffixV6 = gwLastV6 + sheetIndex;
+      // Description: ANYCAST_GW_<vrf>_<vlan> when EVPN active and VRF set, else ANYCAST_GW_<vlan>
+      if (isEvpnActive) {
+        const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
+        const gwDesc = vrf4Desc ? `ANYCAST_GW_${vrf4Desc}_${val}` : `ANYCAST_GW_${val}`;
+        lines.push(` description ${gwDesc}`);
+      }
 
-        if (gwHasIpv4) {
-          lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-        }
-        if (gwHasIpv6) {
-          lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
-        }
-        // VARP (Virtual ARP/ND) — only if respective family is enabled
-        if (gwHasIpv4) {
-          lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
-        }
-        if (gwHasIpv6) {
-          lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+      if (d.isMlag) {
+        if (useAnycastGW) {
+          // EVPN anycast: single shared virtual IP — same on all VTEPs, no physical IP needed
+          if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+        } else {
+          // MLAG VARP (or no EVPN): per-device physical IP + shared virtual-router address
+          // phySuffix = gwLast + sheetIndex guarantees unique-per-peer and ≠ virtual IP
+          const phySuffixV4 = gwLastV4 + sheetIndex;
+          const phySuffixV6 = gwLastV6 + sheetIndex;
+          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
+          if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
+          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
         }
       } else {
-        // Standalone Gateway
-        if (gwHasIpv4) {
-          lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-        }
-        if (gwHasIpv6) {
-          lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+        if (useAnycastGW) {
+          // Standalone EVPN anycast: ip address virtual (shared across all VTEPs)
+          if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+        } else if (useVarpGW) {
+          // Standalone VARP: regular IP + virtual-router address (ip virtual-router mac-address in global)
+          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+          if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
+          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+        } else {
+          // Non-EVPN standalone: legacy behavior (plain ip address)
+          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
         }
       }
     }
@@ -4736,6 +4789,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings) {
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlansForSvi);
   if (mode.startsWith("l2-") && sviVlans.length > 0 && !d.isSnakePrimary && !d.isSnakeSecondary) {
     sviVlans.forEach((v, i) => {
+      // vx1 takes precedence: skip SVIs already generated by the Vx1 block
+      if (vx1VlanSet && vx1VlanSet.has(parseInt(v))) return;
       block += "!\ninterface Vlan" + v + "\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n no shutdown\n";
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
@@ -5129,7 +5184,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   });
 }
 
-function generateGlobalBlock(isEvpnDevice, netSettings) {
+function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive) {
   let globalCfgText = getGlobalConfig() || "";
   let mandatory = ["!"];
   // multi-agent model is required for EVPN; skip on pure-underlay devices (e.g. HARNESS)
@@ -5140,6 +5195,10 @@ function generateGlobalBlock(isEvpnDevice, netSettings) {
   if (!netSettings || netSettings.int_ipv6 || netSettings.int_ipv6_unnum || netSettings.gw_ipv6) {
     mandatory.push("ip routing ipv6 interfaces");
     mandatory.push("ipv6 unicast-routing");
+  }
+  // VARP MAC: only for standalone VARP GW (MLAG block already includes it for MLAG devices)
+  if (netSettings && netSettings.gw_l3_type === 'varp' && !mlagIsActive) {
+    mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
   mandatory.push("!");
   return globalCfgText + "\n" + mandatory.join("\n");
@@ -5504,12 +5563,23 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
       }
     });
     if (gwVlans && gwVlans.size > 0) {
-      Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
-        configLines.push(`  vlan ${v}`);
+      if (s.evpn_service === 'vlan-aware-bundle') {
+        // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
+        const vlanList = Array.from(gwVlans).sort((a, b) => a - b).join(",");
+        configLines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
+        configLines.push(`   vlan ${vlanList}`);
         configLines.push(`   rd auto`);
-        configLines.push(`   route-target both ${v}:${v}`);
+        configLines.push(`   route-target both ${asnBase}:1`);
         configLines.push(`   redistribute learned`);
-      });
+      } else {
+        // Per-VLAN (default): separate EVPN instance per VLAN
+        Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
+          configLines.push(`  vlan ${v}`);
+          configLines.push(`   rd auto`);
+          configLines.push(`   route-target both ${v}:${v}`);
+          configLines.push(`   redistribute learned`);
+        });
+      }
     }
   }
 
@@ -5738,12 +5808,23 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
   definedGroups.forEach(gName => lines.push(`  neighbor ${gName} activate`));
 
   if (gwVlans && gwVlans.size > 0) {
-    Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
-      lines.push(`  vlan ${v}`);
+    if (s.evpn_service === 'vlan-aware-bundle') {
+      // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
+      const vlanList = Array.from(gwVlans).sort((a, b) => a - b).join(",");
+      lines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
+      lines.push(`   vlan ${vlanList}`);
       lines.push(`   rd auto`);
-      lines.push(`   route-target both ${v}:${v}`);
+      lines.push(`   route-target both ${asnBase}:1`);
       lines.push(`   redistribute learned`);
-    });
+    } else {
+      // Per-VLAN (default)
+      Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
+        lines.push(`  vlan ${v}`);
+        lines.push(`   rd auto`);
+        lines.push(`   route-target both ${v}:${v}`);
+        lines.push(`   redistribute learned`);
+      });
+    }
   }
 
   lines.push("!");

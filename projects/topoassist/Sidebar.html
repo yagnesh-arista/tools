@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.31 | 2026-04-22 14:45:26 -->
+<!-- TopoAssist v260422.32 | 2026-04-22 14:58:00 -->
 <!DOCTYPE html>
 <html>
 
@@ -507,6 +507,49 @@
 
       <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options are incompatible with the selected P2P interface mode.
+      </div>
+
+      <!-- EVPN SERVICE MODEL -->
+      <div class="tech-section-label" style="margin-top:18px;">EVPN SERVICE MODEL</div>
+      <div style="display:flex; gap:24px; margin-bottom:12px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+        <label class="tech-radio-label">
+          <input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input">
+          Per-VLAN
+        </label>
+        <label class="tech-radio-label">
+          <input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input">
+          VLAN-aware bundle
+        </label>
+      </div>
+      <div class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
+        Per-VLAN: separate EVPN instance per VLAN, RT = <code class="inline-code">VLAN:VLAN</code>. &nbsp;Bundle: single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, RT = <code class="inline-code">ASN_BASE:1</code> (same on all VTEPs).
+      </div>
+
+      <!-- L3 GATEWAY MECHANISM -->
+      <div class="tech-section-label">L3 GATEWAY MECHANISM</div>
+      <div style="display:flex; gap:24px; margin-bottom:12px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+        <label class="tech-radio-label">
+          <input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()">
+          <code class="inline-code">ip address virtual</code> &nbsp;(Anycast GW — EVPN)
+        </label>
+        <label class="tech-radio-label">
+          <input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()">
+          <code class="inline-code">ip virtual-router address</code> &nbsp;(VARP)
+        </label>
+      </div>
+      <!-- VARP MAC row — visible only when VARP is selected -->
+      <div id="rowVarpMac" style="display:none; margin-bottom:18px;">
+        <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+          <label for="inputVarpMac" style="font-size:12px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
+          <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
+            style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:5px 8px; outline:none; min-width:0;">
+        </div>
+        <div class="info-box info-box--dim" style="margin-top:6px; font-size:11px; font-family:'JetBrains Mono',monospace;">
+          Applied as <code class="inline-code">ip virtual-router mac-address</code> in global config (standalone devices only; MLAG uses its own derived MAC).
+        </div>
+      </div>
+      <div id="rowGwL3Hint" class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
+        Anycast GW requires EVPN enabled. VARP works with or without EVPN and requires a shared virtual MAC address.
       </div>
 
       <!-- Validation error banner (hidden until validateTechSettings finds errors) -->

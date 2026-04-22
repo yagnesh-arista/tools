@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.31 | 2026-04-22 14:47:33 -->
+<!-- TopoAssist v260422.32 | 2026-04-22 14:59:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.31";  // keep in sync with Code.gs
+const APP_VERSION = "260422.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4395,8 +4395,20 @@ function getCurrentTechState() {
     vxlan_ipv4:      getChk('chkVxlanIpv4'),
     vxlan_ipv6:      getChk('chkVxlanIpv6'),
     evpn_ipv4:       getChk('chkEvpnIpv4'),
-    evpn_ipv6:       getChk('chkEvpnIpv6')
+    evpn_ipv6:       getChk('chkEvpnIpv6'),
+    evpn_service:    (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
+    gw_l3_type:      (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
+    varp_mac:        (document.getElementById('inputVarpMac') || {}).value || ''
   });
+}
+
+function updateVarpMacVisibility() {
+  const gwType = (document.querySelector('input[name="gwL3Type"]:checked') || {}).value;
+  const rowVarpMac  = document.getElementById('rowVarpMac');
+  const rowGwL3Hint = document.getElementById('rowGwL3Hint');
+  if (rowVarpMac)  rowVarpMac.style.display  = (gwType === 'varp') ? '' : 'none';
+  if (rowGwL3Hint) rowGwL3Hint.style.display = (gwType === 'varp') ? 'none' : '';
+  if (typeof checkTechDirty === 'function') checkTechDirty();
 }
 
 function checkTechDirty() {
@@ -4550,16 +4562,37 @@ function openTechModal() {
       setChk('chkEvpnIpv4',      settings.evpn_ipv4);
       setChk('chkEvpnIpv6',      settings.evpn_ipv6);
 
-      // 4. Apply compat filter (dims + unchecks options incompatible with P2P mode)
+      // 4. Load EVPN service model radio
+      const evpnSvcVal = settings.evpn_service || 'per-vlan';
+      const evpnSvcRadio = document.querySelector(`input[name="evpnService"][value="${evpnSvcVal}"]`);
+      if (evpnSvcRadio) evpnSvcRadio.checked = true;
+
+      // 5. Load L3 GW type radio + VARP MAC input
+      const gwL3Val = settings.gw_l3_type || 'anycast';
+      const gwL3Radio = document.querySelector(`input[name="gwL3Type"][value="${gwL3Val}"]`);
+      if (gwL3Radio) gwL3Radio.checked = true;
+      const varpMacEl = document.getElementById('inputVarpMac');
+      if (varpMacEl) varpMacEl.value = settings.varp_mac || '001c.7300.0099';
+      updateVarpMacVisibility();
+
+      // 6. Apply compat filter (dims + unchecks options incompatible with P2P mode)
       applyTechCompat(p2pMode);
 
-      // 5. Attach handlers: P2P radios update compat then dirty; checkboxes just dirty
+      // 7. Attach handlers: P2P radios update compat then dirty; checkboxes just dirty
       document.querySelectorAll('#techModal input[name="p2pMode"]').forEach(el => {
         el.onchange = function() { applyTechCompat(this.value); checkTechDirty(); };
       });
       document.querySelectorAll('#techModal input[type="checkbox"]').forEach(el => {
         el.onchange = checkTechDirty;
       });
+      document.querySelectorAll('#techModal input[name="evpnService"]').forEach(el => {
+        el.onchange = checkTechDirty;
+      });
+      document.querySelectorAll('#techModal input[name="gwL3Type"]').forEach(el => {
+        el.onchange = updateVarpMacVisibility;
+      });
+      const varpMacInput = document.getElementById('inputVarpMac');
+      if (varpMacInput) varpMacInput.oninput = checkTechDirty;
 
       // 6. Capture initial state + run first validation
       initialTechState = getCurrentTechState();
@@ -4773,7 +4806,10 @@ function saveTechSettings() {
     vxlan_ipv4:      getChk('chkVxlanIpv4'),
     vxlan_ipv6:      getChk('chkVxlanIpv6'),
     evpn_ipv4:       getChk('chkEvpnIpv4'),
-    evpn_ipv6:       getChk('chkEvpnIpv6')
+    evpn_ipv6:       getChk('chkEvpnIpv6'),
+    evpn_service:    (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
+    gw_l3_type:      (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
+    varp_mac:        ((document.getElementById('inputVarpMac') || {}).value || '001c.7300.0099').trim()
   };
 
   showGlobalLoading("Saving Technology Settings...");

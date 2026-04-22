@@ -1,4 +1,4 @@
-// TopoAssist v260422.31 | 2026-04-22 14:45:26
+// TopoAssist v260422.32 | 2026-04-22 15:02:31
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -21,6 +21,8 @@
  *   _breakoutSides           — determine QSFP vs SFP lane side of a cable group
  *   _buildCableGroupsForTest — cabling grouping logic: Scenario A/B/C + snake + non-Arista
  *   parseVlanWithNative      — split nv<N> native-VLAN token out of vlan_ field
+ *   generateGlobalBlock      — ip routing/ipv6/multi-agent/VARP MAC global commands
+ *   generateComplexL3Block   — GW type (anycast/VARP), vx1 exclusion, ANYCAST_GW description
  */
 
 // APP_VERSION is declared in Code.gs — all .gs files share the same global scope in GAS
@@ -1084,6 +1086,135 @@ function test_deviceMetadata() {
 }
 
 
+// ── generateGlobalBlock tests ─────────────────────────────────────────────────
+
+function test_generateGlobalBlock() {
+  const t = assert_;
+  const results = [];
+
+  // Base settings — P2P IPv4 only, no IPv6
+  const baseSettings = { int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false, gw_ipv6: false };
+
+  // 1. Non-EVPN device: no multi-agent, no VARP MAC
+  {
+    const out = generateGlobalBlock(false, baseSettings, false);
+    results.push(t("generateGlobalBlock — non-EVPN: no multi-agent line",      !out.includes("multi-agent"), true));
+    results.push(t("generateGlobalBlock — non-EVPN: has ip routing",           out.includes("ip routing"),   true));
+    results.push(t("generateGlobalBlock — no IPv6: no ipv6 unicast-routing",   !out.includes("ipv6 unicast-routing"), true));
+  }
+
+  // 2. EVPN device: multi-agent present
+  {
+    const out = generateGlobalBlock(true, baseSettings, false);
+    results.push(t("generateGlobalBlock — EVPN device: has multi-agent line",  out.includes("multi-agent"), true));
+  }
+
+  // 3. gw_ipv6=true: IPv6 commands present
+  {
+    const s6 = Object.assign({}, baseSettings, { gw_ipv6: true });
+    const out = generateGlobalBlock(false, s6, false);
+    results.push(t("generateGlobalBlock — gw_ipv6: has ipv6 unicast-routing",  out.includes("ipv6 unicast-routing"), true));
+    results.push(t("generateGlobalBlock — gw_ipv6: has ip routing ipv6",       out.includes("ip routing ipv6"), true));
+  }
+
+  // 4. VARP standalone (gw_l3_type=varp, mlagIsActive=false): virtual-router MAC present
+  {
+    const sVarp = Object.assign({}, baseSettings, { gw_l3_type: 'varp', varp_mac: '001c.7300.0099' });
+    const out = generateGlobalBlock(false, sVarp, false);
+    results.push(t("generateGlobalBlock — VARP standalone: has virtual-router mac", out.includes("ip virtual-router mac-address 001c.7300.0099"), true));
+  }
+
+  // 5. VARP MLAG (mlagIsActive=true): virtual-router MAC must NOT appear (MLAG block handles it)
+  {
+    const sVarp = Object.assign({}, baseSettings, { gw_l3_type: 'varp', varp_mac: '001c.7300.0099' });
+    const out = generateGlobalBlock(false, sVarp, true);
+    results.push(t("generateGlobalBlock — VARP MLAG: no virtual-router mac (MLAG owns it)", !out.includes("ip virtual-router mac-address"), true));
+  }
+
+  // 6. Anycast GW (gw_l3_type=anycast): no virtual-router MAC regardless of MLAG
+  {
+    const sAny = Object.assign({}, baseSettings, { gw_l3_type: 'anycast' });
+    const out = generateGlobalBlock(false, sAny, false);
+    results.push(t("generateGlobalBlock — anycast: no virtual-router mac", !out.includes("ip virtual-router mac-address"), true));
+  }
+
+  return results;
+}
+
+// ── generateComplexL3Block GW type tests ──────────────────────────────────────
+
+function test_generateComplexL3BlockGwType() {
+  const t = assert_;
+  const results = [];
+
+  // Minimal d object for a trunk GW SVI
+  const makeD = (overrides) => Object.assign({
+    sp_mode_: 'l2-trunk', vlan_: '10', svi_vlan_: 'yes',
+    ip_type_: 'gw', vrf_: '', isMlag: false, sheetIndex: 1,
+    isSnakePrimary: false, isSnakeSecondary: false,
+    ixiaRole: null, snakeFirstPrimary: null, snakeLastSecondary: null
+  }, overrides);
+
+  const cfg = { gw_v4_first: '10.0', gw_v4_last: '1', gw_v4_mask: '/24',
+                gw_v6_first: '10', gw_v6_last: '1', gw_v6_mask: '/64',
+                p2p_v4_first: '192', p2p_v4_last: '1', p2p_v4_mask: '/30',
+                p2p_v6_first: '192', p2p_v6_mask: '/64' };
+
+  // 1. EVPN anycast (default): ip address virtual
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
+                gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
+    results.push(t("generateComplexL3Block — EVPN anycast: ip address virtual",  out.includes("ip address virtual"), true));
+    results.push(t("generateComplexL3Block — EVPN anycast: no ip virtual-router address", !out.includes("ip virtual-router address"), true));
+    results.push(t("generateComplexL3Block — EVPN anycast: description ANYCAST_GW_10",    out.includes("description ANYCAST_GW_10"), true));
+  }
+
+  // 2. EVPN VARP: ip address + ip virtual-router address
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
+                gw_l3_type: 'varp', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
+    results.push(t("generateComplexL3Block — VARP: ip address present",            out.includes("ip address 10.0"),        true));
+    results.push(t("generateComplexL3Block — VARP: ip virtual-router address",     out.includes("ip virtual-router address"), true));
+    results.push(t("generateComplexL3Block — VARP: no ip address virtual",         !out.includes("ip address virtual"),    true));
+  }
+
+  // 3. Non-EVPN: legacy ip address
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: false, evpn_ipv6: false,
+                gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
+    results.push(t("generateComplexL3Block — non-EVPN: plain ip address",         out.includes("ip address 10.0"),        true));
+    results.push(t("generateComplexL3Block — non-EVPN: no ip address virtual",    !out.includes("ip address virtual"),    true));
+    results.push(t("generateComplexL3Block — non-EVPN: no description ANYCAST",   !out.includes("description ANYCAST"),   true));
+  }
+
+  // 4. VRF set: description includes VRF
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
+                gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const out = generateComplexL3Block('Et1', makeD({ vrf_: 'VRF_A' }), cfg, s, null);
+    results.push(t("generateComplexL3Block — VRF set: description ANYCAST_GW_VRF_A_10", out.includes("description ANYCAST_GW_VRF_A_10"), true));
+  }
+
+  // 5. vx1VlanSet exclusion: VLAN in set → SVI skipped
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: false, evpn_ipv6: false,
+                gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const vx1Set = new Set([10]);
+    const out = generateComplexL3Block('Et1', makeD(), cfg, s, vx1Set);
+    results.push(t("generateComplexL3Block — vx1VlanSet: VLAN excluded, no interface block", !out.includes("interface Vlan10"), true));
+  }
+
+  return results;
+}
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -1106,6 +1237,8 @@ function runAllTests() {
     { name: "generateSnakeTtlTrafficPolicyConfig", fn: test_generateSnakeTtlTrafficPolicyConfig },
     { name: "findAttrKey",                    fn: test_findAttrKey },
     { name: "deviceMetadata",                 fn: test_deviceMetadata },
+    { name: "generateGlobalBlock",            fn: test_generateGlobalBlock },
+    { name: "generateComplexL3Block (GW)",    fn: test_generateComplexL3BlockGwType },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);

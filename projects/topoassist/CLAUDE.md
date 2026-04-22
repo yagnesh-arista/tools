@@ -21,7 +21,11 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **generateConfig() has exactly 5 params**: `(portName, d, ipPrefs, seenPos, netSettings)`. The 5th param is the full 16-flag IP family settings object. Every call site must pass it — omitting silently drops all protocol-family-gated commands. **generateBGP() has 9 params** — `settings` is the 8th; `ipPrefs` is the 9th (provides loBase for loopback/ASN derivation). **generateBGPEvpnOverlay() has 7 params** — `settings` is the 6th, `ipPrefs` is the 7th.
 
-**16 network flags** in `getNetworkSettings()`: P2P (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM) + GW (GW_IPV4, GW_IPV6) + BGP (4) + OSPF (3) + VXLAN (2) + EVPN (2). P2P and GW are fully decoupled in `generateComplexL3Block()` — never use `useIpv6Explicit` to gate GW config. `hasP2pIpv6` gates Lo0 IPv6 / router-id ipv6; `hasAnyIpv6` (adds gw_ipv6) gates VRF `ipv6 unicast-routing`.
+**16 network flags + 3 string fields** in `getNetworkSettings()`: P2P (INT_IPV4, INT_IPV6, INT_IPV6_UNNUM) + GW (GW_IPV4, GW_IPV6) + BGP (4) + OSPF (3) + VXLAN (2) + EVPN (2) + `evpn_service` ('per-vlan'|'vlan-aware-bundle') + `gw_l3_type` ('anycast'|'varp') + `varp_mac` (string). P2P and GW are fully decoupled in `generateComplexL3Block()`. `useAnycastGW = isEvpnActive && gw_l3_type !== 'varp'` drives `ip address virtual`; `useVarpGW = isEvpnActive && gw_l3_type === 'varp'` drives `ip virtual-router address`. VARP MAC goes in `generateGlobalBlock()` only when `gw_l3_type === 'varp' && !mlagIsActive` (MLAG block has its own MAC).
+
+**Vx1 is a logical VTEP port — never mark it disconnected**: `processRowLinks()` exempts `canonicalizeInterface(port) === "Vx1"` from the orphan `connected:false` path. `vx1VlanSet` (Set built from all vx1 SVI VLANs) is passed as 5th arg to `generateComplexL3Block()` — front-panel SVIs for VLANs already in `vx1VlanSet` are skipped (vx1 takes precedence).
+
+**EVPN service model is global (all LEAF devices)**: `evpn_service === 'vlan-aware-bundle'` → single `vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE` block with RT `asnBase:1` in both `generateBGP()` and `generateBGPEvpnOverlay()`. Never use per-device ASN for bundle RT (must be identical on all VTEPs).
 
 **hasKey(setObj, key)** must be used instead of `.has()` for all device name lookups. Device names in Sets are lowercase; sheet names are original-cased — `.has()` will silently miss them.
 
