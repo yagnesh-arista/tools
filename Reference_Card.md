@@ -172,7 +172,7 @@ All concurrent-write risks are flock-protected:
 | Test rules | `~/.claude/rules/testing.md` | Isolation, mocking, coverage |
 | Commands | `~/.claude/commands/new-project.md` | New project gate |
 | Commands | `~/.claude/commands/review-global.md` | Pre-commit review |
-| Commands | `~/.claude/commands/topoassist-review-memory.md` | INSTRUCTIONS + memory + hooks cross-check — tier-aware: prune redundant (Tier 2 duplicating Tier 1), prune stale, resolve conflicts, fill gaps |
+| Commands | `~/.claude/commands/review-memory.md` | Two-phase memory review: Phase 1 sweeps all memory (R/S/D/M); Phase 2 verifies TopoAssist INSTRUCTIONS/code/hooks — tier-aware; prune redundant, fix stale, resolve conflicts, fill gaps |
 | Hooks | `~/.claude/settings.json` | All automatic enforcement |
 | Backup | `~/claude/projects/settings/` | Restore kit for new machine |
 | Reference | `~/claude/Reference_Card.md` | This file — single source of truth |
