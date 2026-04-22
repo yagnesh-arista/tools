@@ -1,4 +1,4 @@
-# topoassist v260421.38 | 2026-04-21 13:22:59
+# topoassist v260422.5 | 2026-04-22 10:26:33
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -94,7 +94,7 @@ class TestOcLldpToEos:
         raw = self._make_raw("Ethernet1", "Spine1", "Ethernet3")
         result = db._oc_lldp_to_eos(raw)
         assert "Ethernet1" in result
-        nbr = result["Ethernet1"]["lldpNeighborInfo"][0]
+        nbr = result["Ethernet1"]["bridgeNeighborInfo"][0]
         assert nbr["systemName"] == "Spine1"
         assert nbr["neighborInterfaceInfo"]["interfaceId_v2"] == "Ethernet3"
 
@@ -114,7 +114,7 @@ class TestOcLldpToEos:
             "neighbors": {"neighbor": [{}]},
         }]}}}
         result = db._oc_lldp_to_eos(raw)
-        nbr = result["Ethernet1"]["lldpNeighborInfo"][0]
+        nbr = result["Ethernet1"]["bridgeNeighborInfo"][0]
         assert nbr["systemName"] == ""
         assert nbr["neighborInterfaceInfo"]["interfaceId_v2"] == ""
 

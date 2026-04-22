@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.4 | 2026-04-22 10:22:37
+# topoassist v260422.5 | 2026-04-22 10:28:24
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.3"
+VERSION           = "260422.4"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -100,7 +100,7 @@ def _oc_lldp_to_eos(raw):
         if not nbrs:
             continue
         state = nbrs[0].get("state", {})
-        neighbors[name] = {"lldpNeighborInfo": [{
+        neighbors[name] = {"bridgeNeighborInfo": [{
             "systemName": state.get("system-name", ""),
             "neighborInterfaceInfo": {
                 "interfaceId_v2": state.get("port-id", ""),
@@ -613,7 +613,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _check_lldp(self, ip):
         if METHOD in ("ssh", "eapi"):
             data = self._run_cmds(ip, "show lldp neighbors detail")[0]
-            return {"ok": True, "neighbors": data.get("lldpNeighbors", {})}
+            # EOS native JSON uses "lldpNeighborInfo"; normalize to "bridgeNeighborInfo"
+            # so the client _compareBridgeData uses one key regardless of transport.
+            raw = data.get("lldpNeighbors", {})
+            neighbors = {
+                iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
+                if "lldpNeighborInfo" in info else info
+                for iface, info in raw.items()
+            }
+            return {"ok": True, "neighbors": neighbors}
 
         if METHOD == "rest":
             raw = self._rest_get(ip, "openconfig-lldp:lldp/interfaces")
