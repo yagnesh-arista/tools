@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.18 | 2026-04-22 11:41:04 -->
+<!-- TopoAssist v260422.19 | 2026-04-22 12:15:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.18";  // keep in sync with Code.gs
+const APP_VERSION = "260422.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13180,9 +13180,17 @@ function _updateDevVisItem(deviceId) {
 function toggleDevVisMinimize(e) {
   if (e) e.stopPropagation();
   const panel = document.getElementById('devVisPanel');
+  const header = document.getElementById('devVisPanelHeader');
   const btn = document.getElementById('devVisMinBtn');
-  if (!panel) return;
+  if (!panel || !header) return;
   const isMin = panel.classList.toggle('is-minimized');
+  if (isMin) {
+    panel.style.height = header.offsetHeight + 'px';
+    panel.style.overflow = 'hidden';
+  } else {
+    panel.style.height = '';
+    panel.style.overflow = '';
+  }
   if (btn) btn.innerHTML = isMin
     ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
     : '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
