@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.34 | 2026-04-22 15:20:21 -->
+<!-- TopoAssist v260422.35 | 2026-04-22 15:29:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -832,16 +832,15 @@
       <div id="bridgeAuthWarn" class="bridge-auth-warn" style="display:none;"></div>
       <!-- Settings card: auto-check + audit -->
       <div class="bridge-settings-card">
-        <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
-          <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
-          Enabled when topology loads for first time
-        </label>
-        <div class="bridge-settings-sep"></div>
         <div class="bridge-audit-header">
           <span class="bridge-audit-section">Audit flags</span>
-          <span class="bridge-audit-always" title="LLDP mismatches are always flagged as errors in Audit mode — cannot be disabled">Mismatches always flagged</span>
         </div>
         <div class="bridge-audit-flags-grid">
+          <span class="bridge-audit-cat">LLDP</span>
+          <label class="bridge-chk-label" title="When on: ports where the LLDP neighbor or port does not match the topology are flagged as errors in Audit. Turn off to ignore mismatch errors.">
+            <input type="checkbox" id="chkBridgeAuditMismatch" onchange="toggleBridgeAuditMismatch(this.checked)">
+            Flag mismatched neighbour
+          </label>
           <span class="bridge-audit-cat">LLDP</span>
           <label class="bridge-chk-label" title="When on: ports with no LLDP neighbor show red and are flagged in Audit. Turn off for early-stage labs where dark ports are expected.">
             <input type="checkbox" id="chkBridgeAuditMissing" onchange="toggleBridgeAuditMissing(this.checked)">
@@ -851,6 +850,11 @@
           <label class="bridge-chk-label" title="When on: ports whose VLANs overlap with EOS internal VLAN allocations are flagged in Audit. Turn off if internal VLANs are intentionally reused.">
             <input type="checkbox" id="chkBridgeAuditInternalVlan" onchange="toggleBridgeAuditInternalVlan(this.checked)">
             Flag internal VLAN conflicts
+          </label>
+          <span class="bridge-audit-cat">BRIDGE</span>
+          <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
+            <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
+            Enable on topology bring-up
           </label>
         </div>
       </div>

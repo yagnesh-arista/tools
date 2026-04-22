@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.34 | 2026-04-22 15:20:21 -->
+<!-- TopoAssist v260422.35 | 2026-04-22 15:30:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.34";  // keep in sync with Code.gs
+const APP_VERSION = "260422.35";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2687,7 +2687,7 @@ function runValidation(logIssues) {
   // Bridge CHECKS (populated by runBridgeCheck — empty if not yet run)
   // =========================================================
   Object.entries(bridgePortStatus).forEach(([portId, status]) => {
-    if (status === 'mismatch') {
+    if (status === 'mismatch' && bridgeAuditFlagMismatch) {
       flagErrorOnPort(portId, 'LLDP mismatch — wrong neighbor/port detected');
     } else if (status === 'missing' && bridgeAuditFlagMissing) {
       flagErrorOnPort(portId, 'LLDP — no neighbor seen on this port');
@@ -8719,6 +8719,7 @@ function toggleMinimize() {
 
 const BRIDGE_URL = 'http://localhost:8765';
 let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
+let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
 let bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
 let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
@@ -9426,6 +9427,8 @@ function openBridgeModal() {
   if (!_rl || !_rl.children.length) document.getElementById('bridgeResults').style.display = 'none';
   document.getElementById('bridgeRunStatus').style.display = 'none';
   document.getElementById('btnRunBridge').disabled = true;
+  const chkMismatch = document.getElementById('chkBridgeAuditMismatch');
+  if (chkMismatch) chkMismatch.checked = bridgeAuditFlagMismatch;
   const chk = document.getElementById('chkBridgeAuditMissing');
   if (chk) chk.checked = bridgeAuditFlagMissing;
   const chkVlan = document.getElementById('chkBridgeAuditInternalVlan');
@@ -9433,6 +9436,12 @@ function openBridgeModal() {
   _syncBridgeEnableCheckbox();
   _populateLldpDevTable();
   _checkBridgeHealth();
+}
+
+function toggleBridgeAuditMismatch(val) {
+  bridgeAuditFlagMismatch = val;
+  localStorage.setItem('bridgeAuditFlagMismatch', val);
+  if (isValidationMode) runValidation();
 }
 
 function toggleBridgeAuditMissing(val) {
