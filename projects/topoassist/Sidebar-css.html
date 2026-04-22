@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.14 | 2026-04-22 11:33:04 -->
+<!-- TopoAssist v260422.15 | 2026-04-22 11:37:37 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -4980,10 +4980,14 @@
   .dev-vis-ip-list .dev-vis-name { white-space: nowrap; overflow: hidden; }
   .dev-vis-ip-dummy { pointer-events: none; visibility: hidden; }
 
-  .dev-vis-panel.is-minimized .dev-vis-action-row,
+  .dev-vis-panel.is-minimized .dev-vis-sel-row,
   .dev-vis-panel.is-minimized .dev-vis-ip-section,
   .dev-vis-panel.is-minimized .dev-vis-search-row,
   .dev-vis-panel.is-minimized .dev-vis-list { display: none; }
+  .dev-vis-panel.is-minimized .dev-vis-header {
+    border-bottom: none;
+    border-radius: 8px;
+  }
 
   .dev-vis-item.is-toggling {
     opacity: 0.4;
@@ -5086,7 +5090,6 @@
   .dev-vis-show-sel:not(:disabled):hover { background: #166534; }
   .dev-vis-hide-sel { background: #431407; color: #fb923c; }
   .dev-vis-hide-sel:not(:disabled):hover { background: #7c2d12; }
-  .dev-vis-panel.is-minimized .dev-vis-sel-row { display: none; }
 
   /* ================= FLOATING MODAL (Bridge) ================= */
   .modal-floating {

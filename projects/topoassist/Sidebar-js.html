@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.14 | 2026-04-22 11:33:04 -->
+<!-- TopoAssist v260422.15 | 2026-04-22 11:36:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.14";  // keep in sync with Code.gs
+const APP_VERSION = "260422.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13107,6 +13107,10 @@ function toggleDevVisPanelOpen() {
     if (minBtn) minBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="vertical-align:middle"><rect x="1" y="4.25" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>';
     populateDevVisPanel();
     initDevVisPanelDrag();
+  } else {
+    hiddenDevices.clear();
+    selectedInDevVis.clear();
+    applyDeviceVisibility();
   }
 }
 
