@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.12 | 2026-04-22 11:20:44 -->
+<!-- TopoAssist v260422.13 | 2026-04-22 11:23:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.12";  // keep in sync with Code.gs
+const APP_VERSION = "260422.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7272,7 +7272,7 @@ function render(data) {
       body.className = "node-body";
       let colHeader = document.createElement("div");
       colHeader.className = "node-cols-header";
-      colHeader.innerHTML = `<span>Et</span><span>Mode</span><span>Cat</span><span>Po</span><span title="Bridge">Br</span><span>St</span>`;
+      colHeader.innerHTML = `<span>Et</span><span>Mode</span><span>Cat</span><span>Po</span><span title="LLDP">LL</span><span>St</span>`;
       body.appendChild(colHeader);
 
       // Port Sorting
