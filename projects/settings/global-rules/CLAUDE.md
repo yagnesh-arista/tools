@@ -262,5 +262,6 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 16 | Claude Code anatomy reference | `CLAUDE.md` | `CLAUDE.md` |
 | 17 | Git workflow — every project must be a git repo | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync to settings backup | `hooks/` | `settings.json` (PostToolUse hook) |
+| 23 | Memory tiering — Tier 2 never duplicates Tier 1 | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.
