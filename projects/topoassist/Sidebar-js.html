@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.6 | 2026-04-22 10:32:30 -->
+<!-- TopoAssist v260422.7 | 2026-04-22 11:09:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.6";  // keep in sync with Code.gs
+const APP_VERSION = "260422.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8791,6 +8791,13 @@ def _oc_lldp_to_eos(raw):
             "neighborInterfaceInfo": {"interfaceId_v2": state.get("port-id", "")},
         }]}
     return neighbors
+
+def _normalize_lldp_neighbors(raw_lldp_neighbors):
+    return {
+        iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
+        if "lldpNeighborInfo" in info else info
+        for iface, info in raw_lldp_neighbors.items()
+    }
 
 def _oc_version(raw):
     for comp in raw.get("openconfig-platform:components", raw).get("component", []):
