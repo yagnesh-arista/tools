@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.28 | 2026-04-22 13:32:00
+# topoassist v260422.29 | 2026-04-22 13:38:25
 """
 TopoAssist Device Bridge
 ========================
@@ -119,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.17"
+VERSION           = "260422.18"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -539,13 +539,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
                 errors[i] = e
 
-        if len(cmds) == 1:
-            fetch(0, cmds[0])
-        else:
-            threads = [threading.Thread(target=fetch, args=(i, cmd))
-                       for i, cmd in enumerate(cmds)]
-            for t in threads: t.start()
-            for t in threads: t.join(timeout=TIMEOUT)
+        # Run commands sequentially — one SSH connection at a time per device.
+        # Opening multiple simultaneous connections to the same device hits
+        # EOS ip ssh maximum-sessions and causes "Connection closed by UNKNOWN"
+        # (exit 255). Device-level parallelism from _run_parallel provides the
+        # speed; per-command parallelism within a device is not needed.
+        for i, cmd in enumerate(cmds):
+            fetch(i, cmd)
         # Re-raise the first per-slot exception so _run_parallel sees the right
         # type (TimeoutExpired → "unreachable", CalledProcessError → "SSH failed").
         for exc in errors:

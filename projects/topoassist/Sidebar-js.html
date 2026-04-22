@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.28 | 2026-04-22 13:34:33 -->
+<!-- TopoAssist v260422.29 | 2026-04-22 13:38:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.28";  // keep in sync with Code.gs
+const APP_VERSION = "260422.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8789,7 +8789,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.17"
+VERSION = "260422.18"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9087,12 +9087,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
                 errors[i] = e
-        if len(cmds) == 1:
-            fetch(0, cmds[0])
-        else:
-            ts = [threading.Thread(target=fetch, args=(i, c)) for i, c in enumerate(cmds)]
-            for t in ts: t.start()
-            for t in ts: t.join(timeout=TIMEOUT)
+        for i, cmd in enumerate(cmds):
+            fetch(i, cmd)
         for exc in errors:
             if exc is not None:
                 raise exc
