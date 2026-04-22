@@ -1,7 +1,7 @@
-<!-- TopoAssist v260422.30 | 2026-04-22 13:45:41 -->
+<!-- TopoAssist v260422.31 | 2026-04-22 14:47:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260422.30";  // keep in sync with Code.gs
+const APP_VERSION = "260422.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2167,7 +2167,7 @@ function toggleValidationMode() {
 
   const statusEl = document.getElementById("status");
   if (isValidationMode) {
-    runValidation();
+    runValidation(true);
     setStatus("Audit Mode: Enabled");
   } else {
     validationErrors = {};
@@ -2222,7 +2222,7 @@ function applyAuditOnlyView() {
   requestAnimationFrame(redrawLinks);
 }
 
-function runValidation() {
+function runValidation(logIssues) {
   // 1. Initialize State
   let portErrorCount = 0;
   validationErrors = {};
@@ -2696,6 +2696,18 @@ function runValidation() {
 
   // UPDATE UI
   if (statusEl && !statusEl.innerText.includes("MLAG Peer-Link Missing")) {
+    // Log individual issues first (appear below summary in newest-first log view)
+    if (logIssues && portErrorCount > 0) {
+      const _seen = new Set();
+      Object.values(validationErrors).forEach(msgs => {
+        msgs.forEach(msg => {
+          if (!_seen.has(msg)) {
+            _seen.add(msg);
+            setStatus('[Audit] ' + msg.replace(/^\[FAIL\]\s*/, ''), 'status-error');
+          }
+        });
+      });
+    }
     setStatus(portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`, portErrorCount > 0 ? "status-error" : "");
   }
 
@@ -9373,7 +9385,9 @@ function openBridgeModal() {
   modal.style.display = 'flex';
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
-  document.getElementById('bridgeResults').style.display = 'none';
+  // Preserve results from a previous run — only hide if no results exist yet
+  const _rl = document.getElementById('bridgeResultList');
+  if (!_rl || !_rl.children.length) document.getElementById('bridgeResults').style.display = 'none';
   document.getElementById('bridgeRunStatus').style.display = 'none';
   document.getElementById('btnRunBridge').disabled = true;
   const chk = document.getElementById('chkBridgeAuditMissing');
@@ -9577,6 +9591,7 @@ function _autoRunBridge() {
       const { results, orphans } = _compareBridgeData(bridgeResult.value);
       _autoOrphanCount = orphans.length;
       _renderLldpResults(results, orphans);
+      _logBridgeIssuesToStatusLog(results, orphans, devResult.status === 'fulfilled' ? devResult.value : null);
       applyLldpIndicators();
     } else {
       dbg('Auto-Bridge: LLDP fetch failed —', bridgeResult.reason);
@@ -9882,6 +9897,7 @@ function runBridgeCheck() {
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
         _renderLldpResults(results, orphans);
+        _logBridgeIssuesToStatusLog(results, orphans, dsData);
         applyLldpIndicators();
         _manualOrphanCount = orphans.length;
       }
@@ -10816,6 +10832,31 @@ function _compareBridgeData(bridgeData) {
   });
 
   return { results, orphans };
+}
+
+// Log bridge check issues to the status log for persistent visibility.
+// Call after _renderLldpResults — logs LLDP mismatches, extra cables, cmd failures.
+// dsData: devstatus response map (may be null if devstatus fetch failed).
+function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
+  if (results) {
+    results.filter(r => r.status === 'mismatch').forEach(r => {
+      setStatus(`[Bridge] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+    });
+  }
+  if (orphans && orphans.length) {
+    orphans.forEach(o => {
+      setStatus(`[Bridge] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
+    });
+  }
+  if (dsData) {
+    Object.entries(dsData).forEach(([devId, ds]) => {
+      if (ds && ds.ok && ds.cmdErrors) {
+        Object.entries(ds.cmdErrors).forEach(([cmd, err]) => {
+          setStatus(`[Bridge] Cmd failed on ${devId}: ${cmd.replace('show ', '')} (${err})`, 'status-error');
+        });
+      }
+    });
+  }
 }
 
 function _renderLldpResults(results, orphans) {
