@@ -1,4 +1,4 @@
-// TopoAssist v260422.33 | 2026-04-22 15:06:17
+// TopoAssist v260422.34 | 2026-04-22 15:21:03
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1171,15 +1171,19 @@ function test_generateComplexL3BlockGwType() {
     results.push(t("generateComplexL3Block — EVPN anycast: description ANYCAST_GW_10",    out.includes("description ANYCAST_GW_10"), true));
   }
 
-  // 2. EVPN VARP: ip address + ip virtual-router address
+  // 2. EVPN VARP: ip address (physical, sheetIndex-offset) + ip virtual-router address (gwLast)
+  // sheetIndex=1, gw_v4_last='1' → physical suffix = 1+1 = 2, virtual suffix = 1 (must differ)
   {
     const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
                 gw_l3_type: 'varp', ospf_ipv4: false, ospf_ipv6: false,
                 int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
     const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
-    results.push(t("generateComplexL3Block — VARP: ip address present",            out.includes("ip address 10.0"),        true));
-    results.push(t("generateComplexL3Block — VARP: ip virtual-router address",     out.includes("ip virtual-router address"), true));
-    results.push(t("generateComplexL3Block — VARP: no ip address virtual",         !out.includes("ip address virtual"),    true));
+    results.push(t("generateComplexL3Block — VARP: ip address present",              out.includes("ip address 10.0"),           true));
+    results.push(t("generateComplexL3Block — VARP: ip virtual-router address",       out.includes("ip virtual-router address"),  true));
+    results.push(t("generateComplexL3Block — VARP: no ip address virtual",           !out.includes("ip address virtual"),        true));
+    // Physical IP must use gwLast+sheetIndex (=2); virtual-router must use gwLast (=1) — they must differ
+    results.push(t("generateComplexL3Block — VARP: physical IP has sheetIndex suffix (.2)", out.includes("ip address 10.0.0.10.2/24"), true));
+    results.push(t("generateComplexL3Block — VARP: virtual-router IP is gwLast (.1)",       out.includes("ip virtual-router address 10.0.0.10.1"), true));
   }
 
   // 3. Non-EVPN: legacy ip address

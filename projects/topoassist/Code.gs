@@ -1,10 +1,10 @@
-// TopoAssist v260422.33 | 2026-04-22 15:06:49
+// TopoAssist v260422.34 | 2026-04-22 15:20:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260422.33";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260422.34";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4116,15 +4116,19 @@ function getDeviceConfig(deviceName) {
             const oct3 = v % 100;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
             const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
-            // GW command: anycast (ip address virtual) vs VARP (ip virtual-router address)
+            // GW command: anycast (ip address virtual) vs VARP (ip address + ip virtual-router address)
             const useAnycast = isEvpnActive && gwType !== 'varp';
+            // VARP needs a unique physical IP before ip virtual-router address.
+            // Use gwLast + deviceSheetIndex (same pattern as MLAG path) to ensure physical ≠ virtual.
+            const vx1PhySuffixV4 = parseInt(cfg2.gw_v4_last) + deviceSheetIndex;
+            const vx1PhySuffixV6 = parseInt(cfg2.gw_v6_last) + deviceSheetIndex;
             const gwCmdV4 = useAnycast
               ? ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`
-              : ` ip virtual-router address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}`;
+              : ` ip address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${vx1PhySuffixV4}${cfg2.gw_v4_mask}\n ip virtual-router address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}`;
             const gwCmdV6 = gwHasIpv6vx1
               ? (useAnycast
                   ? ` ipv6 address virtual ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`
-                  : ` ipv6 virtual-router address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}`)
+                  : ` ipv6 address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${vx1PhySuffixV6}${cfg2.gw_v6_mask}\n ipv6 virtual-router address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}`)
               : null;
             sviLines.push([
               "!",
@@ -4767,9 +4771,13 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
           if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
           if (gwHasIpv6) lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
         } else if (useVarpGW) {
-          // Standalone VARP: regular IP + virtual-router address (ip virtual-router mac-address in global)
-          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+          // Standalone VARP: unique physical IP (gwLast + sheetIndex) + shared virtual-router address.
+          // Physical MUST differ from virtual — mirrors MLAG VARP pattern.
+          // ip virtual-router mac-address is in the global block (generateGlobalBlock).
+          const phySuffixV4 = gwLastV4 + sheetIndex;
+          const phySuffixV6 = gwLastV6 + sheetIndex;
+          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
           if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
           if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
         } else {
