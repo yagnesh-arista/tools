@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.1 | 2026-04-22 10:15:15
+# topoassist v260422.2 | 2026-04-22 10:16:55
 """
 TopoAssist Device Bridge
 ========================
@@ -39,7 +39,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.1"
+VERSION           = "260422.2"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -481,7 +481,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
     # ── SSH stdin helper ──────────────────────────────────────────────────────
     def _ssh_stdin(self, ip, *cmds):
         """Send commands to device via SSH stdin pipe.
-        Returns (stdout_text, stderr_text) as decoded strings."""
+        Returns (stdout_text, stderr_text) as decoded strings.
+        Raises subprocess.TimeoutExpired if the device doesn't respond within
+        TIMEOUT — caller is responsible for catching and handling."""
         stdin_text = '\n'.join(cmds) + '\n'
         if JUMP_HOST:
             # Use ProxyCommand so stdin is piped directly from local — avoids
@@ -495,14 +497,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
                  "-o", f"ProxyCommand=ssh -W %h:%p {JUMP_HOST}",
                  f"{SSH_USER}@{ip}"],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
         else:
             proc = subprocess.Popen(
                 ["sshpass", "-p", "", "ssh", "-o", "StrictHostKeyChecking=no",
                  "-o", "PasswordAuthentication=yes", "-o", "PubkeyAuthentication=no",
                  "-o", "ConnectTimeout=8", f"{SSH_USER}@{ip}"],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
             out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()   # drain to avoid ResourceWarning
+            raise               # let caller decide — push path retries, cleanup swallows
         return out.decode("utf-8", errors="replace"), err.decode("utf-8", errors="replace")
 
     # ── Stale session cleanup ─────────────────────────────────────────────────
@@ -560,8 +566,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # aborts the session so it cannot leave a pending stale session behind.
         # Skipping on dry_run removes an entire SSH round-trip from the preview path.
         if not dry_run:
-            _ct = threading.Thread(target=lambda: self._abort_stale_sessions(ip),
-                                   daemon=True)
+            def _safe_abort():
+                try:
+                    self._abort_stale_sessions(ip)
+                except Exception as e:
+                    if VERBOSE: print(f"  [cleanup] {ip}: stale-session cleanup failed — {e}")
+            _ct = threading.Thread(target=_safe_abort, daemon=True)
             _ct.start()
             _ct.join(timeout=min(5, TIMEOUT))
 
