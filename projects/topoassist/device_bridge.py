@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.21 | 2026-04-22 12:27:54
+# topoassist v260422.23 | 2026-04-22 12:37:43
 """
 TopoAssist Device Bridge
 ========================
@@ -75,6 +75,13 @@ def _check_ssh_agent():
     except subprocess.TimeoutExpired:
         return {"ok": False, "msg": "SSH agent check timed out"}
 
+# Dynamic SSH auth observation — updated by _ssh_cmds on exit-255 detection.
+# arista-ssh-agent certificates can expire while still appearing in ssh-add -l
+# (the cert is listed but EOS rejects it → SSH exits 255 before any command runs).
+# Dict is mutated in-place — GIL-safe for simple key assignments, no lock needed.
+_ssh_auth = {"ok": True, "msg": "", "failures": 0}
+_SSH_AUTH_THRESHOLD = 3  # consecutive exit-255 without a success → flag as auth issue
+
 def _arg(flag):
     """Return the value after flag in sys.argv, or None if flag absent or has no value."""
     try:
@@ -85,7 +92,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.11"
+VERSION           = "260422.12"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -368,10 +375,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
             # Only check SSH agent when using key-based SSH (no sshpass).
-            # arista-ssh-agent exposes credentials via SSH_AUTH_SOCK; when the
-            # session expires ssh-add -l returns exit 1 (no identities).
+            # Two-layer detection: static (ssh-add -l) + dynamic (exit-255 counter).
+            # arista-ssh-agent certs can expire while still listed in ssh-add -l —
+            # the cert is present but EOS rejects it → SSH exits 255. The static
+            # check catches socket-not-running; the dynamic counter catches expired certs.
             if METHOD == "ssh" and not _SSHPASS_BIN:
-                health["auth"] = _check_ssh_agent()
+                auth = _check_ssh_agent()
+                if auth["ok"] and not _ssh_auth["ok"]:
+                    auth = {"ok": False, "msg": _ssh_auth["msg"]}
+                health["auth"] = auth
             self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
@@ -473,12 +485,23 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
                                               text=True, stderr=subprocess.DEVNULL)
                 results[i] = json.loads(out)
+                _ssh_auth["failures"] = 0       # successful SSH → clear auth-failure state
+                _ssh_auth["ok"]  = True
+                _ssh_auth["msg"] = ""
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → ok", flush=True)
             except subprocess.TimeoutExpired as e:
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → timeout", flush=True)
                 errors[i] = e
             except subprocess.CalledProcessError as e:
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode})", flush=True)
+                # exit 255 = SSH itself failed (auth/connection), not an EOS command error.
+                # arista-ssh-agent certs can expire while still appearing in ssh-add -l;
+                # the cert is listed but EOS rejects it → SSH exits 255 before any command.
+                if e.returncode == 255:
+                    _ssh_auth["failures"] += 1
+                    if _ssh_auth["failures"] >= _SSH_AUTH_THRESHOLD:
+                        _ssh_auth["ok"]  = False
+                        _ssh_auth["msg"] = "SSH auth failing (exit 255) — re-run arista-ssh-agent"
                 errors[i] = e
             except Exception as e:
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
