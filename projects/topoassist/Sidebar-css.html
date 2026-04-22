@@ -1,4 +1,4 @@
-<!-- TopoAssist v260422.23 | 2026-04-22 12:38:01 -->
+<!-- TopoAssist v260422.24 | 2026-04-22 12:43:44 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5300,11 +5300,15 @@
     padding: 4px 6px; border-radius: 3px;
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
   }
-  .bridge-row-ok   { background: #f0fdf4; }
-  .bridge-row-fail { background: #fff1f2; }
-  .bridge-row-part { background: #fffbeb; }
-  .bridge-row-unk  { background: var(--bg-secondary); }
+  .bridge-row-ok   { background: #f0fdf4; cursor: pointer; }
+  .bridge-row-fail { background: #fff1f2; cursor: pointer; }
+  .bridge-row-part { background: #fffbeb; cursor: pointer; }
+  .bridge-row-unk  { background: var(--bg-secondary); cursor: pointer; }
   .bridge-row-skip { opacity: 0.45; }
+  .bridge-row-ok:hover   { background: #bbf7d0; }
+  .bridge-row-fail:hover { background: #fecaca; }
+  .bridge-row-part:hover { background: #fde68a; }
+  .bridge-row-unk:hover  { background: var(--bg-hover, #e2e8f0); }
   .bridge-row-icon { grid-row: 1; display: flex; align-items: center; padding-top: 1px; }
   .bridge-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bridge-row-detail {

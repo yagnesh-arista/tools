@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.23 | 2026-04-22 12:37:43
+# topoassist v260422.24 | 2026-04-22 12:43:32
 """
 TopoAssist Device Bridge
 ========================
@@ -62,18 +62,18 @@ def _check_ssh_agent():
     """
     sock = os.environ.get("SSH_AUTH_SOCK")
     if not sock:
-        return {"ok": False, "msg": "SSH_AUTH_SOCK not set — run arista-ssh-agent"}
+        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
     try:
         r = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True, timeout=3)
         if r.returncode == 0:
             return {"ok": True}
         if r.returncode == 1:
-            return {"ok": False, "msg": "SSH agent session expired — run arista-ssh-agent"}
-        return {"ok": False, "msg": "SSH agent not responding — run arista-ssh-agent"}
+            return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
+        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
     except FileNotFoundError:
-        return {"ok": False, "msg": "ssh-add not found"}
+        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "msg": "SSH agent check timed out"}
+        return {"ok": False, "msg": "bus-home session expired — run: arista-ssh login"}
 
 # Dynamic SSH auth observation — updated by _ssh_cmds on exit-255 detection.
 # arista-ssh-agent certificates can expire while still appearing in ssh-add -l
@@ -92,7 +92,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.12"
+VERSION           = "260422.13"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -501,7 +501,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     _ssh_auth["failures"] += 1
                     if _ssh_auth["failures"] >= _SSH_AUTH_THRESHOLD:
                         _ssh_auth["ok"]  = False
-                        _ssh_auth["msg"] = "SSH auth failing (exit 255) — re-run arista-ssh-agent"
+                        _ssh_auth["msg"] = "bus-home session expired — run: arista-ssh login"
                 errors[i] = e
             except Exception as e:
                 if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
