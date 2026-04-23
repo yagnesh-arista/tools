@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.22 | 2026-04-23 13:01:18 -->
+<!-- TopoAssist v260423.23 | 2026-04-23 13:47:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -737,7 +737,7 @@ clasp login --no-localhost</pre>
         <b>onEdit (real-time)</b> — fires on every manual cell change:
         <ul style="margin-top:4px;">
           <li><b>Column A guard</b> — Column A is reserved for row visibility markers. Any accidental edit is automatically reverted.</li>
-          <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank), PO format (<code>Po10</code> pattern), and interface type (<code>int_</code> must start with <code>Et</code> or <code>Vx</code>) are checked. A toast warning appears for invalid values.</li>
+          <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank) and PO format (<code>Po10</code> pattern) are checked on edit with a toast warning. Interface type (<code>int_</code>) is not restricted on edit — unsupported prefixes are flagged in Audit mode only.</li>
           <li><b>Cell background rules</b> — <code>po_</code> is grayed when the mode is Ethernet (N/A); <code>svi_vlan_</code> is grayed when the mode is L3 (N/A). Applied automatically after each edit.</li>
         </ul>
       </li>

@@ -1,10 +1,10 @@
-// TopoAssist v260423.22 | 2026-04-23 13:01:18
+// TopoAssist v260423.23 | 2026-04-23 13:47:05
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.22";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.23";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3616,15 +3616,9 @@ function onEdit(e) {
         const cellValue = rowData[absCol - 1];
         const valStr = String(cellValue || "").trim();
 
-        // --- PHASE 0: Strict Type Validation (Interfaces & Port-Channels) ---
+        // --- PHASE 0: Strict Type Validation (Port-Channels only) ---
+        // int_ accepts any non-empty value on edit — unsupported types are flagged in Audit mode only.
         if (valStr !== "") {
-          if (header.toLowerCase().startsWith("int_")) {
-            // Only Et (Ethernet) and Vx (Vxlan/VTEP) are valid in int_.
-            // All Arista physical ports use the Et prefix regardless of speed.
-            // Po goes in po_; Lo/Vl/Ma/Tu are virtual and not cable endpoints.
-            const isValidInt = /^(Et|Vx)\d+/i.test(valStr);
-            if (!isValidInt) e.source.toast("△ Invalid interface — only Et (Ethernet) or Vx (VTEP) allowed in int_.", "Format Warning");
-          }
           if (header.toLowerCase().startsWith("po_")) {
             const isValidPo = /^(Po|Port-?Channel)\d+/i.test(valStr);
             if (!isValidPo) e.source.toast("△ Invalid Port-Channel format. Use Po100, etc.", "Format Warning");
