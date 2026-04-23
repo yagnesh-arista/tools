@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.17 | 2026-04-23 12:35:23 -->
+<!-- TopoAssist v260423.18 | 2026-04-23 12:40:11 -->
 <!DOCTYPE html>
 <html>
 
@@ -737,7 +737,7 @@ clasp login --no-localhost</pre>
         <b>onEdit (real-time)</b> — fires on every manual cell change:
         <ul style="margin-top:4px;">
           <li><b>Column A guard</b> — Column A is reserved for row visibility markers. Any accidental edit is automatically reverted.</li>
-          <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank), PO format (<code>Po10</code> pattern) and interface name patterns are checked. A toast warning appears for invalid values.</li>
+          <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank) and PO format (<code>Po10</code> pattern) are checked. A toast warning appears for invalid values. Interface names (<code>int_</code>) accept any non-empty value — no prefix restriction is enforced.</li>
           <li><b>Cell background rules</b> — <code>po_</code> is grayed when the mode is Ethernet (N/A); <code>svi_vlan_</code> is grayed when the mode is L3 (N/A). Applied automatically after each edit.</li>
         </ul>
       </li>
@@ -993,7 +993,6 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>MLAG Destination Conflict</b> — the same Po number points to different remote device names across links.</li>
       <li><b>VLAN Mismatch</b> — the <code>vlan_</code> values differ across a cable (Arista-only links).</li>
       <li><b>Mode Incompatible</b> — the <code>sp_mode_</code> pair across a cable is not a supported combination.</li>
-      <li><b>Invalid Interface Name</b> — <code>int_</code> does not match a standard EOS prefix (Et, Po, Lo, Vl, etc.).</li>
       <li><b>Missing Po for Port-Channel mode</b> — interface mode is po-based but <code>po_</code> is blank.</li>
       <li><b>Stale Po value on Ethernet mode</b> — interface mode is et-based but <code>po_</code> has a value.</li>
       <li><b>Duplicate Interface</b> — the same <code>int_</code> name appears more than once for the same device.</li>

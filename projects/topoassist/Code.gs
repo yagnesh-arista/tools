@@ -1,10 +1,10 @@
-// TopoAssist v260423.17 | 2026-04-23 12:37:12
+// TopoAssist v260423.18 | 2026-04-23 12:39:13
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.17";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.18";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3616,12 +3616,9 @@ function onEdit(e) {
         const cellValue = rowData[absCol - 1];
         const valStr = String(cellValue || "").trim();
 
-        // --- PHASE 0: Strict Type Validation (Interfaces & Port-Channels) ---
+        // --- PHASE 0: Strict Type Validation (Port-Channels only) ---
+        // int_ accepts any non-empty interface name — no prefix restriction.
         if (valStr !== "") {
-          if (header.toLowerCase().startsWith("int_")) {
-            const isValidInt = /^(Et|Po|Lo|Vl|Ma|Mgmt|Vx|Tu)\d+/i.test(valStr);
-            if (!isValidInt) e.source.toast("△ Invalid Interface format. Use Et1, Po10, etc.", "Format Warning");
-          }
           if (header.toLowerCase().startsWith("po_")) {
             const isValidPo = /^(Po|Port-?Channel)\d+/i.test(valStr);
             if (!isValidPo) e.source.toast("△ Invalid Port-Channel format. Use Po100, etc.", "Format Warning");
