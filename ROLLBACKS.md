@@ -4,6 +4,14 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-04-23 | topoassist | 789d08b
+**Rolled back: MLAG Peer Link inner label shortening.**
+Shortened label lost useful info. Restored "Base (lower gets .base, higher .base+1)".
+Real fix: set --ip-label-w:110px on the ip-row so "Peer Link IP" isn't clipped (was 80px default).
+Files: Sidebar.html
+
+---
+
 ## 2026-04-23 | topoassist | 27778ff
 **Rolled back: LOOPBACK and MLAG PEER LINK section reorder in ipConfigModal.**
 User wanted label rename only ("Peer Link Base" → "Peer Link IP"), not a layout reorder.

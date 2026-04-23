@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.33 | 2026-04-23 15:03:46 -->
+<!-- TopoAssist v260423.36 | 2026-04-23 15:08:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.33";  // keep in sync with Code.gs
+const APP_VERSION = "260423.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8856,6 +8856,33 @@ let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
 let bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
+
+// ---- Topology audit per-check flags (localStorage, default ON) ----
+let auditFlagPoMismatch      = localStorage.getItem('auditFlagPoMismatch')      !== 'false';
+let auditFlagPoAsymmetry     = localStorage.getItem('auditFlagPoAsymmetry')     !== 'false';
+let auditFlagVlanMismatch    = localStorage.getItem('auditFlagVlanMismatch')     !== 'false';
+let auditFlagModeIncompat    = localStorage.getItem('auditFlagModeIncompat')     !== 'false';
+let auditFlagSpeedMismatch   = localStorage.getItem('auditFlagSpeedMismatch')    !== 'false';
+let auditFlagUnsupportedInt  = localStorage.getItem('auditFlagUnsupportedInt')   !== 'false';
+let auditFlagMlagL3          = localStorage.getItem('auditFlagMlagL3')           !== 'false';
+let auditFlagDuplicateInt    = localStorage.getItem('auditFlagDuplicateInt')     !== 'false';
+let auditFlagInvalidSvi      = localStorage.getItem('auditFlagInvalidSvi')       !== 'false';
+let auditFlagMissingIpSvi    = localStorage.getItem('auditFlagMissingIpSvi')     !== 'false';
+let auditFlagMissingIpL3     = localStorage.getItem('auditFlagMissingIpL3')      !== 'false';
+let auditFlagStaleIpType     = localStorage.getItem('auditFlagStaleIpType')      !== 'false';
+let auditFlagDupGateway      = localStorage.getItem('auditFlagDupGateway')       !== 'false';
+let auditFlagNativeNonTrunk  = localStorage.getItem('auditFlagNativeNonTrunk')   !== 'false';
+let auditFlagSviVlanMismatch = localStorage.getItem('auditFlagSviVlanMismatch')  !== 'false';
+let auditFlagVlanUsage       = localStorage.getItem('auditFlagVlanUsage')        !== 'false';
+let auditFlagDupP2pVlan      = localStorage.getItem('auditFlagDupP2pVlan')       !== 'false';
+let auditFlagMissingPo       = localStorage.getItem('auditFlagMissingPo')        !== 'false';
+let auditFlagStalePo         = localStorage.getItem('auditFlagStalePo')          !== 'false';
+let auditFlagMlagPeerLink    = localStorage.getItem('auditFlagMlagPeerLink')     !== 'false';
+let auditFlagUndeclaredMlag  = localStorage.getItem('auditFlagUndeclaredMlag')   !== 'false';
+
+// Audit run state — tracks which checks fired issues in the last run
+let auditHasRun = false;
+let auditCheckHadIssue = {}; // flagName → true if that check found issues last run
 let devStatusMap = {};          // devId → {ok, version, platform, bridgeMac, interfaces: {FullName: {linkStatus}}, internalVlans: [N,...]}
 let deviceMetadata = {};        // devName → {model: "", rack: ""} — persisted in DocumentProperties DEVICE_METADATA
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
