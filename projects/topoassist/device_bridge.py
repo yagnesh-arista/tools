@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260423.2 | 2026-04-23 11:18:01
+# topoassist v260423.21 | 2026-04-23 12:56:42
 """
 TopoAssist Device Bridge
 ========================
@@ -416,7 +416,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path not in ("/lldp", "/devstatus", "/pushconfig"):
+        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/reconcile"):
             self._json(404, {"error": "not found"})
             return
         try:
@@ -493,6 +493,34 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "ok": False,
                             "error": "Push timed out — verify config was applied manually",
                         }
+            self._json(200, results)
+        elif self.path == "/reconcile":
+            # ipMap values are {ip, ports:[...]} dicts
+            results = {dev: None for dev in ip_map}
+            lock    = threading.Lock()
+            sem     = threading.Semaphore(MAX_WORKERS)
+            def run_reconcile(dev, entry):
+                ip             = (entry.get("ip") or "").strip()
+                expected_ports = entry.get("ports", [])
+                if not ip:
+                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                    return
+                with sem:
+                    try:
+                        res = self._reconcile_device(ip, expected_ports)
+                        with lock: results[dev] = res
+                    except subprocess.TimeoutExpired:
+                        with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                    except Exception as e:
+                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+            threads = [threading.Thread(target=run_reconcile, args=(d, v), daemon=True)
+                       for d, v in ip_map.items()]
+            for t in threads: t.start()
+            for t in threads: t.join(timeout=TIMEOUT + 5)
+            with lock:
+                for dev in results:
+                    if results[dev] is None:
+                        results[dev] = {"ok": False, "error": "Reconcile timed out"}
             self._json(200, results)
 
     # ── Transport: SSH ────────────────────────────────────────────────────────

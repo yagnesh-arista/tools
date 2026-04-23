@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.20 | 2026-04-23 12:51:35 -->
+<!-- TopoAssist v260423.21 | 2026-04-23 12:56:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.20";  // keep in sync with Code.gs
+const APP_VERSION = "260423.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2377,6 +2377,9 @@ function runValidation(logIssues) {
   // =========================================================
   // CHECK GROUP 2: NODE CONFIGURATION CHECKS
   // =========================================================
+  // Only Et (Ethernet) and Vx (Vxlan/VTEP) are valid Arista int_ types.
+  const validIntRegex = /^(Et|Vx)\d+/i;
+
   for (let nodeId in allNodesData) {
     let node = allNodesData[nodeId];
     if (!node || !node.details) continue;
@@ -2397,7 +2400,12 @@ function runValidation(logIssues) {
 
     const hasIp = (ipType !== "" && ipType !== "-");
 
-    // A. MLAG vs L3 CONFLICT
+    // A. INTERFACE TYPE — only Et and Vx are valid Arista int_ types
+    if (!validIntRegex.test(node.name)) {
+      configErrors.push(`Unsupported Interface: '${node.name}' — only Et (Ethernet) or Vx (VTEP) allowed in int_.`);
+    }
+
+    // B. MLAG vs L3 CONFLICT
     if (d.isMlag && mode.includes("l3")) {
       configErrors.push(`MLAG/L3 Conflict: Port is MLAG member but Mode is Layer 3. Must be L2.`);
     }
