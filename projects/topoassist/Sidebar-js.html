@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.13 | 2026-04-23 12:10:58 -->
+<!-- TopoAssist v260423.14 | 2026-04-23 12:11:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.13";  // keep in sync with Code.gs
+const APP_VERSION = "260423.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6138,7 +6138,7 @@ function saveEdit() {
       // ... existing success handler ...
       btn.innerText = originalText; btn.disabled = false;
       if (res.error) { alert("Error: " + res.error); }
-      else { closeEditModal(); fetchData(true); }
+      else { closeEditModal(); setStatus(devA + ':' + portA + ' \u2194 ' + devB + ':' + portB + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
     }).withFailureHandler(function (err) {
       btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
     }).connectExistingToNew(devA, portA, updatesA, devB, portB, updatesB);
@@ -6162,7 +6162,7 @@ function saveEdit() {
     const onAddSuccess = function (res) {
       btn.innerText = originalText; btn.disabled = false;
       if (res.error) { alert("Error: " + res.error); }
-      else { closeEditModal(); fetchData(true); }
+      else { closeEditModal(); setStatus(devA + ':' + portA + ' \u2194 ' + devB + ':' + portB + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
     };
     const onAddFail = function (err) { btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message); };
 
