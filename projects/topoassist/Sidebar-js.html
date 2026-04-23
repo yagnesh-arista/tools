@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.36 | 2026-04-23 15:08:35 -->
+<!-- TopoAssist v260423.36 | 2026-04-23 15:12:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
 const APP_VERSION = "260423.36";  // keep in sync with Code.gs
@@ -2302,6 +2302,9 @@ function runValidation(logIssues) {
   // 3. Data Structures for Global Aggregation
   const vlanGwUsage = {};
 
+  // Reset per-check issue tracking for this run
+  auditCheckHadIssue = {};
+
   // =========================================================
   // CHECK GROUP 1: LINK-BASED CHECKS
   // =========================================================
@@ -2316,20 +2319,24 @@ function runValidation(logIssues) {
       const poB = (nodeB.details.po_ || '').trim();
       const poASet = poA !== '';
       const poBSet = poB !== '';
-      if (poASet && poBSet) {
-        if (poA !== poB) {
+      if (poASet && poBSet && poA !== poB) {
+        if (auditFlagPoMismatch) {
+          auditCheckHadIssue.auditFlagPoMismatch = true;
           const msg = `[FAIL] Po Mismatch: ${nodeA.device} has ${poA} but ${nodeB.device} has ${poB}`;
           flagErrorOnPort(link.u, msg);
           flagErrorOnPort(link.v, msg);
         }
       } else if (poASet !== poBSet) {
-        const setDev  = poASet ? nodeA.device : nodeB.device;
-        const setVal  = poASet ? poA : poB;
-        const setPort = poASet ? link.u : link.v;
-        const misPort = poASet ? link.v : link.u;
-        const msg = `[FAIL] Po Asymmetry: ${setDev} has ${setVal} but peer has no po_ set`;
-        flagErrorOnPort(setPort, msg);
-        flagErrorOnPort(misPort, msg);
+        if (auditFlagPoAsymmetry) {
+          auditCheckHadIssue.auditFlagPoAsymmetry = true;
+          const setDev  = poASet ? nodeA.device : nodeB.device;
+          const setVal  = poASet ? poA : poB;
+          const setPort = poASet ? link.u : link.v;
+          const misPort = poASet ? link.v : link.u;
+          const msg = `[FAIL] Po Asymmetry: ${setDev} has ${setVal} but peer has no po_ set`;
+          flagErrorOnPort(setPort, msg);
+          flagErrorOnPort(misPort, msg);
+        }
       }
 
       // B. PAIR MISMATCH CHECKS (Speed & VLAN)
@@ -2343,14 +2350,16 @@ function runValidation(logIssues) {
         // C. VLAN MISMATCH
         let vlanA = normalizeVlan(nodeA.details.vlan_);
         let vlanB = normalizeVlan(nodeB.details.vlan_);
-        if (vlanA !== vlanB) {
+        if (auditFlagVlanMismatch && vlanA !== vlanB) {
+          auditCheckHadIssue.auditFlagVlanMismatch = true;
           pairErrors.push(`VLAN Mismatch`);
         }
 
         // D. MODE COMPATIBILITY
         const modeA = (nodeA.details.sp_mode_ || "").trim().toLowerCase();
         const modeB = (nodeB.details.sp_mode_ || "").trim().toLowerCase();
-        if (modeA && modeB && !VALID_MODE_PAIRS.has(`${modeA}|${modeB}`)) {
+        if (auditFlagModeIncompat && modeA && modeB && !VALID_MODE_PAIRS.has(`${modeA}|${modeB}`)) {
+          auditCheckHadIssue.auditFlagModeIncompat = true;
           pairErrors.push(`Mode Incompatible: '${modeA}' ↔ '${modeB}' is not a supported combination`);
         }
 
@@ -2361,10 +2370,9 @@ function runValidation(logIssues) {
         const spA = _spRaw(nodeA); const spB = _spRaw(nodeB);
         const _sp = s => (s === 'auto' || s === '') ? '' : s;
         const normSpA = _sp(spA); const normSpB = _sp(spB);
-        if (normSpA && normSpB) {
-          if (normSpA !== normSpB) {
-            pairErrors.push(`Speed Mismatch: ${nodeA.device} (${normSpA}) ↔ ${nodeB.device} (${normSpB})`);
-          }
+        if (auditFlagSpeedMismatch && normSpA && normSpB && normSpA !== normSpB) {
+          auditCheckHadIssue.auditFlagSpeedMismatch = true;
+          pairErrors.push(`Speed Mismatch: ${nodeA.device} (${normSpA}) ↔ ${nodeB.device} (${normSpB})`);
         }
 
         if (pairErrors.length > 0) {
@@ -2402,27 +2410,32 @@ function runValidation(logIssues) {
     const hasIp = (ipType !== "" && ipType !== "-");
 
     // A. INTERFACE TYPE — only Et and Vx are valid Arista int_ types
-    if (!validIntRegex.test(node.name)) {
+    if (auditFlagUnsupportedInt && !validIntRegex.test(node.name)) {
+      auditCheckHadIssue.auditFlagUnsupportedInt = true;
       configErrors.push(`Unsupported Interface: '${node.name}' — only Et (Ethernet) or Vx (VTEP) allowed in int_.`);
     }
 
     // B. MLAG vs L3 CONFLICT
-    if (d.isMlag && mode.includes("l3")) {
+    if (auditFlagMlagL3 && d.isMlag && mode.includes("l3")) {
+      auditCheckHadIssue.auditFlagMlagL3 = true;
       configErrors.push(`MLAG/L3 Conflict: Port is MLAG member but Mode is Layer 3. Must be L2.`);
     }
 
     // C. INVALID SVI (L3 Port + SVI Enabled)
-    if (mode.startsWith("l3") && isSviOn && !portName.startsWith("vlan")) {
+    if (auditFlagInvalidSvi && mode.startsWith("l3") && isSviOn && !portName.startsWith("vlan")) {
+      auditCheckHadIssue.auditFlagInvalidSvi = true;
       configErrors.push(`Invalid SVI: L3 interfaces cannot have SVI enabled.`);
     }
 
     // D. MISSING IP FOR SVI
-    if (isSviOn && !hasIp) {
+    if (auditFlagMissingIpSvi && isSviOn && !hasIp) {
+      auditCheckHadIssue.auditFlagMissingIpSvi = true;
       configErrors.push(`Incomplete SVI: SVI is active but IP Type is blank.`);
     }
 
     // E. MISSING IP FOR L3
-    if (mode.startsWith("l3") && !portName.startsWith("vlan") && !hasIp) {
+    if (auditFlagMissingIpL3 && mode.startsWith("l3") && !portName.startsWith("vlan") && !hasIp) {
+      auditCheckHadIssue.auditFlagMissingIpL3 = true;
       configErrors.push(`Incomplete L3: Routed interface (${mode}) requires IP Type.`);
     }
 
@@ -2465,23 +2478,27 @@ function runValidation(logIssues) {
     }
 
     // G. MISSING PO FOR PORT-CHANNEL MODE
-    if ((mode.startsWith('l2-po-') || mode.startsWith('l3-po-')) && !d.po_) {
+    if (auditFlagMissingPo && (mode.startsWith('l2-po-') || mode.startsWith('l3-po-')) && !d.po_) {
+      auditCheckHadIssue.auditFlagMissingPo = true;
       configErrors.push(`Missing PO: Mode is '${d.sp_mode_}' but Po column is blank.`);
     }
 
     // H. STALE PO VALUE ON ETHERNET MODE
-    if (/^l[23]-et/i.test(mode) && d.po_ && String(d.po_).trim() !== "") {
+    if (auditFlagStalePo && /^l[23]-et/i.test(mode) && d.po_ && String(d.po_).trim() !== "") {
+      auditCheckHadIssue.auditFlagStalePo = true;
       configErrors.push(`Stale PO: Mode is '${d.sp_mode_}' but Po column has value '${d.po_}' — should be blank.`);
     }
 
     // I. STALE IP TYPE ON L2 PORT (no SVI)
-    if (mode.startsWith("l2") && !isSviOn && d.ip_type_ && String(d.ip_type_).trim() !== "") {
+    if (auditFlagStaleIpType && mode.startsWith("l2") && !isSviOn && d.ip_type_ && String(d.ip_type_).trim() !== "") {
+      auditCheckHadIssue.auditFlagStaleIpType = true;
       configErrors.push(`Stale IP Type: Mode is '${d.sp_mode_}' with no SVI but IP Type is '${d.ip_type_}' — should be blank.`);
     }
 
     // J. NATIVE VLAN TOKEN ON NON-TRUNK PORT
     const _pvAuditJ = parseVlanWithNative(d.vlan_);
-    if (_pvAuditJ.native && !mode.includes("trunk")) {
+    if (auditFlagNativeNonTrunk && _pvAuditJ.native && !mode.includes("trunk")) {
+      auditCheckHadIssue.auditFlagNativeNonTrunk = true;
       configErrors.push(`Native VLAN: nv${_pvAuditJ.native} in VLANs column is only valid on trunk ports — current mode is '${d.sp_mode_ || "blank"}'. Token will be ignored.`);
     }
 
@@ -2493,6 +2510,7 @@ function runValidation(logIssues) {
         const _portVlans = [...parseVlanInput(_vlanStr)].map(v => parseInt(v)).filter(v => !isNaN(v));
         const _conflicts = _portVlans.filter(v => _intVlansForDev.includes(v));
         if (_conflicts.length) {
+          auditCheckHadIssue.bridgeAuditFlagInternalVlan = true;
           const pl = _conflicts.length > 1;
           configErrors.push(`Internal VLAN Conflict: VLAN${pl ? 's' : ''} ${_conflicts.join(', ')} ${pl ? 'are' : 'is'} auto-allocated by EOS on this device — conflicts with internal VLAN allocation.`);
         }
@@ -2501,7 +2519,7 @@ function runValidation(logIssues) {
 
     // L. SVI VLAN NOT IN VLAN LIST
     // _parseSviVlans() silently drops requested VLANs not present in vlan_ — warn here.
-    if (mode.startsWith("l2-") && svi && svi !== 'all') {
+    if (auditFlagSviVlanMismatch && mode.startsWith("l2-") && svi && svi !== 'all') {
       const _pvL = parseVlanWithNative(d.vlan_);
       const _allowedSviVlans = parseVlanInput(_pvL.vlans || "");
       if (_pvL.native) _allowedSviVlans.add(_pvL.native);
@@ -2513,6 +2531,7 @@ function runValidation(logIssues) {
         if (_vid && !isNaN(_vid) && !_allowedSviVlans.has(_vid)) _missingSvi.push(_vid);
       });
       if (_missingSvi.length) {
+        auditCheckHadIssue.auditFlagSviVlanMismatch = true;
         const _pl = _missingSvi.length > 1;
         configErrors.push(`SVI VLAN Mismatch: svi_vlan '${_missingSvi.join(', ')}' ${_pl ? 'are' : 'is'} not in vlan_ — no SVI will be generated for ${_pl ? 'these VLANs' : 'this VLAN'}.`);
       }
@@ -2551,7 +2570,8 @@ function runValidation(logIssues) {
               (uDev === myPeer && vDev === deviceId));
         });
 
-        if (!hasPhysicalPeerLink) {
+        if (!hasPhysicalPeerLink && auditFlagMlagPeerLink) {
+          auditCheckHadIssue.auditFlagMlagPeerLink = true;
           const msg = `[FAIL] MLAG Peer-Link Missing: No physical connection found between ${deviceId} and ${myPeer}.`;
           portErrorCount++;
           if (statusEl) {
@@ -2574,7 +2594,8 @@ function runValidation(logIssues) {
 
     const isAnycastDesign = (evpnOn || vxlanOn);
 
-    if (devices.length > 2 && !isAnycastDesign) {
+    if (auditFlagDupGateway && devices.length > 2 && !isAnycastDesign) {
+      auditCheckHadIssue.auditFlagDupGateway = true;
       const msg = `Duplicate GW: VLAN ${vlanId} used on ${devices.length} devices.`;
       usages.forEach(u => {
         flagErrorOnPort(u.portId, msg);
@@ -2591,7 +2612,8 @@ function runValidation(logIssues) {
   // and device click handler.
   if (typeof globalPortFrequency !== 'undefined') {
     for (const [fullId, count] of Object.entries(globalPortFrequency)) {
-      if (count > 1) {
+      if (count > 1 && auditFlagDuplicateInt) {
+        auditCheckHadIssue.auditFlagDuplicateInt = true;
         const err = `Duplicate Interface: '${fullId.split(":")[1]}' defined ${count} times.`;
         flagErrorOnPort(fullId, err);  // covers connected ports via link errors
         // Port-level fallback: ensures disconnected duplicate ports are also flagged
@@ -2648,7 +2670,8 @@ function runValidation(logIssues) {
           } else if (existing.type !== type) {
             err = `VLAN ${vStr} Mixed Usage: L2 vs L3.`;
           }
-          if (err) {
+          if (err && auditFlagVlanUsage) {
+            auditCheckHadIssue.auditFlagVlanUsage = true;
             flagErrorOnPort(pid, err);
             flagErrorOnPort(existing.firstPort, err);
           }
