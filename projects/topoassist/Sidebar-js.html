@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.18 | 2026-04-23 12:39:35 -->
+<!-- TopoAssist v260423.19 | 2026-04-23 12:45:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.18";  // keep in sync with Code.gs
+const APP_VERSION = "260423.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1178,7 +1178,20 @@ function saveDeviceChanges() {
 
       // 2. TRIGGER REFRESH
       dbg("Triggering Auto-Refresh...");
+      // Build status message naming added/removed devices
+      let dmMsg = 'Device Manager saved';
+      try {
+        const prevNames = new Set(initialList.map(d => d.name));
+        const currNames = new Set(currentDeviceList.map(d => d.name));
+        const added = currentDeviceList.filter(d => !prevNames.has(d.name)).map(d => d.name);
+        const removed = [...prevNames].filter(n => !currNames.has(n));
+        const parts = [];
+        if (added.length) parts.push('+' + added.join(', +'));
+        if (removed.length) parts.push('\u2212' + removed.join(', \u2212'));
+        if (parts.length) dmMsg += ': ' + parts.join(' ');
+      } catch (e) {}
       if (typeof showGlobalLoading === 'function') showGlobalLoading("Updating Topology...");
+      setStatus(dmMsg + ' \u2014 topology refresh\u2026', 'status-info');
       if (typeof fetchData === "function") fetchData(true);
 
     }, 1000);
@@ -1673,6 +1686,16 @@ function saveSchemaChanges() {
           updateSaveButtonVisuals(); // Will set text to "Save & Sync"
           btn.disabled = false;
         }, 1500);
+
+        // Structural or dropdown changes affect topology config data — refresh.
+        // rebuildSheet does not bump DATA_VERSION, so the 4s poll won't catch this.
+        if (isStructuralChange || isDropdownChange) {
+          const schemaMsg = isStructuralChange
+            ? 'Schema columns updated \u2014 topology refresh\u2026'
+            : 'Schema dropdowns updated \u2014 topology refresh\u2026';
+          setStatus(schemaMsg, 'status-info');
+          if (typeof fetchData === 'function') fetchData(true);
+        }
       };
 
       const onFailure = (err) => {
@@ -1847,6 +1870,9 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
       hideGlobalLoading();
       btn.innerHTML = '<span class="btn-icon" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Synced!';
       setUiBusy(false);
+      // rebuildSheet does not bump DATA_VERSION — must refresh explicitly
+      setStatus('Force Sync complete \u2014 topology refresh\u2026', 'status-info');
+      if (typeof fetchData === 'function') fetchData(true);
       setTimeout(() => {
         btn.innerHTML = origHtml;
         // Re-scan after sync so badge reflects actual post-sync state

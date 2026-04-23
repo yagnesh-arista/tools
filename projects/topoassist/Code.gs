@@ -1,10 +1,10 @@
-// TopoAssist v260423.18 | 2026-04-23 12:39:13
+// TopoAssist v260423.19 | 2026-04-23 12:45:43
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.18";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.19";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -356,6 +356,7 @@ function refreshSheetRowVisibility() {
   // Build device → column index maps for int_, ip_type_, sp_mode_, svi_vlan_ (visible devices only)
   // Single pass over headers.
   const ipFilter      = getSheetViewIpFilter();      // [] = all shown
+  const l2l3Filter    = getSheetViewL2L3Filter();    // ['l2','l3'] = all shown
   const intModeFilter = getSheetViewIntModeFilter();  // [] = all shown
   const sviFilter     = getSheetViewSviFilter();      // [] = all shown
   const devIntCol     = {}; // lowercased device name → int_ col index
@@ -402,6 +403,20 @@ function refreshSheetRowVisibility() {
         const ipRaw = String(row[ipTypeCol] || '').toLowerCase().trim();
         const ipVal = (ipRaw === 'p2p' || ipRaw === 'gw') ? ipRaw : 'blank';
         return ipFilter.includes(ipVal);
+      });
+    }
+    // AND: l2/l3 filter — check sp_mode_ prefix ('l2-*' vs 'l3-*') for active devices.
+    // Both ['l2','l3'] = show all. Blank sp_mode_ always passes.
+    if (active && l2l3Filter.length < 2) {
+      active = Object.keys(devIntCol).some(function(dev) {
+        const intVal = String(row[devIntCol[dev]] || '').trim();
+        if (!intVal) return false;
+        const spModeCol = devSpModeCol[dev];
+        if (spModeCol === undefined) return true; // no sp_mode_ column → always passes
+        const sp = String(row[spModeCol] || '').toLowerCase().trim();
+        if (!sp) return true; // blank sp_mode_ always passes
+        const prefix = sp.startsWith('l2-') ? 'l2' : sp.startsWith('l3-') ? 'l3' : null;
+        return prefix ? l2l3Filter.includes(prefix) : true;
       });
     }
     // AND: int_mode filter — check sp_mode_ only for devices active on this row
@@ -2916,6 +2931,21 @@ function saveSheetViewIpFilter(filters) {
 }
 function applySheetIpFilter(filters) {
   saveSheetViewIpFilter(filters);
+  refreshSheetRowVisibility();
+}
+
+// ── Sheet View l2/l3 filter ──
+// Values: 'l2' (sp_mode_ starts with 'l2-'), 'l3' (sp_mode_ starts with 'l3-').
+// Default ['l2','l3'] = show all. Blank sp_mode_ always passes.
+function getSheetViewL2L3Filter() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_L2L3_FILTER');
+  return v ? JSON.parse(v) : ['l2', 'l3'];
+}
+function saveSheetViewL2L3Filter(filters) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_L2L3_FILTER', JSON.stringify(filters));
+}
+function applySheetL2L3Filter(filters) {
+  saveSheetViewL2L3Filter(filters);
   refreshSheetRowVisibility();
 }
 

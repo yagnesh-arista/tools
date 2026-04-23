@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.18 | 2026-04-23 12:39:13 -->
+<!-- TopoAssist v260423.19 | 2026-04-23 12:44:40 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -339,6 +339,11 @@
     <div class="ip-section-list" id="ipFilterList"></div>
   </div>
 
+  <div class="ip-section" id="l2l3FilterSection">
+    <div class="ip-section-header">l2 / l3</div>
+    <div class="ip-section-list" id="l2l3FilterList"></div>
+  </div>
+
   <div class="ip-section" id="intModeFilterSection">
     <div class="ip-section-header">int_mode</div>
     <div class="ip-section-list" id="intModeFilterList"></div>
@@ -422,10 +427,13 @@
         })
         .getSchemaConfig();
 
-      // ip_type / int_mode / svi filters: restore saved state
+      // ip_type / l2l3 / int_mode / svi filters: restore saved state
       google.script.run
         .withSuccessHandler(function(f) { initIpFilter(f); })
         .getSheetViewIpFilter();
+      google.script.run
+        .withSuccessHandler(function(f) { initL2L3Filter(f); })
+        .getSheetViewL2L3Filter();
       google.script.run
         .withSuccessHandler(function(f) { initIntModeFilter(f); })
         .getSheetViewIntModeFilter();
@@ -787,6 +795,7 @@
       var hide = isMinimized ? 'none' : '';
       document.getElementById('searchRow').style.display = hide;
       document.getElementById('ipFilterSection').style.display = hide;
+      document.getElementById('l2l3FilterSection').style.display = hide;
       document.getElementById('intModeFilterSection').style.display = hide;
       document.getElementById('sviFilterSection').style.display = hide;
       document.getElementById('panelBody').style.display = hide;
@@ -940,6 +949,52 @@
         .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
         .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
         .applySheetSviFilter(activeSviFilters);
+    }
+
+    /* ── L2/L3 FILTER ─────────────────────────────────── */
+    var activeL2L3Filters = [];
+    var L2L3_FILTER_ITEMS = [
+      { val: 'l2', label: 'l2' },
+      { val: 'l3', label: 'l3' },
+      { val: null, label: '' },
+      { val: null, label: '' }
+    ];
+
+    function initL2L3Filter(savedFilters) {
+      activeL2L3Filters = Array.isArray(savedFilters) ? savedFilters : ['l2', 'l3'];
+      renderL2L3FilterList();
+    }
+
+    function renderL2L3FilterList() {
+      var list = document.getElementById('l2l3FilterList');
+      if (!list) return;
+      list.innerHTML = L2L3_FILTER_ITEMS.map(function(item) {
+        if (!item.val) return '<div class="device-item ip-item-dummy"></div>';
+        var isHidden = activeL2L3Filters.indexOf(item.val) === -1;
+        return '<div class="device-item ip-filter-item' + (isHidden ? ' is-hidden' : '') + '"' +
+               ' onclick="toggleL2L3Filter(\'' + item.val + '\')"' +
+               ' title="' + (isHidden ? 'Show' : 'Hide') + ' ' + item.label + ' rows">' +
+               '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+               ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+               (isHidden ? EYE_CLOSED : EYE_OPEN) +
+               '</svg>' +
+               '<span class="item-name">' + item.label + '</span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function toggleL2L3Filter(val) {
+      if (serverBusy) return;
+      var idx = activeL2L3Filters.indexOf(val);
+      if (idx !== -1) activeL2L3Filters.splice(idx, 1);
+      else activeL2L3Filters.push(val);
+      renderL2L3FilterList();
+      setStatus('Applying filter\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applySheetL2L3Filter(activeL2L3Filters);
     }
 
     load();
