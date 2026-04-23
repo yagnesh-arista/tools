@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.29 | 2026-04-23 14:38:52 -->
+<!-- TopoAssist v260423.30 | 2026-04-23 14:47:05 -->
 <!DOCTYPE html>
 <html>
 
@@ -568,7 +568,22 @@
     </div>
     <div class="ip-modal-body">
 
-      <!-- 1. EXAMPLE (top, two-peer grid) -->
+      <!-- 4. CONFIGURABLE OPTIONS — first so fields are visible without scrolling -->
+      <div class="section-header">LOOPBACK</div>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Loopback</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_lo_base" placeholder="0" style="width:56px"></div>
+        </div>
+      </div>
+
+      <div class="section-header">MLAG PEER LINK</div>
+      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Peer Link Base</span>
+        <div class="ip-inputs">
+          <div class="input-wrapper"><label>Base (lower gets .base, higher .base+1)</label><input type="text" id="ip_mlag_base" placeholder="1" style="width:56px"></div>
+        </div>
+      </div>
+
+      <!-- 1. EXAMPLE (reference grid — scroll down to see) -->
       <div class="info-box info-box--dim info-box--keep-colors">
         <div class="info-title">Example &mdash; VLAN <span class="f-dyn">1520</span> &rarr; oct2=<span class="f-dyn">15</span>, oct3=<span class="f-dyn">20</span></div>
         <div class="info-title" style="margin-top:2px"><span style="color:#2563eb">blue</span>=configurable &nbsp;<span style="color:#d97706">amber</span>=VLAN &nbsp;<span style="color:#0891b2">teal</span>=device ID &nbsp;<span style="color:#16a34a">green</span>=computed</div>
@@ -655,20 +670,6 @@
       </div>
 
       <!-- 4. CONFIGURABLE OPTIONS -->
-      <div class="section-header">LOOPBACK</div>
-      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Loopback</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>Base (+ Device ID)</label><input type="text" id="ip_lo_base" placeholder="0" style="width:56px"></div>
-        </div>
-      </div>
-
-      <div class="section-header">MLAG PEER LINK</div>
-      <div class="ip-row" style="--label-w:130px"><span class="ip-label">Peer Link Base</span>
-        <div class="ip-inputs">
-          <div class="input-wrapper"><label>Base (lower gets .base, higher .base+1)</label><input type="text" id="ip_mlag_base" placeholder="1" style="width:56px"></div>
-        </div>
-      </div>
-
       <div class="section-header">POINT-TO-POINT (P2P) INTERFACE</div>
       <div class="ip-section-rows" style="--label-w:76px">
         <div class="ip-row"><span class="ip-label">IPv4</span>
