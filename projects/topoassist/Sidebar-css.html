@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.33 | 2026-04-23 15:01:04 -->
+<!-- TopoAssist v260423.33 | 2026-04-23 15:01:49 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2541,7 +2541,8 @@
   .port-row.hidden-global,
   .port-row.hidden-ip-type,
   .port-row.hidden-int-mode,
-  .port-row.hidden-svi {
+  .port-row.hidden-svi,
+  .port-row.hidden-vlan {
     display: none !important;
   }
 
@@ -5092,6 +5093,38 @@
   .dev-vis-show-sel:not(:disabled):hover { background: #166534; }
   .dev-vis-hide-sel { background: #431407; color: #fb923c; }
   .dev-vis-hide-sel:not(:disabled):hover { background: #7c2d12; }
+
+  /* Dev-vis — VLAN chip strip */
+  .dev-vis-vlan-section .dev-vis-ip-header { display: flex; align-items: center; justify-content: space-between; }
+  .dev-vis-vlan-strip {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 5px 8px; min-height: 28px; align-items: center;
+  }
+  .dev-vis-vlan-empty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-muted); font-style: italic;
+  }
+  .dev-vis-vlan-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    padding: 1px 6px; border-radius: 8px;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    border: 1px solid transparent; opacity: 0.72;
+    transition: opacity 0.12s, box-shadow 0.12s;
+  }
+  .dev-vis-vlan-chip.chip-svi    { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .dev-vis-vlan-chip.chip-trunk  { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  .dev-vis-vlan-chip.chip-native { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+  .dev-vis-vlan-chip.active      { box-shadow: 0 0 0 2px #3b82f6; opacity: 1; }
+  .dev-vis-vlan-chip:hover       { opacity: 1; }
+  .dev-vis-vlan-clear {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 3px; letter-spacing: 0.3px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); cursor: pointer; display: none;
+  }
+  .dev-vis-vlan-clear:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
 
   /* ================= FLOATING MODAL (Bridge) ================= */
   .modal-floating {
