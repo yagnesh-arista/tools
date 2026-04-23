@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-23 (Rule 24 added — modal scroll + floating panel minimize baseline)
+Last updated: 2026-04-23 (Rule 24 updated — minimize must hide editOverlay; restore must bring it back via data-had-overlay)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
