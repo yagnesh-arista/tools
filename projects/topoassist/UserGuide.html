@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.11 | 2026-04-23 11:58:36 -->
+<!-- TopoAssist v260423.13 | 2026-04-23 12:11:15 -->
 <!DOCTYPE html>
 <html>
 
@@ -672,6 +672,15 @@ clasp login --no-localhost</pre>
     </div>
     <p style="font-size:13px; margin-top:8px;">Assign labels in <b>Device Manager</b> via the Tags column. Multiple labels per device are supported.</p>
 
+    <h3>VTEP Device Cards (Vx1 Row)</h3>
+    <p style="font-size:13px;">For LEAF devices with VXLAN configured (one or more <code>Vx1</code> rows in the sheet), a pinned <b>Vx1 summary row</b> appears at the top of the device card port list — above all physical ports, regardless of the active sort mode.</p>
+    <ul style="font-size:13px;">
+      <li><b>Et column:</b> <code style="color:#0d9488;">Vx1</code> — shown in teal to distinguish it from physical ports.</li>
+      <li><b>Mode column:</b> AP VLAN list in compressed range format (e.g. <code>10,20-25,100</code>) — collected from all <code>Vx1</code> rows for that device. Hover to see the full list if truncated.</li>
+      <li><b>Cat column:</b> <span style="background:rgba(20,184,166,0.15);color:#0d9488;border-radius:4px;padding:1px 5px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;">VTEP</span> pill.</li>
+      <li>The row is <b>read-only</b> — no click, no cable hover, no connectivity dot. It never triggers audit checks and has no cabling association.</li>
+    </ul>
+
     <!-- ================================================================ -->
     <h2>🔧 Sheet &amp; Schema Management</h2>
 
@@ -816,9 +825,9 @@ clasp login --no-localhost</pre>
         <ul>
           <li><b>IPv4</b> — ip address only</li>
           <li><b>IPv6</b> — ipv6 address only (explicit, no IPv4)</li>
-          <li><b>IPv6 Unnum</b> — ipv6 enable + ipv6 unnumbered Loopback0 (no IPv4)</li>
+          <li><b>IPv6 Unnum</b> — <code>ipv6 enable</code> only (link-local for RFC 5549 BGP, no IPv4)</li>
           <li><b>IPv4 + IPv6</b> — both ip address and ipv6 address</li>
-          <li><b>IPv4 + IPv6 Unnum</b> — ip address + ipv6 unnumbered Loopback0</li>
+          <li><b>IPv4 + IPv6 Unnum</b> — ip address + <code>ipv6 enable</code> (link-local IPv6)</li>
         </ul>
       </li>
       <li><b>Protocol grid (4 columns)</b> — checkboxes for BGP, OSPF, VXLAN, and EVPN variants. Options that are incompatible with the selected P2P mode are greyed out and automatically unchecked.</li>

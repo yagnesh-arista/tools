@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.11 | 2026-04-23 12:00:25 -->
+<!-- TopoAssist v260423.13 | 2026-04-23 12:10:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.11";  // keep in sync with Code.gs
+const APP_VERSION = "260423.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6093,7 +6093,7 @@ function deletePort() {
   google.script.run.withSuccessHandler(function (res) {
     btn.innerText = originalText; btn.disabled = false;
     if (res.error) { alert("Error: " + res.error); }
-    else { closeEditModal(); fetchData(true); }
+    else { closeEditModal(); setStatus(deviceName + ':' + portName + ' deleted \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
   }).withFailureHandler(function (err) {
     btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
   }).deleteInterface(deviceName, portName);
@@ -7382,6 +7382,38 @@ function render(data) {
         pList.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
       } else {
         pList.sort((a, b) => a.order - b.order);
+      }
+
+      // Vx1 pinned row — first for VTEP devices; read-only, no click, no cabling, no audit
+      if (node.vtepVlans) {
+        const vx1Row = document.createElement("div");
+        vx1Row.className = "port-row";
+        vx1Row.style.cssText = "background-color:rgba(20,184,166,0.07)!important;border-left:3px solid rgba(20,184,166,0.5)!important;border-bottom:1px solid rgba(20,184,166,0.15);cursor:default;user-select:none;-webkit-user-select:none;";
+        vx1Row.title = "VTEP — AP VLANs: " + node.vtepVlans;
+
+        const vx1Et = document.createElement("span");
+        vx1Et.className = "col-et";
+        vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;";
+        vx1Et.innerText = "Vx1";
+        vx1Row.appendChild(vx1Et);
+
+        const vx1Mode = document.createElement("span");
+        vx1Mode.className = "col-mode";
+        vx1Mode.style.cssText = "color:#0f766e;background:rgba(20,184,166,0.12);font-family:'JetBrains Mono',monospace;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+        vx1Mode.innerText = node.vtepVlans;
+        vx1Mode.title = node.vtepVlans;
+        vx1Row.appendChild(vx1Mode);
+
+        const vx1Type = document.createElement("span");
+        vx1Type.className = "col-type";
+        vx1Type.style.cssText = "color:#0d9488!important;background-color:rgba(20,184,166,0.15)!important;border-radius:4px;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:10px;";
+        vx1Type.innerText = "VTEP";
+        vx1Row.appendChild(vx1Type);
+
+        ["col-po", "col-bridge"].forEach(cls => { const s = document.createElement("span"); s.className = cls; vx1Row.appendChild(s); });
+        const vx1Box = document.createElement("div"); vx1Box.className = "port-box"; vx1Row.appendChild(vx1Box);
+
+        body.appendChild(vx1Row);
       }
 
       if (pList.length === 0) {

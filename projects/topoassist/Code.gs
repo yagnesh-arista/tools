@@ -1,10 +1,10 @@
-// TopoAssist v260423.11 | 2026-04-23 11:58:36
+// TopoAssist v260423.13 | 2026-04-23 12:08:15
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.11";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.13";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2365,6 +2365,7 @@ function getTopologyData(forceSync, isColorEnabled) {
     };
 
     const allCollectedNodes = [];
+    const vtepVlansByDevice = {}; // deviceName → Set<VLAN int>, for DevView Vx1 summary row
 
     dataRows.forEach((row, rowIndex) => {
       // Update status periodically
@@ -2384,7 +2385,16 @@ function getTopologyData(forceSync, isColorEnabled) {
             // Vx1 is a logical VTEP port — not a physical cable, never part of cabling topology.
             // Skipping here prevents it from entering processRowLinks, forming links, landing in
             // allNodesData, or triggering audit checks (IP type blank, missing SVI IP, etc.).
-            if (pName === "Vx1") return; // forEach — return skips this device entry
+            if (pName === "Vx1") {
+              // Collect AP VLANs from this row so DevView can show a Vx1 summary row.
+              const _vx1Raw = extractDetails(row, device.attrs).vlan_ || "";
+              const { vlans: _vx1Vlans } = parseVlanWithNative(_vx1Raw);
+              if (_vx1Vlans) {
+                if (!vtepVlansByDevice[device.name]) vtepVlansByDevice[device.name] = new Set();
+                _vx1Vlans.split(",").forEach(v => { const n = parseInt(v.trim()); if (!isNaN(n)) vtepVlansByDevice[device.name].add(n); });
+              }
+              return; // forEach — return skips this device entry
+            }
 
             const uniqueId = device.name + ":" + pName;
             portFrequency[uniqueId] = (portFrequency[uniqueId] || 0) + 1;
@@ -2538,7 +2548,8 @@ function getTopologyData(forceSync, isColorEnabled) {
       return {
         id: d.name, type: d.type, mode: primaryMode, sheetIndex: d.sheetIndex,
         visualIndex: d.visualIndex, ports: Object.values(devicePorts[d.name]),
-        labels: d.labels || [], hostname: d.hostname || "", role: d.role || "", mlagPeer: d.mlagPeer || ""
+        labels: d.labels || [], hostname: d.hostname || "", role: d.role || "", mlagPeer: d.mlagPeer || "",
+        vtepVlans: vtepVlansByDevice[d.name] ? compressVlanRanges(vtepVlansByDevice[d.name]) : ""
       };
     });
 
