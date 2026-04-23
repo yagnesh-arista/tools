@@ -614,6 +614,53 @@ Two completely separate HTML dialogs open in different contexts. Never confuse t
         If the user says "topology view" or "sidebar" → Sidebar.html / Sidebar-js.html.
         If unsure, ASK before touching code.
 
+── VIEW TAXONOMY — THREE DISTINCT VIEWS ────────────────────────────────────────
+
+  When the user says "add X to [view]", match to one of these three — do NOT
+  conflate them. All three are active simultaneously during a session.
+
+  1. DevVis  (Device Visibility floating panel — inside Topology Sidebar)
+       File:     Sidebar-js.html
+       Toggle:   toggleDevVisMinimize()
+       Purpose:  Per-device show/hide in the topology canvas (hides port cards +
+                 D3 nodes). Also has an int_mode row filter with SHORT labels
+                 (l2ea, l2et…) for compact display.
+       Scope:    Topology canvas only — has no effect on the Google Sheet.
+
+  2. SheetVis  (Sheet View modeless panel — inside Google Sheet)
+       File:     SheetAssistPanel.html
+       Opens:    showSheetAssistPanel()
+       Purpose:  (a) Device visibility: hides/shows sheet ROW groups per device.
+                 (b) Column selector: shows/hides sheet COLUMNS.
+                 (c) Row filters: ip_type (p2p/gw/blank), int_mode, svi — all
+                     operate on sheet row visibility via refreshSheetRowVisibility().
+       Scope:    Google Sheet only — has no effect on the topology canvas.
+
+  3. Sheet View menu  (TopoAssist → Sheet View submenu — GAS menu bar)
+       File:     Code.gs  (onOpen addSubMenu + view functions)
+       Calls:    applyCustomView([...keys]) + showSheetAssistPanel()
+       Purpose:  Column-visibility PRESETS that show a named subset of columns.
+                 Each item is a one-click "view mode" for the sheet.
+       Current presets:
+         L1: Interface         → ['int']
+         L1: Transceiver       → ['int', 'xcvr_type', 'et_speed', 'xcvr_speed']
+         L1: Speed             → ['int', 'xcvr_type', 'et_speed', 'xcvr_speed']
+         L1.5: Port Channel    → ['int', 'po']
+         L2/L3: Mode           → ['int', 'po', 'sp_mode']
+         L2/L3: Vlan           → ['int', 'po', 'sp_mode', 'vlan']
+         L2/L3: SVI            → ['int', 'po', 'sp_mode', 'vlan', 'svi_vlan']
+         L2/L3: IP             → ['int', 'po', 'sp_mode', 'vlan', 'svi_vlan', 'ip_type']
+         Custom View...        → opens SheetVis panel (view 2)
+       Scope:    Google Sheet column visibility only.
+
+  DISAMBIGUATION RULE:
+    "add X filter/row filter"          → SheetVis (2) — row visibility
+    "add X to the filter panel"        → SheetVis (2) — row filter section
+    "add X view" / "add X preset"      → Sheet View menu (3) — applyCustomView preset
+    "add X to the menu"                → Sheet View menu (3)
+    "show/hide X in topology"          → DevVis (1)
+    References to "L2/L3: SVI, Vlan, Mode" existing items → Sheet View menu (3)
+
 --------------------------------------------------------------------------------
 SECTION 1: PROJECT OVERVIEW
 --------------------------------------------------------------------------------
