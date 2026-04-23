@@ -1,10 +1,10 @@
-// TopoAssist v260423.8 | 2026-04-23 11:48:13
+// TopoAssist v260423.9 | 2026-04-23 11:51:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.8";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.9";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3289,10 +3289,28 @@ function addLinkPair(devA, portA, devB, portB, attrsA, attrsB) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_DATA);
-    const headers = sheet.getDataRange().getValues()[1];
-    const nextRow = sheet.getLastRow() + 1;
+    const allValues = sheet.getDataRange().getValues();
+    const headers = allValues[1];
     const fieldMap = getFieldMap();
 
+    const colA = headers.indexOf("int_" + devA);
+    const colB = headers.indexOf("int_" + devB);
+
+    // Duplicate check: scan data rows (index 2+) for the same port pair.
+    // colA/colB naturally handle the swapped-A/B case: if the user adds the
+    // link in reverse order (devB first), the column indices swap too.
+    if (colA !== -1 && colB !== -1) {
+      for (let r = 2; r < allValues.length; r++) {
+        const row = allValues[r];
+        const vA = (row[colA] || "").toString().trim();
+        const vB = (row[colB] || "").toString().trim();
+        if (vA === portA && vB === portB) {
+          return { error: "Link already exists: " + devA + ":" + portA + " ↔ " + devB + ":" + portB };
+        }
+      }
+    }
+
+    const nextRow = sheet.getLastRow() + 1;
     const findC = (dev, attrKey) => {
       const prefix = fieldMap[attrKey] || (attrKey + "_");
       return headers.indexOf(prefix + dev);
@@ -3300,8 +3318,8 @@ function addLinkPair(devA, portA, devB, portB, attrsA, attrsB) {
 
     const setVal = (r, c, v) => { if (c !== -1) sheet.getRange(r, c + 1).setValue(v); };
 
-    setVal(nextRow, headers.indexOf("int_" + devA), portA);
-    setVal(nextRow, headers.indexOf("int_" + devB), portB);
+    setVal(nextRow, colA, portA);
+    setVal(nextRow, colB, portB);
 
     Object.entries(attrsA).forEach(([k, v]) => setVal(nextRow, findC(devA, k), v));
     Object.entries(attrsB).forEach(([k, v]) => setVal(nextRow, findC(devB, k), v));
@@ -3317,8 +3335,8 @@ function addSnakePair(dev, portA, portB, attrs) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_DATA);
-    const headers = sheet.getDataRange().getValues()[1];
-    const nextRow = sheet.getLastRow() + 1;
+    const allValues = sheet.getDataRange().getValues();
+    const headers = allValues[1];
     const fieldMap = getFieldMap();
 
     const intColIdx = headers.indexOf("int_" + dev);
@@ -3328,6 +3346,17 @@ function addSnakePair(dev, portA, portB, attrs) {
     const snakeColIdx = headers.indexOf("snake_int_" + dev);
     if (snakeColIdx === -1) return { error: "snake_int_" + dev + " column not found — re-add device to rebuild schema columns" };
 
+    // Duplicate check: snake cable is undirected — portA↔portB == portB↔portA
+    for (let r = 2; r < allValues.length; r++) {
+      const row = allValues[r];
+      const vInt  = (row[intColIdx]   || "").toString().trim();
+      const vSnake = (row[snakeColIdx] || "").toString().trim();
+      if ((vInt === portA && vSnake === portB) || (vInt === portB && vSnake === portA)) {
+        return { error: "Snake link already exists: " + dev + ":" + portA + " ↔ " + dev + ":" + portB };
+      }
+    }
+
+    const nextRow = sheet.getLastRow() + 1;
     const setVal = (r, c, v) => { if (c >= 0) sheet.getRange(r, c + 1).setValue(v); };
     setVal(nextRow, intColIdx, portA);
     setVal(nextRow, snakeColIdx, portB);
