@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.14 | 2026-04-23 12:11:45 -->
+<!-- TopoAssist v260423.15 | 2026-04-23 12:12:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.14";  // keep in sync with Code.gs
+const APP_VERSION = "260423.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5018,7 +5018,7 @@ window.topologyKeyHandler = function (event) {
     if (key === "Escape") {
       const now = Date.now();
       if (now - window.lastEscPress < 500) {
-        if (typeof fetchData === 'function') fetchData(true);
+        if (typeof fetchData === 'function') { setStatus('Manual refresh \u2014 reloading topology\u2026', 'status-info'); fetchData(true); }
         return;
       }
       window.lastEscPress = now;
@@ -6209,7 +6209,7 @@ function saveEdit() {
         // ... success ...
         btn.innerText = originalText; btn.disabled = false;
         if (res.error) { alert("Error: " + res.error); }
-        else { closeEditModal(); fetchData(true); }
+        else { closeEditModal(); setStatus(localDev + ':' + localPort + ' \u2194 ' + newPeerDev + ':' + newPeerPort + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
       }).withFailureHandler(function (err) {
         btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
       }).connectExistingToNew(localDev, localPort, localUpdates, newPeerDev, newPeerPort, peerUpdates);
@@ -6225,7 +6225,7 @@ function saveEdit() {
         // ... success ...
         btn.innerText = originalText; btn.disabled = false;
         if (res.error) { alert("Error: " + res.error); }
-        else { closeEditModal(); fetchData(true); }
+        else { closeEditModal(); setStatus(localDev + ':' + localPort + (originalPeerId ? ' & ' + originalPeerId : '') + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
       }).withFailureHandler(function (err) {
         btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
       }).updateMultipleInterfaces(payloads);
