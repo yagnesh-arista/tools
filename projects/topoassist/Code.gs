@@ -1,10 +1,10 @@
-// TopoAssist v260423.5 | 2026-04-23 11:46:09
+// TopoAssist v260423.7 | 2026-04-23 11:46:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.5";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5467,7 +5467,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
   configLines.push(`router bgp ${localAsn}`);
   configLines.push(` no bgp default ipv4-unicast`);
   configLines.push(` bgp log-neighbor-changes`);
-  configLines.push(` maximum-paths 64`);
+  configLines.push(` maximum-paths 64 ecmp 64`);
   configLines.push(` distance bgp 20 200 200`);
   configLines.push(` graceful-restart restart-time 300`);
   configLines.push(` graceful-restart`);
