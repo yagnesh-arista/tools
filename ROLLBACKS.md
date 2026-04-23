@@ -4,6 +4,14 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-04-23 | topoassist | 27778ff
+**Rolled back: LOOPBACK and MLAG PEER LINK section reorder in ipConfigModal.**
+User wanted label rename only ("Peer Link Base" → "Peer Link IP"), not a layout reorder.
+Sections restored to original position (after the 3 info boxes). Label renamed in place.
+Files: Sidebar.html
+
+---
+
 ## 2026-04-21 | topoassist | 5de81d1
 **Reverted _INT_MODE_ITEMS abbreviated→full labels in Sidebar-js.html — wrong target (Dev Vis "Topology View" panel, not SheetAssistPanel). Restored l2ea/l2et/etc. in topology Dev Vis filter; applied full names to SheetAssistPanel.html INT_MODE_FILTER_ITEMS instead.**  
 Files: projects/topoassist/Sidebar-js.html
