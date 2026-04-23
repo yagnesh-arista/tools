@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.31 | 2026-04-23 14:54:07 -->
+<!-- TopoAssist v260423.32 | 2026-04-23 14:56:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.31";  // keep in sync with Code.gs
+const APP_VERSION = "260423.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10148,6 +10148,10 @@ function runBridgeCheck() {
       statusEl.style.display = 'block';
       statusEl.style.color = _msgColor;
       statusEl.textContent = _msg;
+      // If nothing reached, re-run health check so the orange auth warning
+      // appears automatically — no need for the user to click Recheck.
+      const _noneReached = _chkData && Object.values(_chkData).every(r => !r || !r.ok);
+      if (_noneReached) _checkBridgeHealth();
     });
 }
 
