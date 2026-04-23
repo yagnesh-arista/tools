@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.21 | 2026-04-23 12:55:35 -->
+<!-- TopoAssist v260423.22 | 2026-04-23 13:04:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -886,9 +886,11 @@
         <div class="bridge-section-hdr" style="margin-top:12px;">Results <span id="bridgeSummaryBadge" class="bridge-summary-badge"></span></div>
         <div id="bridgeResultList" class="bridge-result-list"></div>
       </div>
+      <div id="bridgeReconcileResults" style="display:none;"></div>
     </div>
     <div class="modal-actions right-align">
       <button class="btn-mono" onclick="downloadBridgeScript()">Download Bridge</button>
+      <button class="btn-mono" id="btnRunReconcile" onclick="runReconcile()" disabled>Reconcile</button>
       <button class="btn-primary-mono" id="btnRunBridge" onclick="runBridgeCheck()" disabled>Run Checks</button>
     </div>
   </div>
@@ -1083,6 +1085,7 @@
     <div id="modalContent" class="modal-body-scroll"></div>
     <div class="modal-actions right-align">
       <button id="btnDelete" class="btn-danger-mono" style="margin-right:auto; display:none;" onclick="deletePort()">Delete</button>
+      <button id="btnDeleteUnconfigure" class="btn-danger-mono" style="margin-right:auto; display:none;" onclick="deleteAndUnconfigure()">Delete &amp; Unconfigure</button>
       <button class="btn-mono" onclick="closeEditModal()">Cancel</button>
       <button id="btnSaveEdit" class="btn-success-mono" onclick="saveEdit()">Save</button>
     </div>

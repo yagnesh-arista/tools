@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.21 | 2026-04-23 12:55:35 -->
+<!-- TopoAssist v260423.22 | 2026-04-23 13:04:55 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5345,6 +5345,73 @@
   .bridge-disc-check   { cursor:pointer; accent-color:#7c3aed; flex-shrink:0; }
   .bridge-disc-cable   { color:var(--text-main); flex:1; }
   .bridge-disc-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+
+  /* ── Reconcile results ────────────────────────────────────────────────── */
+  .bridge-recon-dev {
+    margin-top: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bridge-recon-dev-hdr {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px;
+    background: var(--bg-secondary);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    color: var(--text-main);
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-recon-counts {
+    font-weight: 400; font-size: 10px; color: var(--text-muted);
+    margin-left: auto;
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-recon-ok-msg {
+    padding: 5px 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #15803d;
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-orphan-list { display: flex; flex-direction: column; }
+  .bridge-orphan-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center; gap: 6px;
+    padding: 4px 8px;
+    border-top: 1px solid var(--border-light);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    background: #fff7ed;
+  }
+  .bridge-orphan-row:hover { background: #fed7aa; }
+  .bridge-orphan-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .bridge-orphan-name {
+    font-weight: 600; color: var(--text-main); font-size: 11px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-orphan-desc {
+    font-size: 10px; color: var(--text-muted); font-style: italic;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-link-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+    user-select: none; -webkit-user-select: none;
+  }
+  .bridge-link-badge.badge-up   { background: #dcfce7; color: #15803d; }
+  .bridge-link-badge.badge-down { background: #fee2e2; color: #b91c1c; }
+  .bridge-link-badge.badge-unk  { background: var(--bg-secondary); color: var(--text-muted); }
+  .btn-unconfigure {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 6px; border-radius: 3px; border: 1px solid #f97316;
+    background: transparent; color: #f97316; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    user-select: none; -webkit-user-select: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  .btn-unconfigure:hover { background: #f97316; color: #fff; }
+  .btn-unconfigure:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ── Config Push results ──────────────────────────────────────────────── */
   .cfg-push-result-row {

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.21 | 2026-04-23 12:56:10 -->
+<!-- TopoAssist v260423.22 | 2026-04-23 13:07:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.21";  // keep in sync with Code.gs
+const APP_VERSION = "260423.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5995,9 +5995,17 @@ No peer connected.<br>Use 'Connect' to add a link.
 
   document.getElementById("modalContent").innerHTML = html;
 
-  // Show/Hide Delete Button
-  let btnDelete = document.getElementById("btnDelete");
-  if (btnDelete) btnDelete.style.display = "block";
+  // Show Delete or Delete+Unconfigure depending on bridge availability
+  const btnDelete = document.getElementById("btnDelete");
+  const btnDelUnconf = document.getElementById("btnDeleteUnconfigure");
+  const _bridgeOk = !document.getElementById('btnRunBridge').disabled;
+  if (_bridgeOk) {
+    if (btnDelete) btnDelete.style.display = "none";
+    if (btnDelUnconf) btnDelUnconf.style.display = "block";
+  } else {
+    if (btnDelete) btnDelete.style.display = "block";
+    if (btnDelUnconf) btnDelUnconf.style.display = "none";
+  }
 
   overlay.style.display = "block";
   modal.style.display = "flex";
@@ -6045,6 +6053,8 @@ function openConnectModal(domId, portObj) {
 
   let btnDelete = document.getElementById("btnDelete");
   if (btnDelete) btnDelete.style.display = "none";
+  const _bdu1 = document.getElementById("btnDeleteUnconfigure");
+  if (_bdu1) _bdu1.style.display = "none";
 
   overlay.style.display = "block";
   modal.style.display = "flex";
@@ -6092,6 +6102,8 @@ function openAddLinkModal() {
 
   let btnDelete = document.getElementById("btnDelete");
   if (btnDelete) btnDelete.style.display = "none";
+  const _bdu2 = document.getElementById("btnDeleteUnconfigure");
+  if (_bdu2) _bdu2.style.display = "none";
 
   overlay.style.display = "block";
   modal.style.display = "flex";
@@ -8938,7 +8950,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260422.20"
+VERSION = "260423.22"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9590,6 +9602,8 @@ function _checkBridgeHealth() {
         msg.textContent = 'Running on port ' + (data.port || 8765);
         cmd.style.display = 'none';
         btn.disabled = false;
+        const reconBtn = document.getElementById('btnRunReconcile');
+        if (reconBtn) reconBtn.disabled = false;
         if (data.timeout) _bridgeDeviceTimeout = data.timeout;
         // auth field present only when METHOD=ssh + key-based auth (no sshpass)
         const authFailed = data.auth && data.auth.ok === false;
@@ -9607,6 +9621,8 @@ function _checkBridgeHealth() {
       msg.textContent = 'Not running';
       cmd.style.display = 'block';
       btn.disabled = true;
+      const _rb = document.getElementById('btnRunReconcile');
+      if (_rb) _rb.disabled = true;
       _updateBridgeToolbarIcon('down');
     });
 }
@@ -10114,6 +10130,248 @@ function runBridgeCheck() {
       statusEl.style.display = 'block';
       statusEl.style.color = _msgColor;
       statusEl.textContent = _msg;
+    });
+}
+
+// ── Reconcile ─────────────────────────────────────────────────────────────────
+
+// Minimal HTML escape — prevents XSS when inserting device/interface names into innerHTML.
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Build {devName: [portNames]} from allNodesData — includes physical ports and PO names.
+// These are the ports TopoAssist owns; anything #TA-tagged on device but NOT here is orphaned.
+function _buildExpectedPortsPerDevice() {
+  const out = {};
+  Object.entries(allNodesData).forEach(([key, node]) => {
+    const colon = key.lastIndexOf(':');
+    const dev   = key.slice(0, colon);
+    const port  = key.slice(colon + 1);
+    if (!out[dev]) out[dev] = new Set();
+    out[dev].add(port);
+    // Also include the PO name if present — both get #TA descriptions
+    const po = (node.details && node.details.po_ || '').trim();
+    if (po) out[dev].add(po);
+  });
+  // Convert Sets to arrays
+  const result = {};
+  Object.entries(out).forEach(([dev, s]) => { result[dev] = Array.from(s); });
+  return result;
+}
+
+function runReconcile() {
+  if (!currentData || !currentData.nodes) return;
+  const btn      = document.getElementById('btnRunReconcile');
+  const statusEl = document.getElementById('bridgeRunStatus');
+  const resPanel = document.getElementById('bridgeReconcileResults');
+
+  const devices  = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
+  if (!devices.length) { setStatus('No Arista devices in topology', 'status-warn'); return; }
+
+  const mgmtIps    = _getLldpMgmtIps();
+  const portsPerDev = _buildExpectedPortsPerDevice();
+
+  // Build ipMap: {devName: {ip, ports}}
+  const ipMap = {};
+  devices.forEach(n => {
+    const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const inp = document.getElementById('bridgeIp_' + safeId);
+    const ip  = (inp ? inp.value.trim() : '') || mgmtIps[n.id] || '';
+    ipMap[n.id] = { ip, ports: portsPerDev[n.id] || [] };
+  });
+
+  btn.disabled = true;
+  btn.textContent = 'Reconciling…';
+  resPanel.style.display = 'none';
+  statusEl.style.display = 'block';
+  statusEl.style.color = '';
+  statusEl.textContent = 'Querying ' + devices.length + ' device' + (devices.length === 1 ? '' : 's') + ' for #TA interfaces…';
+
+  const _guard = setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Reconcile';
+    statusEl.textContent = 'Reconcile timed out — try again';
+    statusEl.style.color = '#dc2626';
+  }, 30000);
+
+  fetch(BRIDGE_URL + '/reconcile', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ipMap }),
+  })
+    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
+    .then(results => {
+      clearTimeout(_guard);
+      btn.disabled = false;
+      btn.textContent = 'Reconcile';
+      _renderReconcileResults(results, ipMap);
+      const totalOrphans = Object.values(results).reduce((s, r) => s + (r && r.ok ? r.orphans.length : 0), 0);
+      statusEl.style.color = totalOrphans ? '#d97706' : '#15803d';
+      statusEl.textContent = totalOrphans
+        ? 'Reconcile complete — ' + totalOrphans + ' orphan interface' + (totalOrphans === 1 ? '' : 's') + ' found'
+        : 'Reconcile complete — all #TA interfaces are in topology';
+    })
+    .catch(err => {
+      clearTimeout(_guard);
+      btn.disabled = false;
+      btn.textContent = 'Reconcile';
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = 'Reconcile error: ' + err.message;
+    });
+}
+
+function _renderReconcileResults(results, ipMap) {
+  const panel = document.getElementById('bridgeReconcileResults');
+  if (!panel) return;
+  let html = '<div class="bridge-section-hdr" style="margin-top:12px;">Reconcile Results</div>';
+
+  Object.entries(results).forEach(([dev, r]) => {
+    html += '<div class="bridge-recon-dev">';
+    if (!r || !r.ok) {
+      html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
+              '<span class="bridge-recon-counts" style="color:#dc2626;">' +
+              _esc(r ? r.error : 'no response') + '</span></div>';
+    } else {
+      const ip = (ipMap[dev] && ipMap[dev].ip) || '';
+      html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
+              '<span class="bridge-recon-counts">' + r.matched + '/' + r.ta_total + ' matched</span></div>';
+      if (!r.orphans.length) {
+        html += '<div class="bridge-recon-ok-msg">All #TA interfaces accounted for.</div>';
+      } else {
+        html += '<div class="bridge-orphan-list">';
+        r.orphans.forEach(o => {
+          const proto = (o.linkStatus || o.protocol || '').toLowerCase();
+          const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
+          const badgeTxt = proto || 'unk';
+          html += '<div class="bridge-orphan-row">' +
+                  '<div class="bridge-orphan-info">' +
+                  '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+                  '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
+                  '</div>' +
+                  '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(badgeTxt) + '</span>' +
+                  '<button class="btn-unconfigure" ' +
+                  'onclick="unconfigureOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
+                  'Unconfigure</button>' +
+                  '</div>';
+        });
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+  });
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+}
+
+// Remove the #TA description from a single orphan interface by pushing a configure session.
+function unconfigureOrphan(dev, ip, portName, btn) {
+  if (!ip) { alert('No IP configured for ' + dev + ' — enter it in the Devices section.'); return; }
+  if (!confirm('Remove #TA description from ' + portName + ' on ' + dev + '?\n\nThis clears the "no description" — the interface remains configured otherwise.')) return;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+
+  const config = 'interface ' + portName + '\n no description\n';
+  fetch(BRIDGE_URL + '/pushconfig', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ipMap: { [dev]: { ip, config } } }),
+  })
+    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
+    .then(results => {
+      const res = results[dev];
+      if (res && res.ok) {
+        btn.closest('.bridge-orphan-row').style.opacity = '0.4';
+        btn.textContent = 'Done';
+      } else {
+        btn.disabled = false;
+        btn.textContent = origText;
+        alert('Error unconfiguring ' + portName + ': ' + (res ? res.error : 'no response'));
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = origText;
+      alert('Network error: ' + err.message);
+    });
+}
+
+// Delete the sheet row AND unconfigure the interface on device via bridge.
+function deleteAndUnconfigure() {
+  if (!editingPortId) return;
+  const parts = editingPortId.split(':');
+  const deviceName = parts[0];
+  const portName   = parts[1] || '';
+
+  // Gather the mgmt IP for the device
+  const mgmtIps = _getLldpMgmtIps();
+  const safeId  = deviceName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const inp     = document.getElementById('bridgeIp_' + safeId);
+  const ip      = (inp ? inp.value.trim() : '') || mgmtIps[deviceName] || '';
+
+  if (!ip) {
+    if (!confirm('No IP found for ' + deviceName + '.\nDelete from sheet only (cannot unconfigure)?')) return;
+    deletePort();
+    return;
+  }
+
+  if (!confirm('Delete ' + portName + ' from sheet AND remove its #TA description on ' + deviceName + '?')) return;
+
+  const btn = document.getElementById('btnDeleteUnconfigure');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+
+  // Also include the peer port if present in allNodesData
+  const node = allNodesData[editingPortId];
+  const peerKey = node && node.peer;
+  let config = 'interface ' + portName + '\n no description\n';
+  if (peerKey) {
+    const peerParts = peerKey.split(':');
+    const peerPort  = peerParts[1] || '';
+    // Only unconfigure peer port if on same device
+    if (peerParts[0] === deviceName && peerPort) {
+      config += 'interface ' + peerPort + '\n no description\n';
+    }
+  }
+
+  fetch(BRIDGE_URL + '/pushconfig', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } } }),
+  })
+    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
+    .then(results => {
+      const res = results[deviceName];
+      btn.disabled = false;
+      btn.textContent = 'Delete & Unconfigure';
+      if (res && res.ok) {
+        // Unconfigure succeeded — now delete from sheet
+        closeEditModal();
+        setStatus(deviceName + ':' + portName + ' unconfigured + deleted — topology refresh…', 'status-info');
+        google.script.run
+          .withSuccessHandler(() => fetchData(true))
+          .withFailureHandler(err => alert('Delete error: ' + err.message))
+          .deleteInterface(deviceName, portName);
+      } else {
+        const errMsg = res ? res.error : 'no response';
+        if (confirm('Unconfigure failed: ' + errMsg + '\n\nDelete from sheet anyway?')) {
+          closeEditModal();
+          google.script.run
+            .withSuccessHandler(() => fetchData(true))
+            .withFailureHandler(err => alert('Delete error: ' + err.message))
+            .deleteInterface(deviceName, portName);
+        }
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = 'Delete & Unconfigure';
+      alert('Network error: ' + err.message);
     });
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260423.21 | 2026-04-23 12:56:42
+# topoassist v260423.22 | 2026-04-23 13:01:07
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260422.20","port":8765}
+  GET  /health      → {"status":"ok","version":"260423.22","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -119,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.20"
+VERSION           = "260423.22"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -431,6 +431,34 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
+        elif self.path == "/reconcile":
+            # ipMap values are {ip, ports:[...]} dicts
+            results = {dev: None for dev in ip_map}
+            lock    = threading.Lock()
+            sem     = threading.Semaphore(MAX_WORKERS)
+            def run_reconcile(dev, entry):
+                ip             = (entry.get("ip") or "").strip()
+                expected_ports = entry.get("ports", [])
+                if not ip:
+                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                    return
+                with sem:
+                    try:
+                        res = self._reconcile_device(ip, expected_ports)
+                        with lock: results[dev] = res
+                    except subprocess.TimeoutExpired:
+                        with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                    except Exception as e:
+                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+            threads = [threading.Thread(target=run_reconcile, args=(d, v), daemon=True)
+                       for d, v in ip_map.items()]
+            for t in threads: t.start()
+            for t in threads: t.join(timeout=TIMEOUT + 5)
+            with lock:
+                for dev in results:
+                    if results[dev] is None:
+                        results[dev] = {"ok": False, "error": "Reconcile timed out"}
+            self._json(200, results)
         else:
             # /pushconfig — ipMap values are {ip, config} dicts, not plain IPs
             # Pre-initialize every device to None so the key always exists in the
@@ -493,34 +521,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "ok": False,
                             "error": "Push timed out — verify config was applied manually",
                         }
-            self._json(200, results)
-        elif self.path == "/reconcile":
-            # ipMap values are {ip, ports:[...]} dicts
-            results = {dev: None for dev in ip_map}
-            lock    = threading.Lock()
-            sem     = threading.Semaphore(MAX_WORKERS)
-            def run_reconcile(dev, entry):
-                ip             = (entry.get("ip") or "").strip()
-                expected_ports = entry.get("ports", [])
-                if not ip:
-                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
-                    return
-                with sem:
-                    try:
-                        res = self._reconcile_device(ip, expected_ports)
-                        with lock: results[dev] = res
-                    except subprocess.TimeoutExpired:
-                        with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
-                    except Exception as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-            threads = [threading.Thread(target=run_reconcile, args=(d, v), daemon=True)
-                       for d, v in ip_map.items()]
-            for t in threads: t.start()
-            for t in threads: t.join(timeout=TIMEOUT + 5)
-            with lock:
-                for dev in results:
-                    if results[dev] is None:
-                        results[dev] = {"ok": False, "error": "Reconcile timed out"}
             self._json(200, results)
 
     # ── Transport: SSH ────────────────────────────────────────────────────────
@@ -847,6 +847,53 @@ class BridgeHandler(BaseHTTPRequestHandler):
             }
 
         raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+
+    # ── Reconcile ─────────────────────────────────────────────────────────────
+    def _reconcile_device(self, ip, expected_ports):
+        """SSH to device, find #TA-tagged interfaces not in expected_ports.
+
+        Returns:
+          { ok, ta_total, matched, orphans: [{name, description, linkStatus, protocol}] }
+
+        Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094
+        (these are device-level, not per-link, and are never #TA-tagged by generateConfig).
+        """
+        _SKIP_RE = re.compile(
+            r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$',
+            re.IGNORECASE,
+        )
+
+        (raw,), _ = self._run_cmds(ip, "show interfaces description")
+        lines = raw.get("interfaceDescriptions", {})
+        # EOS returns a dict keyed by interface name
+        ta_ifaces = []
+        for name, info in lines.items():
+            if _SKIP_RE.match(name):
+                continue
+            desc = info.get("description", "")
+            if "#TA" not in desc:
+                continue
+            ta_ifaces.append({
+                "name":        name,
+                "description": desc,
+                "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
+                "protocol":    info.get("lineProtocolStatus", ""),
+            })
+
+        # Normalise expected ports to lowercase for comparison
+        expected_set = {p.lower() for p in expected_ports}
+
+        orphans = [
+            iface for iface in ta_ifaces
+            if iface["name"].lower() not in expected_set
+        ]
+
+        return {
+            "ok":       True,
+            "ta_total": len(ta_ifaces),
+            "matched":  len(ta_ifaces) - len(orphans),
+            "orphans":  orphans,
+        }
 
     # ── Parallel runner ───────────────────────────────────────────────────────
     def _run_parallel(self, ip_map, check_fn):
