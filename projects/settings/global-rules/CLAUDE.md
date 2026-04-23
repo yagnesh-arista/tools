@@ -221,6 +221,7 @@ panel.style.overflow = 'hidden';
 // restore: clear both inline styles
 ```
 `.modal-std` modals use the CSS-only `.modal-minimized > *:not(.modal-header) { display:none }` approach (sufficient for non-floating).
+**Overlay rule**: `toggleModalMinimize()` must hide `editOverlay` on minimize and restore it on un-minimize using `data-had-overlay` to remember whether the overlay was visible before. Never write a modal-specific minimize that bypasses this. Modals opened with overlay (configModal, generateAllModal, editModal, pushConfirmModal) would otherwise leave the dim backdrop blocking all background interaction.
 Full pattern: `~/.claude/rules/ui.md` (Rule 24)
 
 ## 23. Memory Tiering — Never Duplicate Tier 1 in Memory
