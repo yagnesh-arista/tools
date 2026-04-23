@@ -1,4 +1,4 @@
-// TopoAssist v260423.5 | 2026-04-23 11:45:29
+// TopoAssist v260423.5 | 2026-04-23 11:46:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
@@ -2384,7 +2384,7 @@ function getTopologyData(forceSync, isColorEnabled) {
             // Vx1 is a logical VTEP port — not a physical cable, never part of cabling topology.
             // Skipping here prevents it from entering processRowLinks, forming links, landing in
             // allNodesData, or triggering audit checks (IP type blank, missing SVI IP, etc.).
-            if (pName === "Vx1") continue;
+            if (pName === "Vx1") return; // forEach — return skips this device entry
 
             const uniqueId = device.name + ":" + pName;
             portFrequency[uniqueId] = (portFrequency[uniqueId] || 0) + 1;
@@ -5905,7 +5905,7 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
   if (gwVlans && gwVlans.size > 0) {
     const sortedVlans = Array.from(gwVlans).sort((a, b) => a - b);
     sortedVlans.forEach(v => {
-      if (v > 1 && v < 4094) {
+      if (v >= 1 && v <= 4094) {
         lines.push(` vxlan vlan ${v} vni ${resolvedVniBase + parseInt(v)}`);
       }
     });
