@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.24 | 2026-04-23 13:53:26 -->
+<!-- TopoAssist v260423.25 | 2026-04-23 14:02:09 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -349,6 +349,11 @@
     <div class="ip-section-list" id="sviFilterList"></div>
   </div>
 
+  <div class="ip-section" id="ipTypeActiveFilterSection">
+    <div class="ip-section-header">L2/L3 ip</div>
+    <div class="ip-section-list" id="ipTypeActiveFilterList"></div>
+  </div>
+
   <div class="panel-body" id="panelBody">
     <!-- LEFT: Device Visibility -->
     <div class="col-left">
@@ -422,7 +427,7 @@
         })
         .getSchemaConfig();
 
-      // ip_type / int_mode / svi filters: restore saved state
+      // ip_type / int_mode / svi / L2-L3 ip filters: restore saved state
       google.script.run
         .withSuccessHandler(function(f) { initIpFilter(f); })
         .getSheetViewIpFilter();
@@ -432,6 +437,9 @@
       google.script.run
         .withSuccessHandler(function(f) { initSviFilter(f); })
         .getSheetViewSviFilter();
+      google.script.run
+        .withSuccessHandler(function(f) { initIpTypeActiveFilter(f); })
+        .getSheetViewIpTypeActiveFilter();
     }
 
     /* ── DEVICE LIST ───────────────────────────────────── */
@@ -789,6 +797,7 @@
       document.getElementById('ipFilterSection').style.display = hide;
       document.getElementById('intModeFilterSection').style.display = hide;
       document.getElementById('sviFilterSection').style.display = hide;
+      document.getElementById('ipTypeActiveFilterSection').style.display = hide;
       document.getElementById('panelBody').style.display = hide;
       document.getElementById('statusBar').style.display = hide;
       document.getElementById('btnMin').textContent = isMinimized ? '+' : '−';
@@ -940,6 +949,52 @@
         .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
         .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
         .applySheetSviFilter(activeSviFilters);
+    }
+
+    /* ── L2/L3 IP TYPE ACTIVE FILTER ──────────────────── */
+    var activeIpTypeActiveFilters = [];
+    var IP_TYPE_ACTIVE_FILTER_ITEMS = [
+      { val: 'active', label: 'active' },
+      { val: 'blank',  label: '\u2014' },
+      { val: null,     label: '' },
+      { val: null,     label: '' }
+    ];
+
+    function initIpTypeActiveFilter(savedFilters) {
+      activeIpTypeActiveFilters = Array.isArray(savedFilters) ? savedFilters : ['active','blank'];
+      renderIpTypeActiveFilterList();
+    }
+
+    function renderIpTypeActiveFilterList() {
+      var list = document.getElementById('ipTypeActiveFilterList');
+      if (!list) return;
+      list.innerHTML = IP_TYPE_ACTIVE_FILTER_ITEMS.map(function(item) {
+        if (!item.val) return '<div class="device-item ip-item-dummy"></div>';
+        var isHidden = activeIpTypeActiveFilters.indexOf(item.val) === -1;
+        return '<div class="device-item ip-filter-item' + (isHidden ? ' is-hidden' : '') + '"' +
+               ' onclick="toggleIpTypeActiveFilter(\'' + item.val + '\')"' +
+               ' title="' + (isHidden ? 'Show' : 'Hide') + '">' +
+               '<svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+               ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+               (isHidden ? EYE_CLOSED : EYE_OPEN) +
+               '</svg>' +
+               '<span class="item-name">' + item.label + '</span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function toggleIpTypeActiveFilter(val) {
+      if (serverBusy) return;
+      var idx = activeIpTypeActiveFilters.indexOf(val);
+      if (idx !== -1) activeIpTypeActiveFilters.splice(idx, 1);
+      else activeIpTypeActiveFilters.push(val);
+      renderIpTypeActiveFilterList();
+      setStatus('Applying filter\u2026');
+      setServerBusy(true);
+      google.script.run
+        .withSuccessHandler(function() { setServerBusy(false); setStatus(''); })
+        .withFailureHandler(function(err) { setServerBusy(false); setStatus('Error: ' + (err.message || 'failed')); })
+        .applySheetIpTypeActiveFilter(activeIpTypeActiveFilters);
     }
 
     load();

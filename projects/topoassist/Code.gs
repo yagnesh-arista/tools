@@ -1,10 +1,10 @@
-// TopoAssist v260423.24 | 2026-04-23 13:53:26
+// TopoAssist v260423.25 | 2026-04-23 14:03:45
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.24";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.25";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -161,10 +161,11 @@ function include(filename) {
 
 function viewShowAll() {
   saveSheetViewHidden([]);
-  // Reset all three row-level filters to "show all" defaults so no rows stay hidden
+  // Reset all row-level filters to "show all" defaults so no rows stay hidden
   saveSheetViewIpFilter(['p2p', 'gw', 'blank']);
   saveSheetViewIntModeFilter([]);
   saveSheetViewSviFilter(['active', 'blank']);
+  saveSheetViewIpTypeActiveFilter(['active', 'blank']);
   applyCustomView(getSchemaConfig().map(function(s) { return s.key; }));
   refreshSheetRowVisibility();
 }
@@ -353,16 +354,19 @@ function refreshSheetRowVisibility() {
   const hiddenDevs = new Set(getSheetViewHidden());
   const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0]; // re-read after insert
 
-  // Build device → column index maps for int_, ip_type_, sp_mode_, svi_vlan_ (visible devices only)
+  // Build device → column index maps for int_, ip_type_, sp_mode_, svi_vlan_, po_, vlan_ (visible devices only)
   // Single pass over headers.
-  const ipFilter      = getSheetViewIpFilter();      // [] = all shown
-  const intModeFilter = getSheetViewIntModeFilter();  // [] = all shown
-  const sviFilter     = getSheetViewSviFilter();      // [] = all shown
-  const devIntCol     = {}; // lowercased device name → int_ col index
-  const devIpTypeCol  = {}; // lowercased device name → ip_type_ col index
-  const devSpModeCol  = {}; // lowercased device name → sp_mode_ col index
-  const devSviCol     = {}; // lowercased device name → svi_vlan_ col index
-  const visIntCols    = [];
+  const ipFilter            = getSheetViewIpFilter();            // [] = all shown
+  const intModeFilter       = getSheetViewIntModeFilter();       // [] = all shown
+  const sviFilter           = getSheetViewSviFilter();           // [] = all shown
+  const ipTypeActiveFilter  = getSheetViewIpTypeActiveFilter();  // [] = all shown
+  const devIntCol    = {}; // lowercased device name → int_ col index
+  const devIpTypeCol = {}; // lowercased device name → ip_type_ col index
+  const devSpModeCol = {}; // lowercased device name → sp_mode_ col index
+  const devSviCol    = {}; // lowercased device name → svi_vlan_ col index
+  const devPoCol     = {}; // lowercased device name → po_ col index
+  const devVlanCol   = {}; // lowercased device name → vlan_ col index
+  const visIntCols   = [];
   headers.forEach(function(h, i) {
     if (i + 1 === visColIdx) return; // skip _sys_
     const s = String(h);
@@ -378,6 +382,12 @@ function refreshSheetRowVisibility() {
     } else if (s.startsWith('svi_vlan_')) {
       const dev = s.slice(9);
       if (!hasKey(hiddenDevs, dev)) devSviCol[dev.toLowerCase()] = i;
+    } else if (s.startsWith('po_')) {
+      const dev = s.slice(3);
+      if (!hasKey(hiddenDevs, dev)) devPoCol[dev.toLowerCase()] = i;
+    } else if (s.startsWith('vlan_')) {
+      const dev = s.slice(5);
+      if (!hasKey(hiddenDevs, dev)) devVlanCol[dev.toLowerCase()] = i;
     }
   });
 
@@ -425,6 +435,24 @@ function refreshSheetRowVisibility() {
         if (sviCol === undefined) return sviFilter.includes('blank');
         const sviVal = String(row[sviCol] || '').toLowerCase().trim();
         return sviFilter.includes(sviVal ? 'active' : 'blank');
+      });
+    }
+    // AND: L2/L3 ip_type_active filter — broader activity check (int + po + sp_mode + vlan + svi_vlan)
+    // then checks ip_type_: non-blank = 'active', blank = 'blank'.
+    if (active && ipTypeActiveFilter.length > 0) {
+      active = Object.keys(devIntCol).some(function(dev) {
+        const isL2L3Active = (
+          String(row[devIntCol[dev]] || '').trim() ||
+          (devPoCol[dev]     !== undefined && String(row[devPoCol[dev]]     || '').trim()) ||
+          (devSpModeCol[dev] !== undefined && String(row[devSpModeCol[dev]] || '').trim()) ||
+          (devVlanCol[dev]   !== undefined && String(row[devVlanCol[dev]]   || '').trim()) ||
+          (devSviCol[dev]    !== undefined && String(row[devSviCol[dev]]    || '').trim())
+        );
+        if (!isL2L3Active) return false;
+        const ipTypeCol = devIpTypeCol[dev];
+        if (ipTypeCol === undefined) return ipTypeActiveFilter.includes('blank');
+        const ipRaw = String(row[ipTypeCol] || '').trim();
+        return ipTypeActiveFilter.includes(ipRaw ? 'active' : 'blank');
       });
     }
     (active ? toShow : toHide).push(ri + 3);
@@ -2960,6 +2988,24 @@ function saveSheetViewSviFilter(filters) {
 }
 function applySheetSviFilter(filters) {
   saveSheetViewSviFilter(filters);
+  refreshSheetRowVisibility();
+}
+
+// ── Sheet View L2/L3 ip_type_active filter ──
+// Values: 'active' (ip_type_ non-blank for L2/L3-active device), 'blank' (ip_type_ empty). Default both shown.
+function getSheetViewIpTypeActiveFilter() {
+  const v = PropertiesService.getUserProperties().getProperty('SHEET_VIEW_IP_TYPE_ACTIVE_FILTER');
+  if (!v) return ['active', 'blank'];
+  try {
+    const f = JSON.parse(v);
+    return Array.isArray(f) ? f : ['active', 'blank'];
+  } catch (e) { return ['active', 'blank']; }
+}
+function saveSheetViewIpTypeActiveFilter(filters) {
+  PropertiesService.getUserProperties().setProperty('SHEET_VIEW_IP_TYPE_ACTIVE_FILTER', JSON.stringify(filters));
+}
+function applySheetIpTypeActiveFilter(filters) {
+  saveSheetViewIpTypeActiveFilter(filters);
   refreshSheetRowVisibility();
 }
 
