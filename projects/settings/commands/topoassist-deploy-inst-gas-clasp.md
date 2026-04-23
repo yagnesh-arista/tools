@@ -1,6 +1,11 @@
 Re-authenticate clasp for TopoAssist GAS deployment. Run on bus-home:
 
-1. Log in to Google via clasp (use `--no-localhost` — it works and is required for SSH/headless sessions):
+clasp is installed under nvm. If `clasp` is not found, load it first:
+```bash
+export PATH="$HOME/.nvm/versions/node/v24.14.1/bin:$PATH"
+```
+
+1. Log in to Google via clasp (use `--no-localhost` — required for SSH/headless sessions):
    ```bash
    cd ~/claude/projects/topoassist && clasp login --no-localhost
    ```
