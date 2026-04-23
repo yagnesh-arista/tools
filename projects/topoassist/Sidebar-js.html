@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.28 | 2026-04-23 14:32:06 -->
+<!-- TopoAssist v260423.29 | 2026-04-23 14:39:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.28";  // keep in sync with Code.gs
+const APP_VERSION = "260423.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10379,6 +10379,7 @@ function deleteAndUnconfigure() {
         const errMsg = res ? res.error : 'no response';
         if (confirm('Unconfigure failed: ' + errMsg + '\n\nDelete from sheet anyway?')) {
           closeEditModal();
+          setStatus(deviceName + ':' + portName + ' deleted — topology refresh\u2026', 'status-info');
           google.script.run
             .withSuccessHandler(() => fetchData(true))
             .withFailureHandler(err => alert('Delete error: ' + err.message))
@@ -11421,13 +11422,13 @@ function _onAddDiscoveredDone(btn, added, errors) {
   btn.disabled = false;
   btn.textContent = 'Add Selected';
   if (errors.length) {
-    const msg = `${added} link${added !== 1 ? 's' : ''} added · ${errors.length} failed`;
+    const msg = `${added} link${added !== 1 ? 's' : ''} added \u00b7 ${errors.length} failed \u2014 topology refresh\u2026`;
     setStatus(msg, 'status-error');
     alert('Could not add:\n' + errors.join('\n'));
     if (added > 0) fetchData(true);
   } else {
-    setStatus(`${added} link${added !== 1 ? 's' : ''} added to sheet`, 'status-ok');
-    fetchData(true);  // refresh topology so newly added links appear
+    setStatus(`${added} link${added !== 1 ? 's' : ''} added \u2014 topology refresh\u2026`, 'status-ok');
+    fetchData(true);
   }
 }
 
