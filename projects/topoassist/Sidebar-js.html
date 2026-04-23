@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.10 | 2026-04-23 11:54:17 -->
+<!-- TopoAssist v260423.11 | 2026-04-23 12:00:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.10";  // keep in sync with Code.gs
+const APP_VERSION = "260423.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -528,6 +528,7 @@ function startSmartPolling() {
         if (serverVersion && serverVersion !== localDataVersion) {
           dbg("Change detected (v" + serverVersion + ")! Refreshing...");
           localDataVersion = serverVersion;
+          setStatus("Sheet changed — refreshing topology\u2026", "status-info");
           fetchData(false);
         }
       })
@@ -2204,12 +2205,17 @@ function applyAuditOnlyView() {
     return;
   }
   const devsWithErrors = new Set();
-  Object.entries(validationErrors).forEach(([linkId, errors]) => {
+  Object.entries(validationErrors).forEach(([id, errors]) => {
     if (!errors || !errors.length) return;
-    const link = linkMap[linkId];
-    if (!link) return;
-    devsWithErrors.add(link.u.split(':')[0]);
-    devsWithErrors.add(link.v.split(':')[0]);
+    const link = linkMap[id];
+    if (link) {
+      // Link-keyed error: flag both endpoints' devices
+      devsWithErrors.add(link.u.split(':')[0]);
+      devsWithErrors.add(link.v.split(':')[0]);
+    } else if (id.includes(':')) {
+      // Port-keyed error (e.g. duplicate interface on unconnected port)
+      devsWithErrors.add(id.split(':')[0]);
+    }
   });
   document.querySelectorAll('.node[data-id]').forEach(el => {
     if (devsWithErrors.has(el.dataset.id)) {
@@ -2393,15 +2399,35 @@ function runValidation(logIssues) {
     }
 
     // F. GATEWAY COLLECTION (data for global duplicate GW check below)
+    // For vlan interfaces: VLAN ID is the port name itself (e.g. vlan4000 → 4000).
+    // For other ports: only VLANs with actual SVIs count as gateways — filtered by svi_vlan_.
+    // Using vlan_ alone would flag every allowed trunk VLAN, not just the ones with gateways.
     if (ipType.includes("gw") || ipType.includes("gateway")) {
       const vlans = new Set();
-      const _pvGw = parseVlanWithNative(d.vlan_);
-      if (_pvGw.vlans) extractVlans(_pvGw.vlans).forEach(v => vlans.add(v));
-      if (_pvGw.native) vlans.add(_pvGw.native);
-
       if (portName.startsWith("vlan")) {
         const vid = portName.replace("vlan", "");
         if (vid) vlans.add(vid);
+      } else {
+        const _pvGw = parseVlanWithNative(d.vlan_);
+        const allVlans = [];
+        if (_pvGw.vlans) extractVlans(_pvGw.vlans).forEach(v => allVlans.push(v));
+        if (_pvGw.native) allVlans.push(_pvGw.native);
+
+        const sviVal = (d.svi_vlan_ || "").trim().toLowerCase();
+        if (sviVal === 'all') {
+          allVlans.forEach(v => vlans.add(v));
+        } else if (sviVal) {
+          // Parse svi_vlan_ tokens: plain numeric IDs and nv<N> (native VLAN shorthand)
+          const sviSet = new Set(
+            sviVal.split(',').map(s => {
+              s = s.trim();
+              const nv = s.match(/^nv(\d+)$/i);
+              return nv ? nv[1] : s;
+            }).filter(s => s && !isNaN(s))
+          );
+          allVlans.forEach(v => { if (sviSet.has(String(v))) vlans.add(v); });
+        }
+        // sviVal === '' → no SVIs on this port → no gateway VLANs to record
       }
 
       vlans.forEach(v => {
@@ -2512,11 +2538,21 @@ function runValidation(logIssues) {
   // =========================================================
   // CHECK GROUP 5: DUPLICATE INTERFACE CHECKS
   // =========================================================
+  // flagErrorOnPort is link-keyed: if the port has no cable connections, the error
+  // is silently dropped. For duplicate interfaces, also store a port-level error
+  // (keyed by portId) so disconnected duplicates are caught by the audit filter
+  // and device click handler.
   if (typeof globalPortFrequency !== 'undefined') {
     for (const [fullId, count] of Object.entries(globalPortFrequency)) {
       if (count > 1) {
         const err = `Duplicate Interface: '${fullId.split(":")[1]}' defined ${count} times.`;
-        flagErrorOnPort(fullId, err);
+        flagErrorOnPort(fullId, err);  // covers connected ports via link errors
+        // Port-level fallback: ensures disconnected duplicate ports are also flagged
+        if (!validationErrors[fullId]) validationErrors[fullId] = [];
+        if (!validationErrors[fullId].includes(err)) {
+          validationErrors[fullId].push(err);
+          portErrorCount++;
+        }
       }
     }
   }
@@ -5450,7 +5486,7 @@ function selectDevice(deviceId) {
     // Get all ports belonging to this device
     const ports = devicePortsMap[deviceId] || [];
 
-    // Aggregate errors from all connected links
+    // Aggregate errors from all connected links and port-level errors
     ports.forEach(portId => {
       const links = portMap[portId] || [];
       links.forEach(lid => {
@@ -5458,6 +5494,10 @@ function selectDevice(deviceId) {
           validationErrors[lid].forEach(e => devErrors.add(e));
         }
       });
+      // Port-level errors (e.g. duplicate interface on unconnected port)
+      if (typeof validationErrors !== 'undefined' && validationErrors[portId]) {
+        validationErrors[portId].forEach(e => devErrors.add(e));
+      }
     });
 
     if (devErrors.size > 0) {
@@ -10473,6 +10513,17 @@ function toggleModalMinimize(modalId) {
   if (!modal) return;
   const btn = modal.querySelector('.btn-modal-minimize');
   const isMin = modal.classList.toggle('modal-minimized');
+  // Overlay management: hide dim backdrop on minimize, restore if it was showing
+  const ov = document.getElementById('editOverlay');
+  if (ov) {
+    if (isMin) {
+      modal.dataset.hadOverlay = (ov.style.display === 'block') ? '1' : '0';
+      ov.style.display = 'none';
+    } else {
+      if (modal.dataset.hadOverlay === '1') ov.style.display = 'block';
+      delete modal.dataset.hadOverlay;
+    }
+  }
   if (btn) {
     btn.innerHTML = isMin
       ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'

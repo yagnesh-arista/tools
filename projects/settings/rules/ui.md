@@ -244,8 +244,32 @@ if (isMin) {
 }
 ```
 
+### Overlay (dim backdrop) management on minimize
+
+**Rule: minimizing any modal must hide the dim backdrop (`editOverlay`); restoring must bring it back.**
+
+Modals opened with `editOverlay` visible (configModal, generateAllModal, editModal, pushConfirmModal) keep the backdrop up even after minimize — blocking all background interaction. `toggleModalMinimize()` must manage the overlay:
+
+```javascript
+const ov = document.getElementById('editOverlay');
+if (ov) {
+  if (isMin) {
+    modal.dataset.hadOverlay = (ov.style.display === 'block') ? '1' : '0';
+    ov.style.display = 'none';
+  } else {
+    if (modal.dataset.hadOverlay === '1') ov.style.display = 'block';
+    delete modal.dataset.hadOverlay;
+  }
+}
+```
+
+- Store whether overlay was visible **before** hiding it (`data-had-overlay`)
+- On restore, only show overlay if it was showing before minimize — never show overlay for modals that opened without one
+- This is already wired into the shared `toggleModalMinimize()` — never bypass it with a modal-specific minimize function
+
 ### Checklist for every new modal
 - [ ] Body div has `overflow-y: auto; flex: 1; min-height: 0`
 - [ ] Header has `flex-shrink: 0` (or is `flex-shrink: 0` by default as a non-growing flex child)
 - [ ] Floating panels: minimize uses JS height-pinning, not CSS-only
 - [ ] `.modal-std` modals: minimize uses `.modal-minimized > *:not(.modal-header) { display:none }` (CSS is sufficient for non-floating)
+- [ ] `toggleModalMinimize()` handles overlay — do NOT write a modal-specific minimize that skips it
