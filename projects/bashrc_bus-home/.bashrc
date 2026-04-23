@@ -1,4 +1,4 @@
-# bashrc_bus-home v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
+# bashrc_bus-home v260423.1 | 2026-04-23 11:31:43
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -88,6 +88,17 @@ PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$(__git_ps1 " (%s)")\$ '
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# Ensure nvm-managed node/npm/clasp are always on PATH even if nvm init fires late or skips.
+# Reads the default alias version so this stays correct across nvm upgrades.
+_nvm_default="$NVM_DIR/alias/default"
+if [ -f "$_nvm_default" ]; then
+  _nvm_ver=$(cat "$_nvm_default")
+  # Resolve lts/* → actual version if needed
+  [ -f "$NVM_DIR/alias/lts/$_nvm_ver" ] && _nvm_ver=$(cat "$NVM_DIR/alias/lts/$_nvm_ver")
+  [ -d "$NVM_DIR/versions/node/$_nvm_ver/bin" ] && \
+    export PATH="$NVM_DIR/versions/node/$_nvm_ver/bin:$PATH"
+fi
+unset _nvm_default _nvm_ver
 
 # 12. Atuin (history tracking + inline ghost-text via ble.sh)
 # --disable-up-arrow: ble-bind handles up arrow below

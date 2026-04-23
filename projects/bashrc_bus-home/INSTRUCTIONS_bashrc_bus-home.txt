@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-18 (Review fixes: PROMPT_COMMAND stack guard; fzf.bash comment re ble.sh override)
+Last updated: 2026-04-23 (Section 11 NVM: added direct PATH entry for nvm default node bin dir — reads $NVM_DIR/alias/default, resolves lts/* alias, prepends that version's bin/ to PATH. Ensures clasp/node/npm work even when nvm init fires late or shell is non-interactive. Variables cleaned up with unset.)
+Previous: 2026-04-18 (Review fixes: PROMPT_COMMAND stack guard; fzf.bash comment re ble.sh override)
 Previous: 2026-04-17 (Added eod alias for daily git commit+push)
 Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check-order.md (/check-order command))
 
