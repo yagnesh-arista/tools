@@ -208,6 +208,21 @@ height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box;
 - Full-form modal inputs (with labels above) are exempt — use standard `padding: 5px 8px`
 - Full pattern: `~/.claude/rules/ui.md` (Rule 22)
 
+## 24. Modal Scroll + Floating Panel Minimize Baseline
+
+Every `.modal-std` modal body must support scrolling when content can exceed 85vh. The body div must have all three:
+```css
+overflow-y: auto; flex: 1; min-height: 0;
+```
+GAS iframes do not reliably collapse flex height via child `display:none` — floating panel minimize (DevView, `.modal-floating`) must use JS height-pinning:
+```javascript
+panel.style.height = header.offsetHeight + 'px';  // minimize
+panel.style.overflow = 'hidden';
+// restore: clear both inline styles
+```
+`.modal-std` modals use the CSS-only `.modal-minimized > *:not(.modal-header) { display:none }` approach (sufficient for non-floating).
+Full pattern: `~/.claude/rules/ui.md` (Rule 24)
+
 ## 23. Memory Tiering — Never Duplicate Tier 1 in Memory
 
 The knowledge system has three tiers:

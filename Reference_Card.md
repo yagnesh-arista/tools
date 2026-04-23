@@ -1,12 +1,12 @@
 # Claude Code Reference Card
-Last updated: 2026-04-22 (Rule 23 added)
+Last updated: 2026-04-23 (Rule 24 added — modal scroll + floating panel minimize baseline)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
 
 ---
 
-## 23 Global Rules
+## 24 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
