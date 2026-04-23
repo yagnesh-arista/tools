@@ -215,3 +215,37 @@ const closeFuncs = {
 ```
 
 Omitting either entry means Esc falls through to the global canvas reset instead of closing the modal.
+
+## Modal Scroll + Minimize Baseline (Rule 24)
+
+Every modal must satisfy two baseline requirements before shipping:
+
+### Scroll
+Every `.modal-std` modal body must scroll when content exceeds available height. The modal itself has `max-height: 85vh; overflow: hidden; flex-direction: column` — the body div must have:
+```css
+overflow-y: auto;
+flex: 1;
+min-height: 0;
+```
+Apply this via inline style or a `.modal-body` class. **Never leave a modal body without these three properties** — missing any one causes the content to clip silently instead of scrolling.
+
+**GAS iframes note**: `max-height` on a child div is unreliable in GAS dialogs — use `flex: 1; min-height: 0` on the body and let the parent `.modal-std` `max-height: 85vh` constrain it.
+
+### Minimize (floating panels only)
+Floating panels (`.modal-floating`, DevView) must minimize to header-only height. CSS `display: none` on children does NOT collapse flex panel height in GAS iframes — you must pin height in JS:
+
+```javascript
+if (isMin) {
+  panel.style.height = header.offsetHeight + 'px';
+  panel.style.overflow = 'hidden';
+} else {
+  panel.style.height = '';
+  panel.style.overflow = '';
+}
+```
+
+### Checklist for every new modal
+- [ ] Body div has `overflow-y: auto; flex: 1; min-height: 0`
+- [ ] Header has `flex-shrink: 0` (or is `flex-shrink: 0` by default as a non-growing flex child)
+- [ ] Floating panels: minimize uses JS height-pinning, not CSS-only
+- [ ] `.modal-std` modals: minimize uses `.modal-minimized > *:not(.modal-header) { display:none }` (CSS is sufficient for non-floating)
