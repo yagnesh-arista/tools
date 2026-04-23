@@ -382,6 +382,35 @@ box-sizing: border-box;
 
 ---
 
+## Check 20 — Modal Scroll + Floating Panel Minimize Baseline (Rule 24)
+
+Every `.modal-std` modal body must scroll when content overflows, and every floating panel minimize must use JS height-pinning.
+
+```bash
+# Find modal-std modals — check each body div for overflow-y/flex/min-height
+grep -n "class=\"modal-std\|id=\".*[Mm]odal" \
+  ~/claude/projects/topoassist/Sidebar.html | head -30
+
+# Check tech modal body specifically
+grep -n "padding: 18px 22px" \
+  ~/claude/projects/topoassist/Sidebar.html
+
+# Check floating panel minimize uses height-pinning (not CSS-only)
+grep -A10 "toggleDevVisMinimize" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep -E "style.height|style.overflow"
+
+# Check toggleModalMinimize for modal-minimized CSS class approach (correct for .modal-std)
+grep -A5 "function toggleModalMinimize" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -10
+```
+
+✗ FAIL if a `.modal-std` body div lacks `overflow-y: auto` AND content can exceed 85vh
+✗ FAIL if a floating panel minimize function sets child `display:none` but does NOT also set `panel.style.height = header.offsetHeight + 'px'`
+✗ FAIL if `panel.style.overflow = 'hidden'` is missing from the minimize path
+⚠ WARN if body div has `overflow-y: auto` but no `flex: 1; min-height: 0` (clips in flex containers)
+
+---
+
 ## Output Format
 
 ```
