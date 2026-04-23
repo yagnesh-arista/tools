@@ -404,9 +404,18 @@ grep -A5 "function toggleModalMinimize" \
   ~/claude/projects/topoassist/Sidebar-js.html | head -10
 ```
 
+```bash
+# Check overlay management in toggleModalMinimize
+grep -A20 "function toggleModalMinimize" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep -E "editOverlay|hadOverlay|data-had"
+```
+
 ✗ FAIL if a `.modal-std` body div lacks `overflow-y: auto` AND content can exceed 85vh
 ✗ FAIL if a floating panel minimize function sets child `display:none` but does NOT also set `panel.style.height = header.offsetHeight + 'px'`
 ✗ FAIL if `panel.style.overflow = 'hidden'` is missing from the minimize path
+✗ FAIL if `toggleModalMinimize` does not hide `editOverlay` on minimize (leaves dim backdrop blocking background)
+✗ FAIL if `toggleModalMinimize` does not use `data-had-overlay` to restore overlay on un-minimize
+✗ FAIL if a modal-specific minimize function bypasses `toggleModalMinimize` (loses overlay management)
 ⚠ WARN if body div has `overflow-y: auto` but no `flex: 1; min-height: 0` (clips in flex containers)
 
 ---
