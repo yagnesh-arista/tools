@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.23 | 2026-04-23 13:47:05 -->
+<!-- TopoAssist v260423.24 | 2026-04-23 13:56:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.23";  // keep in sync with Code.gs
+const APP_VERSION = "260423.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2831,11 +2831,7 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
   const shouldShowStatus = (selectedDeviceId === deviceName) || (customSuccessMsg);
 
   if (st && shouldShowStatus) {
-    if (customSuccessMsg) {
-      setStatus("Tech Settings Saved & Fetching new config...");
-    } else {
-      setStatus("Fetching " + deviceName + "...");
-    }
+    setStatus("Fetching " + deviceName + "...");
   }
 
   // Safety net: if GAS call hangs at framework level (auth expiry, quota), flush the
@@ -4411,6 +4407,7 @@ function saveIpConfig() {
 
     configCache = {};
     if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
+      setStatus('IP prefs saved \u2014 ' + selectedDeviceId + ' config refresh\u2026', 'status-info');
       fetchFullConfig(selectedDeviceId);
     }
 
@@ -4818,6 +4815,7 @@ function saveGlobalCfgFromSidebar() {
       // 3. Refresh active device immediately
       if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
         showGlobalLoading('Global config saved — refreshing config...');
+        setStatus('Global config changed \u2014 ' + selectedDeviceId + ' config refresh\u2026', 'status-info');
         fetchFullConfig(selectedDeviceId, hideGlobalLoading, '<b>Global config applied</b>');
       } else {
         const st = document.getElementById('status');
@@ -4906,6 +4904,7 @@ function saveTechSettings() {
       // 3. Refresh Active Device
       if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
         showGlobalLoading("Tech Settings Saved & Fetching new config...");
+        setStatus('Tech settings changed \u2014 ' + selectedDeviceId + ' config refresh\u2026', 'status-info');
         fetchFullConfig(selectedDeviceId, hideGlobalLoading, "<b>New config fetched now</b>");
       } else {
         hideGlobalLoading();
