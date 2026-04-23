@@ -1,10 +1,10 @@
-// TopoAssist v260423.9 | 2026-04-23 11:51:12
+// TopoAssist v260423.10 | 2026-04-23 11:55:02
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.9";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5520,6 +5520,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
         configLines.push(` neighbor ${gName} next-hop-self`);
       }
       configLines.push(` neighbor ${gName} send-community standard extended`);
+      configLines.push(` neighbor ${gName} maximum-routes 0`); // 0 = unlimited (EOS default is 12000)
     };
 
     // Gate peer groups on IP family flags. MLAG peers bypass bgp_ipv4/bgp_ipv6 gates
@@ -5816,6 +5817,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
         lines.push(` neighbor ${pgOvV4} update-source Loopback0`);
         lines.push(` neighbor ${pgOvV4} ebgp-multihop 3`);
         lines.push(` neighbor ${pgOvV4} send-community extended`);
+        lines.push(` neighbor ${pgOvV4} maximum-routes 0`); // 0 = unlimited (EOS default is 12000)
       }
       if (peerData.loopbackV4) {
         lines.push(` neighbor ${peerData.loopbackV4} peer group ${pgOvV4}`);
@@ -5833,6 +5835,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
         lines.push(` neighbor ${pgOvV6} ebgp-multihop 3`);
         lines.push(` neighbor ${pgOvV6} next-hop-unchanged`);
         lines.push(` neighbor ${pgOvV6} send-community standard extended`);
+        lines.push(` neighbor ${pgOvV6} maximum-routes 0`); // 0 = unlimited (EOS default is 12000)
       }
       const evpnLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
       const pidLoId = pid + evpnLoBase;
