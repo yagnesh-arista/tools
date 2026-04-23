@@ -382,7 +382,7 @@ box-sizing: border-box;
 
 ---
 
-## Check 20 — Modal Scroll + Floating Panel Minimize Baseline (Rule 24)
+## Check 21 — Modal Scroll + Floating Panel Minimize Baseline (Rule 24)
 
 Every `.modal-std` modal body must scroll when content overflows, and every floating panel minimize must use JS height-pinning.
 

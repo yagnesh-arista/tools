@@ -1,10 +1,10 @@
-// TopoAssist v260423.3 | 2026-04-23 11:27:43
+// TopoAssist v260423.5 | 2026-04-23 11:45:29
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2380,6 +2380,11 @@ function getTopologyData(forceSync, isColorEnabled) {
 
           if (isValidPort(portName)) {
             const pName = canonicalizeInterface(portName);
+
+            // Vx1 is a logical VTEP port — not a physical cable, never part of cabling topology.
+            // Skipping here prevents it from entering processRowLinks, forming links, landing in
+            // allNodesData, or triggering audit checks (IP type blank, missing SVI IP, etc.).
+            if (pName === "Vx1") continue;
 
             const uniqueId = device.name + ":" + pName;
             portFrequency[uniqueId] = (portFrequency[uniqueId] || 0) + 1;
