@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260422.30 | 2026-04-22 13:43:57
+# topoassist v260423.2 | 2026-04-23 11:18:01
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260422.1","port":8765}
+  GET  /health      → {"status":"ok","version":"260422.20","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -119,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260422.19"
+VERSION           = "260422.20"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -477,10 +477,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                        for d, v in ip_map.items()]
             for t in threads: t.start()
             # Budget: each _push_config attempt blocks for stale-session cleanup
-            # (_abort_stale_sessions thread join — up to min(5,TIMEOUT)=5s) THEN
-            # _ssh_stdin communicate (up to TIMEOUT=15s), so per-attempt cost is
-            # TIMEOUT + min(5, TIMEOUT), not just TIMEOUT.
-            _abort_overhead = min(5, TIMEOUT)
+            # (_abort_stale_sessions thread join — up to TIMEOUT) THEN
+            # _ssh_stdin communicate (up to TIMEOUT), so per-attempt cost is 2*TIMEOUT.
+            # Using full TIMEOUT for cleanup: sluggish devices (e.g. after large push)
+            # need more than 5s to SSH in and abort stale sessions.
+            _abort_overhead = TIMEOUT
             join_budget = (TIMEOUT + _abort_overhead) * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
             for t in threads: t.join(timeout=join_budget)
             # Any thread that didn't finish gets a descriptive timeout error instead
@@ -713,7 +714,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     if VERBOSE: print(f"  [cleanup] {ip}: stale-session cleanup failed — {e}")
             _ct = threading.Thread(target=_safe_abort, daemon=True)
             _ct.start()
-            _ct.join(timeout=min(5, TIMEOUT))
+            _ct.join(timeout=TIMEOUT)
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
