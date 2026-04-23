@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.26 | 2026-04-23 14:21:34 -->
+<!-- TopoAssist v260423.28 | 2026-04-23 14:32:36 -->
 <!DOCTYPE html>
 <html>
 
@@ -1000,6 +1000,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
+      <li><b>SVI VLAN Mismatch</b> — a VLAN ID in <code>svi_vlan_</code> is not present in <code>vlan_</code>. Config generation silently skips SVIs for VLANs not in the allowed trunk list — this check surfaces the mismatch so the VLAN can be added to <code>vlan_</code> or removed from <code>svi_vlan_</code>. Applies to <code>l2-*</code> modes only; <code>svi_vlan=all</code> is exempt (all trunk VLANs are valid by definition).</li>
       <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Flag internal VLAN conflicts</b> in the Device Bridge modal.</li>
       <li><b>Per-VLAN VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
         <ul style="margin-top:4px;">

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.26 | 2026-04-23 14:21:34 -->
+<!-- TopoAssist v260423.28 | 2026-04-23 14:32:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.26";  // keep in sync with Code.gs
+const APP_VERSION = "260423.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2495,6 +2495,25 @@ function runValidation(logIssues) {
           const pl = _conflicts.length > 1;
           configErrors.push(`Internal VLAN Conflict: VLAN${pl ? 's' : ''} ${_conflicts.join(', ')} ${pl ? 'are' : 'is'} auto-allocated by EOS on this device — conflicts with internal VLAN allocation.`);
         }
+      }
+    }
+
+    // L. SVI VLAN NOT IN VLAN LIST
+    // _parseSviVlans() silently drops requested VLANs not present in vlan_ — warn here.
+    if (mode.startsWith("l2-") && svi && svi !== 'all') {
+      const _pvL = parseVlanWithNative(d.vlan_);
+      const _allowedSviVlans = parseVlanInput(_pvL.vlans || "");
+      if (_pvL.native) _allowedSviVlans.add(_pvL.native);
+      const _missingSvi = [];
+      svi.split(',').forEach(s => {
+        s = s.trim();
+        const _nv = s.match(/^nv(\d+)$/i);
+        const _vid = _nv ? _nv[1] : s;
+        if (_vid && !isNaN(_vid) && !_allowedSviVlans.has(_vid)) _missingSvi.push(_vid);
+      });
+      if (_missingSvi.length) {
+        const _pl = _missingSvi.length > 1;
+        configErrors.push(`SVI VLAN Mismatch: svi_vlan '${_missingSvi.join(', ')}' ${_pl ? 'are' : 'is'} not in vlan_ — no SVI will be generated for ${_pl ? 'these VLANs' : 'this VLAN'}.`);
       }
     }
 
