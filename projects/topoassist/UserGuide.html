@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.9 | 2026-04-24 09:42:08 -->
+<!-- TopoAssist v260424.10 | 2026-04-24 09:42:48 -->
 <!DOCTYPE html>
 <html>
 
@@ -1194,13 +1194,8 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       Internal VLAN data is only available after a bridge check and is not persisted between sessions — re-run the check to refresh. <code>METHOD = "rest"</code> and <code>"gnmi"</code> do not support <code>show vlan internal</code>; those paths return no internal VLAN data.
     </div>
 
-    <h3>Audit Flags</h3>
-    <p style="font-size:13px;">The <b>Audit flags</b> section in the modal controls which bridge-sourced checks are raised as errors in Audit mode. All flags default to <b>on</b>.</p>
-    <ul>
-      <li><b>Mismatches always flagged</b> — any LLDP mismatch is automatically raised as a red error in Audit mode. This cannot be disabled.</li>
-      <li><b>LLDP — Flag missing neighbors</b> (checkbox) — when on, ports with no LLDP neighbor turn red and appear in Audit. Turn this <i>off</i> for early-stage labs where some interfaces are intentionally dark (not all cables patched yet). When off, missing ports still show a gray dot on the card.</li>
-      <li><b>VLAN — Flag internal VLAN conflicts</b> (checkbox) — when on, ports whose configured VLANs overlap with EOS-internal allocations are raised as errors in Audit. Turn this <i>off</i> if you know the internal VLAN ranges are intentionally reused in your topology.</li>
-    </ul>
+    <h3>Bridge / LLDP Audit Checks</h3>
+    <p style="font-size:13px;">The three Bridge/LLDP audit checks (LLDP neighbor mismatch, missing LLDP neighbor, internal VLAN in topology) are managed in the <b>Audit Checks</b> modal — single-click the Audit icon in the toolbar to open it. All checks default to <b>on</b>. Toggling <b>Missing LLDP neighbor</b> off leaves missing-port dots gray instead of red without suppressing them from the device card entirely.</p>
 
     <h3>Config Push</h3>
     <p style="font-size:13px;">Config Push sends the generated EOS configuration directly to lab devices via SSH — no manual copy-paste required. It uses an EOS <b>configure session</b> for a safe, atomic commit and runs a post-push verification diff to confirm the device is in the desired state.</p>
