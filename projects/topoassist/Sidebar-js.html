@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.42 | 2026-04-24 15:21:16 -->
+<!-- TopoAssist v260424.43 | 2026-04-24 15:27:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.42";  // keep in sync with Code.gs
+const APP_VERSION = "260424.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13654,6 +13654,23 @@ function buildVlanSummary() {
       vlanMap[vid].ports.push({ device: node.device, port: node.name });
     });
   }
+  // Pass 1b: Vx1/VTEP VLANs — excluded from allNodesData; sourced from node.vtepVlans
+  if (currentData && currentData.nodes) {
+    currentData.nodes.forEach(function(node) {
+      if (!node.vtepVlans) return;
+      parseVlanInput(node.vtepVlans).forEach(function(v) {
+        const vid = String(v);
+        if (!vid) return;
+        if (vlanMap[vid]) {
+          // VLAN already present from regular ports — annotate as also VTEP
+          if (!vlanMap[vid].vtepDevices) vlanMap[vid].vtepDevices = [];
+          vlanMap[vid].vtepDevices.push(node.id);
+        } else {
+          vlanMap[vid] = { type: 'VTEP', vrf: '', ports: [], internalOn: [], vtepDevices: [node.id] };
+        }
+      });
+    });
+  }
   // Pass 2: EOS-internal VLANs from device bridge (deviceInternalVlans: devId → [N,...])
   Object.entries(deviceInternalVlans).forEach(function([devId, ivids]) {
     ivids.forEach(function(numVid) {
@@ -13689,9 +13706,18 @@ function renderVlanSummaryTable(sorted, vlanMap) {
   sorted.forEach((vid, i) => {
     const info = vlanMap[vid];
     const isIntOnly = info.type === 'INT';
+    const isVtep = info.type === 'VTEP' || (info.vtepDevices && info.vtepDevices.length > 0);
     const hasConflict = _vlanHasConflict(info);
-    const typeColor = isIntOnly ? '#a855f7' : (info.type === 'L3' ? '#f59e0b' : '#60a5fa');
+    const typeColor = isIntOnly ? '#a855f7' : (isVtep && info.type === 'VTEP' ? '#0d9488' : (info.type === 'L3' ? '#f59e0b' : '#60a5fa'));
     let portsSummary = info.ports.map(p => p.device + ':' + p.port).join(', ');
+    if (info.vtepDevices && info.vtepDevices.length) {
+      const vtepText = 'Vx1: ' + info.vtepDevices.join(', ');
+      if (portsSummary) {
+        portsSummary += ' <span style="color:#0d9488;font-size:10px;margin-left:8px;font-family:\'JetBrains Mono\',monospace;">[' + vtepText + ']</span>';
+      } else {
+        portsSummary = '<span style="color:#0d9488;font-family:\'JetBrains Mono\',monospace;">' + vtepText + '</span>';
+      }
+    }
     if (info.internalOn && info.internalOn.length) {
       const intText = 'EOS Internal: ' + info.internalOn.join(', ');
       if (portsSummary) {
@@ -14414,7 +14440,7 @@ function buildVlanStrip() {
   if (!strip) return;
 
   // Collect VLAN info from all port data
-  const vlanInfo = {}; // vid → { hasSvi: bool, trunkCount: number }
+  const vlanInfo = {}; // vid → { hasSvi: bool, hasVtep: bool, trunkCount: number }
   Object.values(allNodesData).forEach(function(n) {
     const d = (n && n.details) || {};
     const parsed = parseVlanWithNative(d.vlan_ || '');
@@ -14424,13 +14450,13 @@ function buildVlanStrip() {
       parsed.vlans.split(',').forEach(function(v) {
         v = v.trim();
         if (!v || isNaN(parseInt(v, 10))) return;
-        if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, trunkCount: 0 };
+        if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, hasVtep: false, trunkCount: 0 };
         vlanInfo[v].trunkCount++;
       });
     }
     // Native VLAN (may not be in trunk list)
     if (parsed.native) {
-      if (!vlanInfo[parsed.native]) vlanInfo[parsed.native] = { hasSvi: false, trunkCount: 0 };
+      if (!vlanInfo[parsed.native]) vlanInfo[parsed.native] = { hasSvi: false, hasVtep: false, trunkCount: 0 };
     }
     // SVI VLANs
     const sviRaw = String(d.svi_vlan_ || '').trim().toLowerCase();
@@ -14451,6 +14477,18 @@ function buildVlanStrip() {
     }
   });
 
+  // Vx1/VTEP VLANs — excluded from allNodesData; sourced from node.vtepVlans (compressed ranges)
+  if (currentData && currentData.nodes) {
+    currentData.nodes.forEach(function(node) {
+      if (!node.vtepVlans) return;
+      parseVlanInput(node.vtepVlans).forEach(function(v) {
+        const vid = String(v);
+        if (!vlanInfo[vid]) vlanInfo[vid] = { hasSvi: false, hasVtep: false, trunkCount: 0 };
+        vlanInfo[vid].hasVtep = true;
+      });
+    });
+  }
+
   const sortedVlans = Object.keys(vlanInfo).sort(function(a, b) { return parseInt(a, 10) - parseInt(b, 10); });
 
   if (!sortedVlans.length) {
@@ -14461,9 +14499,9 @@ function buildVlanStrip() {
 
   strip.innerHTML = sortedVlans.map(function(vid) {
     const info = vlanInfo[vid];
-    const cls = info.hasSvi ? 'chip-svi' : (info.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
+    const cls = info.hasVtep ? 'chip-vtep' : (info.hasSvi ? 'chip-svi' : (info.trunkCount > 0 ? 'chip-trunk' : 'chip-native'));
     const isActive = topoVlanFilter.indexOf(vid) !== -1;
-    const tip = 'VLAN ' + vid + (info.hasSvi ? ' \u00b7 SVI' : '') + (info.trunkCount === 0 ? ' \u00b7 native only' : '');
+    const tip = 'VLAN ' + vid + (info.hasVtep ? ' \u00b7 VTEP' : '') + (info.hasSvi ? ' \u00b7 SVI' : '') + (info.trunkCount === 0 && !info.hasVtep ? ' \u00b7 native only' : '');
     return '<span class="dev-vis-vlan-chip ' + cls + (isActive ? ' active' : '') + '"' +
            ' data-vlan="' + vid + '" onclick="toggleVlanChip(\'' + vid + '\')" title="' + tip + '">' +
            vid + '</span>';
