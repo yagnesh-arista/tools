@@ -1,9 +1,6 @@
 Re-authenticate clasp for TopoAssist GAS deployment. Run on bus-home:
 
-clasp is installed under nvm. If `clasp` is not found, load it first:
-```bash
-export PATH="$HOME/.nvm/versions/node/v24.14.1/bin:$PATH"
-```
+clasp is symlinked at ~/.local/bin/clasp and is in PATH — no nvm export needed.
 
 1. Log in to Google via clasp (use `--no-localhost` — required for SSH/headless sessions):
    ```bash

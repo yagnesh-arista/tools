@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.3 | 2026-04-24 09:05:43 -->
+<!-- TopoAssist v260424.4 | 2026-04-24 09:08:09 -->
 <!DOCTYPE html>
 <html>
 
@@ -1012,6 +1012,37 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       </li>
     </ul>
     <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
+
+    <h3>Audit Check Settings</h3>
+    <p style="font-size:13px;">Click the <b>gear icon</b> next to the Audit badge in the toolbar to open the <b>Audit Checks</b> modal. All 24 checks are listed and can be individually enabled or disabled. Settings are saved in browser localStorage and persist across sessions.</p>
+    <table>
+      <tr><th>Category</th><th>Check</th><th>Description</th></tr>
+      <tr><td rowspan="4"><b>Port-Channel</b></td><td>PO ID mismatch</td><td>Both sides of a cable declare different Port-Channel numbers.</td></tr>
+      <tr><td>PO asymmetry</td><td>Only one side of a cable has a <code>po_</code> value.</td></tr>
+      <tr><td>Missing PO row</td><td>An interface is a Po member but no matching Port-Channel row exists.</td></tr>
+      <tr><td>Stale PO row</td><td>A Port-Channel row exists but no member interfaces reference it.</td></tr>
+      <tr><td rowspan="3"><b>Interface</b></td><td>Unsupported interface type</td><td><code>int_</code> does not start with <code>Et</code> or <code>Vx</code>.</td></tr>
+      <tr><td>Duplicate interface</td><td>The same interface name appears more than once on a device.</td></tr>
+      <tr><td>L3 port in MLAG group</td><td>A routed (L3) port is assigned to an MLAG Port-Channel (not supported by EOS).</td></tr>
+      <tr><td rowspan="5"><b>VLAN</b></td><td>VLAN mismatch on PO link</td><td>The <code>vlan_</code> values differ across the two sides of a cable.</td></tr>
+      <tr><td>Native VLAN on non-trunk</td><td><code>nv&lt;N&gt;</code> native VLAN token present on a non-trunk port.</td></tr>
+      <tr><td>SVI VLAN not in trunk allowed-list</td><td>A VLAN in <code>svi_vlan_</code> is absent from <code>vlan_</code> — no SVI will be generated for it.</td></tr>
+      <tr><td>VLAN referenced but not defined</td><td>A VLAN is used in the topology but not listed in the global VLAN definitions.</td></tr>
+      <tr><td>Duplicate P2P VLAN</td><td>The same VLAN ID is used as a P2P VLAN on more than one link.</td></tr>
+      <tr><td rowspan="5"><b>IP / Gateway</b></td><td>Invalid SVI (VLAN not trunk-allowed)</td><td>An SVI is configured for a VLAN that is not in the port's trunk allowed list.</td></tr>
+      <tr><td>SVI missing IP</td><td>An SVI interface has no IP address configured.</td></tr>
+      <tr><td>L3 port missing IP</td><td>A routed port has no IP address in the <code>ip_</code> columns.</td></tr>
+      <tr><td>IP type conflict</td><td>Conflicting IPv4/IPv6 IP type settings across a cable.</td></tr>
+      <tr><td>Duplicate gateway IP</td><td>The same gateway IP is assigned to different VLANs across devices.</td></tr>
+      <tr><td rowspan="2"><b>Mode / Speed</b></td><td>Mode incompatibility</td><td>The <code>sp_mode_</code> combination across a cable is not a valid access/trunk pairing.</td></tr>
+      <tr><td>Speed mismatch</td><td>Both sides of a cable must have the same <code>speed_</code> value.</td></tr>
+      <tr><td rowspan="2"><b>MLAG</b></td><td>MLAG peer-link not declared</td><td>Devices appear to be MLAG peers but no peer-link is declared in Device Manager.</td></tr>
+      <tr><td>MLAG device not declared</td><td>An interface references an MLAG configuration but the device is not declared as MLAG in Device Manager.</td></tr>
+      <tr><td rowspan="3"><b>Bridge / LLDP</b></td><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
+      <tr><td>Missing LLDP neighbor</td><td>No LLDP neighbor was seen on a port that the topology expects to be connected.</td></tr>
+      <tr><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation.</td></tr>
+    </table>
+    <p style="font-size:13px;">Each check row has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled and has issues, <b>gray</b> = disabled or audit has not been run yet. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle all checks at once.</p>
 
     <!-- ================================================================ -->
     <h2>🔌 Device Bridge</h2>
