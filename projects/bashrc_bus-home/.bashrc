@@ -1,4 +1,4 @@
-# bashrc_bus-home v260423.1 | 2026-04-23 11:31:43
+# bashrc_bus-home v260424.1 | 2026-04-24 09:30:37
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -14,6 +14,9 @@ set -h  # Re-enable hashing (disabled by /etc/bashrc); needed by NVM and other t
 # 2. CRITICAL: Fix Tmux Resizing Issues
 # Forces the shell to update window size lines/cols after every command
 shopt -s checkwinsize
+
+# 2a. Disable XON/XOFF flow control so C-s reaches tmux as prefix
+stty -ixon 2>/dev/null
 
 # 3. Enable Standard Tab Completion
 if ! shopt -oq posix; then
