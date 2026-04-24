@@ -43,3 +43,7 @@ Files: projects/topoassist/Sidebar.html, projects/topoassist/Sidebar-js.html, pr
 ## 2026-04-19 | topoassist | ac18352
 **Reverted SheetAssistPanel.html width changes (dialog 490→580, col-left 230→280) — wrong target; user wanted Device Manager widened, not Sheet View.**
 Files: Code.gs (setWidth 580→490), SheetAssistPanel.html (col-left 280→230)
+## 2026-04-24 | topoassist | 1ff2952
+**rollback-log: topoassist bridge URL configurability removed 2026-04-24**  
+Files: ROLLBACKS.md,projects/topoassist/Code.gs,projects/topoassist/SheetAssistPanel.html,projects/topoassist/Sidebar-css.html,projects/topoassist/Sidebar-js.html,projects/topoassist/Sidebar.html,projects/topoassist/Tests.gs,projects/topoassist/UserGuide.html
+
