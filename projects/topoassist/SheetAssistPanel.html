@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.15 | 2026-04-24 10:06:10 -->
+<!-- TopoAssist v260424.16 | 2026-04-24 11:16:06 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -367,7 +367,7 @@
   </div>
 
   <div class="search-row" id="searchRow">
-    <input type="text" id="globalSearch" class="search-inp" placeholder="Search devices &amp; columns…" oninput="filterAll()">
+    <input type="text" id="globalSearch" class="search-inp" placeholder="Search devices, columns &amp; VLANs…" oninput="filterAll()">
   </div>
 
   <div class="ip-section" id="ipFilterSection">
@@ -1008,7 +1008,7 @@
         var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
         var title = v.devices.join(', ') || '';
-        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(' + v.vid + ')" title="' + title + '">' + v.vid + '</span>';
+        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(\'' + v.vid + '\')" title="' + title + '">' + v.vid + '</span>';
       }).join('');
       if (clearBtn) clearBtn.style.display = sapVlanFilter.length ? '' : 'none';
     }
