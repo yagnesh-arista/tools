@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.37 | 2026-04-24 14:10:57
+# topoassist v260424.42 | 2026-04-24 15:20:36
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260424.36","port":8765}
+  GET  /health      → {"status":"ok","version":"260424.43","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -122,7 +122,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260424.36"
+VERSION           = "260424.43"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -874,6 +874,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return {"ok": True, "action": action}
 
         if METHOD == "eapi":
+            # Verify session still exists before committing: eAPI creates an empty session
+            # for unknown names, so we'd silently commit nothing without this check.
+            check = self._eapi_push(ip, "show configuration sessions")
+            check_out = check[0] if check else ""
+            if session_name not in check_out:
+                raise RuntimeError(
+                    f"Configure session '{session_name}' not found — "
+                    "it may have timed out on the device. Push again.")
             self._eapi_push(ip, f"configure session {session_name}", action)
             if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed (eapi)")
             return {"ok": True, "action": action}

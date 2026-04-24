@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.41 | 2026-04-24 15:13:17 -->
+<!-- TopoAssist v260424.42 | 2026-04-24 15:21:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.41";  // keep in sync with Code.gs
+const APP_VERSION = "260424.42";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8984,7 +8984,7 @@ Transport options (set METHOD below):
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"260422.13","port":8765}
+  GET  /health      -> {"status":"ok","version":"260424.43","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
@@ -9061,7 +9061,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260424.36"
+VERSION = "260424.43"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9226,14 +9226,8 @@ def _extract_session_diff(output):
 # -- Section-level cleaners for idempotent push --------------------------------
 
 _SECTION_CLEANERS = [
-    (re.compile(r'^interface\s+((?:Ethernet|Et)\S+)$', re.I),   'default interface {0}'),
-    (re.compile(r'^interface\s+((?:Port-Channel|Po)\d+\S*)$', re.I), 'default interface {0}'),
-    (re.compile(r'^interface\s+(Loopback\d+)$', re.I),          'default interface {0}'),
-    (re.compile(r'^interface\s+(Vxlan\d+)$', re.I),             'default interface {0}'),
-    (re.compile(r'^interface\s+(Vlan\d+)$', re.I),              'default interface {0}'),
-    (re.compile(r'^router\s+bgp\s+(\d+)$', re.I),              'no router bgp {0}'),
-    (re.compile(r'^router\s+ospf\s+\d+$', re.I),               'no router ospf 1'),
-    (re.compile(r'^mlag\s+configuration$', re.I),               'no mlag configuration'),
+    # Removed: default interface / no router bgp / no router ospf / no mlag configuration
+    # Generated config is self-sufficient; switchport defaults are in the config itself.
 ]
 
 _MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
@@ -9536,6 +9530,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "it may have timed out. Push again.")
             return {"ok": True, "action": action}
         if METHOD == "eapi":
+            # Verify session still exists before committing: enter then check output.
+            # eAPI creates an empty session if the name is unknown -- check for that.
+            check = self._eapi_push(ip, "show configuration sessions")
+            check_out = check[0] if check else ""
+            if session_name not in check_out:
+                raise RuntimeError(
+                    f"Configure session '{session_name}' not found -- "
+                    "it may have timed out. Push again.")
             self._eapi_push(ip, f"configure session {session_name}", action)
             return {"ok": True, "action": action}
         raise NotImplementedError(f"Finalize not supported for METHOD={METHOD!r} -- use ssh or eapi")
@@ -10807,6 +10809,18 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
     const res  = data[deviceName] || {};
+    // Guard: user cancelled while Phase 1 fetch was in-flight (Cancel hides the modal).
+    // The EOS session is now PENDING — abort it silently before returning.
+    const _phaseModal = document.getElementById('pushConfirmModal');
+    if (!_phaseModal || _phaseModal.style.display === 'none') {
+      if (res.session_name) {
+        fetch(BRIDGE_URL + '/pushconfig/finalize', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: res.session_name } }, action: 'abort' }),
+        }).catch(() => {});
+      }
+      return;
+    }
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _updatePushPreviewError(res.error || 'something went wrong');
@@ -10955,7 +10969,7 @@ async function commitPushConfig() {
     `<span id="${id}" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${initColor};">${initText}</span></div>`;
 
   if (bodyEl) bodyEl.innerHTML =
-    _ptRowHtml('Phase 1: Dry-run', 'pt1', '#10b981', 'diff ready') +
+    _ptRowHtml('Phase 1: Config staged', 'pt1', '#10b981', 'session open') +
     _ptRowHtml('Phase 2: Commit',  'pt2', '#94a3b8', 'committing…') +
     _ptRowHtml('Phase 3: Verify',  'pt3', '#64748b', 'pending…') +
     '<div id="pt_detail" style="margin-top:6px;"></div>';
@@ -11315,6 +11329,13 @@ function _extractInterfaceBlock(configText, portName) {
 // ── Bulk push (from Generate All Configs modal) ───────────────────────────────
 
 async function pushAllConfigs() {
+  // Guard: a single-device push is waiting for user confirmation (EOS session PENDING).
+  // Push All runs _abort_stale_sessions on each device, which would silently kill the
+  // open session — the user's pending Commit would then fail with "session not found".
+  if (_pendingPush) {
+    setStatus('A push is awaiting confirmation — commit or cancel it before pushing all.', 'status-warn');
+    return;
+  }
   const btn  = document.getElementById('btnPushAllConfigs');
   const body = document.getElementById('generateAllRight');
   body.style.display = '';  // reveal right pane
