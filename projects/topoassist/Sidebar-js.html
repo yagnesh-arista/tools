@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.37 | 2026-04-24 14:12:17 -->
+<!-- TopoAssist v260424.38 | 2026-04-24 14:57:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.37";  // keep in sync with Code.gs
+const APP_VERSION = "260424.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8948,6 +8948,7 @@ let _configViewContext  = null; // {deviceName, portFilter} — tracks what the 
 let _bridgeClickTimer   = null; // debounce single vs double-click on bridge toolbar icon
 let _auditClickTimer    = null; // debounce single vs double-click on audit toolbar icon
 let _pushAutoCloseTimeout = null; // ID of setTimeout that auto-closes push confirm modal after success
+let _pushSessionGuard   = null; // ID of setTimeout that aborts open EOS session if user doesn't commit in time
 let _silentBridgeTimer  = null; // debounce timer for _silentBridgeCheck
 let _bridgeUpState      = false; // true when bridge is confirmed up; tracks down→up for auto-Bridge trigger
 let _topologyReady      = false; // true after fetchData() completes; guards _autoRunBridge from firing on stale session data
