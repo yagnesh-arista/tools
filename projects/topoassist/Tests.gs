@@ -1,4 +1,4 @@
-// TopoAssist v260424.30 | 2026-04-24 12:20:00
+// TopoAssist v260424.31 | 2026-04-24 12:27:46
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1236,20 +1236,20 @@ function test_compressVniLines() {
     run([1,2,3,4,5], 10000),
     " vxlan vlan 1-5 vni 10001-10005");
 
-  // Two disjoint runs
+  // Two disjoint runs → one line, comma-separated
   t(results, "two runs",
     run([10,11,12, 20,21], 10000),
-    " vxlan vlan 10-12 vni 10010-10012\n vxlan vlan 20-21 vni 10020-10021");
+    " vxlan vlan 10-12,20-21 vni 10010-10012,10020-10021");
 
-  // Non-consecutive singles
+  // Non-consecutive singles → one line, comma-separated
   t(results, "non-consecutive singles",
     run([10, 20, 30], 10000),
-    " vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020\n vxlan vlan 30 vni 10030");
+    " vxlan vlan 10,20,30 vni 10010,10020,10030");
 
-  // Out-of-order input → sorted output
+  // Out-of-order input → sorted, comma-separated
   t(results, "unsorted input",
     run([30, 10, 20], 10000),
-    " vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020\n vxlan vlan 30 vni 10030");
+    " vxlan vlan 10,20,30 vni 10010,10020,10030");
 
   // Values outside 1-4094 filtered out
   t(results, "out-of-range filtered",

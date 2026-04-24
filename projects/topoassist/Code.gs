@@ -1,10 +1,10 @@
-// TopoAssist v260424.30 | 2026-04-24 12:20:00
+// TopoAssist v260424.31 | 2026-04-24 12:27:26
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.30";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.31";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6038,9 +6038,9 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 }
 
 /**
- * Compress a VLAN set into "vxlan vlan … vni …" range lines.
- * Consecutive VLANs collapse to a single range; non-consecutive emit one line each.
- * Returns an array of config strings (no leading newline).
+ * Compress a VLAN set into a single "vxlan vlan … vni …" line with comma-separated ranges.
+ * e.g. VLANs {10,11,12,20} → [" vxlan vlan 10-12,20 vni 10010-10012,10020"]
+ * Returns a 1-element array (or empty array when vlansIterable is empty).
  * Pure function — exported for unit testing.
  */
 function _compressVniLines(vlansIterable, vniBase) {
@@ -6049,20 +6049,24 @@ function _compressVniLines(vlansIterable, vniBase) {
     .map(v => parseInt(v))
     .filter(v => v >= 1 && v <= 4094)
     .sort((a, b) => a - b);
-  const out = [];
+  if (sorted.length === 0) return [];
+  const vlanParts = [];
+  const vniParts = [];
   let i = 0;
   while (i < sorted.length) {
     const start = sorted[i];
     let end = start;
     while (i + 1 < sorted.length && sorted[i + 1] === end + 1) { i++; end = sorted[i]; }
     if (start === end) {
-      out.push(` vxlan vlan ${start} vni ${base + start}`);
+      vlanParts.push(`${start}`);
+      vniParts.push(`${base + start}`);
     } else {
-      out.push(` vxlan vlan ${start}-${end} vni ${base + start}-${base + end}`);
+      vlanParts.push(`${start}-${end}`);
+      vniParts.push(`${base + start}-${base + end}`);
     }
     i++;
   }
-  return out;
+  return [` vxlan vlan ${vlanParts.join(',')} vni ${vniParts.join(',')}`];
 }
 
 /**
