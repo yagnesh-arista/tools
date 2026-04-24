@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.14 | 2026-04-24 10:03:09 -->
+<!-- TopoAssist v260424.15 | 2026-04-24 10:05:57 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.14";  // keep in sync with Code.gs
+const APP_VERSION = "260424.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14086,6 +14086,10 @@ function filterDevVisList() {
   document.querySelectorAll('#devVisList .dev-vis-item').forEach(item => {
     const name = (item.querySelector('.dev-vis-name')?.textContent || '').toLowerCase();
     item.style.display = (!q || name.includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('#devVisVlanStrip .dev-vis-vlan-chip').forEach(chip => {
+    const vid = chip.textContent.trim();
+    chip.style.display = (!q || vid.includes(q)) ? '' : 'none';
   });
 }
 
