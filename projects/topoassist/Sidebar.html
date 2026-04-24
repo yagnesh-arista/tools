@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.38 | 2026-04-23 15:17:09 -->
+<!-- TopoAssist v260424.2 | 2026-04-24 09:05:11 -->
 <!DOCTYPE html>
 <html>
 
@@ -1367,6 +1367,134 @@
     <div id="viewCustomBody"></div>
     <div class="modal-actions right-align">
       <button id="btnApplyView" class="btn-success-mono" onclick="submitCustomView()">Apply View</button>
+    </div>
+  </div>
+
+  <!-- AUDIT SETTINGS MODAL -->
+  <div id="auditSettingsModal" class="modal-std" style="display:none; width:440px; font-family:'JetBrains Mono',monospace;">
+    <div class="modal-header" style="flex-shrink:0;">
+      <span class="modal-title" style="font-family:'JetBrains Mono',monospace; font-size:14px; user-select:none; -webkit-user-select:none;">Audit Checks</span>
+      <button class="btn-modal-close" onclick="closeAuditSettingsModal()" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto; flex:1; min-height:0; padding:12px 16px;">
+
+      <div class="audit-cat-hdr">Port-Channel</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagPoMismatch" onchange="toggleAuditCheck('auditFlagPoMismatch',this.checked)"><span>PO ID mismatch (both sides differ)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagPoMismatch"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagPoAsymmetry" onchange="toggleAuditCheck('auditFlagPoAsymmetry',this.checked)"><span>PO asymmetry (one-sided declaration)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagPoAsymmetry"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagMissingPo" onchange="toggleAuditCheck('auditFlagMissingPo',this.checked)"><span>Missing PO row for Po member</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagMissingPo"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagStalePo" onchange="toggleAuditCheck('auditFlagStalePo',this.checked)"><span>Stale PO row (no matching members)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagStalePo"></span>
+      </div>
+
+      <div class="audit-cat-hdr">Interface</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagUnsupportedInt" onchange="toggleAuditCheck('auditFlagUnsupportedInt',this.checked)"><span>Unsupported interface type</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagUnsupportedInt"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagDuplicateInt" onchange="toggleAuditCheck('auditFlagDuplicateInt',this.checked)"><span>Duplicate interface on device</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagDuplicateInt"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagMlagL3" onchange="toggleAuditCheck('auditFlagMlagL3',this.checked)"><span>L3 port in MLAG port-channel</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagMlagL3"></span>
+      </div>
+
+      <div class="audit-cat-hdr">VLAN</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagVlanMismatch" onchange="toggleAuditCheck('auditFlagVlanMismatch',this.checked)"><span>VLAN mismatch on PO link</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagVlanMismatch"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagNativeNonTrunk" onchange="toggleAuditCheck('auditFlagNativeNonTrunk',this.checked)"><span>Native VLAN on non-trunk port</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagNativeNonTrunk"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagSviVlanMismatch" onchange="toggleAuditCheck('auditFlagSviVlanMismatch',this.checked)"><span>SVI VLAN not in trunk allowed-list</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagSviVlanMismatch"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagVlanUsage" onchange="toggleAuditCheck('auditFlagVlanUsage',this.checked)"><span>VLAN referenced but not defined</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagVlanUsage"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagDupP2pVlan" onchange="toggleAuditCheck('auditFlagDupP2pVlan',this.checked)"><span>Duplicate P2P VLAN across links</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagDupP2pVlan"></span>
+      </div>
+
+      <div class="audit-cat-hdr">IP / Gateway</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagInvalidSvi" onchange="toggleAuditCheck('auditFlagInvalidSvi',this.checked)"><span>Invalid SVI (VLAN not trunk-allowed)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagInvalidSvi"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagMissingIpSvi" onchange="toggleAuditCheck('auditFlagMissingIpSvi',this.checked)"><span>SVI missing IP address</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagMissingIpSvi"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagMissingIpL3" onchange="toggleAuditCheck('auditFlagMissingIpL3',this.checked)"><span>L3 port missing IP address</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagMissingIpL3"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagStaleIpType" onchange="toggleAuditCheck('auditFlagStaleIpType',this.checked)"><span>IP type conflict (IPv4/IPv6)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagStaleIpType"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagDupGateway" onchange="toggleAuditCheck('auditFlagDupGateway',this.checked)"><span>Duplicate gateway IP</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagDupGateway"></span>
+      </div>
+
+      <div class="audit-cat-hdr">Mode / Speed</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagModeIncompat" onchange="toggleAuditCheck('auditFlagModeIncompat',this.checked)"><span>Mode incompatibility (access vs trunk)</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagModeIncompat"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagSpeedMismatch" onchange="toggleAuditCheck('auditFlagSpeedMismatch',this.checked)"><span>Speed mismatch between endpoints</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagSpeedMismatch"></span>
+      </div>
+
+      <div class="audit-cat-hdr">MLAG</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagMlagPeerLink" onchange="toggleAuditCheck('auditFlagMlagPeerLink',this.checked)"><span>MLAG peer-link not declared</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagMlagPeerLink"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagUndeclaredMlag" onchange="toggleAuditCheck('auditFlagUndeclaredMlag',this.checked)"><span>MLAG device not declared</span></label>
+        <span class="audit-status-dot" id="auditDot_auditFlagUndeclaredMlag"></span>
+      </div>
+
+      <div class="audit-cat-hdr">Bridge / LLDP</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMismatch" onchange="toggleAuditCheck('bridgeAuditFlagMismatch',this.checked)"><span>LLDP neighbor mismatch</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMismatch"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Missing LLDP neighbor</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMissing"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagInternalVlan"></span>
+      </div>
+
+    </div>
+    <div class="modal-actions right-align" style="flex-shrink:0;">
+      <button class="btn-mono" style="margin-right:auto; font-family:'JetBrains Mono',monospace;" onclick="enableAllAudits()">Enable All</button>
+      <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;" onclick="disableAllAudits()">Disable All</button>
+      <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;" onclick="closeAuditSettingsModal()">Close</button>
     </div>
   </div>
 
