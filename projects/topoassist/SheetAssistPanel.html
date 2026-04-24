@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.27 | 2026-04-24 12:10:59 -->
+<!-- TopoAssist v260424.28 | 2026-04-24 12:18:01 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -336,6 +336,11 @@
     .vlan-hint {
       font-size: 9px; font-weight: 400; color: #cbd5e1;
       text-transform: none; letter-spacing: 0; font-style: italic; margin-left: 5px;
+    }
+    .vlan-count {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 8px; font-weight: 400; opacity: 0.65;
+      vertical-align: super; margin-left: 1px; pointer-events: none;
     }
     .vlan-strip {
       display: flex; flex-wrap: wrap; gap: 4px;
@@ -1011,47 +1016,61 @@
       strip.innerHTML = vlanSummary.map(function(v) {
         var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
+        var count = v.rowCount || v.trunkCount || 0;
         var title = v.devices.join(', ') || '';
-        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(event,\'' + v.vid + '\')" title="' + title + '">' + v.vid + '</span>';
+        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(event,\'' + v.vid + '\')" title="' + title + '">' +
+               v.vid + (count > 0 ? '<span class="vlan-count">' + count + '</span>' : '') + '</span>';
       }).join('');
       if (clearBtn) clearBtn.style.display = sapVlanFilter.length ? '' : 'none';
     }
 
+    var sapVlanOccIdx = {};  // vid → current occurrence index
+
     function toggleSapVlanChip(e, vid) {
       var idx = sapVlanFilter.indexOf(vid);
-      var activating;
       if (e && e.shiftKey) {
-        // Shift: add/remove (multi-select)
-        activating = idx === -1;
+        // Shift+click: add/remove (multi-select)
         if (idx !== -1) sapVlanFilter.splice(idx, 1);
-        else sapVlanFilter.push(vid);
+        else { sapVlanFilter.push(vid); sapVlanOccIdx[vid] = 0; _navigateVlan(vid, 0); }
+        buildSapVlanStrip();
+        applySapVlanFilter();
       } else {
-        // Single click: switch to this VLAN only (or clear if already sole selection)
         if (sapVlanFilter.length === 1 && sapVlanFilter[0] === vid) {
-          sapVlanFilter = [];
-          activating = false;
+          // Already sole selection: cycle to next occurrence
+          var nextIdx = ((sapVlanOccIdx[vid] || 0) + 1);
+          sapVlanOccIdx[vid] = nextIdx;
+          _navigateVlan(vid, nextIdx);
         } else {
+          // Switch to this VLAN
           sapVlanFilter = [vid];
-          activating = true;
-        }
-      }
-      buildSapVlanStrip();
-      applySapVlanFilter();
-      if (activating) {
-        var entry = vlanSummary.filter(function(v) { return v.vid === vid; })[0];
-        if (entry && entry.devices.length) {
-          var dest = entry.devices[0];
-          setStatus('Jumping to ' + dest + '\u2026');
-          google.script.run
-            .withSuccessHandler(function() { setStatus(''); })
-            .withFailureHandler(function() { setStatus(''); })
-            .scrollToVlanCell(dest);
+          sapVlanOccIdx[vid] = 0;
+          buildSapVlanStrip();
+          applySapVlanFilter();
+          _navigateVlan(vid, 0);
         }
       }
     }
 
+    function _navigateVlan(vid, occIdx) {
+      setStatus('Jumping to VLAN ' + vid + '\u2026');
+      google.script.run
+        .withSuccessHandler(function(r) {
+          if (r && r.total > 0) {
+            sapVlanOccIdx[vid] = r.idx;
+            setStatus('VLAN ' + vid + ' \u00b7 row ' + (r.idx + 1) + ' / ' + r.total);
+            setTimeout(function() { setStatus(''); }, 2500);
+          } else {
+            setStatus('VLAN ' + vid + ' \u2014 not found in sheet');
+            setTimeout(function() { setStatus(''); }, 2000);
+          }
+        })
+        .withFailureHandler(function() { setStatus(''); })
+        .navigateToVlanOccurrence(vid, occIdx);
+    }
+
     function clearSapVlanFilter() {
       sapVlanFilter = [];
+      sapVlanOccIdx = {};
       buildSapVlanStrip();
       applySapVlanFilter();
     }

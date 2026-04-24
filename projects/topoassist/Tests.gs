@@ -1,4 +1,4 @@
-// TopoAssist v260424.27 | 2026-04-24 12:10:59
+// TopoAssist v260424.28 | 2026-04-24 12:18:50
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1215,6 +1215,56 @@ function test_generateComplexL3BlockGwType() {
     const out = generateComplexL3Block('Et1', makeD(), cfg, s, vx1Set);
     results.push(t("generateComplexL3Block — vx1VlanSet: VLAN excluded, no interface block", !out.includes("interface Vlan10"), true));
   }
+
+  return results;
+}
+
+function test_compressVniLines() {
+  const t = assert_;
+  const results = [];
+
+  // Helper: join result lines for easy comparison
+  const run = (vlans, base) => _compressVniLines(new Set(vlans), base).join('\n');
+
+  // Single VLAN → no range
+  t(results, "single vlan",
+    run([10], 10000),
+    " vxlan vlan 10 vni 10010");
+
+  // Fully consecutive → one range line
+  t(results, "consecutive 1-4000",
+    run([1,2,3,4,5], 10000),
+    " vxlan vlan 1-5 vni 10001-10005");
+
+  // Two disjoint runs
+  t(results, "two runs",
+    run([10,11,12, 20,21], 10000),
+    " vxlan vlan 10-12 vni 10010-10012\n vxlan vlan 20-21 vni 10020-10021");
+
+  // Non-consecutive singles
+  t(results, "non-consecutive singles",
+    run([10, 20, 30], 10000),
+    " vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020\n vxlan vlan 30 vni 10030");
+
+  // Out-of-order input → sorted output
+  t(results, "unsorted input",
+    run([30, 10, 20], 10000),
+    " vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020\n vxlan vlan 30 vni 10030");
+
+  // Values outside 1-4094 filtered out
+  t(results, "out-of-range filtered",
+    run([0, 5, 4095], 10000),
+    " vxlan vlan 5 vni 10005");
+
+  // Custom vniBase
+  t(results, "custom vniBase 20000",
+    run([100, 101], 20000),
+    " vxlan vlan 100-101 vni 20100-20101");
+
+  // Empty input → empty output
+  t(results, "empty vlans",
+    run([], 10000),
+    "");
 
   return results;
 }

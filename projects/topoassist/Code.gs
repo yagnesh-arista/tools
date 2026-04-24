@@ -1,10 +1,10 @@
-// TopoAssist v260424.27 | 2026-04-24 12:10:59
+// TopoAssist v260424.28 | 2026-04-24 12:18:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.27";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.28";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -297,8 +297,9 @@ function getSheetVlanSummary() {
           parsed.vlans.split(',').forEach(function(v) {
             v = v.trim();
             if (!v || isNaN(parseInt(v, 10))) return;
-            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, trunkCount: 0, devices: new Set() };
+            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, trunkCount: 0, rowCount: 0, devices: new Set() };
             vlanInfo[v].trunkCount++;
+            vlanInfo[v].rowCount++;
             vlanInfo[v].devices.add(devName);
             if (sviRaw === 'all') {
               vlanInfo[v].hasSvi = true;
@@ -314,7 +315,8 @@ function getSheetVlanSummary() {
         // Native VLAN
         if (parsed.native) {
           const n = parsed.native;
-          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, trunkCount: 0, devices: new Set() };
+          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, trunkCount: 0, rowCount: 0, devices: new Set() };
+          vlanInfo[n].rowCount++;
           vlanInfo[n].devices.add(devName);
           if (sviRaw) {
             sviRaw.split(',').forEach(function(tok) {
@@ -332,24 +334,58 @@ function getSheetVlanSummary() {
       .map(function(vid) {
         const info = vlanInfo[vid];
         return { vid: vid, hasSvi: info.hasSvi, trunkCount: info.trunkCount,
-                 nativeOnly: info.trunkCount === 0, devices: Array.from(info.devices) };
+                 rowCount: info.rowCount, nativeOnly: info.trunkCount === 0,
+                 devices: Array.from(info.devices) };
       });
   } catch (e) { return []; }
 }
 
-function scrollToVlanCell(deviceName) {
+// Navigate to the Nth occurrence of vid across all devices' vlan_ columns.
+// Navigates to the int_ column of the matching row (always visible even if vlan_ is hidden).
+// Returns { total, idx } so the client can show "row X / N".
+function navigateToVlanOccurrence(vid, occIdx) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_DATA);
-    if (!sheet) return;
+    if (!sheet) return { total: 0, idx: 0 };
     const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 3) return { total: 0, idx: 0 };
+
     const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-    const target = 'vlan_' + deviceName;
-    const colIdx = headers.findIndex(function(h) { return String(h) === target; });
-    if (colIdx === -1) return;
+    const devVlanCol = {};
+    const devIntCol  = {};
+    headers.forEach(function(h, i) {
+      const s = String(h);
+      if      (s.startsWith('vlan_')) devVlanCol[s.slice(5)] = i;
+      else if (s.startsWith('int_'))  devIntCol[s.slice(4)]  = i;
+    });
+
+    const dataRowCount = lastRow - 2;
+    const allData = sheet.getRange(3, 1, dataRowCount, lastCol).getValues();
+
+    const occurrences = [];
+    allData.forEach(function(row, rowI) {
+      Object.keys(devVlanCol).forEach(function(devName) {
+        const cellVal = String(row[devVlanCol[devName]] || '').trim();
+        if (!cellVal) return;
+        const parsed = parseVlanWithNative(cellVal);
+        const tokens = [];
+        if (parsed.vlans) parsed.vlans.split(',').forEach(function(t) { t = t.trim(); if (t) tokens.push(t); });
+        if (parsed.native) tokens.push(parsed.native);
+        if (tokens.indexOf(vid) === -1) return;
+        const navCol = devIntCol.hasOwnProperty(devName) ? devIntCol[devName] + 1 : 1;
+        occurrences.push({ row: rowI + 3, col: navCol }); // 1-based
+      });
+    });
+
+    if (!occurrences.length) return { total: 0, idx: 0 };
+    const safeIdx = ((occIdx % occurrences.length) + occurrences.length) % occurrences.length;
+    const target = occurrences[safeIdx];
     ss.setActiveSheet(sheet);
-    sheet.setActiveRange(sheet.getRange(2, colIdx + 1));
-  } catch (e) {}
+    sheet.setActiveRange(sheet.getRange(target.row, target.col));
+    return { total: occurrences.length, idx: safeIdx };
+  } catch (e) { return { total: 0, idx: 0 }; }
 }
 
 function getSheetDeviceList() {
@@ -6002,6 +6038,34 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 }
 
 /**
+ * Compress a VLAN set into "vxlan vlan … vni …" range lines.
+ * Consecutive VLANs collapse to a single range; non-consecutive emit one line each.
+ * Returns an array of config strings (no leading newline).
+ * Pure function — exported for unit testing.
+ */
+function _compressVniLines(vlansIterable, vniBase) {
+  const base = parseInt(vniBase) || 10000;
+  const sorted = Array.from(vlansIterable)
+    .map(v => parseInt(v))
+    .filter(v => v >= 1 && v <= 4094)
+    .sort((a, b) => a - b);
+  const out = [];
+  let i = 0;
+  while (i < sorted.length) {
+    const start = sorted[i];
+    let end = start;
+    while (i + 1 < sorted.length && sorted[i + 1] === end + 1) { i++; end = sorted[i]; }
+    if (start === end) {
+      out.push(` vxlan vlan ${start} vni ${base + start}`);
+    } else {
+      out.push(` vxlan vlan ${start}-${end} vni ${base + start}-${base + end}`);
+    }
+    i++;
+  }
+  return out;
+}
+
+/**
 * Generates VXLAN Data Plane Config
 * - Calculates VTEP IP (Loopback1 for MLAG, Loopback0 for Standalone)
 * - Maps VNIs
@@ -6054,15 +6118,10 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
 
   lines.push(" vxlan udp-port 4789");
 
-  // 2. VNI Mapping (base configurable via IP + VNI Config modal, default 10000)
+  // 2. VNI Mapping — consecutive VLANs collapsed into range lines via _compressVniLines()
   const resolvedVniBase = parseInt(vniBase) || 10000;
   if (gwVlans && gwVlans.size > 0) {
-    const sortedVlans = Array.from(gwVlans).sort((a, b) => a - b);
-    sortedVlans.forEach(v => {
-      if (v >= 1 && v <= 4094) {
-        lines.push(` vxlan vlan ${v} vni ${resolvedVniBase + parseInt(v)}`);
-      }
-    });
+    _compressVniLines(gwVlans, resolvedVniBase).forEach(l => lines.push(l));
   }
 
   // 3. STATIC FLOOD LIST (IPv6 Support)
