@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.32 | 2026-04-24 12:29:54 -->
+<!-- TopoAssist v260424.33 | 2026-04-24 13:07:13 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -339,10 +339,10 @@
     }
     .vlan-count {
       font-family: "JetBrains Mono", monospace;
-      font-size: 9px; font-weight: 700;
-      vertical-align: super; margin-left: 2px;
-      background: rgba(0,0,0,0.15); border-radius: 3px;
-      padding: 0 3px; line-height: 1; pointer-events: none;
+      font-size: 8px; font-weight: 700;
+      display: inline-block; vertical-align: middle; margin-left: 4px;
+      background: rgba(0,0,0,0.2); border-radius: 6px;
+      padding: 1px 4px; line-height: 1.2; pointer-events: none;
     }
     .vlan-strip {
       display: flex; flex-wrap: wrap; gap: 4px;
@@ -1027,16 +1027,38 @@
       if (clearBtn) clearBtn.style.display = sapVlanFilter.length ? '' : 'none';
     }
 
-    var sapVlanOccIdx = {};  // vid → current occurrence index
+    var sapVlanOccIdx = {};  // vid → current occurrence index (0-based)
+    var sapVlanTotal  = {};  // vid → cached total occurrences
+
+    // Show persistent status reflecting current selection state
+    function _refreshVlanStatus() {
+      if (!sapVlanFilter.length) { setStatus(''); return; }
+      if (sapVlanFilter.length > 1) {
+        setStatus(sapVlanFilter.length + ' VLANs selected'); return;
+      }
+      var vid   = sapVlanFilter[0];
+      var idx   = sapVlanOccIdx[vid] || 0;
+      var total = sapVlanTotal[vid]  || 0;
+      if (total > 0) setStatus('VLAN ' + vid + ' \u00b7 row ' + (idx + 1) + ' / ' + total);
+      else           setStatus('VLAN ' + vid + '\u2026');
+    }
 
     function toggleSapVlanChip(e, vid) {
       var idx = sapVlanFilter.indexOf(vid);
       if (e && e.shiftKey) {
         // Shift+click: add/remove (multi-select)
-        if (idx !== -1) sapVlanFilter.splice(idx, 1);
-        else { sapVlanFilter.push(vid); sapVlanOccIdx[vid] = 0; _navigateVlan(vid, 0); }
-        buildSapVlanStrip();
-        applySapVlanFilter();
+        if (idx !== -1) {
+          sapVlanFilter.splice(idx, 1);
+          buildSapVlanStrip();
+          applySapVlanFilter();
+          _refreshVlanStatus();
+        } else {
+          sapVlanFilter.push(vid);
+          sapVlanOccIdx[vid] = 0;
+          buildSapVlanStrip();
+          applySapVlanFilter();
+          _navigateVlan(vid, 0);
+        }
       } else {
         if (sapVlanFilter.length === 1 && sapVlanFilter[0] === vid) {
           // Already sole selection: cycle to next occurrence
@@ -1055,17 +1077,16 @@
     }
 
     function _navigateVlan(vid, occIdx) {
-      setStatus('Jumping to VLAN ' + vid + '\u2026');
+      _refreshVlanStatus();  // show immediately with cached total (or "…" if first time)
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.total > 0) {
             sapVlanOccIdx[vid] = r.idx;
-            setStatus('VLAN ' + vid + ' \u00b7 row ' + (r.idx + 1) + ' / ' + r.total);
-            setTimeout(function() { setStatus(''); }, 2500);
+            sapVlanTotal[vid]  = r.total;
           } else {
-            setStatus('VLAN ' + vid + ' \u2014 not found in sheet');
-            setTimeout(function() { setStatus(''); }, 2000);
+            sapVlanTotal[vid] = 0;
           }
+          _refreshVlanStatus();  // update with real values; stays until deselected
         })
         .withFailureHandler(function() { setStatus(''); })
         .navigateToVlanOccurrence(vid, occIdx);
@@ -1074,8 +1095,10 @@
     function clearSapVlanFilter() {
       sapVlanFilter = [];
       sapVlanOccIdx = {};
+      sapVlanTotal  = {};
       buildSapVlanStrip();
       applySapVlanFilter();
+      setStatus('');
     }
 
     function applySapVlanFilter() {
