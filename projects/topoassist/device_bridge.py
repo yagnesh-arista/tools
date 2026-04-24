@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.6 | 2026-04-24 09:27:21
+# topoassist v260424.12 | 2026-04-24 09:53:48
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260423.33","port":8765}
+  GET  /health      → {"status":"ok","version":"260423.34","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -63,22 +63,25 @@ def _ssh_base():
     SSH_ASKPASS shim (macOS/no sshpass): SSH_ASKPASS env supplies empty password.
     Fallback: key-based auth via BatchMode=yes."""
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh",
+        return [_SSHPASS_BIN, "-p", "", "ssh", "-T",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
+                "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh",
+        return ["ssh", "-T",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "NumberOfPasswordPrompts=1",
+                "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh",
+    return ["ssh", "-T",
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
+            "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=8"]
 
 def _check_ssh_agent():
@@ -119,13 +122,19 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260423.33"
+VERSION           = "260423.34"
 PORT              = 8765
-# CLI flags (-u/-b/-t) take priority; env vars are the fallback.
+# CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
 JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
 TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
+# PUSH_TIMEOUT: separate ceiling for large configure-session pushes.
+# TIMEOUT (-t) is for read queries (show, lldp, etc.) and should stay small.
+# Large configs (10k+ commands) can exceed TIMEOUT — set this independently.
+# Default: max(TIMEOUT*4, 300) so it auto-scales with -t but never below 5 min.
+PUSH_TIMEOUT = int(_arg("-P") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
+                                                 str(max(TIMEOUT * 4, 300))))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 
@@ -650,11 +659,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
         """Send commands to device via SSH stdin pipe.
         Returns (stdout_text, stderr_text) as decoded strings.
         Raises subprocess.TimeoutExpired if the device doesn't respond within
-        TIMEOUT — caller is responsible for catching and handling."""
+        the effective timeout — caller is responsible for catching and handling.
+        Read calls (≤5 cmds) use TIMEOUT; large configure-session pushes use
+        PUSH_TIMEOUT so big configs don't time out mid-session."""
         stdin_text = '\n'.join(cmds) + '\n'
         # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
+        # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
+        # sessions can be 10k+ commands and need PUSH_TIMEOUT.
+        _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
         base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
@@ -663,7 +677,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, env=_SSH_ENV) as proc:
             try:
-                out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
+                out, err = proc.communicate(stdin_text.encode(), timeout=_timeout)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.communicate()   # drain; __exit__ will close pipes + wait

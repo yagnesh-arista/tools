@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.10 | 2026-04-24 09:42:48 -->
+<!-- TopoAssist v260424.12 | 2026-04-24 09:49:50 -->
 <!DOCTYPE html>
 <html>
 
@@ -1356,6 +1356,20 @@
     </div>
     <div class="modal-body" style="overflow-y:auto; flex:1; min-height:0; padding:12px 16px;">
 
+      <div class="audit-cat-hdr">Bridge — Live / LLDP</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMismatch" onchange="toggleAuditCheck('bridgeAuditFlagMismatch',this.checked)"><span>LLDP neighbor mismatch</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMismatch"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Missing LLDP neighbor</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMissing"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>
+        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagInternalVlan"></span>
+      </div>
+
       <div class="audit-cat-hdr">Port-Channel</div>
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagPoMismatch" onchange="toggleAuditCheck('auditFlagPoMismatch',this.checked)"><span>PO ID mismatch (both sides differ)</span></label>
@@ -1450,20 +1464,6 @@
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagUndeclaredMlag" onchange="toggleAuditCheck('auditFlagUndeclaredMlag',this.checked)"><span>MLAG device not declared</span></label>
         <span class="audit-status-dot" id="auditDot_auditFlagUndeclaredMlag"></span>
-      </div>
-
-      <div class="audit-cat-hdr">Bridge / LLDP</div>
-      <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMismatch" onchange="toggleAuditCheck('bridgeAuditFlagMismatch',this.checked)"><span>LLDP neighbor mismatch</span></label>
-        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMismatch"></span>
-      </div>
-      <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Missing LLDP neighbor</span></label>
-        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagMissing"></span>
-      </div>
-      <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>
-        <span class="audit-status-dot" id="auditDot_bridgeAuditFlagInternalVlan"></span>
       </div>
 
     </div>

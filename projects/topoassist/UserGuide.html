@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.10 | 2026-04-24 09:43:24 -->
+<!-- TopoAssist v260424.12 | 2026-04-24 09:53:43 -->
 <!DOCTYPE html>
 <html>
 
@@ -986,7 +986,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2>Audit Engine</h2>
-    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 24 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. A badge shows the error count when issues are found.</p>
+    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 24 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. The icon changes color to show audit state at a glance: <b style="color:#94a3b8;">dimmed</b> when audit is disabled, <b style="color:#22c55e;">green</b> when enabled with no issues found, and <b style="color:#ef4444;">red</b> when enabled with issues present. A badge shows the error count when issues are found.</p>
     <ul>
       <li><b>Unsupported Interface</b> — <code>int_</code> value does not start with <code>Et</code> (Ethernet) or <code>Vx</code> (VTEP). All Arista physical ports use the <code>Et</code> prefix regardless of speed; <code>Vx1</code> is the only valid VTEP entry. Other types (<code>Po</code>, <code>Lo</code>, <code>Ma</code>, etc.) do not belong in <code>int_</code>.</li>
       <li><b>Po Mismatch</b> — both sides of a cable have <code>po_</code> set but to different Port-Channel numbers. Both ports are flagged.</li>
