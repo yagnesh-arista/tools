@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.12 | 2026-04-24 09:52:57 -->
+<!-- TopoAssist v260424.13 | 2026-04-24 09:55:20 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.12";  // keep in sync with Code.gs
+const APP_VERSION = "260424.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9028,22 +9028,25 @@ def _check_ssh_agent():
 
 def _ssh_base():
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh",
+        return [_SSHPASS_BIN, "-p", "", "ssh", "-T",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
+                "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh",
+        return ["ssh", "-T",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "NumberOfPasswordPrompts=1",
+                "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh",
+    return ["ssh", "-T",
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
+            "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=8"]
 
 _ssh_auth = {"ok": True, "msg": "", "failures": 0}
@@ -9051,12 +9054,14 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260423.33"
+VERSION = "260423.34"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
 JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
 TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
+PUSH_TIMEOUT = int(_arg("-P") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
+                                                 str(max(TIMEOUT * 4, 300))))
 
 # -- Active transport -----------------------------------------------------------
 METHOD = "ssh"      # ssh | eapi | rest | gnmi
@@ -9382,6 +9387,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         stdin_text = "\\n".join(cmds) + "\\n"
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
+        _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
         base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
@@ -9390,7 +9396,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, env=_SSH_ENV)
         try:
-            out, err = proc.communicate(stdin_text.encode(), timeout=TIMEOUT)
+            out, err = proc.communicate(stdin_text.encode(), timeout=_timeout)
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.communicate()
