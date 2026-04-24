@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.44 | 2026-04-24 15:32:41 -->
+<!-- TopoAssist v260424.46 | 2026-04-24 15:34:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.44";  // keep in sync with Code.gs
+const APP_VERSION = "260424.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3567,6 +3567,48 @@ function cancelTooltip() {
 function hideTooltip() {
   activeTooltipPortId = null;
   document.getElementById("tooltip").style.display = "none";
+}
+
+// Tooltip for the Vx1 summary row — shows the generated interface Vxlan1 config block.
+// Uses configCache["055_VXLAN"].full; fetches if not yet cached and re-shows on callback.
+function showVx1Tooltip(e, deviceName) {
+  const dev = allDevicesData[deviceName];
+  const idx = dev ? (dev.sheetIndex || '-') : '-';
+  const _vx1SentinelId = 'vx1:' + deviceName;
+  activeTooltipPortId = _vx1SentinelId;
+
+  const _render = function() {
+    if (activeTooltipPortId !== _vx1SentinelId) return; // mouse left before fetch finished
+    const cfg = configCache[deviceName] && configCache[deviceName].data && configCache[deviceName].data['055_VXLAN']
+      ? configCache[deviceName].data['055_VXLAN'].full
+      : null;
+    const cfgHtml = cfg
+      ? escapeHtml(cfg)
+      : '<span style="color:#94a3b8;font-style:italic;font-family:\'JetBrains Mono\',monospace;">Loading…</span>';
+
+    const tooltip = document.getElementById('tooltip');
+    tooltip.innerHTML =
+      '<div class="tt-right-pane" style="min-width:300px">' +
+        '<div class="tt-config-header">' +
+          '<div class="tt-dev-box">' +
+            '<div><span class="tt-dev-idx">[' + idx + ']</span>' + escapeHtml(deviceName) + '</div>' +
+            '<div class="tt-port-name">interface Vxlan1</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="tt-config-body">' +
+          '<div class="tt-config-col local" style="width:100%">' + cfgHtml + '</div>' +
+        '</div>' +
+      '</div>';
+    tooltip.style.display = 'flex';
+    if (e) moveTooltip(e);
+  };
+
+  if (configCache[deviceName]) {
+    _render();
+  } else {
+    _render(); // show "Loading…" immediately
+    fetchFullConfig(deviceName, function() { _render(); });
+  }
 }
 
 function updateNodeStats(nodeEl, filteredCount) {
@@ -7477,19 +7519,23 @@ function render(data) {
         const vx1Row = document.createElement("div");
         vx1Row.className = "port-row";
         vx1Row.style.cssText = "background-color:rgba(20,184,166,0.07)!important;border-left:3px solid rgba(20,184,166,0.5)!important;border-bottom:1px solid rgba(20,184,166,0.15);cursor:default;user-select:none;-webkit-user-select:none;";
-        vx1Row.title = "VTEP — AP VLANs: " + node.vtepVlans;
-
-        // col-et: "Vx1" + muted AP VLAN suffix
+        // col-et: just "Vx1" — hover shows interface Vxlan1 config tooltip
         const vx1Et = document.createElement("span");
         vx1Et.className = "col-et";
-        vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-        vx1Et.title = "AP VLANs: " + node.vtepVlans;
-        const vx1EtLabel = document.createElement("span"); vx1EtLabel.innerText = "Vx1"; vx1Et.appendChild(vx1EtLabel);
-        const vx1EtVlans = document.createElement("span");
-        vx1EtVlans.style.cssText = "color:#94a3b8;font-size:10px;font-weight:400;margin-left:5px;font-style:italic;";
-        vx1EtVlans.innerText = "VL " + node.vtepVlans;
-        vx1Et.appendChild(vx1EtVlans);
+        vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;";
+        vx1Et.innerText = "Vx1";
         vx1Row.appendChild(vx1Et);
+
+        // Hover → show interface Vxlan1 config via the shared tooltip
+        const _vx1NodeId = node.id;
+        vx1Row.addEventListener("mouseenter", function(e) {
+          cancelTooltip();
+          tooltipShowTimer = setTimeout(function() {
+            tooltipShowTimer = null;
+            showVx1Tooltip(lastMouseEvent || e, _vx1NodeId);
+          }, 350);
+        });
+        vx1Row.addEventListener("mouseleave", function() { cancelTooltip(); hideTooltip(); });
 
         const vx1Mode = document.createElement("span");
         vx1Mode.className = "col-mode";
@@ -9206,7 +9252,8 @@ def _extract_session_diff(output):
       +++ session:/topoassist-session-config
       interface Ethernet1/1
       +   description foo
-    No @@ hunk headers. Echoed commit/abort appears as 'Prompt#commit' -- stop there."""
+    No @@ hunk headers. Echoed commit/abort appears as 'Prompt#commit' -- stop there.
+    For open_only pushes (no final cmd) a bare EOS prompt ending with '#' signals EOF."""
     lines   = output.split("\\n")
     diff    = []
     started = False
@@ -9217,7 +9264,7 @@ def _extract_session_diff(output):
                 started = True
                 diff.append(s)
         else:
-            if "#commit" in s or "#abort" in s or "#exit" in s:
+            if "#commit" in s or "#abort" in s or "#exit" in s or s.endswith("#"):
                 break
             diff.append(s)
     return "\\n".join(diff).strip()
