@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.16 | 2026-04-24 11:15:41 -->
+<!-- TopoAssist v260424.17 | 2026-04-24 11:18:10 -->
 <!DOCTYPE html>
 <html>
 
@@ -848,6 +848,14 @@
             <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
             Enable on topology bring-up
           </label>
+        </div>
+        <div class="bridge-audit-flags-grid" style="margin-top:6px;">
+          <span class="bridge-audit-cat">URL</span>
+          <input type="text" id="inputBridgeUrl" placeholder="http://localhost:8765"
+            style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 6px;
+                   border:1px solid var(--border);border-radius:3px;color:var(--text-main);
+                   background:var(--bg-body);width:210px;box-sizing:border-box;"
+            oninput="saveBridgeUrl(this.value)" title="Bridge URL — change to http://bus-home:8765 to run bridge remotely">
         </div>
       </div>
       <!-- Devices: collapsible, preference saved in localStorage -->

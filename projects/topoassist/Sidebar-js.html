@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.16 | 2026-04-24 11:15:41 -->
+<!-- TopoAssist v260424.17 | 2026-04-24 11:19:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.16";  // keep in sync with Code.gs
+const APP_VERSION = "260424.17";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8902,7 +8902,7 @@ function toggleMinimize() {
 
 // --- BRIDGE MODAL ---
 
-const BRIDGE_URL = 'http://localhost:8765';
+let BRIDGE_URL = localStorage.getItem('bridgeUrl') || 'http://localhost:8765';
 let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
@@ -9662,6 +9662,14 @@ function openBridgeModal() {
   _syncBridgeEnableCheckbox();
   _syncBridgeDevCollapse();
   _populateLldpDevTable();
+  const _urlInput = document.getElementById('inputBridgeUrl');
+  if (_urlInput) _urlInput.value = BRIDGE_URL;
+  _checkBridgeHealth();
+}
+
+function saveBridgeUrl(val) {
+  BRIDGE_URL = val.trim() || 'http://localhost:8765';
+  localStorage.setItem('bridgeUrl', BRIDGE_URL);
   _checkBridgeHealth();
 }
 
@@ -9841,6 +9849,12 @@ function _checkBridgeHealth() {
     .catch(() => {
       dot.className = 'bridge-dev-dot dot-red';
       msg.textContent = 'Not running';
+      const _isLocal = BRIDGE_URL.includes('localhost') || BRIDGE_URL.includes('127.0.0.1');
+      const _cmdStr = _isLocal
+        ? 'python3 device_bridge.py'
+        : 'python3 device_bridge.py -b ""';
+      cmd.innerHTML = (_isLocal ? 'Start the bridge: ' : 'Start on remote host: ')
+        + '<code class="bridge-cmd-code">' + _cmdStr + '</code>';
       cmd.style.display = 'block';
       btn.disabled = true;
       const _rb = document.getElementById('btnRunReconcile');

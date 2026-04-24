@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.16 | 2026-04-24 11:16:06 -->
+<!-- TopoAssist v260424.17 | 2026-04-24 11:18:34 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -1015,10 +1015,15 @@
 
     function toggleSapVlanChip(vid) {
       var idx = sapVlanFilter.indexOf(vid);
+      var activating = idx === -1;
       if (idx !== -1) sapVlanFilter.splice(idx, 1);
       else sapVlanFilter.push(vid);
       buildSapVlanStrip();
       applySapVlanFilter();
+      if (activating) {
+        var entry = vlanSummary.filter(function(v) { return v.vid === vid; })[0];
+        if (entry && entry.devices.length) navigate(entry.devices[0]);
+      }
     }
 
     function clearSapVlanFilter() {
