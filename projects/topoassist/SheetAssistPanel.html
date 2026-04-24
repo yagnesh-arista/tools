@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.33 | 2026-04-24 13:07:13 -->
+<!-- TopoAssist v260424.34 | 2026-04-24 13:53:40 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -292,6 +292,16 @@
       min-height: 24px;
       background: #f8fafc;
     }
+    #navToast {
+      position: fixed; bottom: 40px; right: 8px;
+      background: rgba(15, 23, 42, 0.88); color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      padding: 4px 9px; border-radius: 5px;
+      pointer-events: none; user-select: none; -webkit-user-select: none;
+      white-space: nowrap; z-index: 999;
+      opacity: 0; transition: opacity 0.15s ease;
+    }
+    #navToast.show { opacity: 1; }
     .loading {
       font-family: "JetBrains Mono", monospace;
       color: #94a3b8;
@@ -436,6 +446,7 @@
     <div class="vlan-strip" id="vlanStrip"></div>
   </div>
 
+  <div id="navToast"></div>
   <div class="status-bar" id="statusBar"></div>
 
   <script>
@@ -688,6 +699,7 @@
     }
 
     function navigate(name) {
+      showNavToast('Jumping to ' + name + '\u2026');
       setStatus('Jumping to ' + name + '\u2026');
       google.script.run
         .withSuccessHandler(function() { if (!serverBusy) setStatus(''); })
@@ -838,6 +850,16 @@
 
     /* ── SHARED UTILS ──────────────────────────────────── */
     function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+
+    var _navToastTimer = null;
+    function showNavToast(msg) {
+      var el = document.getElementById('navToast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_navToastTimer);
+      _navToastTimer = setTimeout(function() { el.classList.remove('show'); }, 1400);
+    }
 
     var serverBusy  = false;
     var isMinimized = false;
@@ -1077,6 +1099,7 @@
     }
 
     function _navigateVlan(vid, occIdx) {
+      showNavToast('Jumping to VLAN ' + vid + '\u2026');
       _refreshVlanStatus();  // show immediately with cached total (or "…" if first time)
       google.script.run
         .withSuccessHandler(function(r) {
