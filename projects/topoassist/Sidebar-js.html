@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.13 | 2026-04-24 09:55:20 -->
+<!-- TopoAssist v260424.14 | 2026-04-24 10:03:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.13";  // keep in sync with Code.gs
+const APP_VERSION = "260424.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9054,7 +9054,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260423.34"
+VERSION = "260423.35"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9252,6 +9252,19 @@ def _prepend_section_cleaners(config_text):
     return "\\n".join(out)
 
 
+# -- SSH stderr cleaner ---------------------------------------------------------
+_SSH_NOISE_RE = re.compile(
+    r"^\s*(pseudo-terminal will not be allocated"
+    r"|warning: permanently added"
+    r"|debug[123]:)",
+    re.IGNORECASE)
+
+def _clean_ssh_err(err_text):
+    lines = [l for l in err_text.splitlines() if not _SSH_NOISE_RE.match(l)]
+    cleaned = "\\n".join(lines).strip()
+    return cleaned or err_text.strip()
+
+
 # -- Bridge HTTP handler --------------------------------------------------------
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -9408,7 +9421,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _auth_errs = ("permission denied", "authentication failed", "no route to host",
                           "connection refused", "connection timed out")
             if not out_text.strip() and any(k in err_text.lower() for k in _auth_errs):
-                print(f"  [stdin] {ip}: {_label} → failed: {err_text.strip()[:80]}", flush=True)
+                print(f"  [stdin] {ip}: {_label} → failed: {_clean_ssh_err(err_text)[:160]}", flush=True)
             else:
                 print(f"  [stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
@@ -9465,7 +9478,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
-                raise RuntimeError(f"SSH failed: {err_text.strip()[:120]}")
+                raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
                     "EOS pending session limit reached -- Device Bridge will auto-clean "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.12 | 2026-04-24 09:53:48
+# topoassist v260424.14 | 2026-04-24 10:02:00
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260423.34","port":8765}
+  GET  /health      → {"status":"ok","version":"260423.35","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -122,7 +122,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260423.34"
+VERSION           = "260423.35"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -389,6 +389,24 @@ def _prepend_section_cleaners(config_text):
                 break
         out.append(line)
     return '\n'.join(out)
+
+
+# ── SSH stderr cleaner ────────────────────────────────────────────────────────
+# Strip known-noisy SSH informational lines from stderr before surfacing errors.
+# With -T + LogLevel=ERROR these shouldn't appear; this is a safety net so that
+# if they do appear (e.g. older SSH, jump-host quirks), the real error is first.
+_SSH_NOISE_RE = re.compile(
+    r'^\s*(pseudo-terminal will not be allocated'
+    r'|warning: permanently added'
+    r'|debug[123]:'
+    r')',
+    re.IGNORECASE)
+
+def _clean_ssh_err(err_text):
+    """Return err_text with SSH noise lines removed. Strips leading/trailing whitespace."""
+    lines = [l for l in err_text.splitlines() if not _SSH_NOISE_RE.match(l)]
+    cleaned = '\n'.join(lines).strip()
+    return cleaned or err_text.strip()   # fall back to raw if everything was noise
 
 
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
@@ -689,7 +707,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _auth_errs = ("permission denied", "authentication failed", "no route to host",
                           "connection refused", "connection timed out")
             if not out_text.strip() and any(k in err_text.lower() for k in _auth_errs):
-                print(f"  [stdin] {ip}: {_label} → failed: {err_text.strip()[:80]}", flush=True)
+                print(f"  [stdin] {ip}: {_label} → failed: {_clean_ssh_err(err_text)[:160]}", flush=True)
             else:
                 print(f"  [stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
@@ -780,7 +798,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
-                raise RuntimeError(f"SSH failed: {err_text.strip()[:120]}")
+                raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
             if VERBOSE: print(f"  [push] {ip}: SSH connected")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
