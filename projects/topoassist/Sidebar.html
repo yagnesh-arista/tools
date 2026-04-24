@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.25 | 2026-04-24 12:05:30 -->
+<!-- TopoAssist v260424.27 | 2026-04-24 12:12:22 -->
 <!DOCTYPE html>
 <html>
 
@@ -847,6 +847,13 @@
           <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
             <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
             Enable on topology bring-up
+          </label>
+        </div>
+        <div class="bridge-audit-flags-grid" style="margin-top:3px;">
+          <span class="bridge-audit-cat"></span>
+          <label class="bridge-chk-label" title="When bridge is down, re-check automatically every 60 seconds until it comes back up.">
+            <input type="checkbox" id="chkBridgeAutoReconnect" onchange="setBridgeAutoReconnect(this.checked)">
+            Auto-reconnect on disconnect
           </label>
         </div>
       </div>

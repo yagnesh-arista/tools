@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.25 | 2026-04-24 12:05:30 -->
+<!-- TopoAssist v260424.27 | 2026-04-24 12:12:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.25";  // keep in sync with Code.gs
+const APP_VERSION = "260424.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8953,6 +8953,7 @@ let _bridgeUpState      = false; // true when bridge is confirmed up; tracks dow
 let _topologyReady      = false; // true after fetchData() completes; guards _autoRunBridge from firing on stale session data
 let _lastBridgeLinkSig    = null;  // link signature at last Bridge run; null = never run; used to skip LLDP on config-only fetchData
 let _bridgeDeviceTimeout = 15;  // per-attempt push timeout (seconds) — updated from /health on connect
+let _bridgeReconnectTimer = null; // auto-reconnect: setTimeout ID for 60s retry when bridge is down
 let _nonAristaSyncNotice = null; // set when IXIA/SPIRENT role saved — shown after next fetchData completes
 
 function downloadBridgeScript() {
@@ -9833,6 +9834,7 @@ function _checkBridgeHealth() {
           authWarn.textContent = '\u26a0 ' + data.auth.msg;
           authWarn.style.display = 'block';
         }
+        if (_bridgeReconnectTimer) { clearTimeout(_bridgeReconnectTimer); _bridgeReconnectTimer = null; }
         _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
       } else {
         throw new Error('unexpected response');
@@ -9847,6 +9849,14 @@ function _checkBridgeHealth() {
       const _rb = document.getElementById('btnRunReconcile');
       if (_rb) _rb.disabled = true;
       _updateBridgeToolbarIcon('down');
+      // Auto-reconnect: schedule a re-check in 60s if preference is set
+      if (localStorage.getItem('bridgeAutoReconnect') === 'true') {
+        if (_bridgeReconnectTimer) clearTimeout(_bridgeReconnectTimer);
+        _bridgeReconnectTimer = setTimeout(() => {
+          _bridgeReconnectTimer = null;
+          _checkBridgeHealth();
+        }, 60000);
+      }
     });
 }
 
@@ -9897,9 +9907,19 @@ function setBridgeEnabled(val) {
   if (val) _silentBridgeCheck();
 }
 
+function setBridgeAutoReconnect(val) {
+  localStorage.setItem('bridgeAutoReconnect', val ? 'true' : 'false');
+  if (!val && _bridgeReconnectTimer) {
+    clearTimeout(_bridgeReconnectTimer);
+    _bridgeReconnectTimer = null;
+  }
+}
+
 function _syncBridgeEnableCheckbox() {
   const chk = document.getElementById('chkBridgeEnabled');
   if (chk) chk.checked = localStorage.getItem('bridgeEnabled') !== 'false';
+  const chkR = document.getElementById('chkBridgeAutoReconnect');
+  if (chkR) chkR.checked = localStorage.getItem('bridgeAutoReconnect') === 'true';
 }
 
 // Silent health check — only updates toolbar icon, does not touch modal DOM.
