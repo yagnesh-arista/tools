@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260423.22 | 2026-04-23 13:01:07
+# topoassist v260424.6 | 2026-04-24 09:27:21
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260423.22","port":8765}
+  GET  /health      → {"status":"ok","version":"260423.33","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -119,7 +119,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260423.22"
+VERSION           = "260423.33"
 PORT              = 8765
 # CLI flags (-u/-b/-t) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -915,7 +915,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 except subprocess.TimeoutExpired:
                     with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except subprocess.CalledProcessError:
-                    with lock: results[dev] = {"ok": False, "error": f"SSH failed — check admin access on {ip}"}
+                    # If _ssh_auth has already flagged an auth failure (exit-255 threshold
+                    # crossed by an earlier thread), surface that message so the JS status
+                    # bar shows "N auth errors" instead of the generic SSH-failed text.
+                    if not _ssh_auth["ok"] and _ssh_auth.get("msg"):
+                        err_msg = _ssh_auth["msg"]
+                    else:
+                        err_msg = f"SSH failed — check admin access on {ip}"
+                    with lock: results[dev] = {"ok": False, "error": err_msg}
                 except json.JSONDecodeError:
                     with lock: results[dev] = {"ok": False, "error": "Device returned invalid JSON"}
                 except FileNotFoundError:
