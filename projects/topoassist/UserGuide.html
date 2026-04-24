@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.36 | 2026-04-24 14:04:42 -->
+<!-- TopoAssist v260424.37 | 2026-04-24 14:14:54 -->
 <!DOCTYPE html>
 <html>
 
@@ -804,13 +804,16 @@ clasp login --no-localhost</pre>
     </div>
 
     <h3>5. Auto-Description Logic</h3>
-    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value:</p>
+    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>#TA</code> — this ownership marker lets Reconcile identify and clean up stale interfaces on devices.</p>
     <ul>
-      <li>Physical standalone: <code>-&gt; PeerDev-PeerPort</code></li>
-      <li>Physical member of Po: <code>-&gt; PeerDev-PeerPort-PoX</code></li>
-      <li>Peer-link physical: <code>-&gt; PeerDev-PeerPort-MLAG-PEER-LINK</code></li>
-      <li>Port-Channel (regular): <code>-&gt; PeerDev</code> or <code>-&gt; PeerDev &amp; PeerDev2</code></li>
-      <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2 (MLAG)</code></li>
+      <li>Physical standalone: <code>-&gt; PeerDev-PeerPort #TA</code></li>
+      <li>Physical member of Po: <code>-&gt; PeerDev-PeerPort-PoX #TA</code></li>
+      <li>Peer-link physical: <code>-&gt; PeerDev-PeerPort-MLAG-PEER-LINK #TA</code></li>
+      <li>Port-Channel (regular): <code>-&gt; PeerDev #TA</code> or <code>-&gt; PeerDev &amp; PeerDev2 #TA</code></li>
+      <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2 (MLAG) #TA</code></li>
+      <li>Sub-interface (l3-et-sub-int / l3-po-sub-int): <code>-&gt; PeerDev-PeerPort #TA</code></li>
+      <li>SVI (l2-* with svi_vlan_): <code>#TA</code></li>
+      <li>BGP neighbors (underlay, overlay, VRF): <code>To PeerDev via EtX #TA</code> / <code>Overlay to PeerDev #TA</code></li>
     </ul>
 
     <h3>6. Global Config Template</h3>
@@ -1229,6 +1232,23 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <div class="info-box" style="border-left-color:#f59e0b;background:#fffbeb;margin-bottom:10px;">
       <b>Note:</b> Config push is supported for <code>ssh</code> and <code>eapi</code> transports only. The <code>rest</code> and <code>gnmi</code> transports are read-only.
+    </div>
+
+    <h3>Reconcile — Orphan Cleanup</h3>
+    <p style="font-size:13px;"><b>Reconcile</b> finds interfaces on real devices that carry a <code>#TA</code> ownership marker but are no longer in the topology. These are <b>orphans</b> — leftover from deleted or renamed rows that were never cleaned up on the device.</p>
+    <ol style="font-size:13px;">
+      <li>Open the <b>Device Bridge</b> modal and click <b>Reconcile</b>. The bridge queries each device for all interfaces tagged <code>#TA</code> in their description.</li>
+      <li>Any <code>#TA</code>-tagged interface not in the current topology appears as an orphan row with an <b>Unconfigure</b> button.</li>
+      <li>Click <b>Unconfigure</b> to remove the interface from the device. The cleanup command sent depends on the interface type:
+        <ul style="margin-top:4px;">
+          <li><b>Physical / Port-Channel</b> — <code>default interface EtX</code> (resets all config to EOS defaults)</li>
+          <li><b>Sub-interface</b> (e.g. <code>Et25/1.100</code>) — <code>no interface Et25/1.100</code></li>
+          <li><b>SVI</b> (e.g. <code>Vlan100</code>) — <code>no interface Vlan100</code></li>
+        </ul>
+      </li>
+    </ol>
+    <div class="info-box info-box--dim">
+      Reconcile compares abbreviated interface names (topology uses <code>Et</code>, <code>Po</code>) against the EOS full-form names (<code>Ethernet</code>, <code>Port-Channel</code>) returned by <code>show interfaces description</code> — both are normalized before comparison so no manual name mapping is needed.
     </div>
 
     <!-- ================================================================ -->

@@ -1,4 +1,4 @@
-# topoassist v260424.36 | 2026-04-24 14:07:49
+# topoassist v260424.37 | 2026-04-24 14:11:13
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -449,3 +449,35 @@ class TestPrependSectionCleaners:
     def test_passthrough_multiple_sections(self):
         cfg = "interface Ethernet1\n no shutdown\n!\nrouter bgp 65001\n redistribute connected"
         assert self._run(cfg) == cfg
+
+
+# ── _norm_iface ───────────────────────────────────────────────────────────────
+
+class TestNormIface:
+    def test_ethernet_long_to_et(self):
+        assert db._norm_iface("Ethernet25/1") == "et25/1"
+
+    def test_ethernet_abbreviated_unchanged(self):
+        assert db._norm_iface("Et25/1") == "et25/1"
+
+    def test_port_channel_long_to_po(self):
+        assert db._norm_iface("Port-Channel10") == "po10"
+
+    def test_port_channel_abbreviated_unchanged(self):
+        assert db._norm_iface("Po10") == "po10"
+
+    def test_sub_interface_long(self):
+        assert db._norm_iface("Ethernet25/1.100") == "et25/1.100"
+
+    def test_sub_interface_abbreviated(self):
+        assert db._norm_iface("Et25/1.100") == "et25/1.100"
+
+    def test_vlan_passthrough(self):
+        assert db._norm_iface("Vlan100") == "vlan100"
+
+    def test_loopback_passthrough(self):
+        assert db._norm_iface("Loopback0") == "loopback0"
+
+    def test_case_insensitive(self):
+        assert db._norm_iface("ETHERNET4/1") == "et4/1"
+        assert db._norm_iface("port-channel5") == "po5"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.36 | 2026-04-24 14:10:31
+# topoassist v260424.37 | 2026-04-24 14:10:57
 """
 TopoAssist Device Bridge
 ========================
@@ -979,17 +979,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
                 "protocol":    info.get("lineProtocolStatus", ""),
             })
-
-        def _norm_iface(name):
-            """Normalize EOS interface names to abbreviated lowercase form.
-
-            EOS JSON returns long form (Ethernet25/1, Port-Channel10) while
-            the topology stores abbreviated form (Et25/1, Po10).  Sub-interfaces
-            (Ethernet25/1.100) are handled by the same substitution.
-            """
-            n = re.sub(r'^Ethernet', 'Et', name, flags=re.IGNORECASE)
-            n = re.sub(r'^Port-Channel', 'Po', n, flags=re.IGNORECASE)
-            return n.lower()
 
         # Normalise expected ports to abbreviated lowercase for comparison
         expected_set = {_norm_iface(p) for p in expected_ports}

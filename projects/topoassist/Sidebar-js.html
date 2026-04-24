@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.36 | 2026-04-24 14:09:57 -->
+<!-- TopoAssist v260424.37 | 2026-04-24 14:12:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.36";  // keep in sync with Code.gs
+const APP_VERSION = "260424.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9055,7 +9055,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260423.35"
+VERSION = "260424.36"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -10444,8 +10444,9 @@ function _esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Build {devName: [portNames]} from allNodesData — includes physical ports and PO names.
-// These are the ports TopoAssist owns; anything #TA-tagged on device but NOT here is orphaned.
+// Build {devName: [portNames]} from allNodesData — includes physical ports, PO names,
+// sub-interfaces (l3-*-sub-int), and SVIs (l2-* with svi_vlan_).
+// Anything #TA-tagged on device but NOT here is orphaned.
 function _buildExpectedPortsPerDevice() {
   const out = {};
   Object.entries(allNodesData).forEach(([key, node]) => {
@@ -10454,9 +10455,32 @@ function _buildExpectedPortsPerDevice() {
     const port  = key.slice(colon + 1);
     if (!out[dev]) out[dev] = new Set();
     out[dev].add(port);
-    // Also include the PO name if present — both get #TA descriptions
-    const po = (node.details && node.details.po_ || '').trim();
+
+    const det  = node.details || {};
+    const mode = (det.sp_mode_ || '').trim();
+    const po   = (det.po_ || '').trim();
     if (po) out[dev].add(po);
+
+    // Sub-interfaces: l3-*-sub-int generates <port>.<vlan> entries with #TA
+    if (mode.includes('-sub-int')) {
+      const basePort = (mode.includes('l3-po-sub-int') && po) ? po : port;
+      const pv = parseVlanWithNative(det.vlan_ || '');
+      String(pv.vlans || '').split(',').map(s => s.trim()).filter(Boolean)
+        .forEach(v => out[dev].add(basePort + '.' + v));
+    }
+
+    // SVIs: l2-* with svi_vlan_ generates VlanX with #TA
+    if (mode.startsWith('l2-')) {
+      const sviRaw = (det.svi_vlan_ || '').trim().toLowerCase();
+      if (sviRaw && sviRaw !== 'none') {
+        // 'all' → derive SVIs from vlan_ list; explicit list → parse directly
+        const vlanSource = (sviRaw === 'all')
+          ? String(parseVlanWithNative(det.vlan_ || '').vlans || '')
+          : sviRaw;
+        vlanSource.split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s))
+          .forEach(v => out[dev].add('Vlan' + v));
+      }
+    }
   });
   // Convert Sets to arrays
   const result = {};
@@ -10569,15 +10593,28 @@ function _renderReconcileResults(results, ipMap) {
   panel.style.display = 'block';
 }
 
-// Remove the #TA description from a single orphan interface by pushing a configure session.
+// Determine the EOS cleanup command for an orphan interface.
+//   Sub-interface (Et25/1.100): no interface Et25/1.100
+//   SVI (VlanX):                no interface VlanX
+//   Physical/PO:                default interface Et25/1
+function _orphanCleanupConfig(portName) {
+  if (portName.includes('.')) return 'no interface ' + portName + '\n';
+  if (/^vlan\d+$/i.test(portName)) return 'no interface ' + portName + '\n';
+  return 'default interface ' + portName + '\n';
+}
+
+// Fully remove an orphan #TA interface from the device.
 function unconfigureOrphan(dev, ip, portName, btn) {
   if (!ip) { alert('No IP configured for ' + dev + ' — enter it in the Devices section.'); return; }
-  if (!confirm('Remove #TA description from ' + portName + ' on ' + dev + '?\n\nThis clears the "no description" — the interface remains configured otherwise.')) return;
+  const isSub  = portName.includes('.');
+  const isSVI  = /^vlan\d+$/i.test(portName);
+  const action = isSub || isSVI ? 'remove (no interface)' : 'reset to default (default interface)';
+  if (!confirm(portName + ' on ' + dev + ' is not in topology.\n\nAction: ' + action + '\n\nProceed?')) return;
   const origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Working…';
 
-  const config = 'interface ' + portName + '\n no description\n';
+  const config = _orphanCleanupConfig(portName);
   fetch(BRIDGE_URL + '/pushconfig', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
