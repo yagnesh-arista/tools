@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.29 | 2026-04-24 12:19:12 -->
+<!-- TopoAssist v260424.30 | 2026-04-24 12:20:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.29";  // keep in sync with Code.gs
+const APP_VERSION = "260424.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9850,7 +9850,7 @@ function _checkBridgeHealth() {
       if (_rb) _rb.disabled = true;
       _updateBridgeToolbarIcon('down');
       // Auto-reconnect: schedule a re-check in 60s if preference is set
-      if (localStorage.getItem('bridgeAutoReconnect') === 'true') {
+      if (localStorage.getItem('bridgeAutoReconnect') !== 'false') {
         if (_bridgeReconnectTimer) clearTimeout(_bridgeReconnectTimer);
         _bridgeReconnectTimer = setTimeout(() => {
           _bridgeReconnectTimer = null;
@@ -9919,7 +9919,7 @@ function _syncBridgeEnableCheckbox() {
   const chk = document.getElementById('chkBridgeEnabled');
   if (chk) chk.checked = localStorage.getItem('bridgeEnabled') !== 'false';
   const chkR = document.getElementById('chkBridgeAutoReconnect');
-  if (chkR) chkR.checked = localStorage.getItem('bridgeAutoReconnect') === 'true';
+  if (chkR) chkR.checked = localStorage.getItem('bridgeAutoReconnect') !== 'false';
 }
 
 // Silent health check — only updates toolbar icon, does not touch modal DOM.
