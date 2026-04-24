@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.42 | 2026-04-24 15:20:36
+# topoassist v260424.44 | 2026-04-24 15:33:13
 """
 TopoAssist Device Bridge
 ========================
@@ -311,7 +311,9 @@ def _extract_session_diff(output):
       - Accepts either '--- ' or '+++ ' as the start trigger in case EOS
         emits '+++ ' before '--- ' on some versions.
       - Ignores any trailing whitespace on each line.
-      - Returns '' for an empty diff (no changes staged)."""
+      - Returns '' for an empty diff (no changes staged).
+      - For open_only pushes we don't send a final 'exit' command, so EOS
+        outputs a bare prompt ("Hostname#") at EOF — detected by s.endswith('#')."""
     lines   = output.split('\n')
     diff    = []
     started = False
@@ -324,9 +326,10 @@ def _extract_session_diff(output):
                 diff.append(s)
         else:
             # EOS echoes the final command as "Prompt#commit", "Prompt#abort",
-            # or "Prompt#exit" — the '#' is part of the shell prompt, so this
-            # is safe even if diff lines contain those words.
-            if '#commit' in s or '#abort' in s or '#exit' in s:
+            # or "Prompt#exit" — '#' is part of the prompt, safe vs diff content.
+            # For open_only (no final cmd) a bare EOS prompt ending with '#'
+            # signals end of diff output.
+            if '#commit' in s or '#abort' in s or '#exit' in s or s.endswith('#'):
                 break
             diff.append(s)
     return '\n'.join(diff).strip()
@@ -801,19 +804,35 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _ct.join(timeout=TIMEOUT)
 
         session   = f"topoassist_{int(time.time())}"
-        final_cmd = "abort" if dry_run else ("exit" if open_only else "commit")
+        final_cmd = "abort" if dry_run else "commit"
 
         # 'end' exits from any sub-mode depth to exec mode (session stays pending).
-        # Re-entering puts us at session root so show/commit/abort/exit all work correctly.
-        core_cmds = (
-            [f"configure session {session}"]
-            + lines
-            + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
-        )
+        # Re-entering puts us at session root so show/commit/abort all work correctly.
+        #
+        # open_only: omit the final command entirely — SSH stdin closes naturally (EOF).
+        # EOS leaves the session PENDING without any explicit exit/commit/abort.
+        # Sending 'exit' as the final command can cause EOS to close the SSH stream
+        # before the 'show session-config diffs' output is fully flushed, resulting
+        # in an empty diff being captured.
+        if open_only:
+            core_cmds = (
+                [f"configure session {session}"]
+                + lines
+                + ["end", f"configure session {session}", "show session-config diffs"]
+            )
+        else:
+            core_cmds = (
+                [f"configure session {session}"]
+                + lines
+                + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
+            )
 
         if METHOD == "eapi":
             results = self._eapi_push(ip, *core_cmds)
-            diff = results[-2].strip() if len(results) >= 2 else ""
+            if open_only:
+                diff = results[-1].strip() if results else ""  # last cmd is show diffs
+            else:
+                diff = results[-2].strip() if len(results) >= 2 else ""
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
