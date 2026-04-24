@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.40 | 2026-04-24 15:05:41 -->
+<!-- TopoAssist v260424.41 | 2026-04-24 15:13:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.40";  // keep in sync with Code.gs
+const APP_VERSION = "260424.41";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7479,10 +7479,16 @@ function render(data) {
         vx1Row.style.cssText = "background-color:rgba(20,184,166,0.07)!important;border-left:3px solid rgba(20,184,166,0.5)!important;border-bottom:1px solid rgba(20,184,166,0.15);cursor:default;user-select:none;-webkit-user-select:none;";
         vx1Row.title = "VTEP — AP VLANs: " + node.vtepVlans;
 
+        // col-et: "Vx1" + muted AP VLAN suffix
         const vx1Et = document.createElement("span");
         vx1Et.className = "col-et";
-        vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;";
-        vx1Et.innerText = "Vx1";
+        vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+        vx1Et.title = "AP VLANs: " + node.vtepVlans;
+        const vx1EtLabel = document.createElement("span"); vx1EtLabel.innerText = "Vx1"; vx1Et.appendChild(vx1EtLabel);
+        const vx1EtVlans = document.createElement("span");
+        vx1EtVlans.style.cssText = "color:#94a3b8;font-size:10px;font-weight:400;margin-left:5px;font-style:italic;";
+        vx1EtVlans.innerText = "VL " + node.vtepVlans;
+        vx1Et.appendChild(vx1EtVlans);
         vx1Row.appendChild(vx1Et);
 
         const vx1Mode = document.createElement("span");
@@ -7497,15 +7503,7 @@ function render(data) {
         vx1Type.innerText = "VTEP";
         vx1Row.appendChild(vx1Type);
 
-        // col-po repurposed for AP VLANs on the Vx1 row (Vx1 never has a PO)
-        const vx1Po = document.createElement("span");
-        vx1Po.className = "col-po";
-        vx1Po.style.cssText = "color:#0d9488;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-        vx1Po.innerText = node.vtepVlans;
-        vx1Po.title = "AP VLANs: " + node.vtepVlans;
-        vx1Row.appendChild(vx1Po);
-
-        const vx1Bridge = document.createElement("span"); vx1Bridge.className = "col-bridge"; vx1Row.appendChild(vx1Bridge);
+        ["col-po", "col-bridge"].forEach(cls => { const s = document.createElement("span"); s.className = cls; vx1Row.appendChild(s); });
         const vx1Box = document.createElement("div"); vx1Box.className = "port-box"; vx1Row.appendChild(vx1Box);
 
         body.appendChild(vx1Row);
