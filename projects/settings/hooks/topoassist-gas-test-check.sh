@@ -34,13 +34,13 @@ if [ -n "$NEW_FNS" ] && [ -f "$TESTS_FILE" ]; then
   done <<< "$NEW_FNS"
 fi
 
-# ── 3. Build output ───────────────────────────────────────────────────────────
+# ── 3. Build output — silent when no new functions detected ───────────────────
+[ -z "$UNTESTED" ] && [ -z "$COVERED" ] && exit 0
+
 if [ -n "$UNTESTED" ]; then
   MSG="[TESTS] ⚠ NEW FUNCTIONS WITHOUT GAS TESTS: ${UNTESTED}— add cases to Tests.gs, then run runAllTests() in Apps Script editor"
-elif [ -n "$COVERED" ]; then
-  MSG="[TESTS] ✓ new functions already covered in Tests.gs: ${COVERED}— run runAllTests() to verify"
 else
-  MSG="[TESTS] Code.gs changed — if you added/changed a pure function, add cases to Tests.gs and run runAllTests() in Apps Script editor"
+  MSG="[TESTS] ✓ new functions already covered in Tests.gs: ${COVERED}— run runAllTests() to verify"
 fi
 
 jq -n --arg ctx "$MSG" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
