@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.24 | 2026-04-24 12:05:15 -->
+<!-- TopoAssist v260424.25 | 2026-04-24 12:05:47 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -423,7 +423,7 @@
 
   <div class="vlan-section" id="vlanSection">
     <div class="vlan-section-header">
-      <span>vlans</span>
+      <span>vlans<span class="vlan-hint">shift+click multi</span></span>
       <button class="vlan-clear" id="vlanClear" onclick="clearSapVlanFilter()" title="Clear VLAN filter">clear</button>
     </div>
     <div class="vlan-strip" id="vlanStrip"></div>
@@ -1040,7 +1040,12 @@
       if (activating) {
         var entry = vlanSummary.filter(function(v) { return v.vid === vid; })[0];
         if (entry && entry.devices.length) {
-          google.script.run.withSuccessHandler(function(){}).withFailureHandler(function(){}).scrollToVlanCell(entry.devices[0]);
+          var dest = entry.devices[0];
+          setStatus('Jumping to ' + dest + '\u2026');
+          google.script.run
+            .withSuccessHandler(function() { setStatus(''); })
+            .withFailureHandler(function() { setStatus(''); })
+            .scrollToVlanCell(dest);
         }
       }
     }
