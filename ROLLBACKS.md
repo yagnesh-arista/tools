@@ -4,6 +4,13 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-04-24 | topoassist | 907963d
+**Removed bridge URL configurability (BRIDGE_URL as localStorage-backed let, URL input field in bridge modal, saveBridgeUrl function)**
+Reason: running bridge on bus-home requires `ssh -NL 8765:localhost:8765 bus-home` SSH tunnel from Mac anyway (browser mixed-content blocks HTTP to non-localhost; bridge also binds 127.0.0.1 only) — the tunnel overhead defeats the performance gain, so the complexity is not justified.
+Files: Sidebar-js.html, Sidebar.html
+
+---
+
 ## 2026-04-23 | topoassist | 789d08b
 **Rolled back: MLAG Peer Link inner label shortening.**
 Shortened label lost useful info. Restored "Base (lower gets .base, higher .base+1)".
