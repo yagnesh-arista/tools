@@ -1,4 +1,4 @@
-<!-- TopoAssist v260423.36 | 2026-04-23 15:08:35 -->
+<!-- TopoAssist v260423.38 | 2026-04-23 15:15:06 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -4861,6 +4861,7 @@
     min-width: 230px;
     width: max-content;
     max-width: min(480px, calc(100vw - 40px));
+    max-height: 85vh;
     background: var(--bg-modal);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -4869,6 +4870,7 @@
     font-family: "JetBrains Mono", monospace;
     display: none;
     flex-direction: column;
+    overflow: hidden;
     user-select: none;
   }
   .dev-vis-panel.is-open { display: flex; }
@@ -4999,7 +5001,8 @@
 
   .dev-vis-list {
     overflow-y: auto;
-    max-height: calc(100vh - 280px);
+    flex: 1;
+    min-height: 0;
     padding: 3px 0;
   }
 

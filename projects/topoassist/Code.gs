@@ -1,10 +1,10 @@
-// TopoAssist v260423.36 | 2026-04-23 15:08:35
+// TopoAssist v260423.38 | 2026-04-23 15:16:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260423.36";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260423.38";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -256,8 +256,85 @@ function showSheetAssistPanel() {
   try { ensureOnOpenTrigger();  } catch (e) {}
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
     .setWidth(540)
-    .setHeight(550);
+    .setHeight(590);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
+}
+
+function getSheetVlanSummary() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    if (!sheet) return [];
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 3 || lastCol < 2) return [];
+
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    const devVlanCol = {};   // device name → vlan_ col index (0-based)
+    const devSviCol  = {};   // device name → svi_vlan_ col index (0-based)
+    headers.forEach(function(h, i) {
+      const s = String(h);
+      if      (s.startsWith('vlan_'))     devVlanCol[s.slice(5)] = i;
+      else if (s.startsWith('svi_vlan_')) devSviCol[s.slice(9)]  = i;
+    });
+
+    const dataRowCount = lastRow - 2;
+    if (dataRowCount <= 0) return [];
+    const allData = sheet.getRange(3, 1, dataRowCount, lastCol).getValues();
+
+    const vlanInfo = {}; // vid → { hasSvi, trunkCount, devices: Set }
+    Object.keys(devVlanCol).forEach(function(devName) {
+      const vCol  = devVlanCol[devName];
+      const sviCol = devSviCol.hasOwnProperty(devName) ? devSviCol[devName] : -1;
+      allData.forEach(function(row) {
+        const vlanRaw = String(row[vCol] || '').trim();
+        if (!vlanRaw) return;
+        const parsed  = parseVlanWithNative(vlanRaw);
+        const sviRaw  = sviCol >= 0 ? String(row[sviCol] || '').trim().toLowerCase() : '';
+
+        // Allowed (trunk) VLANs
+        if (parsed.vlans) {
+          parsed.vlans.split(',').forEach(function(v) {
+            v = v.trim();
+            if (!v || isNaN(parseInt(v, 10))) return;
+            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, trunkCount: 0, devices: new Set() };
+            vlanInfo[v].trunkCount++;
+            vlanInfo[v].devices.add(devName);
+            if (sviRaw === 'all') {
+              vlanInfo[v].hasSvi = true;
+            } else if (sviRaw) {
+              sviRaw.split(',').forEach(function(tok) {
+                tok = tok.trim();
+                const m = tok.match(/^nv(\d+)$/i);
+                if ((m ? m[1] : tok) === v) vlanInfo[v].hasSvi = true;
+              });
+            }
+          });
+        }
+        // Native VLAN
+        if (parsed.native) {
+          const n = parsed.native;
+          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, trunkCount: 0, devices: new Set() };
+          vlanInfo[n].devices.add(devName);
+          if (sviRaw) {
+            sviRaw.split(',').forEach(function(tok) {
+              tok = tok.trim();
+              const m = tok.match(/^nv(\d+)$/i);
+              if ((m ? m[1] : tok) === n) vlanInfo[n].hasSvi = true;
+            });
+          }
+        }
+      });
+    });
+
+    return Object.keys(vlanInfo)
+      .sort(function(a, b) { return parseInt(a, 10) - parseInt(b, 10); })
+      .map(function(vid) {
+        const info = vlanInfo[vid];
+        return { vid: vid, hasSvi: info.hasSvi, trunkCount: info.trunkCount,
+                 nativeOnly: info.trunkCount === 0, devices: Array.from(info.devices) };
+      });
+  } catch (e) { return []; }
 }
 
 function getSheetDeviceList() {

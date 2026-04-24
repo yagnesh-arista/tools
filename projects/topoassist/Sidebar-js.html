@@ -1,7 +1,7 @@
-<!-- TopoAssist v260423.36 | 2026-04-23 15:12:43 -->
+<!-- TopoAssist v260423.38 | 2026-04-23 15:16:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260423.36";  // keep in sync with Code.gs
+const APP_VERSION = "260423.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2715,7 +2715,8 @@ function runValidation(logIssues) {
 
     Object.keys(p2pVlanLogical).forEach(vlan => {
       const logicalMap = p2pVlanLogical[vlan];
-      if (logicalMap.size > 1) {
+      if (auditFlagDupP2pVlan && logicalMap.size > 1) {
+        auditCheckHadIssue.auditFlagDupP2pVlan = true;
         const msg = `[FAIL] Duplicate P2P VLAN ${vlan}: Used on ${logicalMap.size} logical links — causes IP conflict in generated config`;
         logicalMap.forEach(linkIds => {
           linkIds.forEach(lid => {
@@ -2778,7 +2779,8 @@ function runValidation(logIssues) {
           const mlagA = allDevicesData[devA] && allDevicesData[devA].mlagPeer;
           const mlagB = allDevicesData[devB] && allDevicesData[devB].mlagPeer;
           const areDeclaredPeers = (mlagA === devB && mlagB === devA);
-          if (!areDeclaredPeers) {
+          if (!areDeclaredPeers && auditFlagUndeclaredMlag) {
+            auditCheckHadIssue.auditFlagUndeclaredMlag = true;
             const err = `[FAIL] MLAG Peer Required: ${devA} and ${devB} both use ${poOrig} toward ${upstreamOrigDev} — declare as MLAG peers in Device Manager`;
             poUpstreamLinkIds[mapKey].forEach(lid => {
               if (!validationErrors[lid]) validationErrors[lid] = [];
@@ -2795,11 +2797,18 @@ function runValidation(logIssues) {
   // =========================================================
   Object.entries(bridgePortStatus).forEach(([portId, status]) => {
     if (status === 'mismatch' && bridgeAuditFlagMismatch) {
+      auditCheckHadIssue.bridgeAuditFlagMismatch = true;
       flagErrorOnPort(portId, 'LLDP mismatch — wrong neighbor/port detected');
     } else if (status === 'missing' && bridgeAuditFlagMissing) {
+      auditCheckHadIssue.bridgeAuditFlagMissing = true;
       flagErrorOnPort(portId, 'LLDP — no neighbor seen on this port');
     }
   });
+
+  // Mark run complete — dots in Audit Settings modal will now show green/red
+  auditHasRun = true;
+  const _auditSettingsEl = document.getElementById('auditSettingsModal');
+  if (_auditSettingsEl && _auditSettingsEl.style.display !== 'none') refreshAuditSettingsDots();
 
   // UPDATE UI
   if (statusEl && !statusEl.innerText.includes("MLAG Peer-Link Missing")) {
@@ -5094,7 +5103,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "schemaContainer", "viewCustomContainer"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "schemaContainer", "viewCustomContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -5119,6 +5128,7 @@ window.topologyKeyHandler = function (event) {
           "pushConfirmModal": cancelPushConfig,
           "bridgeModal": closeBridgeModal,
           "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
+          "auditSettingsModal": closeAuditSettingsModal,
           "techModal": closeTechModal, "configModal": closeConfigModal,
           "groupRectModal": closeGroupRectModal,
           "generateAllModal": closeGenerateAllModal,
@@ -9657,6 +9667,132 @@ function toggleBridgeAuditInternalVlan(val) {
   if (isValidationMode) runValidation();
 }
 
+// =========================================================
+// AUDIT SETTINGS MODAL
+// =========================================================
+
+const _ALL_AUDIT_FLAGS = [
+  'auditFlagPoMismatch', 'auditFlagPoAsymmetry', 'auditFlagMissingPo', 'auditFlagStalePo',
+  'auditFlagUnsupportedInt', 'auditFlagDuplicateInt', 'auditFlagMlagL3',
+  'auditFlagVlanMismatch', 'auditFlagNativeNonTrunk', 'auditFlagSviVlanMismatch',
+  'auditFlagVlanUsage', 'auditFlagDupP2pVlan',
+  'auditFlagInvalidSvi', 'auditFlagMissingIpSvi', 'auditFlagMissingIpL3',
+  'auditFlagStaleIpType', 'auditFlagDupGateway',
+  'auditFlagModeIncompat', 'auditFlagSpeedMismatch',
+  'auditFlagMlagPeerLink', 'auditFlagUndeclaredMlag',
+  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagInternalVlan'
+];
+
+function _getAuditFlag(name) {
+  switch (name) {
+    case 'auditFlagPoMismatch':         return auditFlagPoMismatch;
+    case 'auditFlagPoAsymmetry':        return auditFlagPoAsymmetry;
+    case 'auditFlagMissingPo':          return auditFlagMissingPo;
+    case 'auditFlagStalePo':            return auditFlagStalePo;
+    case 'auditFlagUnsupportedInt':     return auditFlagUnsupportedInt;
+    case 'auditFlagDuplicateInt':       return auditFlagDuplicateInt;
+    case 'auditFlagMlagL3':             return auditFlagMlagL3;
+    case 'auditFlagVlanMismatch':       return auditFlagVlanMismatch;
+    case 'auditFlagNativeNonTrunk':     return auditFlagNativeNonTrunk;
+    case 'auditFlagSviVlanMismatch':    return auditFlagSviVlanMismatch;
+    case 'auditFlagVlanUsage':          return auditFlagVlanUsage;
+    case 'auditFlagDupP2pVlan':         return auditFlagDupP2pVlan;
+    case 'auditFlagInvalidSvi':         return auditFlagInvalidSvi;
+    case 'auditFlagMissingIpSvi':       return auditFlagMissingIpSvi;
+    case 'auditFlagMissingIpL3':        return auditFlagMissingIpL3;
+    case 'auditFlagStaleIpType':        return auditFlagStaleIpType;
+    case 'auditFlagDupGateway':         return auditFlagDupGateway;
+    case 'auditFlagModeIncompat':       return auditFlagModeIncompat;
+    case 'auditFlagSpeedMismatch':      return auditFlagSpeedMismatch;
+    case 'auditFlagMlagPeerLink':       return auditFlagMlagPeerLink;
+    case 'auditFlagUndeclaredMlag':     return auditFlagUndeclaredMlag;
+    case 'bridgeAuditFlagMismatch':     return bridgeAuditFlagMismatch;
+    case 'bridgeAuditFlagMissing':      return bridgeAuditFlagMissing;
+    case 'bridgeAuditFlagInternalVlan': return bridgeAuditFlagInternalVlan;
+    default: return true;
+  }
+}
+
+function _setAuditFlag(name, val) {
+  localStorage.setItem(name, val);
+  switch (name) {
+    case 'auditFlagPoMismatch':         auditFlagPoMismatch = val; break;
+    case 'auditFlagPoAsymmetry':        auditFlagPoAsymmetry = val; break;
+    case 'auditFlagMissingPo':          auditFlagMissingPo = val; break;
+    case 'auditFlagStalePo':            auditFlagStalePo = val; break;
+    case 'auditFlagUnsupportedInt':     auditFlagUnsupportedInt = val; break;
+    case 'auditFlagDuplicateInt':       auditFlagDuplicateInt = val; break;
+    case 'auditFlagMlagL3':             auditFlagMlagL3 = val; break;
+    case 'auditFlagVlanMismatch':       auditFlagVlanMismatch = val; break;
+    case 'auditFlagNativeNonTrunk':     auditFlagNativeNonTrunk = val; break;
+    case 'auditFlagSviVlanMismatch':    auditFlagSviVlanMismatch = val; break;
+    case 'auditFlagVlanUsage':          auditFlagVlanUsage = val; break;
+    case 'auditFlagDupP2pVlan':         auditFlagDupP2pVlan = val; break;
+    case 'auditFlagInvalidSvi':         auditFlagInvalidSvi = val; break;
+    case 'auditFlagMissingIpSvi':       auditFlagMissingIpSvi = val; break;
+    case 'auditFlagMissingIpL3':        auditFlagMissingIpL3 = val; break;
+    case 'auditFlagStaleIpType':        auditFlagStaleIpType = val; break;
+    case 'auditFlagDupGateway':         auditFlagDupGateway = val; break;
+    case 'auditFlagModeIncompat':       auditFlagModeIncompat = val; break;
+    case 'auditFlagSpeedMismatch':      auditFlagSpeedMismatch = val; break;
+    case 'auditFlagMlagPeerLink':       auditFlagMlagPeerLink = val; break;
+    case 'auditFlagUndeclaredMlag':     auditFlagUndeclaredMlag = val; break;
+    case 'bridgeAuditFlagMismatch':     bridgeAuditFlagMismatch = val; break;
+    case 'bridgeAuditFlagMissing':      bridgeAuditFlagMissing = val; break;
+    case 'bridgeAuditFlagInternalVlan': bridgeAuditFlagInternalVlan = val; break;
+  }
+}
+
+function openAuditSettingsModal() {
+  document.getElementById('auditSettingsModal').style.display = 'flex';
+  refreshAuditSettings();
+}
+
+function closeAuditSettingsModal() {
+  document.getElementById('auditSettingsModal').style.display = 'none';
+}
+
+function refreshAuditSettings() {
+  _ALL_AUDIT_FLAGS.forEach(name => {
+    const cb = document.getElementById('auditChk_' + name);
+    if (cb) cb.checked = _getAuditFlag(name);
+  });
+  refreshAuditSettingsDots();
+}
+
+function refreshAuditSettingsDots() {
+  _ALL_AUDIT_FLAGS.forEach(name => {
+    const dot = document.getElementById('auditDot_' + name);
+    if (!dot) return;
+    const enabled = _getAuditFlag(name);
+    if (!enabled || !auditHasRun) {
+      dot.className = 'audit-status-dot';            // gray — disabled or not yet run
+    } else if (auditCheckHadIssue[name]) {
+      dot.className = 'audit-status-dot dot-red';    // issues found
+    } else {
+      dot.className = 'audit-status-dot dot-green';  // clean
+    }
+  });
+}
+
+function toggleAuditCheck(name, val) {
+  _setAuditFlag(name, val);
+  if (isValidationMode) runValidation();
+  refreshAuditSettingsDots();
+}
+
+function enableAllAudits() {
+  _ALL_AUDIT_FLAGS.forEach(name => _setAuditFlag(name, true));
+  refreshAuditSettings();
+  if (isValidationMode) runValidation();
+}
+
+function disableAllAudits() {
+  _ALL_AUDIT_FLAGS.forEach(name => _setAuditFlag(name, false));
+  refreshAuditSettings();
+  if (isValidationMode) runValidation();
+}
+
 function _checkBridgeHealth() {
   const dot      = document.getElementById('bridgeDot');
   const msg      = document.getElementById('bridgeMsg');
@@ -12971,7 +13107,7 @@ function focusAndPulseNode(node) {
 }
 
 function closeAllModals() {
-  const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'bridgeModal', 'cablingModal', 'auditModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
+  const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'bridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -13980,14 +14116,14 @@ function toggleTopoIpFilter(val) {
 
 // ── int_mode filter (sp_mode_) ─────────────────────────────────────────────
 const _INT_MODE_ITEMS = [
-  { val: 'l2-et-access',  label: 'l2-ea' },
-  { val: 'l2-et-trunk',   label: 'l2-et' },
-  { val: 'l2-po-access',  label: 'l2-pa' },
-  { val: 'l2-po-trunk',   label: 'l2-pt' },
-  { val: 'l3-et-int',     label: 'l3-ei' },
-  { val: 'l3-et-sub-int', label: 'l3-es' },
-  { val: 'l3-po-int',     label: 'l3-pi' },
-  { val: 'l3-po-sub-int', label: 'l3-ps' },
+  { val: 'l2-et-access',  label: 'l2-et-access'  },
+  { val: 'l2-et-trunk',   label: 'l2-et-trunk'   },
+  { val: 'l2-po-access',  label: 'l2-po-access'  },
+  { val: 'l2-po-trunk',   label: 'l2-po-trunk'   },
+  { val: 'l3-et-int',     label: 'l3-et-int'     },
+  { val: 'l3-et-sub-int', label: 'l3-et-sub-int' },
+  { val: 'l3-po-int',     label: 'l3-po-int'     },
+  { val: 'l3-po-sub-int', label: 'l3-po-sub-int' },
 ];
 
 function renderIntModeList() {
