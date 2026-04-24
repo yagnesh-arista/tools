@@ -1,10 +1,10 @@
-// TopoAssist v260424.20 | 2026-04-24 11:40:37
+// TopoAssist v260424.21 | 2026-04-24 11:49:46
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.20";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.21";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -335,6 +335,21 @@ function getSheetVlanSummary() {
                  nativeOnly: info.trunkCount === 0, devices: Array.from(info.devices) };
       });
   } catch (e) { return []; }
+}
+
+function scrollToVlanCell(deviceName) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_DATA);
+    if (!sheet) return;
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    const target = 'vlan_' + deviceName;
+    const colIdx = headers.findIndex(function(h) { return String(h) === target; });
+    if (colIdx === -1) return;
+    ss.setActiveSheet(sheet);
+    sheet.setActiveRange(sheet.getRange(2, colIdx + 1));
+  } catch (e) {}
 }
 
 function getSheetDeviceList() {

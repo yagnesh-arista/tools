@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.20 | 2026-04-24 11:40:37 -->
+<!-- TopoAssist v260424.21 | 2026-04-24 11:50:11 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -1008,22 +1008,35 @@
         var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
         var title = v.devices.join(', ') || '';
-        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(\'' + v.vid + '\')" title="' + title + '">' + v.vid + '</span>';
+        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(event,\'' + v.vid + '\')" title="' + title + '">' + v.vid + '</span>';
       }).join('');
       if (clearBtn) clearBtn.style.display = sapVlanFilter.length ? '' : 'none';
     }
 
-    function toggleSapVlanChip(vid) {
+    function toggleSapVlanChip(e, vid) {
       var idx = sapVlanFilter.indexOf(vid);
-      var activating = idx === -1;
-      if (idx !== -1) sapVlanFilter.splice(idx, 1);
-      else sapVlanFilter.push(vid);
+      var activating;
+      if (e && e.shiftKey) {
+        // Shift: add/remove (multi-select)
+        activating = idx === -1;
+        if (idx !== -1) sapVlanFilter.splice(idx, 1);
+        else sapVlanFilter.push(vid);
+      } else {
+        // Single click: switch to this VLAN only (or clear if already sole selection)
+        if (sapVlanFilter.length === 1 && sapVlanFilter[0] === vid) {
+          sapVlanFilter = [];
+          activating = false;
+        } else {
+          sapVlanFilter = [vid];
+          activating = true;
+        }
+      }
       buildSapVlanStrip();
       applySapVlanFilter();
       if (activating) {
         var entry = vlanSummary.filter(function(v) { return v.vid === vid; })[0];
         if (entry && entry.devices.length) {
-          google.script.run.withSuccessHandler(function(){}).withFailureHandler(function(){}).scrollToDeviceColumn(entry.devices[0]);
+          google.script.run.withSuccessHandler(function(){}).withFailureHandler(function(){}).scrollToVlanCell(entry.devices[0]);
         }
       }
     }
