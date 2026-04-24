@@ -1,10 +1,10 @@
-// TopoAssist v260424.34 | 2026-04-24 13:52:17
+// TopoAssist v260424.35 | 2026-04-24 14:02:01
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.34";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.35";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -272,35 +272,41 @@ function getSheetVlanSummary() {
     const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
     const devVlanCol = {};   // device name → vlan_ col index (0-based)
     const devSviCol  = {};   // device name → svi_vlan_ col index (0-based)
+    const devIntCol  = {};   // device name → int_ col index (0-based)
     headers.forEach(function(h, i) {
       const s = String(h);
       if      (s.startsWith('vlan_'))     devVlanCol[s.slice(5)] = i;
       else if (s.startsWith('svi_vlan_')) devSviCol[s.slice(9)]  = i;
+      else if (s.startsWith('int_'))      devIntCol[s.slice(4)]  = i;
     });
 
     const dataRowCount = lastRow - 2;
     if (dataRowCount <= 0) return [];
     const allData = sheet.getRange(3, 1, dataRowCount, lastCol).getValues();
 
-    const vlanInfo = {}; // vid → { hasSvi, trunkCount, devices: Set }
+    const vlanInfo = {}; // vid → { hasSvi, hasVtep, trunkCount, rowCount, devices: Set }
     Object.keys(devVlanCol).forEach(function(devName) {
-      const vCol  = devVlanCol[devName];
+      const vCol   = devVlanCol[devName];
       const sviCol = devSviCol.hasOwnProperty(devName) ? devSviCol[devName] : -1;
+      const intCol = devIntCol.hasOwnProperty(devName) ? devIntCol[devName] : -1;
       allData.forEach(function(row) {
         const vlanRaw = String(row[vCol] || '').trim();
         if (!vlanRaw) return;
         const parsed  = parseVlanWithNative(vlanRaw);
         const sviRaw  = sviCol >= 0 ? String(row[sviCol] || '').trim().toLowerCase() : '';
+        const intRaw  = intCol >= 0 ? String(row[intCol] || '').trim() : '';
+        const isVx1   = intRaw && canonicalizeInterface(intRaw) === 'Vx1';
 
         // Allowed (trunk) VLANs
         if (parsed.vlans) {
           parsed.vlans.split(',').forEach(function(v) {
             v = v.trim();
             if (!v || isNaN(parseInt(v, 10))) return;
-            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, trunkCount: 0, rowCount: 0, devices: new Set() };
+            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, hasVtep: false, trunkCount: 0, rowCount: 0, devices: new Set() };
             vlanInfo[v].trunkCount++;
             vlanInfo[v].rowCount++;
             vlanInfo[v].devices.add(devName);
+            if (isVx1) vlanInfo[v].hasVtep = true;
             if (sviRaw === 'all') {
               vlanInfo[v].hasSvi = true;
             } else if (sviRaw) {
@@ -315,9 +321,10 @@ function getSheetVlanSummary() {
         // Native VLAN
         if (parsed.native) {
           const n = parsed.native;
-          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, trunkCount: 0, rowCount: 0, devices: new Set() };
+          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, hasVtep: false, trunkCount: 0, rowCount: 0, devices: new Set() };
           vlanInfo[n].rowCount++;
           vlanInfo[n].devices.add(devName);
+          if (isVx1) vlanInfo[n].hasVtep = true;
           if (sviRaw) {
             sviRaw.split(',').forEach(function(tok) {
               tok = tok.trim();
@@ -333,9 +340,9 @@ function getSheetVlanSummary() {
       .sort(function(a, b) { return parseInt(a, 10) - parseInt(b, 10); })
       .map(function(vid) {
         const info = vlanInfo[vid];
-        return { vid: vid, hasSvi: info.hasSvi, trunkCount: info.trunkCount,
-                 rowCount: info.rowCount, nativeOnly: info.trunkCount === 0,
-                 devices: Array.from(info.devices) };
+        return { vid: vid, hasSvi: info.hasSvi, hasVtep: info.hasVtep,
+                 trunkCount: info.trunkCount, rowCount: info.rowCount,
+                 nativeOnly: info.trunkCount === 0, devices: Array.from(info.devices) };
       });
   } catch (e) { return []; }
 }

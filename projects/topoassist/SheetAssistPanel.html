@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.34 | 2026-04-24 13:53:40 -->
+<!-- TopoAssist v260424.35 | 2026-04-24 14:02:41 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -366,6 +366,7 @@
       border: 1px solid transparent; opacity: 0.72;
       transition: opacity 0.12s, box-shadow 0.12s;
     }
+    .vlan-chip.chip-vtep   { background: #ccfbf1; color: #0f766e; border-color: #5eead4; }
     .vlan-chip.chip-svi    { background: #dcfce7; color: #166534; border-color: #86efac; }
     .vlan-chip.chip-trunk  { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
     .vlan-chip.chip-native { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
@@ -1038,7 +1039,7 @@
         return;
       }
       strip.innerHTML = vlanSummary.map(function(v) {
-        var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
+        var cls = v.hasVtep ? 'chip-vtep' : (v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native'));
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
         var count = v.rowCount || v.trunkCount || 0;
         var devList = v.devices.join(', ') || '';
