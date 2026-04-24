@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.6 | 2026-04-24 09:27:36 -->
+<!-- TopoAssist v260424.7 | 2026-04-24 09:34:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.6";  // keep in sync with Code.gs
+const APP_VERSION = "260424.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8928,6 +8928,7 @@ let _pushRightPort = null; // interface name for right push (link selection → 
 let _pendingPush        = null; // {deviceName, ip, config, btnId, origText, label} — awaiting confirm modal
 let _configViewContext  = null; // {deviceName, portFilter} — tracks what the config modal is showing
 let _bridgeClickTimer   = null; // debounce single vs double-click on bridge toolbar icon
+let _auditClickTimer    = null; // debounce single vs double-click on audit toolbar icon
 let _pushAutoCloseTimeout = null; // ID of setTimeout that auto-closes push confirm modal after success
 let _silentBridgeTimer  = null; // debounce timer for _silentBridgeCheck
 let _bridgeUpState      = false; // true when bridge is confirmed up; tracks down→up for auto-Bridge trigger
@@ -9842,6 +9843,19 @@ function closeBridgeModal() {
 
 // ── Bridge toolbar icon single/double-click handler ──────────────────────────
 // Single-click (>220ms) = open modal. Double-click (<220ms) = toggle enable.
+function onAuditIconClick() {
+  if (_auditClickTimer) {
+    clearTimeout(_auditClickTimer);
+    _auditClickTimer = null;
+    toggleValidationMode();
+  } else {
+    _auditClickTimer = setTimeout(() => {
+      _auditClickTimer = null;
+      openAuditSettingsModal();
+    }, 220);
+  }
+}
+
 function onBridgeIconClick() {
   if (_bridgeClickTimer) {
     clearTimeout(_bridgeClickTimer);
