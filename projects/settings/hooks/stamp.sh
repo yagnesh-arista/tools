@@ -100,7 +100,14 @@ case "$f" in
     CURRENT_VER=$(grep 'const APP_VERSION' "$TOPODIR/Code.gs" 2>/dev/null \
       | sed "s/.*APP_VERSION = \"//;s/\".*//" | head -1)
 
-    [ "$CURRENT_VER" = "$VERSION" ] && exit 0
+    if [ "$CURRENT_VER" = "$VERSION" ]; then
+      # Version unchanged — still stage the edited file (timestamp + Claude content both changed)
+      exec 8>/tmp/claude-git.lock
+      flock -x 8
+      git -C "$HOME/claude" add "$f" &>/dev/null
+      exec 8>&-
+      exit 0
+    fi
 
     # Sync APP_VERSION constant in Code.gs + Sidebar-js.html
     python3 - "$TOPODIR" "$VERSION" <<'PYEOF'
