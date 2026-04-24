@@ -1,4 +1,4 @@
-# topoassist v260422.7 | 2026-04-22 11:08:59
+# topoassist v260424.36 | 2026-04-24 14:07:49
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -417,73 +417,35 @@ class TestBuildDevstatusSsh:
 # ── _prepend_section_cleaners ──────────────────────────────────────────────────
 
 class TestPrependSectionCleaners:
+    """_SECTION_CLEANERS is empty — function is now a pass-through."""
+
     def _run(self, cfg):
         return db._prepend_section_cleaners(cfg)
 
-    def test_physical_interface_full_name(self):
-        out = self._run("interface Ethernet1\n no shutdown")
-        assert "default interface Ethernet1\ninterface Ethernet1" in out
+    def test_passthrough_interface(self):
+        cfg = "interface Ethernet1\n no shutdown"
+        assert self._run(cfg) == cfg
 
-    def test_physical_interface_abbreviated(self):
-        out = self._run("interface Et1\n no shutdown")
-        assert "default interface Et1\ninterface Et1" in out
+    def test_passthrough_bgp(self):
+        cfg = "router bgp 65001\n no bgp default ipv4-unicast"
+        assert self._run(cfg) == cfg
 
-    def test_breakout_interface(self):
-        out = self._run("interface Ethernet4/1\n speed 100g-4")
-        assert "default interface Ethernet4/1\ninterface Ethernet4/1" in out
+    def test_passthrough_ospf(self):
+        cfg = "router ospf 1\n router-id 1.1.1.1"
+        assert self._run(cfg) == cfg
 
-    def test_port_channel_abbreviated(self):
-        out = self._run("interface Po10\n mlag 10")
-        assert "default interface Po10\ninterface Po10" in out
+    def test_passthrough_mlag(self):
+        cfg = "mlag configuration\n domain-id Leaf1"
+        assert self._run(cfg) == cfg
 
-    def test_port_channel_full_name(self):
-        out = self._run("interface Port-Channel10\n description uplink")
-        assert "default interface Port-Channel10\ninterface Port-Channel10" in out
-
-    def test_loopback(self):
-        out = self._run("interface Loopback1\n ip address 2.2.2.2/32")
-        assert "default interface Loopback1\ninterface Loopback1" in out
-
-    def test_vxlan_interface(self):
-        out = self._run("interface Vxlan1\n vxlan source-interface Loopback1")
-        assert "default interface Vxlan1\ninterface Vxlan1" in out
-
-    def test_vlan_svi(self):
-        out = self._run("interface Vlan100\n ip address 10.1.0.1/24")
-        assert "default interface Vlan100\ninterface Vlan100" in out
-
-    def test_bgp(self):
-        out = self._run("router bgp 65001\n no bgp default ipv4-unicast")
-        assert "no router bgp 65001\nrouter bgp 65001" in out
-
-    def test_ospf(self):
-        out = self._run("router ospf 1\n router-id 1.1.1.1")
-        assert "no router ospf 1\nrouter ospf 1" in out
-
-    def test_mlag(self):
-        out = self._run("mlag configuration\n domain-id Leaf1")
-        assert "no mlag configuration\nmlag configuration" in out
-
-    def test_management_interface_untouched(self):
+    def test_passthrough_management_untouched(self):
         cfg = "interface Management0\n ip address 192.168.1.1/24"
         assert self._run(cfg) == cfg
 
-    def test_management_abbreviated_untouched(self):
-        cfg = "interface Ma0\n ip address 192.168.1.1/24"
-        assert self._run(cfg) == cfg
-
-    def test_global_lines_untouched(self):
+    def test_passthrough_global_lines(self):
         cfg = "hostname Leaf1\nip routing\nipv6 unicast-routing"
         assert self._run(cfg) == cfg
 
-    def test_indented_subcommands_not_matched(self):
-        # Sub-commands have leading space — must not get a cleaner prepended
-        cfg = "interface Ethernet1\n description test\n no shutdown"
-        out = self._run(cfg)
-        assert out.count("default interface Ethernet1") == 1
-
-    def test_multiple_sections_each_get_cleaner(self):
+    def test_passthrough_multiple_sections(self):
         cfg = "interface Ethernet1\n no shutdown\n!\nrouter bgp 65001\n redistribute connected"
-        out = self._run(cfg)
-        assert "default interface Ethernet1\ninterface Ethernet1" in out
-        assert "no router bgp 65001\nrouter bgp 65001" in out
+        assert self._run(cfg) == cfg

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.35 | 2026-04-24 14:02:01 -->
+<!-- TopoAssist v260424.36 | 2026-04-24 14:09:57 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.35";  // keep in sync with Code.gs
+const APP_VERSION = "260424.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9211,7 +9211,7 @@ def _extract_session_diff(output):
                 started = True
                 diff.append(s)
         else:
-            if "#commit" in s or "#abort" in s:
+            if "#commit" in s or "#abort" in s or "#exit" in s:
                 break
             diff.append(s)
     return "\\n".join(diff).strip()
@@ -9294,19 +9294,35 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path not in ("/lldp", "/devstatus", "/pushconfig"):
+        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/pushconfig/finalize"):
             self._json(404, {"error": "not found"}); return
         try:
             length = int(self.headers.get("Content-Length", 0))
             body   = json.loads(self.rfile.read(length))
         except Exception:
             self._json(400, {"error": "invalid JSON body"}); return
-        ip_map  = body.get("ipMap", {})
-        dry_run = bool(body.get("dry_run", False))
+        ip_map       = body.get("ipMap", {})
+        dry_run      = bool(body.get("dry_run", False))
+        open_session = bool(body.get("open_session", False))
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
+        elif self.path == "/pushconfig/finalize":
+            action  = body.get("action", "abort")
+            results = {}
+            for dev, entry in ip_map.items():
+                ip           = (entry.get("ip") or "").strip()
+                session_name = (entry.get("session_name") or "").strip()
+                if not ip or not session_name:
+                    results[dev] = {"ok": False, "error": "Missing ip or session_name"}; continue
+                try:
+                    results[dev] = self._finalize_session(ip, session_name, action)
+                except subprocess.TimeoutExpired:
+                    results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
+                except Exception as e:
+                    results[dev] = {"ok": False, "error": str(e)[:200]}
+            self._json(200, results)
         else:
             results = {}
             lock    = threading.Lock()
@@ -9318,7 +9334,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     with lock: results[dev] = {"ok": False, "error": "No IP configured"}; return
                 with sem:
                     try:
-                        with lock: results[dev] = self._push_config(ip, config, dry_run=dry_run)
+                        with lock: results[dev] = self._push_config(
+                            ip, config, dry_run=dry_run, open_only=open_session)
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                     except NotImplementedError as e:
@@ -9327,7 +9344,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True) for d, v in ip_map.items()]
             for t in threads: t.start()
-            for t in threads: t.join(timeout=TIMEOUT + 3)
+            for t in threads: t.join(timeout=PUSH_TIMEOUT + 3)
             self._json(200, results)
 
     # -- Transports ------------------------------------------------------------
@@ -9450,20 +9467,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
-    def _push_config(self, ip, config_text, dry_run=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False):
         cleaned = _prepend_section_cleaners(config_text)
         lines = [l for l in cleaned.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
-        try:
-            self._abort_stale_sessions(ip)
-        except Exception:
-            pass
+        if not dry_run:
+            try:
+                self._abort_stale_sessions(ip)
+            except Exception:
+                pass
         session   = f"topoassist_{int(time.time())}"
-        final_cmd = "abort" if dry_run else "commit"
-        # 'end' exits from any sub-mode to exec mode; re-entering puts us at session
-        # root where show/commit/abort work. 'top' was replaced -- it did not reliably
-        # navigate to session root, leaving sessions stuck as pending.
+        final_cmd = "abort" if dry_run else ("exit" if open_only else "commit")
         core_cmds = (
             [f"configure session {session}"]
             + lines
@@ -9472,6 +9487,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD == "eapi":
             results = self._eapi_push(ip, *core_cmds)
             diff = results[-2].strip() if len(results) >= 2 else ""
+            if open_only:
+                return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
         if METHOD == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds)
@@ -9485,12 +9502,37 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "EOS pending session limit reached -- Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
             diff = _extract_session_diff(output)
-            if not diff:
+            if not diff and not open_only:
                 eos_errs = [l.strip() for l in output.split("\\n") if l.strip().startswith("%")]
                 if eos_errs:
                     raise RuntimeError(f"Config session error: {eos_errs[0][:120]}")
+            if open_only:
+                return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
         raise NotImplementedError(f"Config push not supported for METHOD={METHOD!r} -- use ssh or eapi")
+
+    def _finalize_session(self, ip, session_name, action):
+        if action not in ("commit", "abort"):
+            raise ValueError(f"Invalid finalize action: {action!r}")
+        if METHOD == "ssh":
+            output, err_text = self._ssh_stdin(
+                ip, "terminal length 0",
+                f"configure session {session_name}", action)
+            _auth_errs = ("permission denied", "authentication failed",
+                          "no route to host", "connection refused",
+                          "connection timed out", "host key verification failed")
+            if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
+                raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
+            out_l = output.lower()
+            if "session not found" in out_l or "no pending session" in out_l:
+                raise RuntimeError(
+                    f"Configure session '{session_name}' not found -- "
+                    "it may have timed out. Push again.")
+            return {"ok": True, "action": action}
+        if METHOD == "eapi":
+            self._eapi_push(ip, f"configure session {session_name}", action)
+            return {"ok": True, "action": action}
+        raise NotImplementedError(f"Finalize not supported for METHOD={METHOD!r} -- use ssh or eapi")
 
     def _rest_get(self, ip, path):
         url   = f"https://{ip}:{REST_PORT}/restconf/data/{path}"
@@ -10710,13 +10752,13 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     config = ifBlock;
   }
 
-  // Phase 2: dry-run to get diff preview (no commit) — bridge skips stale-session
-  // cleanup for dry_run, so this fetch is now a single SSH round-trip to the device.
+  // Phase 1: open configure session, push config, get diff, leave session PENDING on EOS.
+  // Bridge returns session_name so Phase 2 can commit/abort without re-pushing config.
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, dry_run: true }),
+      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true }),
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
@@ -10726,14 +10768,20 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
       _updatePushPreviewError(res.error || 'something went wrong');
       return;
     }
-    // Empty diff = already in sync — show modal briefly then auto-close
+    // Empty diff = already in sync — abort the open session silently, show modal briefly
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
+      if (res.session_name) {
+        fetch(BRIDGE_URL + '/pushconfig/finalize', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: res.session_name } }, action: 'abort' }),
+        }).catch(() => {});
+      }
       _showPushConfirmModal(label, '', false, true);
       return;
     }
-    // Store pending push details, show confirm modal (button stays disabled)
-    _pendingPush = { deviceName, ip, config, btnId, origText, label };
+    // Store pending push details + session_name, show confirm modal (button stays disabled)
+    _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
     _showPushConfirmModal(label, res.diff);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -10821,7 +10869,7 @@ function _setPushStatus(html) {
 
 async function commitPushConfig() {
   if (!_pendingPush) return;
-  const { deviceName, ip, config, btnId, origText, label } = _pendingPush;
+  const { deviceName, ip, config, btnId, origText, label, sessionName } = _pendingPush;
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
@@ -10855,20 +10903,28 @@ async function commitPushConfig() {
   };
 
   try {
-    // Phase 2: commit with retry (null result = server thread timeout → retry)
+    // Phase 2: commit the open session (no config re-push).
+    // If session_name is present, use /pushconfig/finalize (single SSH round-trip:
+    // re-enter named session + commit). Falls back to full /pushconfig if session_name
+    // is missing (should not happen in normal flow).
     let res = null;
     let lastAttempt = 1;
     const PUSH_MAX_RETRIES = 3;
+    const _useFinalize = !!sessionName;
     for (let attempt = 1; attempt <= 1 + PUSH_MAX_RETRIES; attempt++) {
       lastAttempt = attempt;
       const attemptLabel = attempt === 1 ? 'committing…' : `retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
       if (commitBtn) commitBtn.textContent = attempt === 1 ? 'Committing…' : `Retry ${attempt - 1}/${PUSH_MAX_RETRIES}…`;
       _ptSet('pt2', '#94a3b8', attemptLabel);
       try {
-        const resp = await fetch(BRIDGE_URL + '/pushconfig', {
+        const _url  = _useFinalize ? BRIDGE_URL + '/pushconfig/finalize' : BRIDGE_URL + '/pushconfig';
+        const _body = _useFinalize
+          ? { ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'commit' }
+          : { ipMap: { [deviceName]: { ip, config } } };
+        const resp = await fetch(_url, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } } }),
+          body:    JSON.stringify(_body),
         });
         if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
         const data = await resp.json();
@@ -11134,7 +11190,18 @@ function cancelPushConfig() {
   if (_pendingPush) {
     const btn = document.getElementById(_pendingPush.btnId);
     if (btn) { btn.disabled = false; btn.textContent = _pendingPush.origText; }
+    // Abort the open EOS configure session — fire-and-forget, best effort
+    const { deviceName, ip, sessionName } = _pendingPush;
     _pendingPush = null;
+    if (sessionName) {
+      setStatus(`Aborting session on ${deviceName}…`, 'status-info');
+      fetch(BRIDGE_URL + '/pushconfig/finalize', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'abort' }),
+      })
+        .then(() => setStatus('Push cancelled — session aborted on device', 'status-warn'))
+        .catch(() => setStatus('Push cancelled — session may still be pending on device', 'status-warn'));
+    }
   }
   closePushConfirmModal();
 }

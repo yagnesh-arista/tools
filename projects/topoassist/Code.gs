@@ -1,10 +1,10 @@
-// TopoAssist v260424.35 | 2026-04-24 14:02:01
+// TopoAssist v260424.36 | 2026-04-24 14:06:11
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.35";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.36";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5017,8 +5017,9 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   }
   // 2. Sub-Interfaces (Router on a Stick)
   else if (mode.includes("-sub-int")) {
+    const subDesc = (d.peerDev && d.peerPort) ? `-> ${d.peerDev}-${d.peerPort} #TA` : '#TA';
     vlans.forEach((v, i) => {
-      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n description #TA\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n no shutdown\n";
+      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n description " + subDesc + "\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n no shutdown\n";
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
@@ -5709,7 +5710,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
   Object.keys(globalPeers).forEach(key => {
     globalPeers[key].forEach(item => {
       const p = item.params;
-      const descSuffix = `To ${item.name} via ${p.interface}`;
+      const descSuffix = `To ${item.name} via ${p.interface} #TA`;
 
       if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
         configLines.push(` neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
@@ -5726,7 +5727,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
       if (isEvpnEnabled && !p.isMlag && isPeerEvpn(item.name)) {
         if (item.loopbackV4 && s.evpn_ipv4 !== false) {
           configLines.push(` neighbor ${item.loopbackV4} peer group ${item.pgOvV4}`);
-          configLines.push(` neighbor ${item.loopbackV4} description Overlay to ${item.name}`);
+          configLines.push(` neighbor ${item.loopbackV4} description Overlay to ${item.name} #TA`);
         }
         if (s.evpn_ipv6) {
           const pid = item.peerId;
@@ -5734,7 +5735,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
           const pidLoId = pid + bgpLoBase;
           const v6Loop = item.loopbackV6 || `${pidLoId}:${pidLoId}:${pidLoId}::${pidLoId}`;
           configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
-          configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6)`);
+          configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6) #TA`);
         }
       }
     });
@@ -5807,7 +5808,7 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
     // A. Apply Neighbors
     vrfPeers[vrfName].forEach(item => {
       const p = item.params;
-      const descSuffix = `To ${item.name} via ${p.interface}`;
+      const descSuffix = `To ${item.name} via ${p.interface} #TA`;
 
       if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
         configLines.push(`  neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
@@ -5991,7 +5992,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
       }
       if (peerData.loopbackV4) {
         lines.push(` neighbor ${peerData.loopbackV4} peer group ${pgOvV4}`);
-        lines.push(` neighbor ${peerData.loopbackV4} description Overlay to ${peerName}`);
+        lines.push(` neighbor ${peerData.loopbackV4} description Overlay to ${peerName} #TA`);
       }
     }
 
@@ -6011,7 +6012,7 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
       const pidLoId = pid + evpnLoBase;
       const v6Loop = peerData.loopbackV6 || `${pidLoId}:${pidLoId}:${pidLoId}::${pidLoId}`;
       lines.push(` neighbor ${v6Loop} peer group ${pgOvV6}`);
-      lines.push(` neighbor ${v6Loop} description Overlay to ${peerName} (v6)`);
+      lines.push(` neighbor ${v6Loop} description Overlay to ${peerName} (v6) #TA`);
     }
   });
 

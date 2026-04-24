@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260424.14 | 2026-04-24 10:02:00
+# topoassist v260424.36 | 2026-04-24 14:10:31
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260423.35","port":8765}
+  GET  /health      → {"status":"ok","version":"260424.36","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -122,7 +122,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260423.35"
+VERSION           = "260424.36"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -323,10 +323,10 @@ def _extract_session_diff(output):
                 started = True
                 diff.append(s)
         else:
-            # EOS echoes the committed/aborted command as "Prompt#commit" or
-            # "Prompt#abort" — the '#' is part of the shell prompt, so this
-            # is safe even if diff lines contain the words 'commit' or 'abort'.
-            if '#commit' in s or '#abort' in s:
+            # EOS echoes the final command as "Prompt#commit", "Prompt#abort",
+            # or "Prompt#exit" — the '#' is part of the shell prompt, so this
+            # is safe even if diff lines contain those words.
+            if '#commit' in s or '#abort' in s or '#exit' in s:
                 break
             diff.append(s)
     return '\n'.join(diff).strip()
@@ -335,22 +335,8 @@ def _extract_session_diff(output):
 # ── Section-level cleaners for idempotent push ────────────────────────────────
 
 _SECTION_CLEANERS = [
-    # Physical interfaces (Ethernet1, Et4/1, breakouts) — Management excluded below
-    (re.compile(r'^interface\s+((?:Ethernet|Et)\S+)$', re.I),   'default interface {0}'),
-    # Port-Channel interfaces
-    (re.compile(r'^interface\s+((?:Port-Channel|Po)\d+\S*)$', re.I), 'default interface {0}'),
-    # Loopback interfaces (Loopback0 = router-id, Loopback1 = VTEP)
-    (re.compile(r'^interface\s+(Loopback\d+)$', re.I),          'default interface {0}'),
-    # VXLAN data-plane interface
-    (re.compile(r'^interface\s+(Vxlan\d+)$', re.I),             'default interface {0}'),
-    # SVI interfaces — cleans stale IPs when VLANs/subnets change
-    (re.compile(r'^interface\s+(Vlan\d+)$', re.I),              'default interface {0}'),
-    # BGP — removes stale neighbors/networks from previous topology state
-    (re.compile(r'^router\s+bgp\s+(\d+)$', re.I),              'no router bgp {0}'),
-    # OSPF
-    (re.compile(r'^router\s+ospf\s+\d+$', re.I),               'no router ospf 1'),
-    # MLAG
-    (re.compile(r'^mlag\s+configuration$', re.I),               'no mlag configuration'),
+    # Removed: default interface / no router bgp / no router ospf / no mlag configuration
+    # Generated config is self-sufficient; switchport defaults are in the config itself.
 ]
 
 # Management interfaces must never be defaulted — would kill SSH connectivity
@@ -409,6 +395,18 @@ def _clean_ssh_err(err_text):
     return cleaned or err_text.strip()   # fall back to raw if everything was noise
 
 
+def _norm_iface(name):
+    """Normalize EOS interface names to abbreviated lowercase form for comparison.
+
+    EOS JSON returns long form (Ethernet25/1, Port-Channel10) while the
+    topology stores abbreviated form (Et25/1, Po10).  Sub-interfaces
+    (Ethernet25/1.100) are handled by the same prefix substitution.
+    """
+    n = re.sub(r'^Ethernet', 'Et', name, flags=re.IGNORECASE)
+    n = re.sub(r'^Port-Channel', 'Po', n, flags=re.IGNORECASE)
+    return n.lower()
+
+
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -443,7 +441,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/reconcile"):
+        if self.path not in ("/lldp", "/devstatus", "/pushconfig",
+                              "/pushconfig/finalize", "/reconcile"):
             self._json(404, {"error": "not found"})
             return
         try:
@@ -452,8 +451,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             self._json(400, {"error": "invalid JSON body"})
             return
-        ip_map   = body.get("ipMap", {})
-        dry_run  = bool(body.get("dry_run", False))
+        ip_map      = body.get("ipMap", {})
+        dry_run     = bool(body.get("dry_run", False))
+        open_session = bool(body.get("open_session", False))
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
@@ -486,6 +486,24 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     if results[dev] is None:
                         results[dev] = {"ok": False, "error": "Reconcile timed out"}
             self._json(200, results)
+        elif self.path == "/pushconfig/finalize":
+            # Phase 2 of two-phase push: commit or abort an already-open named session.
+            # ipMap values are {ip, session_name} — no config re-push needed.
+            action = body.get("action", "abort")
+            results = {}
+            for dev, entry in ip_map.items():
+                ip           = (entry.get("ip") or "").strip()
+                session_name = (entry.get("session_name") or "").strip()
+                if not ip or not session_name:
+                    results[dev] = {"ok": False, "error": "Missing ip or session_name"}
+                    continue
+                try:
+                    results[dev] = self._finalize_session(ip, session_name, action)
+                except subprocess.TimeoutExpired:
+                    results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                except Exception as e:
+                    results[dev] = {"ok": False, "error": str(e)[:200]}
+            self._json(200, results)
         else:
             # /pushconfig — ipMap values are {ip, config} dicts, not plain IPs
             # Pre-initialize every device to None so the key always exists in the
@@ -502,7 +520,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 with sem:
                     for attempt in range(PUSH_RETRIES + 1):
                         try:
-                            res = self._push_config(ip, config, dry_run=dry_run)
+                            res = self._push_config(ip, config, dry_run=dry_run,
+                                                    open_only=open_session)
                             with lock: results[dev] = res
                             break
                         except subprocess.TimeoutExpired:
@@ -537,7 +556,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             # Using full TIMEOUT for cleanup: sluggish devices (e.g. after large push)
             # need more than 5s to SSH in and abort stale sessions.
             _abort_overhead = TIMEOUT
-            join_budget = (TIMEOUT + _abort_overhead) * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
+            join_budget = (PUSH_TIMEOUT + _abort_overhead) * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
             for t in threads: t.join(timeout=join_budget)
             # Any thread that didn't finish gets a descriptive timeout error instead
             # of null, so the JS never falls through to the generic 'something went wrong'.
@@ -744,28 +763,33 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     # ── Config push via configure session ────────────────────────────────────
-    def _push_config(self, ip, config_text, dry_run=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False):
         """Push config_text to device using a uniquely-named EOS configure session.
-        dry_run=True: aborts instead of committing — returns diff without applying.
-        Returns {"ok": True, "diff": "<session diff text>", "dry_run": bool} on success.
+
+        Modes:
+          open_only=True  — push config, get diff, leave session PENDING on EOS
+                            (no commit/abort). Returns session_name so the caller
+                            can commit or abort later via _finalize_session().
+                            Use this for the two-phase confirm modal flow.
+          dry_run=True    — push config, get diff, abort session (verify path).
+          default         — push config, get diff, commit immediately.
 
         Session design:
           - Pre-cleanup: abort any stale pending topoassist_* sessions first so we
-            never hit EOS's 5-session pending limit.
+            never hit EOS's 5-session pending limit. Skipped on dry_run (session is
+            aborted immediately so it cannot become stale).
           - Unique name (topoassist_<epoch>) so a committed session can never block
             re-entry with 'Cannot enter session (already completed)'.
           - 'end' exits to exec mode from any sub-mode; re-entering the session lands
-            at session root where show/commit/abort work. ('top' was tried but does not
-            reliably navigate to session root — sessions accumulated as pending.)
+            at session root where show/commit/abort/exit all work.
           - 'terminal length 0' (SSH) suppresses --More-- pagination."""
         cleaned = _prepend_section_cleaners(config_text)
         lines = [l for l in cleaned.strip().split('\n') if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
-        # Pre-cleanup stale sessions only on commit pushes — dry_run always
-        # aborts the session so it cannot leave a pending stale session behind.
-        # Skipping on dry_run removes an entire SSH round-trip from the preview path.
+        # Pre-cleanup stale sessions when committing or opening (both leave/left sessions
+        # pending). Skip on dry_run — session is aborted immediately, can't become stale.
         if not dry_run:
             def _safe_abort():
                 try:
@@ -777,10 +801,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _ct.join(timeout=TIMEOUT)
 
         session   = f"topoassist_{int(time.time())}"
-        final_cmd = "abort" if dry_run else "commit"
+        final_cmd = "abort" if dry_run else ("exit" if open_only else "commit")
 
         # 'end' exits from any sub-mode depth to exec mode (session stays pending).
-        # Re-entering puts us at session root so show/commit/abort all work correctly.
+        # Re-entering puts us at session root so show/commit/abort/exit all work correctly.
         core_cmds = (
             [f"configure session {session}"]
             + lines
@@ -790,6 +814,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD == "eapi":
             results = self._eapi_push(ip, *core_cmds)
             diff = results[-2].strip() if len(results) >= 2 else ""
+            if open_only:
+                return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
 
         if METHOD == "ssh":
@@ -805,6 +831,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "EOS pending session limit reached — Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
             diff = _extract_session_diff(output)
+            if open_only:
+                diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
+                if VERBOSE: print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)")
+                return {"ok": True, "diff": diff, "session_name": session}
             action = "dry-run (aborted)" if dry_run else "committed"
             diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
             if VERBOSE: print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
@@ -812,6 +842,44 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         raise NotImplementedError(
             f"Config push not supported for METHOD={METHOD!r} — use ssh or eapi")
+
+    def _finalize_session(self, ip, session_name, action):
+        """Commit or abort an existing named configure session on the device.
+
+        Used as Phase 2 of the two-phase push modal: Phase 1 opens the session
+        and gets the diff; Phase 2 calls this to commit or abort without
+        re-pushing any config lines — a single short SSH round-trip.
+
+        action: 'commit' or 'abort'
+        Returns {"ok": True, "action": action} on success."""
+        if action not in ("commit", "abort"):
+            raise ValueError(f"Invalid finalize action: {action!r}")
+
+        if METHOD == "ssh":
+            output, err_text = self._ssh_stdin(
+                ip, "terminal length 0",
+                f"configure session {session_name}", action)
+            _auth_errs = ("permission denied", "authentication failed",
+                          "no route to host", "connection refused",
+                          "connection timed out", "host key verification failed")
+            if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
+                raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
+            # EOS prints a warning if the session name is not found (timed out or never opened)
+            out_l = output.lower()
+            if "session not found" in out_l or "no pending session" in out_l:
+                raise RuntimeError(
+                    f"Configure session '{session_name}' not found — "
+                    "it may have timed out on the device. Push again.")
+            if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed")
+            return {"ok": True, "action": action}
+
+        if METHOD == "eapi":
+            self._eapi_push(ip, f"configure session {session_name}", action)
+            if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed (eapi)")
+            return {"ok": True, "action": action}
+
+        raise NotImplementedError(
+            f"Finalize not supported for METHOD={METHOD!r} — use ssh or eapi")
 
     # ── Dispatch: run EOS show commands via active METHOD ─────────────────────
     def _run_cmds(self, ip, *cmds):
@@ -912,12 +980,23 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "protocol":    info.get("lineProtocolStatus", ""),
             })
 
-        # Normalise expected ports to lowercase for comparison
-        expected_set = {p.lower() for p in expected_ports}
+        def _norm_iface(name):
+            """Normalize EOS interface names to abbreviated lowercase form.
+
+            EOS JSON returns long form (Ethernet25/1, Port-Channel10) while
+            the topology stores abbreviated form (Et25/1, Po10).  Sub-interfaces
+            (Ethernet25/1.100) are handled by the same substitution.
+            """
+            n = re.sub(r'^Ethernet', 'Et', name, flags=re.IGNORECASE)
+            n = re.sub(r'^Port-Channel', 'Po', n, flags=re.IGNORECASE)
+            return n.lower()
+
+        # Normalise expected ports to abbreviated lowercase for comparison
+        expected_set = {_norm_iface(p) for p in expected_ports}
 
         orphans = [
             iface for iface in ta_ifaces
-            if iface["name"].lower() not in expected_set
+            if _norm_iface(iface["name"]) not in expected_set
         ]
 
         return {
