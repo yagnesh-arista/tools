@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.7 | 2026-04-24 09:34:58 -->
+<!-- TopoAssist v260424.8 | 2026-04-24 09:40:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -847,27 +847,6 @@
           <label class="bridge-chk-label" title="When enabled: bridge health is checked automatically on first topology load each session. Double-click the toolbar icon to toggle.">
             <input type="checkbox" id="chkBridgeEnabled" onchange="setBridgeEnabled(this.checked)">
             Enable on topology bring-up
-          </label>
-        </div>
-        <div class="bridge-settings-sep" style="margin:6px 0;"></div>
-        <div class="bridge-audit-header">
-          <span class="bridge-audit-section">Audit flags</span>
-        </div>
-        <div class="bridge-audit-flags-grid">
-          <span class="bridge-audit-cat">LLDP</span>
-          <label class="bridge-chk-label" title="When on: ports where the LLDP neighbor or port does not match the topology are flagged as errors in Audit. Turn off to ignore mismatch errors.">
-            <input type="checkbox" id="chkBridgeAuditMismatch" onchange="toggleBridgeAuditMismatch(this.checked)">
-            Flag mismatched neighbour
-          </label>
-          <span class="bridge-audit-cat">LLDP</span>
-          <label class="bridge-chk-label" title="When on: ports with no LLDP neighbor show red and are flagged in Audit. Turn off for early-stage labs where dark ports are expected.">
-            <input type="checkbox" id="chkBridgeAuditMissing" onchange="toggleBridgeAuditMissing(this.checked)">
-            Flag missing neighbors
-          </label>
-          <span class="bridge-audit-cat">VLAN</span>
-          <label class="bridge-chk-label" title="When on: ports whose VLANs overlap with EOS internal VLAN allocations are flagged in Audit. Turn off if internal VLANs are intentionally reused.">
-            <input type="checkbox" id="chkBridgeAuditInternalVlan" onchange="toggleBridgeAuditInternalVlan(this.checked)">
-            Flag internal VLAN conflicts
           </label>
         </div>
       </div>

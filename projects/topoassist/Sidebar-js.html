@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.7 | 2026-04-24 09:34:13 -->
+<!-- TopoAssist v260424.8 | 2026-04-24 09:41:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.7";  // keep in sync with Code.gs
+const APP_VERSION = "260424.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9622,12 +9622,6 @@ function openBridgeModal() {
   if (!_rl || !_rl.children.length) document.getElementById('bridgeResults').style.display = 'none';
   document.getElementById('bridgeRunStatus').style.display = 'none';
   document.getElementById('btnRunBridge').disabled = true;
-  const chkMismatch = document.getElementById('chkBridgeAuditMismatch');
-  if (chkMismatch) chkMismatch.checked = bridgeAuditFlagMismatch;
-  const chk = document.getElementById('chkBridgeAuditMissing');
-  if (chk) chk.checked = bridgeAuditFlagMissing;
-  const chkVlan = document.getElementById('chkBridgeAuditInternalVlan');
-  if (chkVlan) chkVlan.checked = bridgeAuditFlagInternalVlan;
   _syncBridgeEnableCheckbox();
   _syncBridgeDevCollapse();
   _populateLldpDevTable();
@@ -9647,25 +9641,6 @@ function toggleBridgeDevSection() {
   const collapsed = localStorage.getItem('bridgeDevCollapsed') === 'true';
   localStorage.setItem('bridgeDevCollapsed', !collapsed);
   _syncBridgeDevCollapse();
-}
-
-function toggleBridgeAuditMismatch(val) {
-  bridgeAuditFlagMismatch = val;
-  localStorage.setItem('bridgeAuditFlagMismatch', val);
-  if (isValidationMode) runValidation();
-}
-
-function toggleBridgeAuditMissing(val) {
-  bridgeAuditFlagMissing = val;
-  localStorage.setItem('bridgeAuditFlagMissing', val);
-  applyLldpIndicators();          // recolor missing dots: gray ↔ red
-  if (isValidationMode) runValidation();
-}
-
-function toggleBridgeAuditInternalVlan(val) {
-  bridgeAuditFlagInternalVlan = val;
-  localStorage.setItem('bridgeAuditFlagInternalVlan', val);
-  if (isValidationMode) runValidation();
 }
 
 // =========================================================
@@ -11495,14 +11470,17 @@ function _compareBridgeData(bridgeData) {
     const pairKey  = [localDev + ':' + localIf, remDev + ':' + remIf].sort().join('||');
     if (seenOrphanPairs.has(pairKey)) return;
     seenOrphanPairs.add(pairKey);
-    const inSheet  = globalLinks.some(l => {
+    // A link is Discovered only when BOTH ports are absent from every sheet row.
+    // If either port already appears in a sheet link (pointing to a different peer),
+    // the mismatch is already reported in the Results section — don't duplicate it here.
+    const _portInSheet = (dev, iface) => globalLinks.some(l => {
       const cu = l.u.lastIndexOf(':'), cv = l.v.lastIndexOf(':');
-      const dU = l.u.slice(0, cu),  iU = _normLldpIface(l.u.slice(cu + 1));
-      const dV = l.v.slice(0, cv),  iV = _normLldpIface(l.v.slice(cv + 1));
-      return (dU === localDev && iU === localIf && dV === remDev && iV === remIf) ||
-             (dV === localDev && iV === localIf && dU === remDev && iU === remIf);
+      const dU = l.u.slice(0, cu), iU = _normLldpIface(l.u.slice(cu + 1));
+      const dV = l.v.slice(0, cv), iV = _normLldpIface(l.v.slice(cv + 1));
+      return (dU === dev && iU === iface) || (dV === dev && iV === iface);
     });
-    if (!inSheet) orphans.push({ localDev, localIf, remDev, remIf });
+    if (!_portInSheet(localDev, localIf) && !_portInSheet(remDev, remIf))
+      orphans.push({ localDev, localIf, remDev, remIf });
   });
 
   return { results, orphans };
