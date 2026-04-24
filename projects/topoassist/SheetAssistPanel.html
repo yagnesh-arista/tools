@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.2 | 2026-04-24 09:05:22 -->
+<!-- TopoAssist v260424.3 | 2026-04-24 09:06:22 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -322,6 +322,7 @@
     }
     .ip-filter-item { cursor: pointer; }
     .ip-item-dummy  { pointer-events: none; visibility: hidden; }
+    .hidden-vlan    { display: none; }
 
     /* ─── VLAN CHIP STRIP ───────────────────────────────── */
     .vlan-section { border-top: 1px solid #e2e8f0; flex-shrink: 0; }
@@ -833,9 +834,10 @@
       document.getElementById('intModeFilterSection').style.display = hide;
       document.getElementById('sviFilterSection').style.display = hide;
       document.getElementById('panelBody').style.display = hide;
+      document.getElementById('vlanSection').style.display = hide;
       document.getElementById('statusBar').style.display = hide;
       document.getElementById('btnMin').textContent = isMinimized ? '+' : '−';
-      google.script.host.setHeight(isMinimized ? 36 : 550);
+      google.script.host.setHeight(isMinimized ? 36 : 590);
     }
 
     /* ── IP_TYPE FILTER ────────────────────────────────── */
@@ -985,7 +987,68 @@
         .applySheetSviFilter(activeSviFilters);
     }
 
+    /* ── VLAN CHIP STRIP ──────────────────────────────── */
+    var vlanSummary   = [];
+    var sapVlanFilter = [];
+
+    function buildSapVlanStrip() {
+      var strip = document.getElementById('vlanStrip');
+      var clearBtn = document.getElementById('vlanClear');
+      if (!strip) return;
+      if (!vlanSummary.length) {
+        strip.innerHTML = '<span class="vlan-empty">no vlans</span>';
+        if (clearBtn) clearBtn.style.display = 'none';
+        return;
+      }
+      strip.innerHTML = vlanSummary.map(function(v) {
+        var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
+        var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
+        var title = v.devices.join(', ') || '';
+        return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(' + v.vid + ')" title="' + title + '">' + v.vid + '</span>';
+      }).join('');
+      if (clearBtn) clearBtn.style.display = sapVlanFilter.length ? '' : 'none';
+    }
+
+    function toggleSapVlanChip(vid) {
+      var idx = sapVlanFilter.indexOf(vid);
+      if (idx !== -1) sapVlanFilter.splice(idx, 1);
+      else sapVlanFilter.push(vid);
+      buildSapVlanStrip();
+      applySapVlanFilter();
+    }
+
+    function clearSapVlanFilter() {
+      sapVlanFilter = [];
+      buildSapVlanStrip();
+      applySapVlanFilter();
+    }
+
+    function applySapVlanFilter() {
+      if (!sapVlanFilter.length) {
+        document.querySelectorAll('#devList .device-item').forEach(function(el) {
+          el.classList.remove('hidden-vlan');
+        });
+        return;
+      }
+      var filterSet = sapVlanFilter;
+      document.querySelectorAll('#devList .device-item').forEach(function(el) {
+        var name = el.getAttribute('data-name');
+        var match = vlanSummary.some(function(v) {
+          return filterSet.indexOf(v.vid) !== -1 && v.devices.indexOf(name) !== -1;
+        });
+        el.classList.toggle('hidden-vlan', !match);
+      });
+    }
+
     load();
+
+    google.script.run
+      .withSuccessHandler(function(summary) {
+        vlanSummary = Array.isArray(summary) ? summary : [];
+        buildSapVlanStrip();
+      })
+      .withFailureHandler(function() {})
+      .getSheetVlanSummary();
   </script>
 </body>
 </html>

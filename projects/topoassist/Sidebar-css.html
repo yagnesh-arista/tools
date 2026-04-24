@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.2 | 2026-04-24 09:05:11 -->
+<!-- TopoAssist v260424.3 | 2026-04-24 09:06:17 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -72,6 +72,7 @@
   #techModal,
   #generateAllModal,
   #vlanSummaryModal,
+  #auditSettingsModal,
   #editOverlay {
     display: none
   }
@@ -5517,4 +5518,65 @@
     font-weight: 700;
     color: var(--copygroup-status);
   }
+
+  /* ================= 14. AUDIT SETTINGS MODAL ================= */
+  .audit-cat-hdr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 10px 0 4px 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .audit-cat-hdr:first-child {
+    padding-top: 2px;
+  }
+  .audit-chk-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 0;
+    min-height: 22px;
+  }
+  .audit-chk-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .audit-chk-label input[type="checkbox"] {
+    flex-shrink: 0;
+    cursor: pointer;
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: #3b82f6;
+  }
+  .audit-chk-label span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .audit-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+    flex-shrink: 0;
+    margin-left: 10px;
+  }
+  .audit-status-dot.dot-green { background: #22c55e; }
+  .audit-status-dot.dot-red   { background: #ef4444; }
 </style>
