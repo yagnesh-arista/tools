@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.31 | 2026-04-24 12:27:26 -->
+<!-- TopoAssist v260424.32 | 2026-04-24 12:29:54 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -339,8 +339,10 @@
     }
     .vlan-count {
       font-family: "JetBrains Mono", monospace;
-      font-size: 8px; font-weight: 400; opacity: 0.65;
-      vertical-align: super; margin-left: 1px; pointer-events: none;
+      font-size: 9px; font-weight: 700;
+      vertical-align: super; margin-left: 2px;
+      background: rgba(0,0,0,0.15); border-radius: 3px;
+      padding: 0 3px; line-height: 1; pointer-events: none;
     }
     .vlan-strip {
       display: flex; flex-wrap: wrap; gap: 4px;
@@ -1017,7 +1019,8 @@
         var cls = v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native');
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
         var count = v.rowCount || v.trunkCount || 0;
-        var title = v.devices.join(', ') || '';
+        var devList = v.devices.join(', ') || '';
+        var title = (count > 0 ? count + (count === 1 ? ' row' : ' rows') : '') + (devList ? ' \u00b7 ' + devList : '');
         return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(event,\'' + v.vid + '\')" title="' + title + '">' +
                v.vid + (count > 0 ? '<span class="vlan-count">' + count + '</span>' : '') + '</span>';
       }).join('');
