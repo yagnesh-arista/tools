@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.38 | 2026-04-24 14:57:34 -->
+<!-- TopoAssist v260424.39 | 2026-04-24 15:00:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.38";  // keep in sync with Code.gs
+const APP_VERSION = "260424.39";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10821,6 +10821,24 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     // Store pending push details + session_name, show confirm modal (button stays disabled)
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
     _showPushConfirmModal(label, res.diff);
+    // Guard: auto-abort the open EOS session if user doesn't commit within 5 minutes
+    if (res.session_name) {
+      _clearPushSessionGuard();
+      _pushSessionGuard = setTimeout(() => {
+        _pushSessionGuard = null;
+        if (!_pendingPush) return; // already committed or cancelled
+        const { deviceName: dn, ip: dip, sessionName: sn, btnId: bid, origText: ot } = _pendingPush;
+        _pendingPush = null;
+        const b = document.getElementById(bid);
+        if (b) { b.disabled = false; b.textContent = ot; }
+        fetch(BRIDGE_URL + '/pushconfig/finalize', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ipMap: { [dn]: { ip: dip, session_name: sn } }, action: 'abort' }),
+        }).catch(() => {});
+        closePushConfirmModal();
+        setStatus('Push session timed out — session aborted on device', 'status-warn');
+      }, 5 * 60 * 1000);
+    }
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     _updatePushPreviewError(`${err.message} — is device_bridge.py running?`);
@@ -10905,7 +10923,12 @@ function _setPushStatus(html) {
   }
 }
 
+function _clearPushSessionGuard() {
+  if (_pushSessionGuard) { clearTimeout(_pushSessionGuard); _pushSessionGuard = null; }
+}
+
 async function commitPushConfig() {
+  _clearPushSessionGuard();
   if (!_pendingPush) return;
   const { deviceName, ip, config, btnId, origText, label, sessionName } = _pendingPush;
   const commitBtn = document.getElementById('btnCommitPush');
@@ -11225,6 +11248,7 @@ function _injectMinimizeButtons() {
 }
 
 function cancelPushConfig() {
+  _clearPushSessionGuard();
   if (_pendingPush) {
     const btn = document.getElementById(_pendingPush.btnId);
     if (btn) { btn.disabled = false; btn.textContent = _pendingPush.origText; }
@@ -11247,6 +11271,7 @@ function cancelPushConfig() {
 
 function closePushConfirmModal() {
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
+  _clearPushSessionGuard();
   const m = document.getElementById('pushConfirmModal');
   if (m) m.style.display = 'none';
   const titleEl   = document.getElementById('pushConfirmTitle');
