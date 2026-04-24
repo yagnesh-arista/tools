@@ -1,4 +1,4 @@
-<!-- TopoAssist v260424.10 | 2026-04-24 09:42:48 -->
+<!-- TopoAssist v260424.10 | 2026-04-24 09:43:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -1001,7 +1001,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
       <li><b>SVI VLAN Mismatch</b> — a VLAN ID in <code>svi_vlan_</code> is not present in <code>vlan_</code>. Config generation silently skips SVIs for VLANs not in the allowed trunk list — this check surfaces the mismatch so the VLAN can be added to <code>vlan_</code> or removed from <code>svi_vlan_</code>. Applies to <code>l2-*</code> modes only; <code>svi_vlan=all</code> is exempt (all trunk VLANs are valid by definition).</li>
-      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Flag internal VLAN conflicts</b> in the Device Bridge modal.</li>
+      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Internal VLAN in topology</b> in the Audit Checks modal (single-click the Audit icon).</li>
       <li><b>Per-VLAN VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
         <ul style="margin-top:4px;">
           <li><b>Error</b> — VRF count does not match VLAN count (e.g. 3 VLANs but 2 VRF entries).</li>
@@ -1147,8 +1147,8 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         <b>LL column</b> — per-port LLDP indicator dot before the St column:
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;"></span> match &nbsp;
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#eab308;vertical-align:middle;margin:0 3px;"></span> mismatch &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> missing (when "Flag missing neighbors" is on) &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> missing (when flag is off)
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> missing (when <b>Missing LLDP neighbor</b> check is enabled in Audit Checks) &nbsp;
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> missing (when check is disabled)
       </li>
       <li>
         <b>St column</b> — when devstatus data is available, the port dot reflects live interface operational state:
