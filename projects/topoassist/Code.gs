@@ -1,10 +1,10 @@
-// TopoAssist v260424.43 | 2026-04-24 15:25:59
+// TopoAssist v260424.44 | 2026-04-24 15:31:44
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260424.43";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260424.44";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2546,7 +2546,9 @@ function getTopologyData(forceSync, isColorEnabled) {
               const { vlans: _vx1Vlans } = parseVlanWithNative(_vx1Raw);
               if (_vx1Vlans) {
                 if (!vtepVlansByDevice[device.name]) vtepVlansByDevice[device.name] = new Set();
-                _vx1Vlans.split(",").forEach(v => { const n = parseInt(v.trim()); if (!isNaN(n)) vtepVlansByDevice[device.name].add(n); });
+                // expandVlanString handles ranges like "1-4000" → {1,2,...,4000}
+                // parseInt alone would only capture the first number (parseInt("1-4000")=1)
+                expandVlanString(_vx1Vlans).forEach(v => vtepVlansByDevice[device.name].add(v));
               }
               return; // forEach — return skips this device entry
             }

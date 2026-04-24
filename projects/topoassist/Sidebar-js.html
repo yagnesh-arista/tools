@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.43 | 2026-04-24 15:27:07 -->
+<!-- TopoAssist v260424.44 | 2026-04-24 15:32:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.43";  // keep in sync with Code.gs
+const APP_VERSION = "260424.44";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13655,11 +13655,13 @@ function buildVlanSummary() {
     });
   }
   // Pass 1b: Vx1/VTEP VLANs — excluded from allNodesData; sourced from node.vtepVlans
+  // Split by comma only — do NOT expand ranges (parseVlanInput would turn "1-4000" into 4000 entries).
+  // Each comma-token (e.g. "1-4000", "10", "20-30") becomes one VLAN Summary row.
   if (currentData && currentData.nodes) {
     currentData.nodes.forEach(function(node) {
       if (!node.vtepVlans) return;
-      parseVlanInput(node.vtepVlans).forEach(function(v) {
-        const vid = String(v);
+      node.vtepVlans.split(',').forEach(function(tok) {
+        const vid = tok.trim();
         if (!vid) return;
         if (vlanMap[vid]) {
           // VLAN already present from regular ports — annotate as also VTEP
@@ -14478,11 +14480,14 @@ function buildVlanStrip() {
   });
 
   // Vx1/VTEP VLANs — excluded from allNodesData; sourced from node.vtepVlans (compressed ranges)
+  // Split by comma only — do NOT expand ranges (parseVlanInput turns "1-4000" into 4000 chips).
+  // Each comma-token (e.g. "1-4000", "10") becomes one teal chip-vtep.
   if (currentData && currentData.nodes) {
     currentData.nodes.forEach(function(node) {
       if (!node.vtepVlans) return;
-      parseVlanInput(node.vtepVlans).forEach(function(v) {
-        const vid = String(v);
+      node.vtepVlans.split(',').forEach(function(tok) {
+        const vid = tok.trim();
+        if (!vid) return;
         if (!vlanInfo[vid]) vlanInfo[vid] = { hasSvi: false, hasVtep: false, trunkCount: 0 };
         vlanInfo[vid].hasVtep = true;
       });
