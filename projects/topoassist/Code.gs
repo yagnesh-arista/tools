@@ -1,10 +1,10 @@
-// TopoAssist v260425.60 | 2026-04-25 13:23:58
+// TopoAssist v260425.62 | 2026-04-25 13:27:58
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.60";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.62";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4743,6 +4743,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   lines.push(`interface Loopback0`);
   lines.push(` ip address ${loId}.${loId}.${loId}.${loId}/32`);
   if (hasP2pIpv6) {
+    lines.push(` no ipv6 address`);
     lines.push(` ipv6 address ${loId}:${loId}:${loId}::${loId}/128`);
   }
   lines.push(`!`);
@@ -6254,13 +6255,13 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
     lines.push("interface Loopback1");
     lines.push(" description VTEP_UNIQUE");
     lines.push(` ip address ${myUniqIpV4}/32`);
-    if (addVtepIpv6) lines.push(` ipv6 address ${myUniqIpV6}/128`);
+    if (addVtepIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${myUniqIpV6}/128`); }
     lines.push("!");
 
     lines.push("interface Loopback10");
     lines.push(" description VTEP_MLAG_SHARED");
     lines.push(` ip address ${myVtepIpV4}/32`);
-    if (addVtepIpv6) lines.push(` ipv6 address ${myVtepIpV6}/128`);
+    if (addVtepIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${myVtepIpV6}/128`); }
     lines.push("!");
 
     lines.push("interface Vxlan1");
