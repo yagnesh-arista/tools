@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.13 | 2026-04-25 10:58:42 -->
+<!-- TopoAssist v260425.14 | 2026-04-25 11:25:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.13";  // keep in sync with Code.gs
+const APP_VERSION = "260425.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9163,7 +9163,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.13"
+VERSION = "260425.14"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9529,9 +9529,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        # force_tty=True so EOS assigns a real VTY instead of 'UnknownTty' in
-        # 'show users' and syslog when configure sessions are opened via SSH.
-        base = _ssh_base(force_tty=True)
+        # -T (no PTY): stdin EOF propagates naturally so proc.communicate() returns
+        # cleanly. -tt (force PTY) blocks forever because PTY doesn't propagate EOF.
+        base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])

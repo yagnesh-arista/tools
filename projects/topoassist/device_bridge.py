@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.13 | 2026-04-25 10:58:35
+# topoassist v260425.14 | 2026-04-25 11:25:47
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.13","port":8765}
+  GET  /health      → {"status":"ok","version":"260425.14","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.13"
+VERSION           = "260425.14"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -732,10 +732,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        # force_tty=True so EOS assigns a real VTY instead of 'UnknownTty' in
-        # 'show users' / syslog. Only needed for interactive configure sessions;
-        # _ssh_cmds (show | json) stays non-interactive with -T.
-        base = _ssh_base(force_tty=True)
+        # -T (no PTY): stdin EOF propagates naturally so proc.communicate() returns
+        # cleanly. -tt (force PTY) blocks forever because PTY doesn't propagate EOF.
+        base = _ssh_base()
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
