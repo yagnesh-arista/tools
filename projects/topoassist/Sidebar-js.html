@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.27 | 2026-04-25 12:02:36 -->
+<!-- TopoAssist v260425.29 | 2026-04-25 12:07:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.27";  // keep in sync with Code.gs
+const APP_VERSION = "260425.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11470,23 +11470,43 @@ function _injectMinimizeButtons() {
 
 function cancelPushConfig() {
   _clearPushSessionGuard();
-  if (_pendingPush) {
-    const btn = document.getElementById(_pendingPush.btnId);
-    if (btn) { btn.disabled = false; btn.textContent = _pendingPush.origText; }
-    // Abort the open EOS configure session — fire-and-forget, best effort
-    const { deviceName, ip, sessionName } = _pendingPush;
-    _pendingPush = null;
-    if (sessionName) {
-      setStatus(`Aborting session on ${deviceName}…`, 'status-info');
-      fetch(BRIDGE_URL + '/pushconfig/finalize', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'abort' }),
-      })
-        .then(() => setStatus('Push cancelled — session aborted on device', 'status-warn'))
-        .catch(() => setStatus('Push cancelled — session may still be pending on device', 'status-warn'));
-    }
+  if (!_pendingPush) {
+    closePushConfirmModal();
+    return;
   }
-  closePushConfirmModal();
+  const { deviceName, ip, sessionName, btnId, origText } = _pendingPush;
+  _pendingPush = null;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled = false; btn.textContent = origText; }
+
+  if (!sessionName) {
+    // No EOS session was opened — nothing to abort on device
+    setStatus('Push cancelled', 'status-warn');
+    closePushConfirmModal();
+    return;
+  }
+
+  // Show aborting state inside the modal while the abort fetch is in flight.
+  // Modal stays open until the fetch resolves so the user sees the intermediate state.
+  const titleEl   = document.getElementById('pushConfirmTitle');
+  const commitBtn = document.getElementById('btnCommitPush');
+  const cancelBtn = document.getElementById('btnCancelPushFtr');
+  if (titleEl)   titleEl.textContent = `Aborting session on ${deviceName}…`;
+  if (commitBtn) commitBtn.disabled = true;
+  if (cancelBtn) cancelBtn.disabled = true;
+
+  fetch(BRIDGE_URL + '/pushconfig/finalize', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'abort' }),
+  })
+    .then(() => {
+      setStatus('Push cancelled — session aborted on device', 'status-warn');
+      closePushConfirmModal();
+    })
+    .catch(() => {
+      setStatus('Push cancelled — session may still be pending on device', 'status-warn');
+      closePushConfirmModal();
+    });
 }
 
 
