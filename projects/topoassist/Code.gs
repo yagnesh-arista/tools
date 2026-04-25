@@ -1,10 +1,10 @@
-// TopoAssist v260425.42 | 2026-04-25 12:56:52
+// TopoAssist v260425.43 | 2026-04-25 13:01:46
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.42";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.43";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1874,10 +1874,12 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
 
-    // A4 — vlan_ filled but mode is pure L3 (not sub-int; sub-int uses vlan_ for VLAN id)
+    // A4 — vlan_ has 2+ VLANs (range or comma-list) but mode is pure L3 non-sub-int
+    //      Single VLAN is allowed on l3-et/l3-po (e.g. for sub-int reference); only flag multi-VLAN.
     if (vlanIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vlanIdx)}3<>""` +
+          `,REGEXMATCH($${getColLet(vlanIdx)}3,"[,\\-]")` +
           `,REGEXMATCH($${mC}3,"^l3"),NOT(REGEXMATCH($${mC}3,"sub-int")))`)
         .setBackground("#fca5a5").setFontColor("#991b1b")
         .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
@@ -1891,19 +1893,6 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setBackground("#fca5a5").setFontColor("#991b1b")
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
-
-    // A6 — transceiver/physical-port fields filled but mode is Po (no physical port on Po)
-    const xcvrPoFormula = (colLet) =>
-      `=AND($${iC}3<>"",$${colLet}3<>"",REGEXMATCH($${mC}3,"^l[23]-po"))`;
-    [[etSpeedIdx,'et_speed'],[xcvrSpeedIdx,'xcvr_speed'],[xcvrTypeIdx,'xcvr_type'],[encodingIdx,'encoding']]
-      .forEach(([idx]) => {
-        if (idx > 0) {
-          rules.push(SpreadsheetApp.newConditionalFormatRule()
-            .whenFormulaSatisfied(xcvrPoFormula(getColLet(idx)))
-            .setBackground("#fca5a5").setFontColor("#991b1b")
-            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
-        }
-      });
 
     // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
 
