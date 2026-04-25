@@ -1,10 +1,10 @@
-// TopoAssist v260425.62 | 2026-04-25 13:27:58
+// TopoAssist v260425.64 | 2026-04-25 13:33:35
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.62";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.64";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4479,6 +4479,7 @@ function getDeviceConfig(deviceName) {
               ` description ${desc} #TA`,
               gwCmdV4,
               useAnycast && gwHasIpv6vx1 ? ` default ipv6 address virtual` : null,
+              !useAnycast && gwHasIpv6vx1 ? ` no ipv6 address` : null,
               gwCmdV6,
             ].filter(Boolean).join("\n"));
           });
@@ -5069,6 +5070,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         if (p2pUseIpv6Unnum) {
           lines.push(` ipv6 enable`); // unnumbered IPv6 — link-local only (EOS has no 'ipv6 unnumbered' CLI)
         } else if (p2pUseIpv6Explicit) {
+          lines.push(` no ipv6 address`);
           lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::1/64`);
         }
       } else {
@@ -5079,6 +5081,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         if (p2pUseIpv6Unnum) {
           lines.push(` ipv6 enable`); // unnumbered IPv6 — link-local only (EOS has no 'ipv6 unnumbered' CLI)
         } else if (p2pUseIpv6Explicit) {
+          lines.push(` no ipv6 address`);
           lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.p2p_v6_mask}`);
         }
       }
@@ -5097,14 +5100,14 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         if (useAnycastGW) {
           // EVPN anycast: single shared virtual IP — same on all VTEPs, no physical IP needed
           if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         } else {
           // MLAG VARP (or no EVPN): per-device physical IP + shared virtual-router address
           // phySuffix = gwLast + sheetIndex guarantees unique-per-peer and ≠ virtual IP
           const phySuffixV4 = gwLastV4 + sheetIndex;
           const phySuffixV6 = gwLastV6 + sheetIndex;
           if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`); }
           if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
           if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
         }
@@ -5112,7 +5115,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         if (useAnycastGW) {
           // Standalone EVPN anycast: ip address virtual (shared across all VTEPs)
           if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         } else if (useVarpGW) {
           // Standalone VARP: unique physical IP (gwLast + sheetIndex) + shared virtual-router address.
           // Physical MUST differ from virtual — mirrors MLAG VARP pattern.
@@ -5120,13 +5123,13 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
           const phySuffixV4 = gwLastV4 + sheetIndex;
           const phySuffixV6 = gwLastV6 + sheetIndex;
           if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`); }
           if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
           if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
         } else {
           // Non-EVPN standalone: legacy behavior (plain ip address)
           if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         }
       }
     }
