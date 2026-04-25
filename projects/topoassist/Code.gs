@@ -1,10 +1,10 @@
-// TopoAssist v260425.39 | 2026-04-25 12:39:27
+// TopoAssist v260425.40 | 2026-04-25 12:46:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.39";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.40";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3302,6 +3302,35 @@ function saveDeviceMlagPeers(peersMap) {
   });
   PropertiesService.getDocumentProperties().setProperty('DEVICE_MLAG_PEERS', JSON.stringify(normalized));
   return { success: true };
+}
+
+// ── Device ID Snapshot — detect column-order shifts ───────────────────────────
+
+function getDeviceIdSnapshot() {
+  var raw = PropertiesService.getDocumentProperties().getProperty('DEVICE_ID_SNAPSHOT');
+  return raw ? JSON.parse(raw) : null;
+}
+
+function saveDeviceIdSnapshot() {
+  var devices = getExistingDevices() || [];
+  var snap = {};
+  devices.forEach(function(d) { if (d.sheetIndex !== '-') snap[d.name] = d.sheetIndex; });
+  PropertiesService.getDocumentProperties()
+    .setProperty('DEVICE_ID_SNAPSHOT', JSON.stringify(snap));
+  return snap;
+}
+
+function checkDeviceIdShift() {
+  var snap = getDeviceIdSnapshot();
+  if (!snap) return { shifted: [], isFirstRun: true };
+  var devices = getExistingDevices() || [];
+  var shifted = [];
+  devices.forEach(function(d) {
+    if (d.sheetIndex === '-') return;
+    if (snap[d.name] !== undefined && snap[d.name] !== d.sheetIndex)
+      shifted.push({ name: d.name, oldId: snap[d.name], newId: d.sheetIndex });
+  });
+  return { shifted: shifted, isFirstRun: false };
 }
 
 /* --- MODIFY EXISTING FUNCTION IN Code.gs --- */

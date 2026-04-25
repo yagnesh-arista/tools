@@ -37,6 +37,8 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **MLAG is explicit only**: declared via Device Manager (DEVICE_MLAG_PEERS in DocumentProperties). The old PO-count heuristic (≥4 occurrences) was removed. Never re-introduce count-based MLAG detection.
 
+**Device ID shift detection**: `DEVICE_ID_SNAPSHOT` (DocumentProperties) stores `{deviceName: sheetIndex}` for all Arista devices. `checkDeviceIdShift()` compares current IDs vs snapshot — returns `{shifted:[{name,oldId,newId}], isFirstRun}`. Called on topology load (status-warn if shifted) and checked before push (yellow banner in push modal with "Regenerate All Configs" / "Push Anyway"). `saveDeviceIdSnapshot()` saves current IDs; called by `_regenerateAllConfigs()` and on first push commit. `_regenerateAllConfigs()` iterates all Arista devices via `getDeviceConfig()`, then saves snapshot. Vxlan1 section cleaner (`_SECTION_CLEANERS` in device_bridge.py) ensures `no interface Vxlan1` is prepended before new Vxlan1 block — prevents stale flood vtep IPs from persisting after device ID shifts.
+
 **JetBrains Mono** must be explicitly set on every UI element in Sidebar-css.html. It does NOT inherit from body in Google Apps Script dialogs.
 
 **IPv6 syntax is intentionally non-EOS**: format aligns with IPv4 for lab testing convenience. Do not "fix" it to match EOS syntax.

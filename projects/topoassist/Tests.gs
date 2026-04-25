@@ -1,4 +1,4 @@
-// TopoAssist v260425.39 | 2026-04-25 12:39:27
+// TopoAssist v260425.40 | 2026-04-25 12:48:11
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1292,6 +1292,63 @@ function test_compressVniLines() {
   return results;
 }
 
+// ── deviceIdSnapshot ──────────────────────────────────────────────────────────
+
+function test_deviceIdSnapshot() {
+  const t = assert_;
+  const results = [];
+  const dp = PropertiesService.getDocumentProperties();
+  const prevSnap = dp.getProperty('DEVICE_ID_SNAPSHOT');
+
+  try {
+    // 1. isFirstRun when no snapshot stored
+    dp.deleteProperty('DEVICE_ID_SNAPSHOT');
+    const r1 = checkDeviceIdShift();
+    results.push(t("isFirstRun when no snapshot", r1.isFirstRun, true));
+    results.push(t("shifted empty when isFirstRun", r1.shifted.length, 0));
+
+    // 2. save + get roundtrip
+    const saved = saveDeviceIdSnapshot();
+    const got   = getDeviceIdSnapshot();
+    results.push(t("getDeviceIdSnapshot matches saveDeviceIdSnapshot", JSON.stringify(got), JSON.stringify(saved)));
+
+    // 3. no shift right after save
+    const r2 = checkDeviceIdShift();
+    results.push(t("no shift after save (shifted empty)", r2.shifted.length, 0));
+    results.push(t("isFirstRun false after save", r2.isFirstRun, false));
+
+    // 4. shift detected when snapshot has a stale ID for a known device
+    const firstKey = Object.keys(saved)[0];
+    if (firstKey) {
+      const staleSnap = Object.assign({}, saved);
+      staleSnap[firstKey] = saved[firstKey] + 99; // inject wrong ID
+      dp.setProperty('DEVICE_ID_SNAPSHOT', JSON.stringify(staleSnap));
+      const r3 = checkDeviceIdShift();
+      results.push(t("shift detected when snapshot ID differs", r3.shifted.length >= 1, true));
+      results.push(t("shifted entry has correct name", r3.shifted[0].name, firstKey));
+      results.push(t("shifted entry reports correct newId", r3.shifted[0].newId, saved[firstKey]));
+      results.push(t("shifted entry reports correct oldId", r3.shifted[0].oldId, saved[firstKey] + 99));
+    } else {
+      results.push(t("no Arista devices in sheet — shift detection skipped", true, true));
+    }
+
+    // 5. new device (in sheet but not in snapshot) → not reported as shifted
+    const snapWithExtra = Object.assign({}, saved);
+    delete snapWithExtra[firstKey || Object.keys(saved)[0]]; // remove one key from snapshot
+    dp.setProperty('DEVICE_ID_SNAPSHOT', JSON.stringify(snapWithExtra));
+    const r4 = checkDeviceIdShift();
+    const newDeviceShifted = r4.shifted.some(function(s) { return s.name === firstKey; });
+    results.push(t("new device (not in snapshot) not reported as shifted", newDeviceShifted, false));
+
+  } finally {
+    // Always restore original snapshot
+    if (prevSnap !== null && prevSnap !== undefined) dp.setProperty('DEVICE_ID_SNAPSHOT', prevSnap);
+    else dp.deleteProperty('DEVICE_ID_SNAPSHOT');
+  }
+
+  return results;
+}
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -1317,6 +1374,7 @@ function runAllTests() {
     { name: "generateGlobalBlock",            fn: test_generateGlobalBlock },
     { name: "generateComplexL3Block (GW)",    fn: test_generateComplexL3BlockGwType },
     { name: "_compressVniLines",              fn: test_compressVniLines },
+    { name: "deviceIdSnapshot",              fn: test_deviceIdSnapshot },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);

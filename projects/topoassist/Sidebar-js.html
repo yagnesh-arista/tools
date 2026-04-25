@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.39 | 2026-04-25 12:39:27 -->
+<!-- TopoAssist v260425.40 | 2026-04-25 12:51:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.39";  // keep in sync with Code.gs
+const APP_VERSION = "260425.40";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8961,6 +8961,17 @@ function fetchData(force, autoVerify, silent) {
       // Only run Bridge on fetchData if cabling changed (or never run before).
       // Bridge up→down→up transition fires unconditionally (fresh connect path in _updateBridgeToolbarIcon).
       if (_bridgeUpState && _getLinkSig() !== _lastBridgeLinkSig) _autoRunBridge();
+      // Check for device ID shifts — warn in status bar; cache result for push modal.
+      google.script.run
+        .withSuccessHandler(function(r) {
+          _lastIdShiftResult = r;
+          if (!r.isFirstRun && r.shifted.length > 0) {
+            const names = r.shifted.map(function(d) { return d.name + ' (' + d.oldId + '\u2192' + d.newId + ')'; }).join(', ');
+            setStatus('Device IDs shifted: ' + names + ' \u2014 regenerate all configs before pushing.', 'status-warn');
+          }
+        })
+        .withFailureHandler(function() {}) // silent — non-blocking
+        .checkDeviceIdShift();
 
     }).withFailureHandler(function (err) {
       hideGlobalLoading();
@@ -9067,6 +9078,7 @@ let _pushRightDev  = null; // device name for the right split-btn push action
 let _pushLeftPort  = null; // interface name for left push (link selection → single-interface push)
 let _pushRightPort = null; // interface name for right push (link selection → single-interface push)
 let _pendingPush        = null; // {deviceName, ip, config, btnId, origText, label} — awaiting confirm modal
+let _lastIdShiftResult  = null; // cached result of last checkDeviceIdShift() — {shifted, isFirstRun}
 let _configViewContext  = null; // {deviceName, portFilter} — tracks what the config modal is showing
 let _bridgeClickTimer   = null; // debounce single vs double-click on bridge toolbar icon
 let _auditClickTimer    = null; // debounce single vs double-click on audit toolbar icon
@@ -9187,7 +9199,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.16"
+VERSION = "260425.17"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -11244,6 +11256,12 @@ async function commitPushConfig() {
       _setPushStatus(`<b>${label || deviceName}</b> — <span style="color:#f87171;font-weight:600;">${errMsg}</span>`);
     } else if (res.ok) {
       // Phase 2 success → start Phase 3
+      // On first-ever push, save the baseline ID snapshot so future shifts are detectable.
+      if (!_lastIdShiftResult || _lastIdShiftResult.isFirstRun) {
+        google.script.run.withSuccessHandler(function() {
+          _lastIdShiftResult = { shifted: [], isFirstRun: false };
+        }).withFailureHandler(function() {}).saveDeviceIdSnapshot();
+      }
       const retryNote = lastAttempt > 1 ? ` (${lastAttempt - 1} retr${lastAttempt === 2 ? 'y' : 'ies'})` : '';
       _ptSet('pt2', '#10b981', `committed${retryNote}`);
       _ptSet('pt3', '#94a3b8', 'verifying…');
@@ -13219,6 +13237,10 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     }
     _pendingPush = { deviceName, ip, config, btnId, origText, label };
     _showPushConfirmModal(label, res.diff);
+    // Inject ID-shift warning banner at top of modal body if shifts were detected on last load.
+    if (_lastIdShiftResult && !_lastIdShiftResult.isFirstRun && _lastIdShiftResult.shifted.length > 0) {
+      _injectPushIdShiftWarning(_lastIdShiftResult.shifted);
+    }
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     const modal = document.getElementById('pushConfirmModal');
@@ -13245,6 +13267,76 @@ function _updatePushPreviewError(msg) {
 function _setPushLoadingText(text) {
   const el = document.getElementById('pushLoadingText');
   if (el) el.textContent = text;
+}
+
+// Prepend a yellow ID-shift warning banner into the push confirm modal body.
+function _injectPushIdShiftWarning(shifted) {
+  const bodyEl = document.getElementById('pushConfirmBody');
+  if (!bodyEl) return;
+  const names = shifted.map(function(d) {
+    return '<b>' + escapeHtml(d.name) + '</b> (' + d.oldId + '\u2192' + d.newId + ')';
+  }).join(', ');
+  const banner = '<div id="pushIdShiftBanner" style="' +
+    'font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'background:#fef9c3;border:1px solid #fde047;border-radius:4px;' +
+    'padding:8px 10px;margin-bottom:8px;color:#713f12;line-height:1.5;user-select:none;-webkit-user-select:none;">' +
+    '<b>Device IDs shifted:</b> ' + names + '<br>' +
+    'Pushing now may leave stale VTEP IPs or BGP neighbors on other devices.' +
+    '<div style="margin-top:6px;display:flex;gap:6px;">' +
+    '<button onclick="_regenerateAllConfigs()" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'padding:3px 10px;border:1px solid #ca8a04;border-radius:3px;background:#fef08a;' +
+    'color:#713f12;cursor:pointer;user-select:none;-webkit-user-select:none;">Regenerate All Configs</button>' +
+    '<button onclick="document.getElementById(\'pushIdShiftBanner\').remove()" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'padding:3px 10px;border:1px solid #d6b966;border-radius:3px;background:transparent;' +
+    'color:#92400e;cursor:pointer;user-select:none;-webkit-user-select:none;">Push Anyway</button>' +
+    '</div></div>';
+  bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+// Regenerate configs for all Arista devices in sequence, then save ID snapshot.
+async function _regenerateAllConfigs() {
+  const banner = document.getElementById('pushIdShiftBanner');
+  if (banner) banner.remove();
+  const aristaDevices = Object.keys(allDevicesData).filter(function(n) {
+    return allDevicesData[n] && allDevicesData[n].type !== 'non-arista';
+  });
+  if (!aristaDevices.length) { setStatus('No Arista devices found.', 'status-warn'); return; }
+
+  const total = aristaDevices.length;
+  for (let i = 0; i < total; i++) {
+    const devName = aristaDevices[i];
+    setStatus('Regenerating ' + (i + 1) + '/' + total + ': ' + devName + '\u2026', 'status-loading');
+    await new Promise(function(resolve) {
+      const _guard = setTimeout(function() {
+        delete configCache[devName];
+        resolve();
+      }, 20000);
+      google.script.run
+        .withSuccessHandler(function(result) {
+          clearTimeout(_guard);
+          if (result) configCache[devName] = result;
+          resolve();
+        })
+        .withFailureHandler(function() {
+          clearTimeout(_guard);
+          resolve();
+        })
+        .getDeviceConfig(devName);
+    });
+  }
+
+  // Save snapshot so push modal no longer shows warning.
+  await new Promise(function(resolve) {
+    google.script.run
+      .withSuccessHandler(function() {
+        _lastIdShiftResult = { shifted: [], isFirstRun: false };
+        resolve();
+      })
+      .withFailureHandler(function() { resolve(); })
+      .saveDeviceIdSnapshot();
+  });
+
+  setStatus('All ' + total + ' configs regenerated \u2014 snapshot updated. Push each device as needed.', 'status-ok');
 }
 
 function cfgModalPushInterface() {
