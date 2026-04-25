@@ -1,10 +1,10 @@
-// TopoAssist v260425.12 | 2026-04-25 10:48:50
+// TopoAssist v260425.13 | 2026-04-25 10:53:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.12";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.13";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4337,7 +4337,6 @@ function getDeviceConfig(deviceName) {
               gwCmdV4,
               useAnycast && gwHasIpv6vx1 ? ` default ipv6 address virtual` : null,
               gwCmdV6,
-              ` no shutdown`
             ].filter(Boolean).join("\n"));
           });
         }

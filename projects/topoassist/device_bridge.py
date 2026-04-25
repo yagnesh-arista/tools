@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.9 | 2026-04-25 10:36:18
+# topoassist v260425.13 | 2026-04-25 10:58:35
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.9","port":8765}
+  GET  /health      → {"status":"ok","version":"260425.13","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -57,20 +57,25 @@ if not _SSHPASS_BIN:
     except Exception:
         pass   # fall back to BatchMode=yes key-based auth
 
-def _ssh_base():
+def _ssh_base(force_tty=False):
     """Return the base SSH command list.
     sshpass (Linux): supplies empty password via wrapper binary.
     SSH_ASKPASS shim (macOS/no sshpass): SSH_ASKPASS env supplies empty password.
-    Fallback: key-based auth via BatchMode=yes."""
+    Fallback: key-based auth via BatchMode=yes.
+
+    force_tty=True: use -tt (force PTY) so EOS assigns a named VTY instead of
+    showing 'UnknownTty' in 'show users' and syslog. Used by _ssh_stdin for
+    configure-session pushes. _ssh_cmds (show | json path) always uses -T."""
+    tty = "-tt" if force_tty else "-T"
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh", "-T",
+        return [_SSHPASS_BIN, "-p", "", "ssh", tty,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh", "-T",
+        return ["ssh", tty,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
@@ -78,11 +83,15 @@ def _ssh_base():
                 "-o", "NumberOfPasswordPrompts=1",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh", "-T",
+    return ["ssh", tty,
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
             "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=8"]
+
+# Strip ANSI escape sequences from PTY output so diff parsing is not confused
+# by terminal control codes EOS may emit when a pseudo-terminal is allocated.
+_ANSI_RE = re.compile(r'\x1b(?:\[[0-9;]*[A-Za-z]|[^[])')
 
 def _check_ssh_agent():
     """Check arista-ssh credentials via 'arista-ssh check-auth'.
@@ -122,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.9"
+VERSION           = "260425.13"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -437,13 +446,20 @@ class BridgeHandler(BaseHTTPRequestHandler):
             # Only check arista-ssh credentials for pure key-based auth.
             # Password-based modes (sshpass or SSH_ASKPASS shim) don't use
             # arista-ssh certs, so the check is irrelevant.
-            if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
-                auth = _check_ssh_agent()
-                if auth["ok"]:
-                    _ssh_auth["failures"] = 0
-                    _ssh_auth["ok"]  = True
-                    _ssh_auth["msg"] = ""
-                health["auth"] = auth
+            if METHOD == "ssh":
+                if not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+                    # Key-based auth: proactively check arista-ssh cert validity.
+                    auth = _check_ssh_agent()
+                    if auth["ok"]:
+                        _ssh_auth["failures"] = 0
+                        _ssh_auth["ok"]  = True
+                        _ssh_auth["msg"] = ""
+                    else:
+                        _ssh_auth["ok"]  = auth["ok"]
+                        _ssh_auth["msg"] = auth["msg"]
+                # Always report current auth state so the sidebar can show/clear
+                # the auth warning banner regardless of the auth method in use.
+                health["auth"] = dict(_ssh_auth)
             self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
@@ -716,7 +732,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        base = _ssh_base()
+        # force_tty=True so EOS assigns a real VTY instead of 'UnknownTty' in
+        # 'show users' / syslog. Only needed for interactive configure sessions;
+        # _ssh_cmds (show | json) stays non-interactive with -T.
+        base = _ssh_base(force_tty=True)
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
@@ -730,7 +749,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 proc.communicate()   # drain; __exit__ will close pipes + wait
                 if VERBOSE: print(f"  [stdin] {ip}: {_label} → timeout", flush=True)
                 raise           # let caller decide — push path retries, cleanup swallows
-        out_text = out.decode("utf-8", errors="replace")
+        out_text = _ANSI_RE.sub('', out.decode("utf-8", errors="replace"))
         err_text = err.decode("utf-8", errors="replace")
         if VERBOSE:
             _auth_errs = ("permission denied", "authentication failed", "no route to host",

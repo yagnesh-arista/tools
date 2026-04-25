@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.12 | 2026-04-25 10:48:50 -->
+<!-- TopoAssist v260425.13 | 2026-04-25 10:58:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.12";  // keep in sync with Code.gs
+const APP_VERSION = "260425.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9127,16 +9127,22 @@ def _check_ssh_agent():
     except subprocess.TimeoutExpired:
         return {"ok": False, "msg": "arista-ssh check-auth timed out — run: arista-ssh login"}
 
-def _ssh_base():
+def _ssh_base(force_tty=False):
+    """
+    force_tty=True: use -tt (force PTY) so EOS assigns a named VTY instead of
+    showing 'UnknownTty' in 'show users' and syslog. Used by _ssh_stdin for
+    configure-session pushes. Show/JSON commands use the default -T (no PTY).
+    """
+    tty = "-tt" if force_tty else "-T"
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh", "-T",
+        return [_SSHPASS_BIN, "-p", "", "ssh", tty,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh", "-T",
+        return ["ssh", tty,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
@@ -9144,18 +9150,20 @@ def _ssh_base():
                 "-o", "NumberOfPasswordPrompts=1",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh", "-T",
+    return ["ssh", tty,
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
             "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=8"]
+
+_ANSI_RE = re.compile(r'\\x1b(?:\\[[0-9;]*[A-Za-z]|[^[])')
 
 _ssh_auth = {"ok": True, "msg": "", "failures": 0}
 _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.9"
+VERSION = "260425.13"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9378,13 +9386,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": METHOD, "timeout": TIMEOUT}
-            if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
-                auth = _check_ssh_agent()
-                if auth["ok"]:
-                    _ssh_auth["failures"] = 0
-                    _ssh_auth["ok"]  = True
-                    _ssh_auth["msg"] = ""
-                health["auth"] = auth
+            if METHOD == "ssh":
+                if not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+                    auth = _check_ssh_agent()
+                    if auth["ok"]:
+                        _ssh_auth["failures"] = 0
+                        _ssh_auth["ok"]  = True
+                        _ssh_auth["msg"] = ""
+                    else:
+                        _ssh_auth["ok"]  = auth["ok"]
+                        _ssh_auth["msg"] = auth["msg"]
+                health["auth"] = dict(_ssh_auth)
             self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
@@ -9517,7 +9529,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        base = _ssh_base()
+        # force_tty=True so EOS assigns a real VTY instead of 'UnknownTty' in
+        # 'show users' and syslog when configure sessions are opened via SSH.
+        base = _ssh_base(force_tty=True)
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
@@ -9531,7 +9545,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             proc.communicate()
             if VERBOSE: print(f"  [stdin] {ip}: {_label} → timeout", flush=True)
             raise
-        out_text = out.decode("utf-8", errors="replace")
+        out_text = _ANSI_RE.sub('', out.decode("utf-8", errors="replace"))
         err_text = err.decode("utf-8", errors="replace")
         if VERBOSE:
             _auth_errs = ("permission denied", "authentication failed", "no route to host",
