@@ -26,12 +26,13 @@ Every modal, tooltip, dropdown, overlay, and floating panel must stay fully with
 ## 5. Apply New Global Rules Immediately
 When a new global rule is established, apply it to all existing projects without being asked. Update each project's INSTRUCTIONS file and fix the code in the same session.
 
-## 6. user-select: none on Non-Editable Elements
-Apply `user-select: none; -webkit-user-select: none` broadly to all non-editable UI elements (labels, badges, headers, cards, node titles, modal chrome, status bars, etc.).
-- **Never apply to `body`** — `-webkit-user-select: none` on body breaks `execCommand("copy")` in WebKit/Chrome.
-- **Never apply to `<input>`, `<textarea>`, `<select>`**, or any element the user needs to select/copy text from.
-- For clipboard copy, always use `navigator.clipboard.writeText()` with an `execCommand` fallback (set `user-select: text` inline on a temporary textarea).
-- If a modal displays read-only content the user might want to copy (diff output, config text), leave that specific element selectable.
+## 6. user-select: none on UI Chrome Only (Not Visible Text Content)
+Apply `user-select: none; -webkit-user-select: none` to **UI chrome only**: buttons, icon buttons, tabs, modal title bars, badges, status indicators, tags, node titles, tooltips.
+- **Do NOT apply to visible text content** — if the user can read it, they can select it. This includes `info-box` text, descriptions, hints, captions, and read-only values shown in the UI.
+- **Explicitly set `user-select: text`** on content users clearly need to copy: diffs, configs, EOS commands, IP addresses, generated output.
+- **Never apply to `body`** — breaks `execCommand("copy")` in WebKit/Chrome.
+- **Never apply to `<input>`, `<textarea>`, `<select>`**.
+- For clipboard copy buttons: use `navigator.clipboard.writeText()` with `execCommand` fallback.
 
 ## 7. Modal Default Background
 All modals must use a white background (`#ffffff`) by default. Dark mode overrides via a `--bg-modal` CSS variable or dark-mode theme selector — never hardcode dark on a modal outside a dark-mode rule. In CSS-variable projects: define `--bg-modal: #ffffff` as the base; override with the dark card color under the dark-mode selector only.
