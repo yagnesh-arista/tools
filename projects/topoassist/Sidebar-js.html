@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.9 | 2026-04-25 10:36:11 -->
+<!-- TopoAssist v260425.10 | 2026-04-25 10:46:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.9";  // keep in sync with Code.gs
+const APP_VERSION = "260425.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4558,8 +4558,9 @@ function updateVarpMacVisibility() {
   const gwType = (document.querySelector('input[name="gwL3Type"]:checked') || {}).value;
   const rowVarpMac  = document.getElementById('rowVarpMac');
   const rowGwL3Hint = document.getElementById('rowGwL3Hint');
-  if (rowVarpMac)  rowVarpMac.style.display  = (gwType === 'varp') ? '' : 'none';
-  if (rowGwL3Hint) rowGwL3Hint.style.display = (gwType === 'varp') ? 'none' : '';
+  // Both VARP and anycast require ip virtual-router mac-address — show MAC row for both
+  if (rowVarpMac)  rowVarpMac.style.display  = gwType ? '' : 'none';
+  if (rowGwL3Hint) rowGwL3Hint.style.display = (gwType === 'anycast') ? '' : 'none';
   if (typeof checkTechDirty === 'function') checkTechDirty();
 }
 

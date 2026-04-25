@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.9 | 2026-04-25 10:35:31 -->
+<!-- TopoAssist v260425.10 | 2026-04-25 10:46:07 -->
 <!DOCTYPE html>
 <html>
 
@@ -544,7 +544,7 @@
           <code class="inline-code">ip virtual-router address</code> &nbsp;(VARP)
         </label>
       </div>
-      <!-- VARP MAC row — visible only when VARP is selected -->
+      <!-- Virtual Router MAC row — shown for both VARP and anycast (both require ip virtual-router mac-address) -->
       <div id="rowVarpMac" style="display:none; margin-bottom:18px;">
         <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
           <label for="inputVarpMac" style="font-size:12px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
@@ -556,7 +556,7 @@
         </div>
       </div>
       <div id="rowGwL3Hint" class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. No <code class="inline-code">ip virtual-router mac-address</code> needed — EVPN advertises the gateway MAC automatically. Requires EVPN enabled.
+        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. Requires EVPN enabled.
       </div>
 
       <!-- Validation error banner (hidden until validateTechSettings finds errors) -->

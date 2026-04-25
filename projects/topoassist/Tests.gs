@@ -1,4 +1,4 @@
-// TopoAssist v260425.9 | 2026-04-25 10:35:31
+// TopoAssist v260425.10 | 2026-04-25 10:45:47
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1131,11 +1131,18 @@ function test_generateGlobalBlock() {
     results.push(t("generateGlobalBlock — VARP MLAG: no virtual-router mac (MLAG owns it)", !out.includes("ip virtual-router mac-address"), true));
   }
 
-  // 6. Anycast GW (gw_l3_type=anycast): no virtual-router MAC regardless of MLAG
+  // 6. Anycast GW standalone: virtual-router MAC present (ip address virtual needs it too)
   {
-    const sAny = Object.assign({}, baseSettings, { gw_l3_type: 'anycast' });
+    const sAny = Object.assign({}, baseSettings, { gw_l3_type: 'anycast', varp_mac: '001c.7300.0099' });
     const out = generateGlobalBlock(false, sAny, false);
-    results.push(t("generateGlobalBlock — anycast: no virtual-router mac", !out.includes("ip virtual-router mac-address"), true));
+    results.push(t("generateGlobalBlock — anycast standalone: has virtual-router mac", out.includes("ip virtual-router mac-address 001c.7300.0099"), true));
+  }
+
+  // 7. Anycast GW MLAG: virtual-router MAC NOT in global block (MLAG block handles it)
+  {
+    const sAny = Object.assign({}, baseSettings, { gw_l3_type: 'anycast', varp_mac: '001c.7300.0099' });
+    const out = generateGlobalBlock(false, sAny, true);
+    results.push(t("generateGlobalBlock — anycast MLAG: no virtual-router mac (MLAG owns it)", !out.includes("ip virtual-router mac-address"), true));
   }
 
   return results;
