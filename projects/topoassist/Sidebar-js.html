@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.36 | 2026-04-25 12:22:03 -->
+<!-- TopoAssist v260425.37 | 2026-04-25 12:24:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.36";  // keep in sync with Code.gs
+const APP_VERSION = "260425.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4796,7 +4796,7 @@ function openTechModal() {
       const gwL3Radio = document.querySelector(`input[name="gwL3Type"][value="${gwL3Val}"]`);
       if (gwL3Radio) gwL3Radio.checked = true;
       const varpMacEl = document.getElementById('inputVarpMac');
-      if (varpMacEl) varpMacEl.value = settings.varp_mac || '001c.7300.0099';
+      if (varpMacEl) varpMacEl.value = settings.varp_mac || '';
       updateVarpMacVisibility();
 
       // 6. Apply compat filter (dims + unchecks options incompatible with P2P mode)
