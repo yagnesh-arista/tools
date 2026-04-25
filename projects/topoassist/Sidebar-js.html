@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.1 | 2026-04-25 10:13:07 -->
+<!-- TopoAssist v260425.2 | 2026-04-25 10:18:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.1";  // keep in sync with Code.gs
+const APP_VERSION = "260425.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12318,18 +12318,21 @@ function downloadCablingReport(mode) {
         const m = sQSFP.match(/^(\d+)g$/i);
         sQSFPDisplay = m ? `${parseInt(m[1]) * count}g-${count}` : `${sQSFP}-${count}`;
       }
-      let qPart = [qLabel, sQSFPDisplay].filter(Boolean).join(" ");
-      let bPart = [sSFP, `${count}*${sLabel}(Breakout)`].filter(Boolean).join(" ");
+      // Position-aware: left always xcvr+speed, right always speed+xcvr (matches Scenario B/A convention)
+      const qLeftPart  = [qLabel, sQSFPDisplay].filter(Boolean).join(" ");
+      const qRightPart = [sQSFPDisplay, qLabel].filter(Boolean).join(" ");
+      const bLeftPart  = [`${count}*${sLabel}(Breakout)`, sSFP].filter(Boolean).join(" ");
+      const bRightPart = [sSFP, `${count}*${sLabel}(Breakout)`].filter(Boolean).join(" ");
       if (leftIsQSFP) {
         displayPortL = leftPhy;
         displayPortR = compressPortList(rightPorts);
-        middleInfoFwd = `${qPart} ------ ${bPart}`;
-        middleInfoRev = `${bPart} ------ ${qPart}`;
+        middleInfoFwd = `${qLeftPart} ------ ${bRightPart}`;
+        middleInfoRev = `${bLeftPart} ------ ${qRightPart}`;
       } else {
         displayPortL = compressPortList(leftPorts);
         displayPortR = rightPhy;
-        middleInfoFwd = `${bPart} ------ ${qPart}`;
-        middleInfoRev = `${qPart} ------ ${bPart}`;
+        middleInfoFwd = `${bLeftPart} ------ ${qRightPart}`;
+        middleInfoRev = `${qLeftPart} ------ ${bRightPart}`;
       }
 
     } else if (count > 1) {
