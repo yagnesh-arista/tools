@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.65 | 2026-04-25 13:43:47
+# topoassist v260425.66 | 2026-04-25 13:46:41
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.65","port":8765}
+  GET  /health      → {"status":"ok","version":"260425.66","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.65"
+VERSION           = "260425.66"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1269,10 +1269,10 @@ if __name__ == "__main__":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
     elif METHOD == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
-    print(f"  Timeout   : {TIMEOUT}s per device")
+    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-P)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
-    print(f"  Endpoints : /health  /lldp  /devstatus")
-    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -v  (run -h for details)")
+    print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
+    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -P PUSH_TIMEOUT  -v  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
