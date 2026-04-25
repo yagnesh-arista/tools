@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-25 (Rule 6 updated: user-select: none on UI chrome only — not on visible text content like info-box, descriptions, read-only values) -->
+<!-- rules-synced: 2026-04-25 (Rule 6 updated: explicit core principle — all visible text must be selectable/copyable by the user, no exceptions) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
