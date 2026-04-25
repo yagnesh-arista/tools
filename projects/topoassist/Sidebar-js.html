@@ -1,7 +1,7 @@
-<!-- TopoAssist v260424.46 | 2026-04-24 15:34:43 -->
+<!-- TopoAssist v260425.1 | 2026-04-25 10:13:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260424.46";  // keep in sync with Code.gs
+const APP_VERSION = "260425.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9107,7 +9107,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260424.43"
+VERSION = "260425.1"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9525,15 +9525,28 @@ class BridgeHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
         session   = f"topoassist_{int(time.time())}"
-        final_cmd = "abort" if dry_run else ("exit" if open_only else "commit")
-        core_cmds = (
-            [f"configure session {session}"]
-            + lines
-            + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
-        )
+        final_cmd = "abort" if dry_run else "commit"
+        # open_only: omit the final command entirely — SSH stdin EOF closes naturally.
+        # EOS leaves the session PENDING. Sending 'exit' can close the SSH stream before
+        # 'show session-config diffs' output is fully flushed, resulting in an empty diff.
+        if open_only:
+            core_cmds = (
+                [f"configure session {session}"]
+                + lines
+                + ["end", f"configure session {session}", "show session-config diffs"]
+            )
+        else:
+            core_cmds = (
+                [f"configure session {session}"]
+                + lines
+                + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
+            )
         if METHOD == "eapi":
             results = self._eapi_push(ip, *core_cmds)
-            diff = results[-2].strip() if len(results) >= 2 else ""
+            if open_only:
+                diff = results[-1].strip() if results else ""
+            else:
+                diff = results[-2].strip() if len(results) >= 2 else ""
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
