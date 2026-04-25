@@ -36,13 +36,11 @@
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/topoassist-pytest-check.sh",
-            "statusMessage": "Running TopoAssist pytest + checking test coverage..."
+            "command": "bash ~/.claude/hooks/topoassist-pytest-check.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/topoassist-gas-test-check.sh",
-            "statusMessage": "Checking TopoAssist GAS test coverage..."
+            "command": "bash ~/.claude/hooks/topoassist-gas-test-check.sh"
           },
           {
             "type": "command",
