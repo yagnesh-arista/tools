@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.10 | 2026-04-25 10:46:19 -->
+<!-- TopoAssist v260425.11 | 2026-04-25 10:48:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.10";  // keep in sync with Code.gs
+const APP_VERSION = "260425.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -28,12 +28,22 @@ const APP_VERSION = "260425.10";  // keep in sync with Code.gs
   const STATUS_LOG_MAX = 5000;
   const STATUS_CLASSES = ['status-error', 'status-edit-mode', 'status-ok', 'status-info'];
   let statusLog = [];
+  let _statusLogType = ''; // active type tab: '' | 'error' | 'audit' | 'bridge' | 'config' | 'push'
+
+  function _inferLogType(msg) {
+    const m = msg.toLowerCase();
+    if (m.startsWith('[audit]'))  return 'audit';
+    if (m.startsWith('[bridge]')) return 'bridge';
+    if (/config|prefs|settings|sync|fetch|cache/.test(m)) return 'config';
+    if (/push|session|abort|commit/.test(m))              return 'push';
+    return '';
+  }
 
   function setStatus(msg, cls, rawColor) {
     cls = cls || '';
     rawColor = rawColor || '';
     const logMsg = String(msg).replace(/<[^>]+>/g, ''); // strip tags for log entry
-    statusLog.push({ ts: Date.now(), msg: logMsg, cls });
+    statusLog.push({ ts: Date.now(), msg: logMsg, cls, type: _inferLogType(logMsg) });
     if (statusLog.length > STATUS_LOG_MAX) statusLog.shift();
     _updateStatusLogCount();
     const el = document.getElementById('status');
@@ -52,6 +62,22 @@ const APP_VERSION = "260425.10";  // keep in sync with Code.gs
       badge.textContent = visible + ' of ' + total + ' entr' + (total === 1 ? 'y' : 'ies');
     else
       badge.textContent = statusLog.length + ' entr' + (statusLog.length === 1 ? 'y' : 'ies');
+  }
+
+  function _updateLogTabCounts() {
+    const counts = { '': statusLog.length, error: 0, audit: 0, bridge: 0, config: 0, push: 0 };
+    statusLog.forEach(e => {
+      if (e.cls === 'status-error' || e.cls === 'status-warn') counts.error++;
+      if (e.type && counts[e.type] !== undefined) counts[e.type]++;
+    });
+    document.querySelectorAll('#statusLogTabs .slg-tab').forEach(btn => {
+      const t = btn.dataset.type;
+      const n = counts[t] || 0;
+      btn.dataset.count = n;
+      // show count badge if > 0 and not 'All'
+      const label = btn.dataset.label || btn.dataset.type || 'All';
+      btn.textContent = n > 0 && t !== '' ? label + ' ' + n : label;
+    });
   }
 
   let _statusLogOpen = false;
@@ -74,13 +100,29 @@ const APP_VERSION = "260425.10";  // keep in sync with Code.gs
     }
   }
 
+  function setStatusLogType(type) {
+    _statusLogType = type;
+    document.querySelectorAll('#statusLogTabs .slg-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    renderStatusLog();
+  }
+
   function renderStatusLog() {
     const list = document.getElementById('statusLogList');
     if (!list) return;
     const q = (document.getElementById('statusLogSearch') || {}).value || '';
     const filter = q.trim().toLowerCase();
-    const entries = [...statusLog].reverse(); // newest first
-    const visible = filter ? entries.filter(e => e.msg.toLowerCase().includes(filter)) : entries;
+    const allEntries = [...statusLog].reverse(); // newest first
+
+    // type filter
+    const typed = _statusLogType === ''
+      ? allEntries
+      : _statusLogType === 'error'
+        ? allEntries.filter(e => e.cls === 'status-error' || e.cls === 'status-warn')
+        : allEntries.filter(e => e.type === _statusLogType);
+
+    const visible = filter ? typed.filter(e => e.msg.toLowerCase().includes(filter)) : typed;
     list.innerHTML = visible.map(e => {
       const d = new Date(e.ts);
       const ts = d.toTimeString().slice(0, 8); // HH:MM:SS
@@ -90,12 +132,17 @@ const APP_VERSION = "260425.10";  // keep in sync with Code.gs
       return `<div class="slg-entry${e.cls ? ' ' + e.cls : ''}"><span class="slg-ts">${ts}</span><span class="slg-msg">${msg}</span></div>`;
     }).join('') || '<div class="slg-entry"><span class="slg-ts">—</span><span class="slg-msg" style="color:var(--text-muted);font-style:italic">No matches</span></div>';
     _updateStatusLogCount(visible.length, statusLog.length);
+    _updateLogTabCounts();
   }
 
   function clearStatusLog() {
     statusLog = [];
+    _statusLogType = '';
     const inp = document.getElementById('statusLogSearch');
     if (inp) inp.value = '';
+    document.querySelectorAll('#statusLogTabs .slg-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.type === '');
+    });
     renderStatusLog();
   }
 
