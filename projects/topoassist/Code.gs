@@ -1,10 +1,10 @@
-// TopoAssist v260425.3 | 2026-04-25 10:21:50
+// TopoAssist v260425.5 | 2026-04-25 10:31:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4716,8 +4716,6 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
     // REMOVED: 'else if (d.isPeerLink)' check here.
     // Trunk groups belong on the logical interface (Po) or will be handled
     // by generateAttributesBlock if this is a standalone interface.
-
-    cfg += " no shutdown\n";
   }
 
   // ==========================================
