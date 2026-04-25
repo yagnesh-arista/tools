@@ -1,4 +1,4 @@
-# bashrc_bus-home v260425.1 | 2026-04-25 10:34:12
+# bashrc_bus-home v260425.2 | 2026-04-25 11:49:30
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -112,12 +112,16 @@ export NVM_DIR="$HOME/.nvm"
 _nvm_default="$NVM_DIR/alias/default"
 if [ -f "$_nvm_default" ]; then
   _nvm_ver=$(cat "$_nvm_default")
-  # Resolve lts/* → actual version if needed
-  [ -f "$NVM_DIR/alias/lts/$_nvm_ver" ] && _nvm_ver=$(cat "$NVM_DIR/alias/lts/$_nvm_ver")
+  # Walk lts/* → lts/name → version (strips lts/ prefix each hop)
+  while [[ "$_nvm_ver" == lts/* ]]; do
+    _lts_name="${_nvm_ver#lts/}"
+    [ -f "$NVM_DIR/alias/lts/$_lts_name" ] || break
+    _nvm_ver=$(cat "$NVM_DIR/alias/lts/$_lts_name")
+  done
   [ -d "$NVM_DIR/versions/node/$_nvm_ver/bin" ] && \
     export PATH="$NVM_DIR/versions/node/$_nvm_ver/bin:$PATH"
 fi
-unset _nvm_default _nvm_ver
+unset _nvm_default _nvm_ver _lts_name
 
 # 12. Atuin (history tracking + inline ghost-text via ble.sh)
 # --disable-up-arrow: ble-bind handles up arrow below
