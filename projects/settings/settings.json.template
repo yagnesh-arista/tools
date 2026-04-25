@@ -54,13 +54,11 @@
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/topoassist-userguide-check.sh",
-            "statusMessage": "Checking if UserGuide.html needs updating..."
+            "command": "bash ~/.claude/hooks/topoassist-userguide-check.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/topoassist-deploy-tracker.sh",
-            "statusMessage": "Checking TopoAssist deploy status..."
+            "command": "bash ~/.claude/hooks/topoassist-deploy-tracker.sh"
           }
         ]
       },
