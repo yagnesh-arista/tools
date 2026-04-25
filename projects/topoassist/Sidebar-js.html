@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.48 | 2026-04-25 13:06:15 -->
+<!-- TopoAssist v260425.50 | 2026-04-25 13:06:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.48";  // keep in sync with Code.gs
+const APP_VERSION = "260425.50";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9692,7 +9692,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return {"ok": True, "diff": diff, "session_name": session}
             return {"ok": True, "diff": diff, "dry_run": dry_run}
         if METHOD == "ssh":
-            output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds)
+            output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
+                                               force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
@@ -9718,7 +9719,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD == "ssh":
             output, err_text = self._ssh_stdin(
                 ip, "terminal length 0",
-                f"configure session {session_name}", action)
+                f"configure session {session_name}", action,
+                force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
