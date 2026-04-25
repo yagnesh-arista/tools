@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.40 | 2026-04-25 12:51:34 -->
+<!-- TopoAssist v260425.41 | 2026-04-25 12:55:50 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.40";  // keep in sync with Code.gs
+const APP_VERSION = "260425.41";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13294,6 +13294,7 @@ function _injectPushIdShiftWarning(shifted) {
 }
 
 // Regenerate configs for all Arista devices in sequence, then save ID snapshot.
+// Closes the push modal after completion — diff shown before regen is stale.
 async function _regenerateAllConfigs() {
   const banner = document.getElementById('pushIdShiftBanner');
   if (banner) banner.remove();
@@ -13301,6 +13302,10 @@ async function _regenerateAllConfigs() {
     return allDevicesData[n] && allDevicesData[n].type !== 'non-arista';
   });
   if (!aristaDevices.length) { setStatus('No Arista devices found.', 'status-warn'); return; }
+
+  // Close push modal immediately — the diff shown is for the old (pre-shift) config.
+  // User must re-initiate push after regeneration to get a fresh diff.
+  cancelPushConfig();
 
   const total = aristaDevices.length;
   for (let i = 0; i < total; i++) {
@@ -13314,7 +13319,8 @@ async function _regenerateAllConfigs() {
       google.script.run
         .withSuccessHandler(function(result) {
           clearTimeout(_guard);
-          if (result) configCache[devName] = result;
+          // getDeviceConfig returns {config: configMap, error: ...} — store as {data: configMap}
+          if (result && result.config) configCache[devName] = { data: result.config };
           resolve();
         })
         .withFailureHandler(function() {
@@ -13325,7 +13331,7 @@ async function _regenerateAllConfigs() {
     });
   }
 
-  // Save snapshot so push modal no longer shows warning.
+  // Save snapshot so next load/push shows no shift warning.
   await new Promise(function(resolve) {
     google.script.run
       .withSuccessHandler(function() {
@@ -13336,7 +13342,7 @@ async function _regenerateAllConfigs() {
       .saveDeviceIdSnapshot();
   });
 
-  setStatus('All ' + total + ' configs regenerated \u2014 snapshot updated. Push each device as needed.', 'status-ok');
+  setStatus('All ' + total + ' configs regenerated \u2014 push each device to apply new IDs.', 'status-ok');
 }
 
 function cfgModalPushInterface() {
