@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.57 | 2026-04-25 13:20:23
+# topoassist v260425.65 | 2026-04-25 13:43:47
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.57","port":8765}
+  GET  /health      → {"status":"ok","version":"260425.65","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.57"
+VERSION           = "260425.65"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1227,19 +1227,25 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   ─────────────────────────────────────
-  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-v] [-h]
+  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-P PUSH_TIMEOUT] [-v] [-h]
 
   Options:
     -u USER       SSH username          default: admin
     -b JUMP_HOST  Jump host for SSH     default: bus-home
                   Use -b "" for direct SSH (no jump host)
     -t TIMEOUT    Per-device timeout    default: 15  (seconds)
+                  Used for show/LLDP/devstatus queries. Keep small so
+                  unreachable devices fail fast.
+    -P TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
+                  Used for configure-session pushes (>5 cmds). Increase
+                  for large configs (10k+ lines). Example: -P 600
     -v            Verbose — print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
   Examples:
     python device_bridge.py -u root -b jumphost -t 30 -v
     python device_bridge.py -u admin -b ""             # direct SSH, no jump
+    python device_bridge.py -t 30 -P 600              # large-config push headroom
 """)
         sys.exit(0)
 

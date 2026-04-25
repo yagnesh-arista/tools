@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.64 | 2026-04-25 13:32:41 -->
+<!-- TopoAssist v260425.65 | 2026-04-25 13:44:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.64";  // keep in sync with Code.gs
+const APP_VERSION = "260425.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9237,7 +9237,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.57"
+VERSION = "260425.65"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9911,19 +9911,25 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   -----------------------------------------
-  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-v] [-h]
+  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-P PUSH_TIMEOUT] [-v] [-h]
 
   Options:
     -u USER       SSH username          default: admin
     -b JUMP_HOST  Jump host for SSH     default: bus-home
                   Use -b "" for direct SSH (no jump host)
     -t TIMEOUT    Per-device timeout    default: 15  (seconds)
+                  Used for show/LLDP/devstatus queries. Keep small so
+                  unreachable devices fail fast.
+    -P TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
+                  Used for configure-session pushes (>5 cmds). Increase
+                  for large configs (10k+ lines). Example: -P 600
     -v            Verbose -- print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
   Examples:
     python device_bridge.py -u root -b jumphost -t 30 -v
     python device_bridge.py -u admin -b ""             # direct SSH, no jump
+    python device_bridge.py -t 30 -P 600              # large-config push headroom
 """)
         sys.exit(0)
 
