@@ -26,6 +26,9 @@ bounds at all times — including after window resize and drag.
 Clamp positions to viewport edges. Never let content overflow off-screen.
 
 ## user-select: none on UI Chrome (Not on Visible Text Content)
+
+**Core principle: all visible text must be selectable and copyable by the user. No exceptions.**
+
 Apply `user-select: none; -webkit-user-select: none` to **UI chrome only** — elements the user interacts with but does not read as content:
 - Buttons, icon buttons, tabs, nav items
 - Modal title bars, section headers, collapsible group labels
