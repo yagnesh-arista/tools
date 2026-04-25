@@ -1335,8 +1335,8 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
     N/A-3: ip_type_ gray when mode is l2-* + no SVI (A3 overrides RED when filled)
     N/A-4: REMOVED — vlan_ is needed for ALL l3 modes (IP derivation on l3-et/l3-po,
            dot1q tag on sub-int). A4 still catches 2+ VLANs on pure l3.
-    N/A-5: xcvr columns gray when mode is Po — intentional, no RED override
-           (user may fill xcvr for cabling reference on Po rows)
+    N/A-5: xcvr columns gray when mode is Po — Po has no physical transceiver; xcvr_ is
+           Et-only. Truly N/A: no RED override, no audit needed.
     N/A-6: vrf_ gray when mode is l2-* + no SVI (A5 overrides RED when filled)
   Priority 5 — QUALITY WARNINGS: W1 (amber), W2 (pale-orange)
   Priority 6 — MEMBER PORT: italic + muted text
