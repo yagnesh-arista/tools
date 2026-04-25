@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.2 | 2026-04-25 10:18:51 -->
+<!-- TopoAssist v260425.3 | 2026-04-25 10:21:09 -->
 <!DOCTYPE html>
 <html>
 
@@ -556,7 +556,7 @@
         </div>
       </div>
       <div id="rowGwL3Hint" class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-        Anycast GW requires EVPN enabled. VARP works with or without EVPN and requires a shared virtual MAC address.
+        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. No <code class="inline-code">ip virtual-router mac-address</code> needed — EVPN advertises the gateway MAC automatically. Requires EVPN enabled.
       </div>
 
       <!-- Validation error banner (hidden until validateTechSettings finds errors) -->

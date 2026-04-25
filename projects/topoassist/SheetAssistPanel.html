@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.2 | 2026-04-25 10:18:51 -->
+<!-- TopoAssist v260425.3 | 2026-04-25 10:22:51 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -291,14 +291,14 @@
       border-top: 1px solid #e2e8f0;
       min-height: 24px;
       background: #f8fafc;
+      display: flex; align-items: center; justify-content: space-between;
     }
     #navToast {
-      position: fixed; bottom: 40px; right: 8px;
       background: rgba(15, 23, 42, 0.88); color: #e2e8f0;
       font-family: 'JetBrains Mono', monospace; font-size: 10px;
-      padding: 4px 9px; border-radius: 5px;
+      padding: 3px 8px; border-radius: 5px;
       pointer-events: none; user-select: none; -webkit-user-select: none;
-      white-space: nowrap; z-index: 999;
+      white-space: nowrap; flex-shrink: 0; margin-left: 8px;
       opacity: 0; transition: opacity 0.15s ease;
     }
     #navToast.show { opacity: 1; }
@@ -447,8 +447,10 @@
     <div class="vlan-strip" id="vlanStrip"></div>
   </div>
 
-  <div id="navToast"></div>
-  <div class="status-bar" id="statusBar"></div>
+  <div class="status-bar" id="statusBar">
+    <span id="statusText"></span>
+    <div id="navToast"></div>
+  </div>
 
   <script>
     var devices    = [];
@@ -850,7 +852,7 @@
     }
 
     /* ── SHARED UTILS ──────────────────────────────────── */
-    function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+    function setStatus(msg) { document.getElementById('statusText').textContent = msg; }
 
     var _navToastTimer = null;
     function showNavToast(msg) {
@@ -1100,13 +1102,13 @@
     }
 
     function _navigateVlan(vid, occIdx) {
-      showNavToast('Jumping to VLAN ' + vid + '\u2026');
       _refreshVlanStatus();  // show immediately with cached total (or "…" if first time)
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.total > 0) {
             sapVlanOccIdx[vid] = r.idx;
             sapVlanTotal[vid]  = r.total;
+            if (r.device) showNavToast('Jumping to ' + r.device + '\u2026');
           } else {
             sapVlanTotal[vid] = 0;
           }
@@ -1144,10 +1146,39 @@
 
     load();
 
+    var _vlanSummaryFp  = '';
+    var _vlanPollActive = false;
+
+    function _vlanFp(summary) {
+      return summary.map(function(v) {
+        return v.vid + ':' + v.rowCount + ':' + (v.hasVtep ? 'v' : '') + (v.hasSvi ? 's' : '');
+      }).join('|');
+    }
+
+    function _pollVlanSummary() {
+      if (_vlanPollActive) return;
+      _vlanPollActive = true;
+      google.script.run
+        .withSuccessHandler(function(summary) {
+          _vlanPollActive = false;
+          if (!Array.isArray(summary)) return;
+          var fp = _vlanFp(summary);
+          if (fp === _vlanSummaryFp) return;
+          vlanSummary = summary;
+          _vlanSummaryFp = fp;
+          buildSapVlanStrip();
+          applySapVlanFilter();
+        })
+        .withFailureHandler(function() { _vlanPollActive = false; })
+        .getSheetVlanSummary();
+    }
+
     google.script.run
       .withSuccessHandler(function(summary) {
         vlanSummary = Array.isArray(summary) ? summary : [];
+        _vlanSummaryFp = _vlanFp(vlanSummary);
         buildSapVlanStrip();
+        setInterval(_pollVlanSummary, 30000);
       })
       .withFailureHandler(function() {})
       .getSheetVlanSummary();

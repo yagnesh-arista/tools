@@ -1,10 +1,10 @@
-// TopoAssist v260425.2 | 2026-04-25 10:18:51
+// TopoAssist v260425.3 | 2026-04-25 10:21:50
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -382,16 +382,16 @@ function navigateToVlanOccurrence(vid, occIdx) {
         if (parsed.native) tokens.push(parsed.native);
         if (tokens.indexOf(vid) === -1) return;
         const navCol = devIntCol.hasOwnProperty(devName) ? devIntCol[devName] + 1 : 1;
-        occurrences.push({ row: rowI + 3, col: navCol }); // 1-based
+        occurrences.push({ row: rowI + 3, col: navCol, device: devName }); // 1-based
       });
     });
 
-    if (!occurrences.length) return { total: 0, idx: 0 };
+    if (!occurrences.length) return { total: 0, idx: 0, device: '' };
     const safeIdx = ((occIdx % occurrences.length) + occurrences.length) % occurrences.length;
     const target = occurrences[safeIdx];
     ss.setActiveSheet(sheet);
     sheet.setActiveRange(sheet.getRange(target.row, target.col));
-    return { total: occurrences.length, idx: safeIdx };
+    return { total: occurrences.length, idx: safeIdx, device: target.device };
   } catch (e) { return { total: 0, idx: 0 }; }
 }
 
