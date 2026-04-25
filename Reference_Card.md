@@ -15,7 +15,7 @@ Last updated: 2026-04-23 (Rule 24 updated — minimize must hide editOverlay; re
 | 3 | UI/UX symmetry — consistent spacing/sizing; no text overflow; sibling boxes same size unless design requires otherwise | `rules/` | `rules/ui.md` |
 | 4 | No modal/overlay out of canvas — clamp to viewport always | `rules/` | `rules/ui.md` |
 | 5 | Apply new global rules to all existing projects immediately | `CLAUDE.md` | `CLAUDE.md` |
-| 6 | `user-select: none` on non-editable elements — never on `body` | `rules/` | `rules/ui.md` |
+| 6 | `user-select: none` on UI chrome only (buttons, badges, modal chrome) — NOT on visible text content (info-box, descriptions, read-only values); never on `body` | `rules/` | `rules/ui.md` |
 | 7 | Modal default background — white (`#ffffff`) by default; dark mode overrides via `--bg-modal` var | `rules/` | `rules/ui.md` |
 | 7a | All icons must be SVG — never Unicode | `rules/` | `rules/ui.md` |
 | 7b | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
