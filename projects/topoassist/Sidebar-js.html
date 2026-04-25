@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.14 | 2026-04-25 11:25:52 -->
+<!-- TopoAssist v260425.15 | 2026-04-25 11:27:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.14";  // keep in sync with Code.gs
+const APP_VERSION = "260425.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9593,6 +9593,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
             orphan_cmds = self._find_ta_orphans(ip, config_text)
             if orphan_cmds:
                 lines = orphan_cmds + lines
+        if not dry_run:
+            bgp_asn_cmds = self._find_bgp_asn_change(ip, config_text)
+            if bgp_asn_cmds:
+                lines = bgp_asn_cmds + lines
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
         # open_only: omit the final command entirely — SSH stdin EOF closes naturally.

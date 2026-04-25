@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.14 | 2026-04-25 11:25:47
+# topoassist v260425.15 | 2026-04-25 11:27:31
 """
 TopoAssist Device Bridge
 ========================
@@ -841,6 +841,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if orphan_cmds:
                 lines = orphan_cmds + lines
 
+        # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
+        # change the AS number in-place — old block must be removed first.
+        # Best-effort; runs on any push (not just all_ifaces) in case config_text
+        # includes BGP from a port-specific push. Returns [] when no BGP in config.
+        if not dry_run:
+            bgp_asn_cmds = self._find_bgp_asn_change(ip, config_text)
+            if bgp_asn_cmds:
+                lines = bgp_asn_cmds + lines
+
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
 
@@ -1050,6 +1059,36 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 cleanup.append(f'default interface {name}')
         return cleanup
+
+    def _find_bgp_asn_change(self, ip, config_text):
+        """Return ['no router bgp <old_asn>'] if config_text targets a different
+        AS number than the one currently configured on the device, else [].
+
+        EOS does not allow changing the BGP AS number in-place — the old
+        'router bgp <old_asn>' block must be removed before the new one is applied.
+        Called during full-device push so the removal lands in the same configure
+        session and is visible in the diff for user approval.
+        Returns [] on any query failure — best-effort.
+        """
+        # Extract new ASN from config_text
+        m = re.search(r'^router bgp\s+(\d+)', config_text, re.MULTILINE | re.IGNORECASE)
+        if not m:
+            return []  # no BGP in config being pushed
+        new_asn = int(m.group(1))
+
+        try:
+            (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
+        except Exception:
+            return []
+        old_asn = summary.get("as")
+        if not old_asn:
+            return []  # no BGP on device yet
+        old_asn = int(old_asn)
+        if old_asn == new_asn:
+            return []
+        if VERBOSE:
+            print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
+        return [f"no router bgp {old_asn}"]
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
     def _reconcile_device(self, ip, expected_ports):
