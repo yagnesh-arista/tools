@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.45 | 2026-04-25 13:03:02 -->
+<!-- TopoAssist v260425.46 | 2026-04-25 13:03:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.45";  // keep in sync with Code.gs
+const APP_VERSION = "260425.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2548,6 +2548,32 @@ function runValidation(logIssues) {
     if (auditFlagStaleIpType && mode.startsWith("l2") && !isSviOn && d.ip_type_ && String(d.ip_type_).trim() !== "") {
       auditCheckHadIssue.auditFlagStaleIpType = true;
       configErrors.push(`Stale IP Type: Mode is '${d.sp_mode_}' with no SVI but IP Type is '${d.ip_type_}' — should be blank.`);
+    }
+
+    // M. STALE SVI ON L3 PORT (svi_vlan_ only valid on L2 modes)
+    if (auditFlagStaleSvi && mode.startsWith("l3") && d.svi_vlan_ && String(d.svi_vlan_).trim() !== "") {
+      auditCheckHadIssue.auditFlagStaleSvi = true;
+      configErrors.push(`Stale SVI: Mode is '${d.sp_mode_}' but svi_vlan_ has value '${d.svi_vlan_}' — SVI only valid on L2 modes.`);
+    }
+
+    // N. STALE MULTI-VLAN ON PURE L3 (single VLAN is allowed on l3-et/l3-po)
+    if (auditFlagStaleVlan && mode.startsWith("l3") && !mode.includes("sub-int") &&
+        d.vlan_ && /[,\-]/.test(String(d.vlan_))) {
+      auditCheckHadIssue.auditFlagStaleVlan = true;
+      configErrors.push(`Stale VLANs: Mode is '${d.sp_mode_}' but vlan_ has value '${d.vlan_}' — multiple VLANs only apply on L2 or sub-int modes. Single VLAN is allowed.`);
+    }
+
+    // O. STALE VRF ON L2 PORT WITHOUT SVI
+    if (auditFlagStaleVrf && mode.startsWith("l2") && !isSviOn && d.vrf_ && String(d.vrf_).trim() !== "") {
+      auditCheckHadIssue.auditFlagStaleVrf = true;
+      configErrors.push(`Stale VRF: Mode is '${d.sp_mode_}' with no SVI but vrf_ has value '${d.vrf_}' — should be blank.`);
+    }
+
+    // P. XCVR SPEED SET BUT XCVR TYPE MISSING
+    if (auditFlagStaleXcvrSpeed && d.xcvr_speed_ && String(d.xcvr_speed_).trim() !== "" &&
+        (!d.xcvr_type_ || String(d.xcvr_type_).trim() === "")) {
+      auditCheckHadIssue.auditFlagStaleXcvrSpeed = true;
+      configErrors.push(`Incomplete Xcvr: xcvr_speed has value '${d.xcvr_speed_}' but xcvr_type is blank — xcvr_type needed for breakout/cabling detection.`);
     }
 
     // J. NATIVE VLAN TOKEN ON NON-TRUNK PORT

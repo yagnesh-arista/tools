@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-25 (SheetVis blank space fix: .device-list and .col-items had max-height:84px capping lists to 4 rows and leaving blank space in panel-body — replaced with min-height:0 so flex:1 fills full available height. Files: SheetAssistPanel.html)
+  Last updated: 2026-04-25 (Audit checks M/N/O/P added; CF rule A4 now only flags 2+ VLANs on l3; A6 removed — xcvr+Po is not an error; SheetVis blank space fix: .device-list and .col-items had max-height:84px capping lists to 4 rows and leaving blank space in panel-body — replaced with min-height:0 so flex:1 fills full available height. Files: SheetAssistPanel.html)
   Previous: 2026-04-25 (status msg: _regenerateAllConfigs completion now reads "All N configs ready — push each device to apply new IDs." Files: Sidebar-js.html)
   Previous: 2026-04-25 (SheetAssistPanel blank space fixes: (1) #navToast changed from flex child to position:absolute within .status-bar — removes invisible padding from flex layout, eliminating blank space on right of status bar. (2) .ip-item-dummy changed from visibility:hidden to display:none — removes blank grid cells in ip-type and svi filter sections. Files: SheetAssistPanel.html)
   Previous: 2026-04-25 (_regenerateAllConfigs bug fixes: (1) configCache structure fix — getDeviceConfig returns {config:configMap,error:...}; cache must be stored as {data:result.config} not result directly. (2) Push modal closed immediately on 'Regenerate All' — diff shown before regen was for old config; cancelPushConfig() called first so user re-initiates push with fresh diff after regen. Status message updated. Files: Sidebar-js.html)
@@ -824,6 +824,11 @@ post-deploy auditing.
     I. Po mismatch / asymmetric link count
     J. nv<N> native-VLAN token on non-trunk port
     K. Internal VLAN conflict (EOS-reserved VLANs via device bridge data)
+    M. Stale SVI: svi_vlan_ filled but mode is l3-* (SVI only valid on L2 modes)
+    N. Stale VLANs: vlan_ has 2+ VLANs (comma or range) but mode is pure l3-* non-sub-int
+       (single VLAN is allowed on l3-et/l3-po)
+    O. Stale VRF: vrf_ filled but mode is l2-* with no SVI
+    P. Incomplete Xcvr: xcvr_speed_ filled but xcvr_type_ is blank
 
   Topology Search
     Instant filter across all devices, ports, VLANs, descriptions, and internal
@@ -1304,15 +1309,25 @@ CONNECTION COLORS (calculateConnectionBackgrounds):
   - Peer-Link: separate color
   - Orphan (unpaired): white (#ffffff)
 
-CONDITIONAL FORMAT RULES (buildConditionalRules):
-  - Member port (Et with Po filled): italic + muted text (connection color preserved)
-  - SVI column grayed when mode is l3-*
-  - Po column grayed when mode is l2-et-* or l3-et-*
-  - IP type column grayed when mode is l2-* and SVI is empty
-  - Speed column: color-coded by value (1g→1.6t)
-  - Transceiver column: color-coded by form factor (SFP+ → OSFP)
-  - sp_mode column: color-coded by mode value (exact match)
-  - ip_type column: color-coded (p2p=gray, gw=pink)
+CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = highest):
+  Priority 1 — AUDIT RED (#fca5a5/#991b1b): stale/conflicting field with int_ filled
+    A1: po_ filled + ET mode
+    A2: svi_vlan_ filled + l3-* mode
+    A3: ip_type_ filled + l2-* mode + no SVI
+    A4: vlan_ has 2+ VLANs (contains comma or dash) + pure l3-* non-sub-int
+        (single VLAN on l3-et/l3-po is NOT flagged — allowed for cabling reference)
+    A5: vrf_ filled + l2-* mode + no SVI
+    NOTE: A6 (xcvr RED for Po mode) was removed — xcvr fields are informational
+          and valid on Po rows for cabling reference. xcvr_speed+missing xcvr_type
+          is caught by audit check P instead.
+  Priority 2 — MISSING AMBER (#fef3c7/#92400e):
+    A7: sp_mode_ empty when int_ is filled (mode required)
+  Priority 3 — INACTIVE GRAY (#f1f5f9/#cbd5e1):
+    N1: int_ empty → all SCHEMA_KEYS columns for that device (single multi-range rule)
+  Priority 4 — N/A GRAY (#e2e8f0/#cbd5e1): field not applicable for current mode
+    N/A-1 through N/A-5 (po_, svi_vlan_, ip_type_, xcvr fields when mode is Po, etc.)
+  Priority 5 — QUALITY WARNINGS: W1 (amber), W2 (pale-orange)
+  Priority 6 — MEMBER PORT: italic + muted text
 
 IMPORTANT: After editing buildConditionalRules, user must do Save & Sync
 (from Sheet View) for conditional format changes to take effect.
