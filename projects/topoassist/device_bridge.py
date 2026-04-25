@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.40 | 2026-04-25 12:45:28
+# topoassist v260425.46 | 2026-04-25 13:05:01
 """
 TopoAssist Device Bridge
 ========================
@@ -720,23 +720,31 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return [gc.get(path=[p]) for p in paths]
 
     # ── SSH stdin helper ──────────────────────────────────────────────────────
-    def _ssh_stdin(self, ip, *cmds):
+    def _ssh_stdin(self, ip, *cmds, force_tty=False):
         """Send commands to device via SSH stdin pipe.
         Returns (stdout_text, stderr_text) as decoded strings.
         Raises subprocess.TimeoutExpired if the device doesn't respond within
         the effective timeout — caller is responsible for catching and handling.
         Read calls (≤5 cmds) use TIMEOUT; large configure-session pushes use
-        PUSH_TIMEOUT so big configs don't time out mid-session."""
-        stdin_text = '\n'.join(cmds) + '\n'
+        PUSH_TIMEOUT so big configs don't time out mid-session.
+
+        force_tty=True: allocates a PTY (-tt) so EOS assigns a named VTY instead
+        of showing 'UnknownTty' in 'show users' and syslog.  PTY mode does NOT
+        propagate stdin EOF to close the remote shell, so two explicit 'exit'
+        commands are appended automatically: the first exits any configure-session
+        context (leaving the session PENDING), the second closes the EOS exec
+        shell.  Extra exits at exec level are harmless."""
+        cmds_list = list(cmds)
+        if force_tty:
+            cmds_list += ["exit", "exit"]
+        stdin_text = '\n'.join(cmds_list) + '\n'
         # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
-        _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        # -T (no PTY): stdin EOF propagates naturally so proc.communicate() returns
-        # cleanly. -tt (force PTY) blocks forever because PTY doesn't propagate EOF.
-        base = _ssh_base()
+        _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
+        base = _ssh_base(force_tty=force_tty)
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
@@ -770,7 +778,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return []
         # Get current session list
         if METHOD == "ssh":
-            raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions")
+            raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions",
+                                     force_tty=True)
         else:
             raw = self._eapi_push(ip, "show configuration sessions")[0]
         # Parse: name is first token, state second; match topoassist_* pending
@@ -787,7 +796,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         for name in stale:
             abort_cmds += [f"configure session {name}", "abort"]
         if METHOD == "ssh":
-            self._ssh_stdin(ip, *abort_cmds)
+            self._ssh_stdin(ip, *abort_cmds, force_tty=True)
         else:
             self._eapi_push(ip, *abort_cmds)
         return stale
