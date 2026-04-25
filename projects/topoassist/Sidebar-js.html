@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.24 | 2026-04-25 11:39:49 -->
+<!-- TopoAssist v260425.26 | 2026-04-25 11:42:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.24";  // keep in sync with Code.gs
+const APP_VERSION = "260425.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -33,10 +33,12 @@ const APP_VERSION = "260425.24";  // keep in sync with Code.gs
 
   function _inferLogType(msg) {
     const m = msg.toLowerCase();
-    if (m.startsWith('[audit]'))  return 'audit';
+    // explicit prefix OR bare "audit …" / "audit:" messages (e.g. "Audit Clean.", "Audit: N Issues Found")
+    if (m.startsWith('[audit]') || /^audit[\s:]/.test(m)) return 'audit';
     if (m.startsWith('[bridge]')) return 'bridge';
-    if (/config|prefs|settings|sync|fetch|cache/.test(m)) return 'config';
-    if (/push|session|abort|commit/.test(m))              return 'push';
+    // pref covers both "prefs" and "preferences"; refresh covers "Manual refresh" and topology reload msgs
+    if (/config|pref|settings|sync|fetch|cache|refresh/.test(m)) return 'config';
+    if (/push|session|abort|commit/.test(m))                      return 'push';
     return '';
   }
 
