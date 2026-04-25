@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-25 (SheetVis layout fix pt2: vlan-section display:flex flex-direction:column; vlan-strip flex:1 overflow-y:auto (removed max-height:80px) — strip now fills full vlan-section height with no blank gap. Files: SheetAssistPanel.html)
+  Last updated: 2026-04-25 (CF A6 xcvr_speed+missing xcvr_type=RED; CF A8 missing vlan on l3-et/l3-po=AMBER; Audit Q missing vlan on l3-et/l3-po; gray↔audit sync fully closed; SheetVis layout fix pt2: vlan-section display:flex flex-direction:column; vlan-strip flex:1 overflow-y:auto (removed max-height:80px) — strip now fills full vlan-section height with no blank gap. Files: SheetAssistPanel.html)
   Previous: 2026-04-25 (SheetVis layout fix: panel-body flex:0 0 auto (shrink-wrap, not grow); device-list and col-items restored to max-height:84px (4-row cap, scroll); vlan-section flex:1 min-height:0 (fills remaining dialog height). Files: SheetAssistPanel.html)
   Previous: 2026-04-25 (_ssh_stdin force_tty=True: allocates PTY (-tt) so EOS assigns named VTY instead of UnknownTty. PTY doesn't propagate stdin EOF, so two explicit 'exit' commands are appended automatically — first exits any configure-session context (session stays PENDING), second closes EOS exec shell. Extra exits at exec level are harmless. All three call sites updated: _abort_stale_sessions, _push_config, _finalize_session. Synced to embedded template. VERSION 260425.17→260425.50. Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-25 (Audit checks M/N/O/P added; CF rule A4 now only flags 2+ VLANs on l3; A6 removed — xcvr+Po is not an error; SheetVis blank space fix: .device-list and .col-items had max-height:84px capping lists to 4 rows and leaving blank space in panel-body — replaced with min-height:0 so flex:1 fills full available height. Files: SheetAssistPanel.html)
@@ -832,6 +832,7 @@ post-deploy auditing.
        (single VLAN is allowed on l3-et/l3-po)
     O. Stale VRF: vrf_ filled but mode is l2-* with no SVI
     P. Incomplete Xcvr: xcvr_speed_ filled but xcvr_type_ is blank
+    Q. Missing VLAN: mode is l3-et/l3-po but vlan_ is blank (required for IP derivation)
 
   Topology Search
     Instant filter across all devices, ports, VLANs, descriptions, and internal
@@ -1320,11 +1321,10 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
     A4: vlan_ has 2+ VLANs (contains comma or dash) + pure l3-* non-sub-int
         (single VLAN on l3-et/l3-po is NOT flagged — needed for IP derivation)
     A5: vrf_ filled + l2-* mode + no SVI
-    NOTE: A6 (xcvr RED for Po mode) was removed — xcvr fields are informational
-          and valid on Po rows for cabling reference. xcvr_speed+missing xcvr_type
-          is caught by audit check P instead.
+    A6: xcvr_speed_ filled + xcvr_type_ missing → RED on xcvr_speed_ (paired with audit P)
   Priority 2 — MISSING AMBER (#fef3c7/#92400e):
     A7: sp_mode_ empty when int_ is filled (mode required)
+    A8: vlan_ empty + mode is l3-et or l3-po (required for IP derivation; paired with audit Q)
   Priority 3 — INACTIVE GRAY (#f1f5f9/#cbd5e1):
     N1: int_ empty → all SCHEMA_KEYS columns for that device (single multi-range rule)
   Priority 4 — N/A GRAY (#e2e8f0/#cbd5e1): field not applicable for current mode

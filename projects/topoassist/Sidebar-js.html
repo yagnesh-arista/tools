@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.57 | 2026-04-25 13:20:16 -->
+<!-- TopoAssist v260425.58 | 2026-04-25 13:21:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.57";  // keep in sync with Code.gs
+const APP_VERSION = "260425.58";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2574,6 +2574,13 @@ function runValidation(logIssues) {
         (!d.xcvr_type_ || String(d.xcvr_type_).trim() === "")) {
       auditCheckHadIssue.auditFlagStaleXcvrSpeed = true;
       configErrors.push(`Incomplete Xcvr: xcvr_speed has value '${d.xcvr_speed_}' but xcvr_type is blank — xcvr_type needed for breakout/cabling detection.`);
+    }
+
+    // Q. MISSING VLAN ON L3-ET / L3-PO (required for IP subnet derivation)
+    if (auditFlagMissingVlan && /^l3-(et|po)/i.test(mode) &&
+        (!d.vlan_ || String(d.vlan_).trim() === "")) {
+      auditCheckHadIssue.auditFlagMissingVlan = true;
+      configErrors.push(`Missing VLAN: Mode is '${d.sp_mode_}' but vlan_ is blank — required for IP subnet derivation on l3-et/l3-po.`);
     }
 
     // J. NATIVE VLAN TOKEN ON NON-TRUNK PORT
@@ -9230,7 +9237,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.50"
+VERSION = "260425.57"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9480,6 +9487,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
         dry_run      = bool(body.get("dry_run", False))
         open_session = bool(body.get("open_session", False))
         all_ifaces   = bool(body.get("all_ifaces", False))
+        # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
+        # Saves 30-120s of per-device SSH timeouts when arista-ssh cert has expired.
+        if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+            if not _ssh_auth["ok"]:
+                self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]}); return
+            auth = _check_ssh_agent()
+            if not auth["ok"]:
+                _ssh_auth["ok"]       = False
+                _ssh_auth["msg"]      = auth["msg"]
+                _ssh_auth["failures"] = _SSH_AUTH_THRESHOLD
+                self._json(200, {"auth_expired": True, "message": auth["msg"]}); return
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
@@ -10181,6 +10199,18 @@ function closeBridgeModal() {
   // No editOverlay to hide — floating modal
 }
 
+// Show auth-expired warning banner + toolbar icon when any bridge fetch returns auth_expired.
+// Called from runBridgeCheck, pushDeviceConfig, pushAllConfigs, runReconcile, and utility pushes.
+function _handleBridgeAuthExpired(msg) {
+  const authWarn = document.getElementById('bridgeAuthWarn');
+  if (authWarn) {
+    authWarn.textContent = '\u26a0 ' + (msg || 'arista-ssh session expired \u2014 run: arista-ssh login');
+    authWarn.style.display = 'block';
+  }
+  _updateBridgeToolbarIcon('auth-expired');
+  setStatus('Auth session expired \u2014 run: arista-ssh login', 'status-error');
+}
+
 // ── Bridge toolbar icon single/double-click handler ──────────────────────────
 // Single-click (>220ms) = open modal. Double-click (<220ms) = toggle enable.
 function onAuditIconClick() {
@@ -10605,13 +10635,22 @@ function runBridgeCheck() {
 
   const fetchLldp = fetch(BRIDGE_URL + '/lldp', postOpts())
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(d => { bridgeDone = true; updateStatus(); return d; });
+    .then(d => { if (d.auth_expired) throw Object.assign(new Error(d.message || 'Auth expired'), { authExpired: true }); bridgeDone = true; updateStatus(); return d; });
   const fetchDev  = fetch(BRIDGE_URL + '/devstatus', postOpts())
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(d => { devDone = true; updateStatus(); return d; });
+    .then(d => { if (d.auth_expired) throw Object.assign(new Error(d.message || 'Auth expired'), { authExpired: true }); devDone = true; updateStatus(); return d; });
 
   Promise.allSettled([fetchLldp, fetchDev])
     .then(([bridgeResult, devResult]) => {
+      // Auth expired — bridge returned {auth_expired:true} before querying any device
+      const _ae = [bridgeResult, devResult].find(r => r.status === 'rejected' && r.reason && r.reason.authExpired);
+      if (_ae) {
+        btn.disabled = false;
+        btn.textContent = 'Run Checks';
+        if (_bridgeBtn) _bridgeBtn.classList.remove('bridge-scanning');
+        _handleBridgeAuthExpired(_ae.reason.message);
+        return;
+      }
       let _manualOrphanCount = 0;
       btn.disabled = false;
       btn.textContent = 'Run Checks';
