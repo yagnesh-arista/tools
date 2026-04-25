@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-25 (_ssh_stdin force_tty=True: allocates PTY (-tt) so EOS assigns named VTY instead of UnknownTty. PTY doesn't propagate stdin EOF, so two explicit 'exit' commands are appended automatically — first exits any configure-session context (session stays PENDING), second closes EOS exec shell. Extra exits at exec level are harmless. All three call sites updated: _abort_stale_sessions, _push_config, _finalize_session. Synced to embedded template. VERSION 260425.17→260425.50. Files: device_bridge.py, Sidebar-js.html)
+  Last updated: 2026-04-25 (SheetVis layout fix: panel-body flex:0 0 auto (shrink-wrap, not grow); device-list and col-items restored to max-height:84px (4-row cap, scroll); vlan-section flex:1 min-height:0 overflow:hidden (fills remaining dialog height). Files: SheetAssistPanel.html)
+  Previous: 2026-04-25 (_ssh_stdin force_tty=True: allocates PTY (-tt) so EOS assigns named VTY instead of UnknownTty. PTY doesn't propagate stdin EOF, so two explicit 'exit' commands are appended automatically — first exits any configure-session context (session stays PENDING), second closes EOS exec shell. Extra exits at exec level are harmless. All three call sites updated: _abort_stale_sessions, _push_config, _finalize_session. Synced to embedded template. VERSION 260425.17→260425.50. Files: device_bridge.py, Sidebar-js.html)
   Previous: 2026-04-25 (Audit checks M/N/O/P added; CF rule A4 now only flags 2+ VLANs on l3; A6 removed — xcvr+Po is not an error; SheetVis blank space fix: .device-list and .col-items had max-height:84px capping lists to 4 rows and leaving blank space in panel-body — replaced with min-height:0 so flex:1 fills full available height. Files: SheetAssistPanel.html)
   Previous: 2026-04-25 (status msg: _regenerateAllConfigs completion now reads "All N configs ready — push each device to apply new IDs." Files: Sidebar-js.html)
   Previous: 2026-04-25 (SheetAssistPanel blank space fixes: (1) #navToast changed from flex child to position:absolute within .status-bar — removes invisible padding from flex layout, eliminating blank space on right of status bar. (2) .ip-item-dummy changed from visibility:hidden to display:none — removes blank grid cells in ip-type and svi filter sections. Files: SheetAssistPanel.html)
@@ -1330,8 +1331,8 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
   Priority 5 — QUALITY WARNINGS: W1 (amber), W2 (pale-orange)
   Priority 6 — MEMBER PORT: italic + muted text
 
-IMPORTANT: After editing buildConditionalRules, user must do Save & Sync
-(from Sheet View) for conditional format changes to take effect.
+IMPORTANT: After editing buildConditionalRules, user must click Force Sync
+(toolbar button in the sidebar) for conditional format changes to take effect.
 
 --------------------------------------------------------------------------------
 SECTION 11: CONFIG GENERATION
