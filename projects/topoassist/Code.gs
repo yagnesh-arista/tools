@@ -1,10 +1,10 @@
-// TopoAssist v260425.20 | 2026-04-25 11:34:27
+// TopoAssist v260425.22 | 2026-04-25 11:37:53
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.20";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.22";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6094,26 +6094,35 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
   let myVtepIpV6 = "";
 
   if (isMlag) {
-    // Shared IP Logic (Anycast VTEP)
-    const id1 = (parseInt(myId) || 0) + loBase;
-    const id2 = (parseInt(peerId) || 0) + loBase;
-    const low = Math.min(id1, id2);
-    const high = Math.max(id1, id2);
+    // Split Source IP — unique Lo1 per device (control plane/BGP), shared Lo10 (data plane VTEP)
+    const myLoId   = (parseInt(myId)   || 0) + loBase;
+    const peerLoId = (parseInt(peerId) || 0) + loBase;
+    const low  = Math.min(myLoId, peerLoId);
+    const high = Math.max(myLoId, peerLoId);
 
-    // IPv4: 1.1.2.2 (Min.Min.Max.Max)
+    // Lo1: unique per device (x.x.x.x)
+    const myUniqIpV4 = `${myLoId}.${myLoId}.${myLoId}.${myLoId}`;
+    const myUniqIpV6 = `${myLoId}:${myLoId}:${myLoId}::${myLoId}`;
+
+    // Lo10: shared on both peers (x.x.y.y where x=min device id, y=max device id)
     myVtepIpV4 = `${low}.${low}.${high}.${high}`;
-
-    // IPv6: 1:1:2::2 (Min:Min:Max::Max)
     myVtepIpV6 = `${low}:${low}:${high}::${high}`;
 
     lines.push("interface Loopback1");
-    lines.push(" description VTEP_VXLAN_ANYCAST");
+    lines.push(" description VTEP_UNIQUE");
+    lines.push(` ip address ${myUniqIpV4}/32`);
+    if (addVtepIpv6) lines.push(` ipv6 address ${myUniqIpV6}/128`);
+    lines.push("!");
+
+    lines.push("interface Loopback10");
+    lines.push(" description VTEP_MLAG_SHARED");
     lines.push(` ip address ${myVtepIpV4}/32`);
     if (addVtepIpv6) lines.push(` ipv6 address ${myVtepIpV6}/128`);
     lines.push("!");
 
     lines.push("interface Vxlan1");
     lines.push(" vxlan source-interface Loopback1");
+    lines.push(" vxlan mlag source-interface Loopback10");
     lines.push(" vxlan virtual-router encapsulation mac-address mlag-system-id");
 
   } else {
