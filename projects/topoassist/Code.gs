@@ -1,10 +1,10 @@
-// TopoAssist v260425.56 | 2026-04-25 13:18:14
+// TopoAssist v260425.57 | 2026-04-25 13:18:59
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.56";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.57";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1894,6 +1894,15 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
 
+    // A6 — xcvr_speed_ filled but xcvr_type_ missing (incomplete transceiver spec)
+    if (xcvrSpeedIdx > 0 && xcvrTypeIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(xcvrSpeedIdx)}3<>""` +
+          `,$${getColLet(xcvrTypeIdx)}3="")`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1)]).build());
+    }
+
     // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
 
     // A7 — sp_mode_ empty but int_ is filled (mode is required)
@@ -1901,6 +1910,15 @@ function buildConditionalRules(sheet, headers, lastRow) {
       .whenFormulaSatisfied(`=AND($${iC}3<>"",$${mC}3="")`)
       .setBackground("#fef3c7").setFontColor("#92400e")
       .setRanges([sheet.getRange(3, modeIdx, lastRow - 2, 1)]).build());
+
+    // A8 — vlan_ empty but mode is l3-et or l3-po (vlan_ required for IP derivation)
+    if (vlanIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vlanIdx)}3=""` +
+          `,REGEXMATCH($${mC}3,"^l3-(et|po)"))`)
+        .setBackground("#fef3c7").setFontColor("#92400e")
+        .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
+    }
 
     // ── 3. INACTIVE GRAY: int_ empty → whole device row not yet active ────────
     // Applied to ALL columns belonging to this device as a single multi-range rule.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.50 | 2026-04-25 13:07:03
+# topoassist v260425.57 | 2026-04-25 13:20:23
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.50","port":8765}
+  GET  /health      → {"status":"ok","version":"260425.57","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.50"
+VERSION           = "260425.57"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -481,6 +481,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
         dry_run      = bool(body.get("dry_run", False))
         open_session = bool(body.get("open_session", False))
         all_ifaces   = bool(body.get("all_ifaces", False))
+        # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
+        # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
+        if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+            if not _ssh_auth["ok"]:
+                self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]})
+                return
+            auth = _check_ssh_agent()
+            if not auth["ok"]:
+                _ssh_auth["ok"]       = False
+                _ssh_auth["msg"]      = auth["msg"]
+                _ssh_auth["failures"] = _SSH_AUTH_THRESHOLD
+                self._json(200, {"auth_expired": True, "message": auth["msg"]})
+                return
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
