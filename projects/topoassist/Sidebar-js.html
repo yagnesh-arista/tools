@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.15 | 2026-04-25 11:27:48 -->
+<!-- TopoAssist v260425.16 | 2026-04-25 11:28:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.15";  // keep in sync with Code.gs
+const APP_VERSION = "260425.16";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9163,7 +9163,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.14"
+VERSION = "260425.16"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9720,6 +9720,28 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 cleanup.append(f"default interface {name}")
         return cleanup
+
+    def _find_bgp_asn_change(self, ip, config_text):
+        """Return ['no router bgp <old_asn>'] if the device's current BGP AS number
+        differs from the one in config_text, else []. Best-effort — returns [] on error.
+        EOS cannot change the AS number in-place; the old block must be removed first."""
+        m = re.search(r"^router bgp\s+(\d+)", config_text, re.MULTILINE | re.IGNORECASE)
+        if not m:
+            return []
+        new_asn = int(m.group(1))
+        try:
+            (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
+        except Exception:
+            return []
+        old_asn = summary.get("as")
+        if not old_asn:
+            return []
+        old_asn = int(old_asn)
+        if old_asn == new_asn:
+            return []
+        if VERBOSE:
+            print(f"  [bgp-asn] {ip}: ASN change {old_asn} -> {new_asn} -- prepending no router bgp {old_asn}")
+        return [f"no router bgp {old_asn}"]
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
