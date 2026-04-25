@@ -1,10 +1,10 @@
-// TopoAssist v260425.33 | 2026-04-25 12:13:24
+// TopoAssist v260425.34 | 2026-04-25 12:20:51
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.33";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.34";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5509,14 +5509,14 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   const lowerId = Math.min(localId, partnerId);
   const higherId = Math.max(localId, partnerId);
 
-  // Use the same configured varp_mac as standalone — must be identical across all switches
-  const vRouterMac = (settings && settings.varp_mac) || '001c.7300.0099';
-
   const mlagLines = [];
 
   mlagLines.push("! MLAG Infrastructure");
   mlagLines.push("no spanning-tree vlan 4093-4094");
-  mlagLines.push(`ip virtual-router mac-address ${vRouterMac}`);
+  // Only emit when GW is configured — same guard as standalone generateGlobalBlock()
+  if (settings && (settings.gw_ipv4 || settings.gw_ipv6)) {
+    mlagLines.push(`ip virtual-router mac-address ${settings.varp_mac || '001c.7300.0099'}`);
+  }
   mlagLines.push("!");
 
   // FIXED: Changed 'description' to 'name' for VLAN context

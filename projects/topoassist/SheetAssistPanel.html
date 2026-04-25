@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.33 | 2026-04-25 12:13:24 -->
+<!-- TopoAssist v260425.34 | 2026-04-25 12:21:31 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -134,7 +134,7 @@
     .btn-hide-all:not(:disabled):hover { background: #fed7aa; }
 
     /* ─── SHARED: ITEM ROWS (devices + columns) ─────────── */
-    .device-list { overflow-y: auto; flex: 1; background: #ffffff; }
+    .device-list { overflow-y: auto; flex: 1; background: #ffffff; max-height: 84px; }
 
     .device-item, .col-item {
       display: flex;
@@ -274,6 +274,7 @@
     .col-items {
       overflow-y: auto;
       flex: 1;
+      max-height: 84px;
       background: #ffffff;
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -857,10 +858,14 @@
     function showNavToast(msg) {
       var el = document.getElementById('navToast');
       if (!el) return;
+      clearTimeout(_navToastTimer);
       el.textContent = msg;
       el.classList.add('show');
+    }
+    function hideNavToast() {
       clearTimeout(_navToastTimer);
-      _navToastTimer = setTimeout(function() { el.classList.remove('show'); }, 1400);
+      var el = document.getElementById('navToast');
+      if (el) el.classList.remove('show');
     }
 
     var serverBusy  = false;
@@ -1108,6 +1113,7 @@
       _refreshVlanStatus();
       google.script.run
         .withSuccessHandler(function(r) {
+          hideNavToast();
           if (r && r.total > 0) {
             sapVlanOccIdx[vid] = r.idx;
             sapVlanTotal[vid]  = r.total;
@@ -1116,7 +1122,7 @@
           }
           _refreshVlanStatus();
         })
-        .withFailureHandler(function() { setStatus(''); })
+        .withFailureHandler(function() { hideNavToast(); setStatus(''); })
         .navigateToVlanOccurrence(vid, occIdx);
     }
 

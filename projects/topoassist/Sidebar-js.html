@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.33 | 2026-04-25 12:13:24 -->
+<!-- TopoAssist v260425.34 | 2026-04-25 12:21:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.33";  // keep in sync with Code.gs
+const APP_VERSION = "260425.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4730,6 +4730,12 @@ function validateTechSettings() {
   if ((getChk('chkEvpnIpv4') || getChk('chkEvpnIpv6')) &&
       !getChk('chkBgpIpv4') && !getChk('chkBgpIpv6') && !getChk('chkBgpIpv6Unnum') && !getChk('chkBgpRfc5549')) {
     errors.push("EVPN requires BGP — enable BGP IPv4, BGP IPv6, RFC5549, or BGP Unnumbered.");
+  }
+
+  // Rule 5: GW enabled requires Virtual Router MAC — no default exists in EOS
+  if (getChk('chkGwIpv4') || getChk('chkGwIpv6')) {
+    const mac = ((document.getElementById('inputVarpMac') || {}).value || '').trim();
+    if (!mac) errors.push("L3 Gateway requires a Virtual Router MAC — enter ip virtual-router mac-address value (e.g. 001c.7300.0099).");
   }
 
   return errors;

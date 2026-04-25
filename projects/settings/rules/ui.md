@@ -25,13 +25,26 @@ Every modal, tooltip, dropdown, overlay, and floating panel must stay fully with
 bounds at all times — including after window resize and drag.
 Clamp positions to viewport edges. Never let content overflow off-screen.
 
-## user-select: none on Non-Editable Elements
-Apply `user-select: none; -webkit-user-select: none` to all non-editable UI elements
-(labels, badges, headers, cards, node titles, modal chrome, status bars, etc.).
+## user-select: none on UI Chrome (Not on Visible Text Content)
+Apply `user-select: none; -webkit-user-select: none` to **UI chrome only** — elements the user interacts with but does not read as content:
+- Buttons, icon buttons, tabs, nav items
+- Modal title bars, section headers, collapsible group labels
+- Badges, status indicators, tags, node titles
+- Tooltips that are purely decorative labels
+
+**Do NOT apply to visible text content** — if the user can read it, they should be able to select and copy it:
+- `info-box` / `info-box--dim` text (hints, examples, annotations)
+- Description text, help text, captions
+- Read-only values displayed in the UI
+- Any label whose value a user would reasonably want to copy
+
+**Explicitly set `user-select: text`** on content users clearly need to copy:
+- Diffs, configs, EOS commands, IP addresses, paths, generated output
+
+**Hard rules:**
 - **Never apply to `body`** — breaks `execCommand("copy")` in WebKit/Chrome.
 - **Never apply to `<input>`, `<textarea>`, `<select>`**.
-- For clipboard copy: use `navigator.clipboard.writeText()` with `execCommand` fallback.
-- If a modal shows read-only content the user might copy (diff, config): leave that element selectable.
+- For clipboard copy buttons: use `navigator.clipboard.writeText()` with `execCommand` fallback.
 
 ## Modal Default Background
 All modals must use a white background (`#ffffff`) by default. Dark mode overrides the
