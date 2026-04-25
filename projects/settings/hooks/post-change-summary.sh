@@ -265,7 +265,26 @@ elif [ "$gas_changed" -eq 1 ]; then
   fi
   exec 8>&-   # release clasp lock
 else
-  clasp_status="N/A (no GAS files changed)"
+  # No GAS files in this commit — still report if edit hook pushed clasp recently
+  if [ -f "$CLASP_MARKER" ]; then
+    last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
+    now=$(date +%s)
+    age=$(( now - ${last_push:-0} ))
+    if [ "$age" -lt 1800 ]; then
+      pushed_at=$(date -d "@${last_push}" '+%H:%M:%S' 2>/dev/null \
+        || date -r "${last_push}" '+%H:%M:%S' 2>/dev/null)
+      _ta_dir="$REPO/projects/topoassist"
+      if [ -f "$_ta_dir/.clasp.json" ]; then
+        _sid=$(jq -r '.scriptId // ""' "$_ta_dir/.clasp.json" 2>/dev/null)
+        clasp_label="topoassist [$(echo "$_sid" | cut -c1-12)...]"
+      fi
+      clasp_status="${clasp_label} pushed by edit hook at ${pushed_at} ✓ (no GAS files in this commit)"
+    else
+      clasp_status="N/A (no GAS files in this commit)"
+    fi
+  else
+    clasp_status="N/A (no GAS files in this commit)"
+  fi
 fi
 
 # ── Build summary ─────────────────────────────────────────────────────────────
