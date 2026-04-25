@@ -1,12 +1,16 @@
 Re-authenticate clasp for TopoAssist GAS deployment. Run on bus-home:
 
-clasp is symlinked at ~/.local/bin/clasp and is in PATH — no nvm export needed.
+clasp is at ~/.local/bin/clasp (symlink, requires nvm node in PATH) and also at
+~/.nvm/versions/node/v24.14.1/bin/clasp. Both require nvm to be initialized.
+If `clasp: command not found`, run `source ~/.bashrc` first (it loads nvm).
 
-1. Log in to Google via clasp (use `--no-localhost` — required for SSH/headless sessions):
+1. Log in to Google via clasp:
    ```bash
-   cd ~/claude/projects/topoassist && clasp login --no-localhost
+   source ~/.bashrc && cd ~/claude/projects/topoassist && clasp login
    ```
-   Visit the printed URL in a browser, complete the OAuth flow, then paste the redirect URL back into the terminal. Credentials are saved to `~/.clasprc.json`.
+   Visit the printed URL in a browser, complete the OAuth flow. The browser will
+   redirect to localhost:8888 — copy the full redirect URL from the address bar and
+   paste it into the terminal prompt. Credentials are saved to `~/.clasprc.json`.
 
 2. Verify authentication succeeded:
    ```bash
