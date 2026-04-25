@@ -1,10 +1,10 @@
-// TopoAssist v260425.53 | 2026-04-25 13:08:26
+// TopoAssist v260425.54 | 2026-04-25 13:12:42
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.53";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.54";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1944,13 +1944,8 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
 
-    // N/A-4 — vlan_ gray for pure L3 (not sub-int — sub-int uses vlan_ for VLAN id)
-    if (vlanIdx > 0) {
-      rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l3"),NOT(REGEXMATCH($${mC}3,"sub-int")))`)
-        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
-        .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
-    }
+    // N/A-4 — REMOVED: vlan_ is needed for all l3 modes (IP derivation on l3-et/l3-po,
+    //         dot1q tag on sub-int). A4 (RED) still catches 2+ VLANs on pure l3.
 
     // N/A-5 — transceiver columns gray for Po modes (no physical transceiver on Po)
     const xcvrNaFormula = `=REGEXMATCH($${mC}3,"^l[23]-po")`;

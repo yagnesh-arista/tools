@@ -1317,7 +1317,7 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
     A2: svi_vlan_ filled + l3-* mode
     A3: ip_type_ filled + l2-* mode + no SVI
     A4: vlan_ has 2+ VLANs (contains comma or dash) + pure l3-* non-sub-int
-        (single VLAN on l3-et/l3-po is NOT flagged — allowed for cabling reference)
+        (single VLAN on l3-et/l3-po is NOT flagged — needed for IP derivation)
     A5: vrf_ filled + l2-* mode + no SVI
     NOTE: A6 (xcvr RED for Po mode) was removed — xcvr fields are informational
           and valid on Po rows for cabling reference. xcvr_speed+missing xcvr_type
@@ -1327,7 +1327,14 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
   Priority 3 — INACTIVE GRAY (#f1f5f9/#cbd5e1):
     N1: int_ empty → all SCHEMA_KEYS columns for that device (single multi-range rule)
   Priority 4 — N/A GRAY (#e2e8f0/#cbd5e1): field not applicable for current mode
-    N/A-1 through N/A-5 (po_, svi_vlan_, ip_type_, xcvr fields when mode is Po, etc.)
+    N/A-1: svi_vlan_ gray when mode is l3-* (A2 overrides RED when filled)
+    N/A-2: po_ gray when mode is l2-et-* or l3-et-* (A1 overrides RED when filled)
+    N/A-3: ip_type_ gray when mode is l2-* + no SVI (A3 overrides RED when filled)
+    N/A-4: REMOVED — vlan_ is needed for ALL l3 modes (IP derivation on l3-et/l3-po,
+           dot1q tag on sub-int). A4 still catches 2+ VLANs on pure l3.
+    N/A-5: xcvr columns gray when mode is Po — intentional, no RED override
+           (user may fill xcvr for cabling reference on Po rows)
+    N/A-6: vrf_ gray when mode is l2-* + no SVI (A5 overrides RED when filled)
   Priority 5 — QUALITY WARNINGS: W1 (amber), W2 (pale-orange)
   Priority 6 — MEMBER PORT: italic + muted text
 
