@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.46 | 2026-04-25 13:03:34 -->
+<!-- TopoAssist v260425.48 | 2026-04-25 13:06:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.46";  // keep in sync with Code.gs
+const APP_VERSION = "260425.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9590,14 +9590,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
         return [r.get("output", "") if isinstance(r, dict) else str(r) for r in resp["result"]]
 
-    def _ssh_stdin(self, ip, *cmds):
-        stdin_text = "\\n".join(cmds) + "\\n"
+    def _ssh_stdin(self, ip, *cmds, force_tty=False):
+        cmds_list = list(cmds)
+        if force_tty:
+            cmds_list += ["exit", "exit"]
+        stdin_text = "\\n".join(cmds_list) + "\\n"
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
-        _timeout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
-        # -T (no PTY): stdin EOF propagates naturally so proc.communicate() returns
-        # cleanly. -tt (force PTY) blocks forever because PTY doesn't propagate EOF.
-        base = _ssh_base()
+        _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
+        base = _ssh_base(force_tty=force_tty)
         cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
                if JUMP_HOST else
                [*base, f"{SSH_USER}@{ip}"])
@@ -9626,7 +9627,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD not in ("ssh", "eapi"):
             return []
         if METHOD == "ssh":
-            raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions")
+            raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions",
+                                     force_tty=True)
         else:
             raw = self._eapi_push(ip, "show configuration sessions")[0]
         stale = []
@@ -9640,7 +9642,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         for name in stale:
             abort_cmds += [f"configure session {name}", "abort"]
         if METHOD == "ssh":
-            self._ssh_stdin(ip, *abort_cmds)
+            self._ssh_stdin(ip, *abort_cmds, force_tty=True)
         else:
             self._eapi_push(ip, *abort_cmds)
         return stale

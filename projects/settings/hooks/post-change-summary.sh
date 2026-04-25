@@ -101,12 +101,28 @@ if [ -z "$cmd" ]; then
     fi
     exec 8>/tmp/clasp-topoassist.lock
     flock -x 8
-    push_out=$(cd "$gas_project_dir" && clasp push 2>&1)
-    if echo "$push_out" | grep -q 'Pushed\|pushed'; then
-      clasp_note="${clasp_label} auto-pushed ✓"
-      date +%s > /tmp/topoassist_clasp_last_push
-    else
-      clasp_note="${clasp_label} push FAILED — run clasp push manually ✗"
+    CLASP_MARKER=/tmp/topoassist_clasp_last_push
+    recently_pushed=0
+    if [ -f "$CLASP_MARKER" ]; then
+      last_push=$(cat "$CLASP_MARKER" 2>/dev/null)
+      now=$(date +%s)
+      age=$(( now - ${last_push:-0} ))
+      if [ "$age" -lt 1800 ]; then
+        pushed_at=$(date -d "@${last_push}" '+%H:%M:%S' 2>/dev/null \
+          || date -r "${last_push}" '+%H:%M:%S' 2>/dev/null)
+        clasp_note="${clasp_label} pushed by edit hook at ${pushed_at} ✓"
+        recently_pushed=1
+      fi
+    fi
+    if [ "$recently_pushed" -eq 0 ]; then
+      export PATH="$HOME/.nvm/versions/node/v24.14.1/bin:$PATH"
+      push_out=$(cd "$gas_project_dir" && clasp push --force 2>&1)
+      if echo "$push_out" | grep -q 'Pushed\|pushed'; then
+        clasp_note="${clasp_label} auto-pushed ✓"
+        date +%s > "$CLASP_MARKER"
+      else
+        clasp_note="${clasp_label} push FAILED — run clasp push manually ✗"
+      fi
     fi
     exec 8>&-   # release clasp lock
   fi
