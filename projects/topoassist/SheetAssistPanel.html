@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.17 | 2026-04-25 11:33:11 -->
+<!-- TopoAssist v260425.18 | 2026-04-25 11:33:54 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -294,9 +294,8 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     #navToast {
-      background: rgba(15, 23, 42, 0.88); color: #e2e8f0;
+      color: #64748b;
       font-family: 'JetBrains Mono', monospace; font-size: 10px;
-      padding: 3px 8px; border-radius: 5px;
       pointer-events: none; user-select: none; -webkit-user-select: none;
       white-space: nowrap; flex-shrink: 0; margin-left: 8px;
       opacity: 0; transition: opacity 0.15s ease;
@@ -1102,13 +1101,13 @@
     }
 
     function _navigateVlan(vid, occIdx) {
+      showNavToast('Jumping to VLAN ' + vid + '\u2026');  // fire at move start, not on completion
       _refreshVlanStatus();  // show immediately with cached total (or "…" if first time)
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.total > 0) {
             sapVlanOccIdx[vid] = r.idx;
             sapVlanTotal[vid]  = r.total;
-            if (r.device) showNavToast('Jumping to ' + r.device + '\u2026');
           } else {
             sapVlanTotal[vid] = 0;
           }

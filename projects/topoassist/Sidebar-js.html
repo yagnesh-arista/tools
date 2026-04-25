@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.17 | 2026-04-25 11:33:11 -->
+<!-- TopoAssist v260425.18 | 2026-04-25 11:33:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.17";  // keep in sync with Code.gs
+const APP_VERSION = "260425.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -139,12 +139,20 @@ const APP_VERSION = "260425.17";  // keep in sync with Code.gs
   function clearStatusLog() {
     statusLog = [];
     _statusLogType = '';
+    _loggedAuditErrors.clear();
     const inp = document.getElementById('statusLogSearch');
     if (inp) inp.value = '';
     document.querySelectorAll('#statusLogTabs .slg-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.type === '');
     });
     renderStatusLog();
+  }
+
+  function setStatusLogMax(n) {
+    STATUS_LOG_MAX = parseInt(n, 10) || 5000;
+    // trim existing log if it exceeds new limit
+    if (statusLog.length > STATUS_LOG_MAX) statusLog = statusLog.slice(-STATUS_LOG_MAX);
+    _updateStatusLogCount();
   }
 
   // --- AUTO PANEL RESIZE ---
@@ -2856,14 +2864,20 @@ function runValidation(logIssues) {
 
   // UPDATE UI
   if (statusEl && !statusEl.innerText.includes("MLAG Peer-Link Missing")) {
-    // Log individual issues first (appear below summary in newest-first log view)
-    if (logIssues && portErrorCount > 0) {
-      const _seen = new Set();
+    // Log each individual issue as its own line; session dedup (_loggedAuditErrors) prevents
+    // flooding the log when auto-revalidation re-runs after every edit.
+    // logIssues=true (explicit audit press) forces re-log even if already seen this session.
+    if (portErrorCount > 0) {
+      const runSeen = new Set(); // within-run dedup (identical msg on multiple ports)
       Object.values(validationErrors).forEach(msgs => {
         msgs.forEach(msg => {
-          if (!_seen.has(msg)) {
-            _seen.add(msg);
-            setStatus('[Audit] ' + msg.replace(/^\[FAIL\]\s*/, ''), 'status-error');
+          const clean = msg.replace(/^\[FAIL\]\s*/, '');
+          if (!runSeen.has(clean)) {
+            runSeen.add(clean);
+            if (logIssues || !_loggedAuditErrors.has(clean)) {
+              _loggedAuditErrors.add(clean);
+              setStatus('[Audit] ' + clean, 'status-error');
+            }
           }
         });
       });

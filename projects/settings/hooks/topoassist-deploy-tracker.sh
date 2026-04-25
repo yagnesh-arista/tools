@@ -43,7 +43,8 @@ if [ "$gas_changed" = "true" ]; then
   else
     exec 9>/tmp/clasp-topoassist.lock
     flock -x 9
-    push_out=$(cd "$TOPODIR" && timeout 30 clasp push 2>&1)
+    export PATH="$HOME/.nvm/versions/node/v24.14.1/bin:$PATH"
+    push_out=$(cd "$TOPODIR" && timeout 30 clasp push --force 2>&1)
     push_exit=$?
     if [ $push_exit -eq 0 ]; then
       pushed=$(echo "$push_out" | grep "Pushed" | head -1)
