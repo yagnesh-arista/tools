@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.46 | 2026-04-25 13:05:01
+# topoassist v260425.48 | 2026-04-25 13:05:29
 """
 TopoAssist Device Bridge
 ========================
@@ -896,7 +896,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return {"ok": True, "diff": diff, "dry_run": dry_run}
 
         if METHOD == "ssh":
-            output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds)
+            output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
+                                               force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
@@ -935,7 +936,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD == "ssh":
             output, err_text = self._ssh_stdin(
                 ip, "terminal length 0",
-                f"configure session {session_name}", action)
+                f"configure session {session_name}", action,
+                force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
                           "no route to host", "connection refused",
                           "connection timed out", "host key verification failed")
