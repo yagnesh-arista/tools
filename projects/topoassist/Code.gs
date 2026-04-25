@@ -1,10 +1,10 @@
-// TopoAssist v260425.31 | 2026-04-25 12:12:15
+// TopoAssist v260425.33 | 2026-04-25 12:13:24
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.31";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.33";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5408,8 +5408,9 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive) {
     mandatory.push("ipv6 unicast-routing");
   }
   // Both VARP and anycast require ip virtual-router mac-address on standalone devices.
+  // Only emit when a GW is actually configured — skip for pure L2/routing-only devices.
   // MLAG block already includes it for MLAG-paired devices regardless of GW type.
-  if (netSettings && !mlagIsActive) {
+  if (netSettings && !mlagIsActive && (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
   mandatory.push("!");
