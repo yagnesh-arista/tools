@@ -1,10 +1,10 @@
-// TopoAssist v260425.37 | 2026-04-25 12:24:43
+// TopoAssist v260425.39 | 2026-04-25 12:39:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.37";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.39";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1811,90 +1811,192 @@ function buildConditionalRules(sheet, headers, lastRow) {
   const getColIdx = (name) => headers.indexOf(name) + 1;
   const getColLet = (idx) => columnToLetter(idx);
 
-  // A. COMPLEX LOGIC
+  // Shared schema keys — used for safe device-column detection in N1
+  const SCHEMA_KEYS = ['int','po','sp_mode','vlan','svi_vlan','ip_type','vrf',
+                       'et_speed','xcvr_speed','encoding','xcvr_type','snake_int',
+                       'desc','sd','dp-pp-mp'];
+
+  // Rule priority (high → low within Section A):
+  //   1. AUDIT RED   — value present in a field that is N/A for current mode (conflict)
+  //   2. MISSING AMBER — sp_mode_ empty when int_ is filled (required field absent)
+  //   3. INACTIVE GRAY  — int_ empty → whole device row not yet active
+  //   4. N/A GRAY    — field not applicable for current mode (cell is empty)
+  //   5. QUALITY WARNINGS — xcvr speed mismatch / breakout hint
+  //   6. MEMBER PORT — text dim + italic
+
   const deviceNames = new Set(headers.filter(h => h.startsWith('int_')).map(h => h.substring(4)));
 
   deviceNames.forEach(dev => {
-    const intIdx      = getColIdx('int_' + dev);
-    const poIdx       = getColIdx('po_' + dev);
-    const modeIdx     = getColIdx('sp_mode_' + dev);
-    const sviIdx      = getColIdx('svi_vlan_' + dev);
-    const ipIdx       = getColIdx('ip_type_' + dev);
-    const etSpeedIdx   = getColIdx('et_speed_' + dev);
-    const xcvrSpeedIdx = getColIdx('xcvr_speed_' + dev);
+    const intIdx       = getColIdx('int_'       + dev);
+    const poIdx        = getColIdx('po_'        + dev);
+    const modeIdx      = getColIdx('sp_mode_'   + dev);
+    const sviIdx       = getColIdx('svi_vlan_'  + dev);
+    const vlanIdx      = getColIdx('vlan_'      + dev);
+    const ipIdx        = getColIdx('ip_type_'   + dev);
+    const vrfIdx       = getColIdx('vrf_'       + dev);
+    const etSpeedIdx   = getColIdx('et_speed_'  + dev);
+    const xcvrSpeedIdx = getColIdx('xcvr_speed_'+ dev);
     const xcvrTypeIdx  = getColIdx('xcvr_type_' + dev);
+    const encodingIdx  = getColIdx('encoding_'  + dev);
 
-    // Rule 1: "Member Port" logic
-    // MODIFIED: We removed setBackground().
-    // This allows the connection color (Blue/Pink/etc) to show through!
-    // We only mute the text color to indicate it's a member.
-    if (intIdx > 0 && poIdx > 0) {
-      const range = sheet.getRange(3, intIdx, lastRow - 2, 1);
-      const formula = `=AND(REGEXMATCH($${getColLet(intIdx)}3, "^Et"), $${getColLet(poIdx)}3<>"")`;
+    if (intIdx <= 0 || modeIdx <= 0) return;
+
+    const iC  = getColLet(intIdx);
+    const mC  = getColLet(modeIdx);
+
+    // ── 1. AUDIT RED: value in a field that is N/A for current mode ──────────
+    // All formulas also guard on int_<>""  so inactive rows stay gray (rule 3).
+
+    // A1 — po_ filled but mode is ET (Po not used for ET modes)
+    if (poIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(formula)
-        .setFontColor(FORMAT_CONFIG.colors.textMuted) // Only change text color
-        .setItalic(true) // Optional: Italicize to differentiate
-        .setRanges([range]).build());
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(poIdx)}3<>""` +
+          `,REGEXMATCH($${mC}3,"^l[23]-et"))`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, poIdx, lastRow - 2, 1)]).build());
     }
 
-    // Rule 2: Gray out SVI if L3 (SVI valid for all L2 modes — et and po)
-    if (sviIdx > 0 && modeIdx > 0) {
-      const range = sheet.getRange(3, sviIdx, lastRow - 2, 1);
-      const formula = `=REGEXMATCH($${getColLet(modeIdx)}3, "^l3")`;
+    // A2 — svi_vlan_ filled but mode is l3 (SVI only valid for L2)
+    if (sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(formula)
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(sviIdx)}3<>""` +
+          `,REGEXMATCH($${mC}3,"^l3"))`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, sviIdx, lastRow - 2, 1)]).build());
+    }
+
+    // A3 — ip_type_ filled but mode is L2 without SVI
+    if (ipIdx > 0 && sviIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(ipIdx)}3<>""` +
+          `,REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
+    }
+
+    // A4 — vlan_ filled but mode is pure L3 (not sub-int; sub-int uses vlan_ for VLAN id)
+    if (vlanIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vlanIdx)}3<>""` +
+          `,REGEXMATCH($${mC}3,"^l3"),NOT(REGEXMATCH($${mC}3,"sub-int")))`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
+    }
+
+    // A5 — vrf_ filled but mode is L2 without SVI
+    if (vrfIdx > 0 && sviIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vrfIdx)}3<>""` +
+          `,REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+        .setBackground("#fca5a5").setFontColor("#991b1b")
+        .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
+    }
+
+    // A6 — transceiver/physical-port fields filled but mode is Po (no physical port on Po)
+    const xcvrPoFormula = (colLet) =>
+      `=AND($${iC}3<>"",$${colLet}3<>"",REGEXMATCH($${mC}3,"^l[23]-po"))`;
+    [[etSpeedIdx,'et_speed'],[xcvrSpeedIdx,'xcvr_speed'],[xcvrTypeIdx,'xcvr_type'],[encodingIdx,'encoding']]
+      .forEach(([idx]) => {
+        if (idx > 0) {
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(xcvrPoFormula(getColLet(idx)))
+            .setBackground("#fca5a5").setFontColor("#991b1b")
+            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+        }
+      });
+
+    // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
+
+    // A7 — sp_mode_ empty but int_ is filled (mode is required)
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied(`=AND($${iC}3<>"",$${mC}3="")`)
+      .setBackground("#fef3c7").setFontColor("#92400e")
+      .setRanges([sheet.getRange(3, modeIdx, lastRow - 2, 1)]).build());
+
+    // ── 3. INACTIVE GRAY: int_ empty → whole device row not yet active ────────
+    // Applied to ALL columns belonging to this device as a single multi-range rule.
+    const suffix = '_' + dev;
+    const allDevRanges = headers.reduce((acc, h, i) => {
+      if (h.endsWith(suffix) && SCHEMA_KEYS.includes(h.slice(0, -(suffix.length)))) {
+        acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
+      }
+      return acc;
+    }, []);
+    if (allDevRanges.length > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=$${iC}3=""`)
+        .setBackground("#f1f5f9").setFontColor("#cbd5e1")
+        .setRanges(allDevRanges).build());
+    }
+
+    // ── 4. N/A GRAY: field not applicable for current mode (cell may be empty) ─
+
+    // N/A-1 — svi_vlan_ gray for L3 (SVI only valid for L2)
+    if (sviIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=REGEXMATCH($${mC}3,"^l3")`)
         .setBackground("#e2e8f0").setFontColor("#cbd5e1")
-        .setRanges([range]).build());
+        .setRanges([sheet.getRange(3, sviIdx, lastRow - 2, 1)]).build());
     }
 
-    // Rule 2b: Gray out Po if Et mode (po_ is cleared by onEdit; grey shows cell is N/A)
-    if (poIdx > 0 && modeIdx > 0) {
-      const range = sheet.getRange(3, poIdx, lastRow - 2, 1);
-      const formula = `=REGEXMATCH($${getColLet(modeIdx)}3, "^l2-et|^l3-et")`;
+    // N/A-2 — po_ gray for ET modes
+    if (poIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(formula)
+        .whenFormulaSatisfied(`=REGEXMATCH($${mC}3,"^l2-et|^l3-et")`)
         .setBackground("#e2e8f0").setFontColor("#cbd5e1")
-        .setRanges([range]).build());
+        .setRanges([sheet.getRange(3, poIdx, lastRow - 2, 1)]).build());
     }
 
-    // Rule 3: Gray out IP if L2 + No SVI
-    if (ipIdx > 0 && modeIdx > 0 && sviIdx > 0) {
-      const range = sheet.getRange(3, ipIdx, lastRow - 2, 1);
-      const formula = `=AND(REGEXMATCH($${getColLet(modeIdx)}3, "^l2"), $${getColLet(sviIdx)}3="")`;
+    // N/A-3 — ip_type_ gray for L2 without SVI
+    if (ipIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(formula)
+        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
         .setBackground("#e2e8f0").setFontColor("#cbd5e1")
-        .setRanges([range]).build());
+        .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
 
-    // Rule 4: Amber xcvr_speed_ when et_speed == xcvr_speed (both non-empty).
-    // Signals possible lane-split mismatch: if the port is a breakout lane (e.g. Et1/1
-    // at 25g), xcvr_speed should reflect the full transceiver aggregate (e.g. 100g),
-    // not the per-lane speed. Equal values mean the transceiver speed wasn't adjusted
-    // for the breakout and may need attention.
-    // Priority: added in Section A, so this overrides the standard speed-tier color (Section B).
+    // N/A-4 — vlan_ gray for pure L3 (not sub-int — sub-int uses vlan_ for VLAN id)
+    if (vlanIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l3"),NOT(REGEXMATCH($${mC}3,"sub-int")))`)
+        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
+    }
+
+    // N/A-5 — transceiver columns gray for Po modes (no physical transceiver on Po)
+    const xcvrNaFormula = `=REGEXMATCH($${mC}3,"^l[23]-po")`;
+    [[etSpeedIdx],[xcvrSpeedIdx],[xcvrTypeIdx],[encodingIdx]]
+      .forEach(([idx]) => {
+        if (idx > 0) {
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(xcvrNaFormula)
+            .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+        }
+      });
+
+    // N/A-6 — vrf_ gray for L2 without SVI
+    if (vrfIdx > 0 && sviIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
+    }
+
+    // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
+
+    // W1 — xcvr_speed_ amber when et_speed == xcvr_speed (both filled — possible breakout mismatch)
     if (etSpeedIdx > 0 && xcvrSpeedIdx > 0) {
-      const range = sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1);
-      const etCol = getColLet(etSpeedIdx);
-      const xsCol = getColLet(xcvrSpeedIdx);
-      const formula = `=AND($${etCol}3<>"",$${xsCol}3<>"",$${etCol}3=$${xsCol}3)`;
+      const etC = getColLet(etSpeedIdx);
+      const xsC = getColLet(xcvrSpeedIdx);
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(formula)
-        .setBackground("#fef08a")  // amber-yellow: "check lane split"
-        .setRanges([range]).build());
+        .whenFormulaSatisfied(`=AND($${etC}3<>"",$${xsC}3<>"",$${etC}3=$${xsC}3)`)
+        .setBackground("#fef08a")
+        .setRanges([sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1)]).build());
     }
 
-    // Rule 5: Pale-yellow xcvr_speed_ when it is EMPTY and xcvr_type implies a native
-    // speed that doesn't match et_speed — i.e. the port is in breakout mode but the user
-    // hasn't filled in xcvr_speed_ yet (needed for cable-group breakout detection).
-    // Native speed per form factor:
-    //   QSFP28 / QSFP100 / DSFP → 100g   QSFP56 → 200g
-    //   QSFP-DD / OSFP           → 400g or 800g
-    //   QSFP+                    → 40g    SFP28  → 25g    SFP+ → 10g / 1g
-    // Prefix match on et_speed handles lane suffixes (e.g. "100g-4" starts with "100g").
+    // W2 — xcvr_speed_ pale-orange when empty + xcvr_type implies different speed (fill for breakout)
     if (etSpeedIdx > 0 && xcvrSpeedIdx > 0 && xcvrTypeIdx > 0) {
-      const range = sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1);
       const etC = getColLet(etSpeedIdx);
       const xsC = getColLet(xcvrSpeedIdx);
       const xtC = getColLet(xcvrTypeIdx);
@@ -1912,13 +2014,23 @@ function buildConditionalRules(sheet, headers, lastRow) {
       ].join('');
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(formula)
-        .setBackground("#fed7aa")  // orange-200: "fill in xcvr_speed for breakout" (distinct from speed-tier #fef9c3=40g)
-        .setRanges([range]).build());
+        .setBackground("#fed7aa")
+        .setRanges([sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1)]).build());
+    }
+
+    // ── 6. MEMBER PORT: text dim + italic (Et in int_ AND Po is set) ─────────
+    if (poIdx > 0) {
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(
+          `=AND(REGEXMATCH($${iC}3,"^Et"),$${getColLet(poIdx)}3<>"")`
+        )
+        .setFontColor(FORMAT_CONFIG.colors.textMuted).setItalic(true)
+        .setRanges([sheet.getRange(3, intIdx, lastRow - 2, 1)]).build());
     }
 
   });
 
-  // B. STANDARD ATTRIBUTE LOGIC
+  // B. STANDARD ATTRIBUTE COLORS (lowest priority — speed tiers, xcvr types, mode, ip_type)
   headers.forEach((h, i) => {
     const colIdx = i + 1;
     const range = sheet.getRange(3, colIdx, lastRow - 2, 1);
