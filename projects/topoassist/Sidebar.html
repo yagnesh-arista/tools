@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.11 | 2026-04-25 10:48:24 -->
+<!-- TopoAssist v260425.12 | 2026-04-25 10:48:50 -->
 <!DOCTYPE html>
 <html>
 
@@ -283,6 +283,14 @@
         <input type="text" id="statusLogSearch" class="slg-search" placeholder="Filter…" oninput="renderStatusLog()" autocomplete="off">
         <button class="slg-btn" onclick="clearStatusLog()">Clear</button>
         <button class="slg-btn" onclick="toggleStatusLog()">Close</button>
+      </div>
+      <div class="slg-tabs" id="statusLogTabs">
+        <button class="slg-tab active" data-type="" data-label="All" onclick="setStatusLogType('')">All</button>
+        <button class="slg-tab" data-type="error" data-label="Errors" onclick="setStatusLogType('error')">Errors</button>
+        <button class="slg-tab" data-type="audit" data-label="[Audit]" onclick="setStatusLogType('audit')">[Audit]</button>
+        <button class="slg-tab" data-type="bridge" data-label="[Bridge]" onclick="setStatusLogType('bridge')">[Bridge]</button>
+        <button class="slg-tab" data-type="config" data-label="[Config]" onclick="setStatusLogType('config')">[Config]</button>
+        <button class="slg-tab" data-type="push" data-label="[Push]" onclick="setStatusLogType('push')">[Push]</button>
       </div>
       <div class="slg-list" id="statusLogList"></div>
     </div>

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.11 | 2026-04-25 10:48:24 -->
+<!-- TopoAssist v260425.12 | 2026-04-25 10:49:10 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -699,6 +699,34 @@
   }
   .slg-btn:hover { background: var(--border-light); }
   .slg-hl { background: #fef08a; color: #1e293b; border-radius: 2px; font-style: normal; }
+
+  .slg-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-body);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .slg-tab {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.1s, color 0.1s;
+  }
+  .slg-tab:hover { background: var(--border-light); color: var(--text-main); }
+  .slg-tab.active { background: #3b82f6; color: #ffffff; border-color: #3b82f6; }
+  .slg-tab[data-type="error"].active { background: #ef4444; border-color: #ef4444; }
 
   .slg-list {
     flex: 1;
