@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.7 | 2026-04-25 10:34:44 -->
+<!-- TopoAssist v260425.8 | 2026-04-25 10:35:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.7";  // keep in sync with Code.gs
+const APP_VERSION = "260425.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9620,6 +9620,34 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if METHOD == "ssh":  return self._ssh_cmds(ip, *cmds)
         if METHOD == "eapi": return self._eapi_cmds(ip, *cmds), {}
         raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
+
+    # -- Orphan detection ------------------------------------------------------
+    def _find_ta_orphans(self, ip, config_text):
+        """Return EOS cleanup commands for #TA-tagged interfaces on the device
+        not present in config_text. Best-effort — returns [] on any failure."""
+        try:
+            (raw,), _ = self._run_cmds(ip, "show interfaces description")
+        except Exception:
+            return []
+        iface_descs = raw.get("interfaceDescriptions", {})
+        config_ifaces = set()
+        for line in config_text.split("\\n"):
+            m = re.match(r"^interface\s+(\S+)", line, re.IGNORECASE)
+            if m:
+                config_ifaces.add(_norm_iface(m.group(1)))
+        cleanup = []
+        for name, info in iface_descs.items():
+            if _TA_ORPHAN_SKIP_RE.match(name):
+                continue
+            if "#TA" not in info.get("description", ""):
+                continue
+            if _norm_iface(name) in config_ifaces:
+                continue
+            if "." in name or re.match(r"^vlan\d+$", name, re.IGNORECASE):
+                cleanup.append(f"no interface {name}")
+            else:
+                cleanup.append(f"default interface {name}")
+        return cleanup
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
