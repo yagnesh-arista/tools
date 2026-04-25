@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.35 | 2026-04-25 12:21:48 -->
+<!-- TopoAssist v260425.36 | 2026-04-25 12:22:03 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.35";  // keep in sync with Code.gs
+const APP_VERSION = "260425.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5034,7 +5034,7 @@ function saveTechSettings() {
     evpn_ipv6:       getChk('chkEvpnIpv6'),
     evpn_service:    (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
     gw_l3_type:      (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
-    varp_mac:        ((document.getElementById('inputVarpMac') || {}).value || '001c.7300.0099').trim()
+    varp_mac:        ((document.getElementById('inputVarpMac') || {}).value || '').trim()
   };
 
   showGlobalLoading("Saving Technology Settings...");
