@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
+  Last updated: 2026-04-25 (Removed Vim-Tmux-Navigator smart pane switching (C-h/j/k/l) — was causing backspace conflict. Added explicit unbind-key -n C-h/C-j/C-k/C-l to purge stale bindings from tmux memory on reload.)
+  Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
   Previous: 2026-04-14 (Refactored DoubleClick1Pane/TripleClick1Pane root bindings
   to use external script tmux_click.sh. Root cause of "wrong location" intermittent
   issue: separate tmux IPC calls in inline run-shell had ordering races. Fix: all
@@ -204,10 +205,10 @@ SECTION 3: KEY DESIGN DECISIONS
    checkwinsize (in .bashrc): forces shell to update LINES/COLS after each cmd.
    'fix-tmux' alias: manual emergency resize (resize-window -x/-y).
 
-6. VIM-TMUX NAVIGATOR
-   Smart pane switching with Ctrl+h/j/k/l.
-   is_vim check: inspects ps output for vim/nvim in the active pane.
-   If vim is running: keypresses are passed through. Otherwise: tmux pane switch.
+6. VIM-TMUX NAVIGATOR — REMOVED
+   Removed: Ctrl+h/j/k/l smart pane switching caused a backspace conflict.
+   Explicit unbind-key -n C-h/C-j/C-k/C-l clears stale bindings from tmux memory.
+   Use Prefix+Arrows for pane navigation instead.
 
 7. BROADCAST ARCHITECTURE
    Uses set-environment + external script (tmux_broadcast.sh). Inline run-shell
@@ -302,7 +303,6 @@ PREFIX = Ctrl+s
   Prefix + Q        Kill session (confirm)
 
 --- Pane Navigation ---
-  Ctrl+h/j/k/l      Smart pane switch (vim-aware, no prefix)
   Prefix + Arrows   Standard pane switch
 
 --- Pane Management ---
