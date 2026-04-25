@@ -27,6 +27,7 @@ Every modal, tooltip, dropdown, overlay, and floating panel must stay fully with
 When a new global rule is established, apply it to all existing projects without being asked. Update each project's INSTRUCTIONS file and fix the code in the same session.
 
 ## 6. user-select: none on UI Chrome Only (Not Visible Text Content)
+**Core principle: all visible text must be selectable and copyable by the user. No exceptions.**
 Apply `user-select: none; -webkit-user-select: none` to **UI chrome only**: buttons, icon buttons, tabs, modal title bars, badges, status indicators, tags, node titles, tooltips.
 - **Do NOT apply to visible text content** — if the user can read it, they can select it. This includes `info-box` text, descriptions, hints, captions, and read-only values shown in the UI.
 - **Explicitly set `user-select: text`** on content users clearly need to copy: diffs, configs, EOS commands, IP addresses, generated output.
