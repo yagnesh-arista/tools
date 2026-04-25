@@ -1,10 +1,10 @@
-// TopoAssist v260425.5 | 2026-04-25 10:31:09
+// TopoAssist v260425.6 | 2026-04-25 10:31:21
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.5";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.6";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4771,8 +4771,6 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
         // Rule 11: No group info — mark ownership only
         cfg += " description #TA\n";
       }
-
-      cfg += " no shutdown\n";
 
       if (d.isMlag) {
         const poNum = poVal.replace(/\D/g, '');
