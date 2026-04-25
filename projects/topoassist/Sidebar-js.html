@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.44 | 2026-04-25 13:02:17 -->
+<!-- TopoAssist v260425.45 | 2026-04-25 13:03:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.44";  // keep in sync with Code.gs
+const APP_VERSION = "260425.45";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9967,6 +9967,7 @@ const _ALL_AUDIT_FLAGS = [
   'auditFlagInvalidSvi', 'auditFlagMissingIpSvi', 'auditFlagMissingIpL3',
   'auditFlagStaleIpType', 'auditFlagDupGateway',
   'auditFlagModeIncompat', 'auditFlagSpeedMismatch',
+  'auditFlagStaleSvi', 'auditFlagStaleVlan', 'auditFlagStaleVrf', 'auditFlagStaleXcvrSpeed',
   'auditFlagMlagPeerLink', 'auditFlagUndeclaredMlag'
 ];
 
@@ -9991,6 +9992,10 @@ function _getAuditFlag(name) {
     case 'auditFlagDupGateway':         return auditFlagDupGateway;
     case 'auditFlagModeIncompat':       return auditFlagModeIncompat;
     case 'auditFlagSpeedMismatch':      return auditFlagSpeedMismatch;
+    case 'auditFlagStaleSvi':           return auditFlagStaleSvi;
+    case 'auditFlagStaleVlan':          return auditFlagStaleVlan;
+    case 'auditFlagStaleVrf':           return auditFlagStaleVrf;
+    case 'auditFlagStaleXcvrSpeed':     return auditFlagStaleXcvrSpeed;
     case 'auditFlagMlagPeerLink':       return auditFlagMlagPeerLink;
     case 'auditFlagUndeclaredMlag':     return auditFlagUndeclaredMlag;
     case 'bridgeAuditFlagMismatch':     return bridgeAuditFlagMismatch;
@@ -10022,6 +10027,10 @@ function _setAuditFlag(name, val) {
     case 'auditFlagDupGateway':         auditFlagDupGateway = val; break;
     case 'auditFlagModeIncompat':       auditFlagModeIncompat = val; break;
     case 'auditFlagSpeedMismatch':      auditFlagSpeedMismatch = val; break;
+    case 'auditFlagStaleSvi':           auditFlagStaleSvi = val; break;
+    case 'auditFlagStaleVlan':          auditFlagStaleVlan = val; break;
+    case 'auditFlagStaleVrf':           auditFlagStaleVrf = val; break;
+    case 'auditFlagStaleXcvrSpeed':     auditFlagStaleXcvrSpeed = val; break;
     case 'auditFlagMlagPeerLink':       auditFlagMlagPeerLink = val; break;
     case 'auditFlagUndeclaredMlag':     auditFlagUndeclaredMlag = val; break;
     case 'bridgeAuditFlagMismatch':     bridgeAuditFlagMismatch = val; break;
