@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.1 | 2026-04-25 10:13:04
+# topoassist v260425.7 | 2026-04-25 10:33:55
 """
 TopoAssist Device Bridge
 ========================
@@ -345,6 +345,11 @@ _SECTION_CLEANERS = [
 # Management interfaces must never be defaulted — would kill SSH connectivity
 _MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
 
+# Interfaces excluded from #TA orphan cleanup — system/VTEP/MLAG-control, not per-link
+_TA_ORPHAN_SKIP_RE = re.compile(
+    r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE
+)
+
 
 def _prepend_section_cleaners(config_text):
     """Prepend section-level cleanup commands before each major EOS config section.
@@ -454,9 +459,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             self._json(400, {"error": "invalid JSON body"})
             return
-        ip_map      = body.get("ipMap", {})
-        dry_run     = bool(body.get("dry_run", False))
+        ip_map       = body.get("ipMap", {})
+        dry_run      = bool(body.get("dry_run", False))
         open_session = bool(body.get("open_session", False))
+        all_ifaces   = bool(body.get("all_ifaces", False))
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
@@ -524,7 +530,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     for attempt in range(PUSH_RETRIES + 1):
                         try:
                             res = self._push_config(ip, config, dry_run=dry_run,
-                                                    open_only=open_session)
+                                                    open_only=open_session,
+                                                    all_ifaces=all_ifaces)
                             with lock: results[dev] = res
                             break
                         except subprocess.TimeoutExpired:
@@ -766,7 +773,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     # ── Config push via configure session ────────────────────────────────────
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False):
         """Push config_text to device using a uniquely-named EOS configure session.
 
         Modes:
@@ -776,6 +783,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             Use this for the two-phase confirm modal flow.
           dry_run=True    — push config, get diff, abort session (verify path).
           default         — push config, get diff, commit immediately.
+
+        all_ifaces=True — before building core_cmds, query the device for #TA-tagged
+                          interfaces not present in config_text and prepend cleanup
+                          commands (default interface / no interface) so orphans are
+                          removed in the same session. Best-effort — failures are
+                          silently ignored. Only meaningful for full-device pushes.
 
         Session design:
           - Pre-cleanup: abort any stale pending topoassist_* sessions first so we
@@ -802,6 +815,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _ct = threading.Thread(target=_safe_abort, daemon=True)
             _ct.start()
             _ct.join(timeout=TIMEOUT)
+
+        # Prepend cleanup for orphan #TA interfaces not present in this push.
+        # Best-effort — failures are silently ignored so a query error never blocks push.
+        if all_ifaces and not dry_run:
+            orphan_cmds = self._find_ta_orphans(ip, config_text)
+            if orphan_cmds:
+                lines = orphan_cmds + lines
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
@@ -974,6 +994,44 @@ class BridgeHandler(BaseHTTPRequestHandler):
             }
 
         raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+
+    # ── Orphan detection ──────────────────────────────────────────────────────
+    def _find_ta_orphans(self, ip, config_text):
+        """Return EOS cleanup commands for #TA-tagged interfaces on the device
+        that are NOT present in config_text.  Called before a full-device push
+        so orphans are cleaned up in the same configure session.
+
+        Physical/PO orphans → `default interface X`
+        Sub-interface / SVI orphans → `no interface X`
+        Skips: Loopback, Management, Vxlan, Vlan4093/4094 (system interfaces).
+        Returns [] on any query failure — orphan cleanup is best-effort.
+        """
+        try:
+            (raw,), _ = self._run_cmds(ip, "show interfaces description")
+        except Exception:
+            return []
+        iface_descs = raw.get("interfaceDescriptions", {})
+
+        # Collect abbreviated names of interfaces explicitly configured in config_text
+        config_ifaces = set()
+        for line in config_text.split('\n'):
+            m = re.match(r'^interface\s+(\S+)', line, re.IGNORECASE)
+            if m:
+                config_ifaces.add(_norm_iface(m.group(1)))
+
+        cleanup = []
+        for name, info in iface_descs.items():
+            if _TA_ORPHAN_SKIP_RE.match(name):
+                continue
+            if '#TA' not in info.get('description', ''):
+                continue
+            if _norm_iface(name) in config_ifaces:
+                continue  # still in topology — not an orphan
+            if '.' in name or re.match(r'^vlan\d+$', name, re.IGNORECASE):
+                cleanup.append(f'no interface {name}')
+            else:
+                cleanup.append(f'default interface {name}')
+        return cleanup
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
     def _reconcile_device(self, ip, expected_ports):

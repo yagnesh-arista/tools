@@ -1,9 +1,20 @@
-# bashrc_bus-home v260424.1 | 2026-04-24 09:30:37
+# bashrc_bus-home v260425.1 | 2026-04-25 10:34:12
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
 # 0. ble.sh — MUST be first (loaded in noattach mode; attaches at section 13)
-[[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --noattach 2>/dev/null
+# STRICTER CHECK: Only load if interactive AND a real terminal type is set.
+# This prevents it from loading during automated Python SSH script execution.
+if [[ $- == *i* ]] && [[ -n "$TERM" ]] && [[ "$TERM" != "dumb" ]] && [[ "$TERM" != "unknown" ]]; then
+    source ~/.local/share/blesh/ble.sh --noattach 2>/dev/null
+fi
+
+# EARLY EXIT: Stop here for non-interactive shells (scp, rsync, Python SSH automation).
+# Prevents nvm/fzf/atuin loading which causes timeouts in automated connections.
+case $- in
+    *i*) ;;
+      *) return;;
+esac
 
 # 1. Load System Defaults
 if [ -f /etc/bashrc ]; then
@@ -68,7 +79,8 @@ alias lrtha='ls -lrtha --color=auto'
 alias grep='grep --color=auto'
 alias ..='cd ..'
 alias ...='cd ../..'
-alias eod='cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || (git commit -m "EOD $(date +%Y-%m-%d)" && git push) && cd -'
+alias eod='(cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || { git commit -m "EOD $(date +%Y-%m-%d)" && git push; })'
+alias fix-ssh='export SSH_AUTH_SOCK=$(tmux show-environment | grep "^SSH_AUTH_SOCK" | cut -d= -f2)'
 
 # 8. TimeZone & PATH
 export TZ=Asia/Kolkata
@@ -84,8 +96,12 @@ export HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
 [[ "$PROMPT_COMMAND" != *"history -a"* ]] && PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
-# 10. Prompt (with git branch)
-PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$(__git_ps1 " (%s)")\$ '
+# 10. Prompt (with git branch fallback if __git_ps1 missing)
+if type __git_ps1 >/dev/null 2>&1; then
+    PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$(__git_ps1 " (%s)")\$ '
+else
+    PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
+fi
 
 # 11. NVM
 export NVM_DIR="$HOME/.nvm"

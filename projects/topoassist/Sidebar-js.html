@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.6 | 2026-04-25 10:31:21 -->
+<!-- TopoAssist v260425.7 | 2026-04-25 10:34:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.6";  // keep in sync with Code.gs
+const APP_VERSION = "260425.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9277,7 +9277,8 @@ _SECTION_CLEANERS = [
     # Generated config is self-sufficient; switchport defaults are in the config itself.
 ]
 
-_MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
+_MGMT_IFACE_RE     = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
+_TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
 
 
 def _prepend_section_cleaners(config_text):
@@ -10864,7 +10865,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true }),
+      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter }),
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();

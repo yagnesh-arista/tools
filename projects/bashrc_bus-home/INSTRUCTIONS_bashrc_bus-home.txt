@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-24 (Section 2a: added stty -ixon to disable XON/XOFF flow control so C-s reaches tmux as prefix key)
+Last updated: 2026-04-25 (Section 0: stricter ble.sh guard — checks $TERM != dumb/unknown to block loading during Python SSH automation. Added early exit guard (case $-) after section 0 to stop non-interactive shells from loading nvm/fzf/atuin — fixes CliTimeout in Python SSH scripts. Section 7: eod alias wrapped in subshell (no cd - noise); added fix-ssh alias to repair dead SSH_AUTH_SOCK in tmux. Section 10: __git_ps1 guard to prevent "command not found" spam if git completion missing.)
+Previous: 2026-04-24 (Section 2a: added stty -ixon to disable XON/XOFF flow control so C-s reaches tmux as prefix key)
 Previous: 2026-04-23 (Section 11 NVM: added direct PATH entry for nvm default node bin dir — reads $NVM_DIR/alias/default, resolves lts/* alias, prepends that version's bin/ to PATH. Ensures clasp/node/npm work even when nvm init fires late or shell is non-interactive. Variables cleaned up with unset.)
 Previous: 2026-04-18 (Review fixes: PROMPT_COMMAND stack guard; fzf.bash comment re ble.sh override)
 Previous: 2026-04-17 (Added eod alias for daily git commit+push)
@@ -28,8 +29,11 @@ to see changes take effect in existing sessions.
 
 CURRENT .bashrc SECTIONS
 ========================
-0.  ble.sh — source ~/.local/share/blesh/ble.sh --noattach (interactive only; silent if missing)
+0.  ble.sh — source ~/.local/share/blesh/ble.sh --noattach
+    Guard: interactive ($- == *i*) AND $TERM set AND $TERM != dumb/unknown.
     MUST be first. Loaded in noattach mode so all other sections run before line-editing takeover.
+    Followed immediately by early-exit guard (case $- in *i*) to stop non-interactive shells
+    (scp, rsync, Python SSH scripts) from loading anything below — fixes CliTimeout.
 1.  Load System Defaults (/etc/bashrc 2>/dev/null) + set -h to re-enable hashing
     /etc/bashrc disables hashing (set +h); re-enabling is required for NVM and other tools
 2.  Fix Tmux Resizing (shopt -s checkwinsize)
@@ -42,11 +46,13 @@ CURRENT .bashrc SECTIONS
 5.  Custom Functions — command_not_found_handle (@<device> SSHes to admin@<device>); mkcd()
     IMPORTANT: must stay BEFORE section 13 (ble-attach) so ble.sh wraps the handler on load
 6.  Prevent Ctrl+D (ignoreeof, IGNOREEOF=10)
-7.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ..., eod
+7.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ..., eod, fix-ssh
+    eod: subshell-wrapped (cd ~/claude; add; commit+push or "Nothing to commit")
+    fix-ssh: repairs dead SSH_AUTH_SOCK in tmux after reconnect
 8.  TZ=Asia/Kolkata, PATH prepend ~/.local/bin:~/.atuin/bin, EDITOR/VISUAL=vim, CDPATH
 9.  History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
     PROMPT_COMMAND: guarded with [[ != *history -a* ]] to prevent stacking on re-source
-10. Prompt (PS1): green user@host, blue cwd, git branch via __git_ps1
+10. Prompt (PS1): green user@host, blue cwd, git branch via __git_ps1 (with fallback if missing)
 11. NVM setup
 12. Atuin: eval "$(atuin init bash --disable-up-arrow --disable-ctrl-r)"
     Provides ghost-text autosuggestions via ble.sh integration; fzf/ble-bind own Ctrl+R and up arrow

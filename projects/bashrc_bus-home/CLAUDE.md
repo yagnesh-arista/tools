@@ -6,7 +6,8 @@ This is **bash on Linux** (bus-home jump server). Not macOS, not zsh.
 ## Critical Design Constraints
 
 **ble.sh source order (critical):**
-- Section 0: `source ble.sh --noattach` — MUST be first line of interactive shell init
+- Section 0: `source ble.sh --noattach` — MUST be first; guarded by `$- == *i*` AND `$TERM` not dumb/unknown
+- Immediately after section 0: `case $- in *i*) ;; *) return;; esac` — early exit for non-interactive shells (scp/Python SSH); prevents CliTimeout
 - Section 5: `command_not_found_handle` — MUST be defined before `ble-attach` so ble.sh wraps it
 - Section 13: `ble-attach` — MUST be last; ble.sh takes over line editing here
 
