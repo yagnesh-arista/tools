@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.8 | 2026-04-25 10:35:00 -->
+<!-- TopoAssist v260425.9 | 2026-04-25 10:36:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.8";  // keep in sync with Code.gs
+const APP_VERSION = "260425.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9107,7 +9107,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.1"
+VERSION = "260425.9"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9352,6 +9352,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         ip_map       = body.get("ipMap", {})
         dry_run      = bool(body.get("dry_run", False))
         open_session = bool(body.get("open_session", False))
+        all_ifaces   = bool(body.get("all_ifaces", False))
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
@@ -9383,7 +9384,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 with sem:
                     try:
                         with lock: results[dev] = self._push_config(
-                            ip, config, dry_run=dry_run, open_only=open_session)
+                            ip, config, dry_run=dry_run, open_only=open_session,
+                            all_ifaces=all_ifaces)
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                     except NotImplementedError as e:
@@ -9515,7 +9517,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False):
         cleaned = _prepend_section_cleaners(config_text)
         lines = [l for l in cleaned.strip().split("\\n") if l.strip()]
         if not lines:
@@ -9525,6 +9527,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self._abort_stale_sessions(ip)
             except Exception:
                 pass
+        if all_ifaces and not dry_run:
+            orphan_cmds = self._find_ta_orphans(ip, config_text)
+            if orphan_cmds:
+                lines = orphan_cmds + lines
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
         # open_only: omit the final command entirely — SSH stdin EOF closes naturally.
