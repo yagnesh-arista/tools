@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.16 | 2026-04-25 11:28:24 -->
+<!-- TopoAssist v260425.17 | 2026-04-25 11:33:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.16";  // keep in sync with Code.gs
+const APP_VERSION = "260425.17";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -25,10 +25,11 @@ const APP_VERSION = "260425.16";  // keep in sync with Code.gs
     return `Ready | ${devCount} Devices · ${linkCount} Links`;
   }
   // --- STATUS LOG ---
-  const STATUS_LOG_MAX = 5000;
+  let STATUS_LOG_MAX = 5000;  // configurable via UI selector in log drawer
   const STATUS_CLASSES = ['status-error', 'status-edit-mode', 'status-ok', 'status-info'];
   let statusLog = [];
   let _statusLogType = ''; // active type tab: '' | 'error' | 'audit' | 'bridge' | 'config' | 'push'
+  let _loggedAuditErrors = new Set(); // session dedup: prevents re-logging same error on auto-revalidate
 
   function _inferLogType(msg) {
     const m = msg.toLowerCase();
