@@ -52,19 +52,31 @@ Note: Unicode in comments or non-rendered strings is fine.
 
 ---
 
-## Check 3 — user-select: none (CLAUDE.md Rule 6)
+## Check 3 — user-select (CLAUDE.md Rule 6)
 
-Non-editable UI elements must have `user-select: none; -webkit-user-select: none`.
+`user-select: none` applies to UI chrome only — NOT to visible text content.
 
-Rules:
+UI chrome (must have `user-select: none`):
+- Buttons, icon buttons, tabs, nav items
+- Modal title bars, section headers, badges, status indicators, tags, node titles
+- Tooltips that are purely decorative labels
+
+Visible text content (must remain selectable — no `user-select: none`):
+- `info-box` / `info-box--dim` text, descriptions, hints, captions
+- Read-only values displayed in the UI
+
+Explicitly `user-select: text`:
+- Diffs, configs, EOS commands, IP addresses, generated output
+
+Hard rules:
 - NEVER apply to `body` — breaks `execCommand("copy")` in WebKit/Chrome
 - NEVER apply to `<input>`, `<textarea>`, `<select>`
-- Read-only content the user might want to copy (diff output, config text) should remain selectable
-- All clipboard copy must use `navigator.clipboard.writeText()` with `execCommand` fallback
+- Clipboard copy buttons must use `navigator.clipboard.writeText()` with `execCommand` fallback
 
 ✗ FAIL if `user-select: none` is on `body`
 ✗ FAIL if `user-select: none` is on an input/textarea/select
-✗ FAIL if a non-editable label/badge/header/card has no `user-select: none`
+✗ FAIL if `user-select: none` is on an info-box, description, hint, or read-only value
+✗ FAIL if UI chrome (buttons/badges/modal title) is missing `user-select: none`
 ✗ FAIL if clipboard copy uses `execCommand` without the `navigator.clipboard` primary path
 
 ---
