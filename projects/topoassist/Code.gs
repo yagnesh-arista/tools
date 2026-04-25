@@ -1,10 +1,10 @@
-// TopoAssist v260425.26 | 2026-04-25 11:42:54
+// TopoAssist v260425.27 | 2026-04-25 12:02:51
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260425.26";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260425.27";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4879,8 +4879,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   // EVPN GW type — drives ip address virtual vs ip virtual-router address for GW SVIs
   const isEvpnActive  = !!(netSettings && (netSettings.evpn_ipv4 || netSettings.evpn_ipv6));
   const gwL3Type      = (netSettings && netSettings.gw_l3_type) || 'anycast';
-  const useAnycastGW  = isEvpnActive && gwL3Type !== 'varp';   // anycast: ip address virtual
-  const useVarpGW     = isEvpnActive && gwL3Type === 'varp';   // VARP:    ip virtual-router address
+  const useAnycastGW  = gwL3Type !== 'varp';   // ip address virtual — works with or without EVPN
+  const useVarpGW     = gwL3Type === 'varp';   // ip virtual-router address — works with or without EVPN
 
   // OSPF flags — suppressed for snake ports (cannot form OSPF adjacency with yourself)
   const addOspfV4 = !!(netSettings && netSettings.ospf_ipv4) && !d.isSnakePrimary && !d.isSnakeSecondary;
@@ -5508,9 +5508,8 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   const lowerId = Math.min(localId, partnerId);
   const higherId = Math.max(localId, partnerId);
 
-  // FIXED: Mac format to 0011.2233.hhhh (e.g., 0011.2233.0002)
-  const hexId = lowerId.toString(16).padStart(4, '0');
-  const vRouterMac = `0011.2233.${hexId}`;
+  // Use the same configured varp_mac as standalone — must be identical across all switches
+  const vRouterMac = (settings && settings.varp_mac) || '001c.7300.0099';
 
   const mlagLines = [];
 

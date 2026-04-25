@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.26 | 2026-04-25 11:42:54 -->
+<!-- TopoAssist v260425.27 | 2026-04-25 12:03:21 -->
 <!DOCTYPE html>
 <html>
 
@@ -556,7 +556,7 @@
       <div style="display:flex; gap:24px; margin-bottom:12px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label">
           <input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()">
-          <code class="inline-code">ip address virtual</code> &nbsp;(Anycast GW — EVPN)
+          <code class="inline-code">ip address virtual</code> &nbsp;(Anycast GW)
         </label>
         <label class="tech-radio-label">
           <input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()">
@@ -571,11 +571,11 @@
             style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:5px 8px; outline:none; min-width:0;">
         </div>
         <div class="info-box info-box--dim" style="margin-top:6px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-          Applied as <code class="inline-code">ip virtual-router mac-address</code> in global config (standalone devices only; MLAG uses its own derived MAC).
+          Applied as <code class="inline-code">ip virtual-router mac-address</code> globally — same configured MAC on all devices (standalone and MLAG).
         </div>
       </div>
       <div id="rowGwL3Hint" class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. Requires EVPN enabled.
+        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. Works with or without EVPN — EVPN adds control-plane MAC/IP distribution via Type-2 routes.
       </div>
 
       <!-- Validation error banner (hidden until validateTechSettings finds errors) -->

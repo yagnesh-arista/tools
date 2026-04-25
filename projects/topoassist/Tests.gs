@@ -1,4 +1,4 @@
-// TopoAssist v260425.26 | 2026-04-25 11:42:54
+// TopoAssist v260425.27 | 2026-04-25 12:04:10
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1176,6 +1176,15 @@ function test_generateComplexL3BlockGwType() {
     results.push(t("generateComplexL3Block — EVPN anycast: ip address virtual",  out.includes("ip address virtual"), true));
     results.push(t("generateComplexL3Block — EVPN anycast: no ip virtual-router address", !out.includes("ip virtual-router address"), true));
     results.push(t("generateComplexL3Block — EVPN anycast: description ANYCAST_GW_10",    out.includes("description ANYCAST_GW_10"), true));
+  }
+
+  // 1b. Non-EVPN anycast: ip address virtual still emitted (no EVPN guard on useAnycastGW)
+  {
+    const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: false, evpn_ipv6: false,
+                gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
+                int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
+    const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
+    results.push(t("generateComplexL3Block — non-EVPN anycast: ip address virtual still emitted", out.includes("ip address virtual"), true));
   }
 
   // 2. EVPN VARP: ip address (physical, sheetIndex-offset) + ip virtual-router address (gwLast)
