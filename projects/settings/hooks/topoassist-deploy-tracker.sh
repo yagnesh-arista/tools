@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260421.18 | 2026-04-21 12:26:26
+# settings v260425.5 | 2026-04-25 11:34:14
 # Fires after any TopoAssist file edit.
 # Auto-runs clasp push for GAS files; reminds for device_bridge.py.
 

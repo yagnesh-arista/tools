@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.18 | 2026-04-25 11:33:29 -->
+<!-- TopoAssist v260425.20 | 2026-04-25 11:34:27 -->
 <!DOCTYPE html>
 <html>
 
@@ -293,6 +293,17 @@
         <button class="slg-tab" data-type="push" data-label="[Push]" onclick="setStatusLogType('push')">[Push]</button>
       </div>
       <div class="slg-list" id="statusLogList"></div>
+      <div class="slg-footer">
+        <span class="slg-footer-label">Max lines:</span>
+        <select class="slg-maxsel" onchange="setStatusLogMax(this.value)">
+          <option value="1000">1 000</option>
+          <option value="2500">2 500</option>
+          <option value="5000" selected>5 000</option>
+          <option value="10000">10 000</option>
+          <option value="25000">25 000</option>
+        </select>
+        <span class="slg-footer-hint">per session · current: <span id="slgMaxCurrent">5 000</span></span>
+      </div>
     </div>
 
     <div id="floatingLegend" class="topo-legend collapsed">

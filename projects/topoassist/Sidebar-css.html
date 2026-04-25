@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.18 | 2026-04-25 11:33:29 -->
+<!-- TopoAssist v260425.20 | 2026-04-25 11:34:54 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -746,8 +746,42 @@
   .slg-msg { color: var(--text-main); word-break: break-word; user-select: text; -webkit-user-select: text; }
   .slg-entry.status-ok   .slg-msg { color: #15803d; }
   .slg-entry.status-error .slg-msg { color: #ef4444; }
+  .slg-entry.status-warn  .slg-msg { color: #d97706; }
   .slg-entry.status-edit-mode .slg-msg { color: #3b82f6; }
   .slg-entry.status-info  .slg-msg { color: #0284c7; }
+
+  .slg-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-body);
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .slg-footer-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .slg-maxsel {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    padding: 1px 4px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    cursor: pointer;
+  }
+  .slg-footer-hint {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
 
   .divider-v {
     width: 1px;
