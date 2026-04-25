@@ -1,4 +1,4 @@
-# bashrc_bus-home v260425.2 | 2026-04-25 11:49:30
+# bashrc_bus-home v260425.3 | 2026-04-25 11:52:56
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -81,6 +81,7 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias eod='(cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || { git commit -m "EOD $(date +%Y-%m-%d)" && git push; })'
 alias fix-ssh='export SSH_AUTH_SOCK=$(tmux show-environment | grep "^SSH_AUTH_SOCK" | cut -d= -f2)'
+alias fix-path='source ~/.bashrc && echo "PATH reloaded"'
 
 # 8. TimeZone & PATH
 export TZ=Asia/Kolkata
