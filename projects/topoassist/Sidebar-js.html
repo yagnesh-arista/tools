@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.58 | 2026-04-25 13:21:54 -->
+<!-- TopoAssist v260425.59 | 2026-04-25 13:23:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.58";  // keep in sync with Code.gs
+const APP_VERSION = "260425.59";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10847,6 +10847,7 @@ function runReconcile() {
       clearTimeout(_guard);
       btn.disabled = false;
       btn.textContent = 'Reconcile';
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
       _renderReconcileResults(results, ipMap);
       const totalOrphans = Object.values(results).reduce((s, r) => s + (r && r.ok ? r.orphans.length : 0), 0);
       statusEl.style.color = totalOrphans ? '#d97706' : '#15803d';
@@ -10936,6 +10937,7 @@ function unconfigureOrphan(dev, ip, portName, btn) {
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); btn.disabled = false; btn.textContent = origText; return; }
       const res = results[dev];
       if (res && res.ok) {
         btn.closest('.bridge-orphan-row').style.opacity = '0.4';
@@ -10999,9 +11001,10 @@ function deleteAndUnconfigure() {
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
-      const res = results[deviceName];
       btn.disabled = false;
       btn.textContent = 'Delete & Unconfigure';
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
+      const res = results[deviceName];
       if (res && res.ok) {
         // Unconfigure succeeded — now delete from sheet
         closeEditModal();
@@ -11113,6 +11116,12 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
+    if (data.auth_expired) {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+      _handleBridgeAuthExpired(data.message);
+      _updatePushPreviewError('Auth session expired \u2014 ' + (data.message || 'run: arista-ssh login'));
+      return;
+    }
     const res  = data[deviceName] || {};
     // Guard: user cancelled while Phase 1 fetch was in-flight (Cancel hides the modal).
     // The EOS session is now PENDING — abort it silently before returning.
@@ -11838,6 +11847,11 @@ async function pushAllConfigs() {
           });
           if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
           const data = await resp.json();
+          if (data.auth_expired) {
+            _handleBridgeAuthExpired(data.message);
+            res = { ok: false, error: data.message || 'arista-ssh session expired \u2014 run: arista-ssh login' };
+            break;
+          }
           res = data[name] || null;  // null = server thread timed out → retry
         } catch (e) {
           res = { ok: false, error: e.message };
