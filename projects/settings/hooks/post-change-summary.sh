@@ -278,12 +278,12 @@ else
         _sid=$(jq -r '.scriptId // ""' "$_ta_dir/.clasp.json" 2>/dev/null)
         clasp_label="topoassist [$(echo "$_sid" | cut -c1-12)...]"
       fi
-      clasp_status="${clasp_label} pushed by edit hook at ${pushed_at} ✓ (no GAS files in this commit)"
+      clasp_status="${clasp_label} pushed by edit hook at ${pushed_at} ✓"
     else
-      clasp_status="N/A (no GAS files in this commit)"
+      clasp_status="N/A"
     fi
   else
-    clasp_status="N/A (no GAS files in this commit)"
+    clasp_status="N/A"
   fi
 fi
 

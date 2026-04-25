@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.29 | 2026-04-25 12:07:54 -->
+<!-- TopoAssist v260425.31 | 2026-04-25 12:12:15 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -1101,14 +1101,16 @@
     }
 
     function _navigateVlan(vid, occIdx) {
-      showNavToast('Jumping to VLAN ' + vid + '\u2026');
+      var _entry = vlanSummary.filter(function(v) { return v.vid === vid; })[0];
+      var _devs  = (_entry && _entry.devices && _entry.devices.length) ? _entry.devices : null;
+      var _dev   = _devs ? _devs[occIdx % _devs.length] : null;
+      showNavToast('Jumping to VLAN ' + vid + (_dev ? ' on ' + _dev : '') + '\u2026');
       _refreshVlanStatus();
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.total > 0) {
             sapVlanOccIdx[vid] = r.idx;
             sapVlanTotal[vid]  = r.total;
-            if (r.device) showNavToast('Jumping to VLAN ' + vid + ' on ' + r.device + '\u2026');
           } else {
             sapVlanTotal[vid] = 0;
           }
