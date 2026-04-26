@@ -1,10 +1,10 @@
-// TopoAssist v260426.38 | 2026-04-26 12:54:50
+// TopoAssist v260426.40 | 2026-04-26 12:56:05
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.38";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.40";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -802,8 +802,8 @@ function openUserGuide() {
 // Defines the exact Default Order & Options
 const DEFAULT_SCHEMA_ARRAY = [
   { key: 'int', label: 'Interface', options: [] },
-  { key: 'po', label: 'Port-Channel', options: [] },
   { key: 'sp_mode', label: 'Mode', options: ['l2-et-access', 'l2-et-trunk', 'l2-po-access', 'l2-po-trunk', 'l3-et-int', 'l3-et-sub-int', 'l3-po-int', 'l3-po-sub-int'] },
+  { key: 'po', label: 'Port-Channel', options: [] },
   { key: 'vlan', label: 'VLANs', options: [] },
   { key: 'svi_vlan', label: 'SVI VLANs', options: [] },  // free-text: 'all' or VLAN IDs e.g. '10' or '10,20'
   { key: 'ip_type', label: 'IP Type', options: ['p2p', 'gw'] },
