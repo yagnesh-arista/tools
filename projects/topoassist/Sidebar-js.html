@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.78 | 2026-04-26 19:11:23 -->
+<!-- TopoAssist v260426.80 | 2026-04-26 19:24:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.78";  // keep in sync with Code.gs
+const APP_VERSION = "260426.80";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9607,35 +9607,7 @@ def _extract_session_diff(output):
     return "\\n".join(diff).strip()
 
 
-# -- Section-level cleaners for idempotent push --------------------------------
-
-_VXLAN_IFACE_RE = re.compile(r'^interface\s+Vxlan\d+\s*$', re.IGNORECASE)
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
-
-
-def _prepend_section_cleaners(config_text):
-    """Inject Vxlan cleanup sub-commands inside each Vxlan interface block.
-    Injects 'default vxlan vlan 1-4094 vni' and 'default vxlan flood vtep'
-    unconditionally as the first sub-commands — EOS no-ops these when nothing
-    is configured. All other sections pass through unchanged."""
-    lines = config_text.split("\\n")
-    out = []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if _VXLAN_IFACE_RE.match(line.strip()):
-            out.append(line)
-            i += 1
-            sub_start = i
-            while i < len(lines) and lines[i] and lines[i][0] in (' ', '\\t'):
-                i += 1
-            out.append(' default vxlan vlan 1-4094 vni')
-            out.append(' default vxlan flood vtep')
-            out.extend(lines[sub_start:i])
-        else:
-            out.append(line)
-            i += 1
-    return "\\n".join(out)
 
 
 # -- SSH stderr cleaner ---------------------------------------------------------
@@ -9874,8 +9846,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False):
-        cleaned = _prepend_section_cleaners(config_text)
-        lines = [l for l in cleaned.strip().split("\\n") if l.strip()]
+        lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
         if not dry_run:
