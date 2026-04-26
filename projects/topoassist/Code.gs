@@ -1,10 +1,10 @@
-// TopoAssist v260426.52 | 2026-04-26 15:26:34
+// TopoAssist v260426.53 | 2026-04-26 15:36:23
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.52";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.53";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5857,25 +5857,30 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
   });
 
   // --- 4. CONFIGURE GLOBAL NEIGHBORS ---
+  const seenGlobalNeighbors = new Set();
   Object.keys(globalPeers).forEach(key => {
     globalPeers[key].forEach(item => {
       const p = item.params;
       const descSuffix = `To ${item.name} via ${p.interface} #TA`;
 
-      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
+      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag) && !seenGlobalNeighbors.has(`v4:${p.peerIpV4}`)) {
+        seenGlobalNeighbors.add(`v4:${p.peerIpV4}`);
         configLines.push(` neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
         configLines.push(` neighbor ${p.peerIpV4} description ${descSuffix} (IPv4)`);
       }
-      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag)) {
+      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag) && !seenGlobalNeighbors.has(`v6:${p.peerIpV6}`)) {
+        seenGlobalNeighbors.add(`v6:${p.peerIpV6}`);
         configLines.push(` neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
         configLines.push(` neighbor ${p.peerIpV6} description ${descSuffix} (IPv6)`);
       }
-      if (p.interface && s.bgp_rfc5549) {
+      if (p.interface && s.bgp_rfc5549 && !seenGlobalNeighbors.has(`iface:${p.interface}`)) {
+        seenGlobalNeighbors.add(`iface:${p.interface}`);
         configLines.push(` neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
       }
 
       if (isEvpnEnabled && !p.isMlag && isPeerEvpn(item.name)) {
-        if (item.loopbackV4 && s.evpn_ipv4 !== false) {
+        if (item.loopbackV4 && s.evpn_ipv4 !== false && !seenGlobalNeighbors.has(`ov4:${item.loopbackV4}`)) {
+          seenGlobalNeighbors.add(`ov4:${item.loopbackV4}`);
           configLines.push(` neighbor ${item.loopbackV4} peer group ${item.pgOvV4}`);
           configLines.push(` neighbor ${item.loopbackV4} description Overlay to ${item.name} #TA`);
         }
@@ -5884,8 +5889,11 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
           const bgpLoBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
           const pidLoId = pid + bgpLoBase;
           const v6Loop = item.loopbackV6 || `${pidLoId}:${pidLoId}:${pidLoId}::${pidLoId}`;
-          configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
-          configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6) #TA`);
+          if (!seenGlobalNeighbors.has(`ov6:${v6Loop}`)) {
+            seenGlobalNeighbors.add(`ov6:${v6Loop}`);
+            configLines.push(` neighbor ${v6Loop} peer group ${item.pgOvV6}`);
+            configLines.push(` neighbor ${v6Loop} description Overlay to ${item.name} (v6) #TA`);
+          }
         }
       }
     });
@@ -5954,23 +5962,27 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
     configLines.push(`  redistribute connected`);
 
     const activeVrfGroups = new Set();
+    const seenVrfNeighbors = new Set();
 
     // A. Apply Neighbors
     vrfPeers[vrfName].forEach(item => {
       const p = item.params;
       const descSuffix = `To ${item.name} via ${p.interface} #TA`;
 
-      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag)) {
+      if (p.peerIpV4 && (s.bgp_ipv4 || p.isMlag) && !seenVrfNeighbors.has(`v4:${p.peerIpV4}`)) {
+        seenVrfNeighbors.add(`v4:${p.peerIpV4}`);
         configLines.push(`  neighbor ${p.peerIpV4} peer group ${item.pgV4}`);
         configLines.push(`  neighbor ${p.peerIpV4} description ${descSuffix}`);
         activeVrfGroups.add(item.pgV4);
       }
-      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag)) {
+      if (p.peerIpV6 && (s.bgp_ipv6 || p.isMlag) && !seenVrfNeighbors.has(`v6:${p.peerIpV6}`)) {
+        seenVrfNeighbors.add(`v6:${p.peerIpV6}`);
         configLines.push(`  neighbor ${p.peerIpV6} peer group ${item.pgV6}`);
         configLines.push(`  neighbor ${p.peerIpV6} description ${descSuffix}`);
         activeVrfGroups.add(item.pgV6);
       }
-      if (p.interface && s.bgp_rfc5549) {
+      if (p.interface && s.bgp_rfc5549 && !seenVrfNeighbors.has(`iface:${p.interface}`)) {
+        seenVrfNeighbors.add(`iface:${p.interface}`);
         configLines.push(`  neighbor interface ${p.interface} peer-group ${item.pgV6Int}`);
         activeVrfGroups.add(item.pgV6Int);
       }
