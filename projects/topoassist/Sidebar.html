@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.88 | 2026-04-26 20:18:56 -->
+<!-- TopoAssist v260426.89 | 2026-04-26 20:28:06 -->
 <!DOCTYPE html>
 <html>
 
@@ -453,6 +453,9 @@
     </div>
     <div style="padding: 18px 22px; font-family: 'JetBrains Mono', monospace; overflow-y: auto; flex: 1; min-height: 0;">
 
+      <!-- DATA PLANE group -->
+      <div class="tech-plane-divider"><span class="tech-plane-divider-label">Data Plane</span><span class="tech-plane-divider-line"></span></div>
+
       <!-- GATEWAY (GW) INTERFACE: independent IPv4/IPv6 checkboxes (always enabled) -->
       <div class="tech-section-label">GATEWAY (GW) INTERFACE</div>
       <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
@@ -473,6 +476,9 @@
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6" value="ipv4ipv6" class="chk-input"> IPv4 + IPv6</label>
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input"> IPv4 + IPv6 Unnum</label>
       </div>
+
+      <!-- CONTROL PLANE group -->
+      <div class="tech-plane-divider"><span class="tech-plane-divider-label">Control Plane</span><span class="tech-plane-divider-line"></span></div>
 
       <!-- PROTOCOL UNDERLAY: BGP + OSPF as horizontal option rows -->
       <div class="tech-section-label">PROTOCOL UNDERLAY</div>
@@ -496,6 +502,9 @@
           </div>
         </div>
       </div>
+
+      <!-- OVERLAY group -->
+      <div class="tech-plane-divider"><span class="tech-plane-divider-label">Overlay</span><span class="tech-plane-divider-line"></span></div>
 
       <!-- PROTOCOL OVERLAY: VXLAN + EVPN as underlay-style rows -->
       <div class="tech-section-label">PROTOCOL OVERLAY</div>

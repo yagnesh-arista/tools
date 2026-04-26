@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.88 | 2026-04-26 20:18:13 -->
+<!-- TopoAssist v260426.89 | 2026-04-26 20:27:14 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1306,6 +1306,30 @@
     transition: opacity 0.15s, background 0.1s;
   }
   .tech-proto-row:hover { background: rgba(59,130,246,0.05); }
+
+  .tech-plane-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    margin-top: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tech-plane-divider-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #3b82f6;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  .tech-plane-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-light);
+  }
 
   .tech-section-label {
     font-size: 10px;
