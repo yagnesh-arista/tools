@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.56 | 2026-04-26 15:57:46 -->
+<!-- TopoAssist v260426.57 | 2026-04-26 15:59:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.56";  // keep in sync with Code.gs
+const APP_VERSION = "260426.57";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9373,7 +9373,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260426.19"
+VERSION = "260426.20"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -13560,8 +13560,9 @@ function _injectPushAsnChangeWarning(asnChanged) {
     'background:#fef9c3;border:1px solid #fde047;border-radius:4px;' +
     'padding:8px 10px;margin-bottom:8px;color:#713f12;line-height:1.5;' +
     'user-select:none;-webkit-user-select:none;">' +
-    'BGP ASN changing: <b>' + asnChanged.from + '</b> \u2192 <b>' + asnChanged.to +
-    '</b> \u2014 BGP will reconverge after commit.' +
+    '<b>BGP AS mismatch:</b> device is running AS <b>' + asnChanged.from + '</b>, config uses AS <b>' + asnChanged.to + '</b>.<br>' +
+    '<code style="font-family:\'JetBrains Mono\',monospace;font-size:11px;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">no router bgp ' + asnChanged.from + '</code>' +
+    ' is included in the diff above. BGP will reconverge after commit.' +
     '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
 }

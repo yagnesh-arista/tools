@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.26 | 2026-04-26 12:18:17
+# topoassist v260426.57 | 2026-04-26 15:59:13
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260426.16","port":8765}
+  GET  /health      → {"status":"ok","version":"260426.20","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.19"
+VERSION           = "260426.20"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -864,13 +864,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
-        # Best-effort; runs on any push (not just all_ifaces) in case config_text
-        # includes BGP from a port-specific push. Returns ([], None) when no BGP or no change.
+        # Runs on all push modes (dry_run included) so the diff reflects the removal
+        # and the client can warn the user before they confirm the push.
+        # Returns ([], None) when config has no BGP block or ASN is unchanged.
         asn_changed = None
-        if not dry_run:
-            bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
-            if bgp_asn_cmds:
-                lines = bgp_asn_cmds + lines
+        bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
+        if bgp_asn_cmds:
+            lines = bgp_asn_cmds + lines
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
