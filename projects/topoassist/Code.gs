@@ -1,10 +1,10 @@
-// TopoAssist v260426.82 | 2026-04-26 20:01:40
+// TopoAssist v260426.84 | 2026-04-26 20:03:34
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.82";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.84";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6241,7 +6241,7 @@ function _compressVniLines(vlansIterable, vniBase) {
 
 /**
 * Generates VXLAN Data Plane Config
-* - Calculates VTEP IP (Loopback1 for MLAG, Loopback0 for Standalone)
+* - Calculates VTEP IP (Lo0 source + Lo1 shared MLAG VTEP, Loopback0 for Standalone)
 * - Maps VNIs
 * - [FIX] Flood List is ONLY generated if EVPN is DISABLED.
 * - [FIX] Flood List ONLY includes Leaf VTEPs (GW + P2P), ignoring Spines.
