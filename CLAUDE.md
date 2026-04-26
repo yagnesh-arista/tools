@@ -226,6 +226,35 @@ panel.style.overflow = 'hidden';
 **Overlay rule**: `toggleModalMinimize()` must hide `editOverlay` on minimize and restore it on un-minimize using `data-had-overlay` to remember whether the overlay was visible before. Never write a modal-specific minimize that bypasses this. Modals opened with overlay (configModal, generateAllModal, editModal, pushConfirmModal) would otherwise leave the dim backdrop blocking all background interaction.
 Full pattern: `~/.claude/rules/ui.md` (Rule 24)
 
+## 25. Minimize Button Position Standard
+
+Every modal minimize button (`.btn-modal-minimize`) must sit **immediately to the left of** `.btn-modal-close`, forming an adjacent `[−][×]` pair flush at the modal header's right edge.
+
+**Auto-injection (never hand-write in HTML):** `_injectMinimizeButtons()` runs at `initApp()` time and inserts the button into every `.modal-std` and `.modal-floating` header that lacks one, using `insertBefore(btn, closeBtn)`. Never manually place a `<button class="btn-modal-minimize">` in HTML — the injector handles it.
+
+```javascript
+// _injectMinimizeButtons() — runs once at initApp()
+document.querySelectorAll('.modal-std .modal-header, .modal-floating .modal-header').forEach(hdr => {
+  if (hdr.querySelector('.btn-modal-minimize')) return; // already present
+  const closeBtn = hdr.querySelector('.btn-modal-close');
+  if (!closeBtn) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn-modal-minimize';
+  // ... SVG + click handler
+  hdr.insertBefore(btn, closeBtn); // ← always immediately before ×
+});
+```
+
+**CSS positioning:** `.btn-modal-minimize { margin-left: auto; }` pushes the `[−][×]` pair to the far-right of the header. Any header title/label must sit to the left (natural flow) — never use `margin-left: auto` on the title.
+
+**Checklist for every new modal:**
+- [ ] Do NOT add `<button class="btn-modal-minimize">` in HTML — the injector adds it
+- [ ] Verify `_injectMinimizeButtons()` is called at `initApp()`
+- [ ] `.btn-modal-minimize { margin-left: auto }` is in Sidebar-css.html
+- [ ] The `[−]` button is always the leftmost of the `[−][×]` pair (never `[×][−]`)
+
+Full pattern: `~/.claude/rules/ui.md` (Rule 25)
+
 ## 23. Memory Tiering — Never Duplicate Tier 1 in Memory
 
 The knowledge system has three tiers:
