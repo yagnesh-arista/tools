@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-25 (Rule 6 updated: explicit core principle — all visible text must be selectable/copyable by the user, no exceptions) -->
+<!-- rules-synced: 2026-04-26 (Rule 25 added: minimize button position standard — _injectMinimizeButtons() auto-injection, margin-left:auto, [−][×] order; Check 22: modal white bg; Check 23: minimize position) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
