@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.27 | 2026-04-26 12:20:53 -->
+<!-- TopoAssist v260426.28 | 2026-04-26 12:22:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.27";  // keep in sync with Code.gs
+const APP_VERSION = "260426.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4680,7 +4680,6 @@ function applyEvpnGating() {
   ['evpnServiceSection', 'rowEvpnSvcPerVlan', 'rowEvpnSvcBundle'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.style.opacity       = evpnOn ? '' : '0.35';
     el.style.pointerEvents = evpnOn ? '' : 'none';
   });
   ['evpnServicePerVlan', 'evpnServiceBundle'].forEach(function(id) {
@@ -4688,23 +4687,20 @@ function applyEvpnGating() {
     if (el) el.disabled = !evpnOn;
   });
 
-  // VGW section header — visible when EVPN or MLAG active (VARP alone is sufficient)
+  // VGW section — visible when EVPN or MLAG active (VARP alone is sufficient)
   const vgwSection = document.getElementById('evpnVgwSection');
-  if (vgwSection) {
-    vgwSection.style.opacity       = varpOk ? '' : '0.35';
-    vgwSection.style.pointerEvents = varpOk ? '' : 'none';
-  }
+  if (vgwSection) vgwSection.style.pointerEvents = varpOk ? '' : 'none';
 
   // Anycast GW — requires EVPN
   const anycastLabel = document.getElementById('labelGwAnycast');
   const anycastRadio = document.getElementById('gwL3TypeAnycast');
-  if (anycastLabel) { anycastLabel.style.opacity = evpnOn ? '' : '0.35'; anycastLabel.style.pointerEvents = evpnOn ? '' : 'none'; }
+  if (anycastLabel) anycastLabel.style.pointerEvents = evpnOn ? '' : 'none';
   if (anycastRadio) anycastRadio.disabled = !evpnOn;
 
   // VARP — requires EVPN or MLAG
   const varpLabel = document.getElementById('labelGwVarp');
   const varpRadio = document.getElementById('gwL3TypeVarp');
-  if (varpLabel) { varpLabel.style.opacity = varpOk ? '' : '0.35'; varpLabel.style.pointerEvents = varpOk ? '' : 'none'; }
+  if (varpLabel) varpLabel.style.pointerEvents = varpOk ? '' : 'none';
   if (varpRadio) varpRadio.disabled = !varpOk;
 
   // Auto-switch: if the currently selected option just became disabled, switch to the other
@@ -4795,7 +4791,6 @@ function applyTechCompat(mode) {
     const ok = allowed.has(id);
     if (!ok) el.checked = false;
     el.disabled = !ok;
-    row.style.opacity       = ok ? '' : '0.35';
     row.style.pointerEvents = ok ? '' : 'none';
   });
 }
