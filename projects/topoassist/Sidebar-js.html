@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.12 | 2026-04-26 11:25:16 -->
+<!-- TopoAssist v260426.13 | 2026-04-26 11:26:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.12";  // keep in sync with Code.gs
+const APP_VERSION = "260426.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3643,9 +3643,15 @@ function moveTooltip(e) {
 // --- 1. GLOBAL LISTENER: Tracks mouse everywhere to ensure smooth transparency ---
 document.addEventListener('mousemove', function (e) {
   lastMouseEvent = e;
-  // Only run if the tooltip exists
   const tt = document.getElementById("tooltip");
   if (tt && tt.style.display !== 'none' && tt.style.display !== '') {
+    // Safety: if tooltip is visible but cursor drifted off all port rows (e.g. a floating
+    // panel slid over the row without triggering mouseleave), forcibly hide it.
+    if (activeTooltipPortId && !e.target.closest('.port-row')) {
+      cancelTooltip();
+      hideTooltip();
+      return;
+    }
     moveTooltip(e);
   }
 });
@@ -4664,10 +4670,11 @@ function updateVarpMacVisibility() {
 let _techHasMlag = false;
 
 // Gates EVPN service radios and VGW options based on EVPN/MLAG selection.
-// Anycast GW requires EVPN. VARP requires EVPN or MLAG.
+// Anycast GW requires EVPN. VARP requires EVPN or MLAG. VGW section header visible when either applies.
 function applyEvpnGating() {
   const evpnOn = !!(document.getElementById('chkEvpnIpv4') && document.getElementById('chkEvpnIpv4').checked) ||
                  !!(document.getElementById('chkEvpnIpv6') && document.getElementById('chkEvpnIpv6').checked);
+  const varpOk = evpnOn || _techHasMlag;
 
   // EVPN SERVICE rows — only usable when EVPN is enabled
   ['evpnServiceSection', 'rowEvpnSvcPerVlan', 'rowEvpnSvcBundle'].forEach(function(id) {
@@ -4681,6 +4688,13 @@ function applyEvpnGating() {
     if (el) el.disabled = !evpnOn;
   });
 
+  // VGW section header — visible when EVPN or MLAG active (VARP alone is sufficient)
+  const vgwSection = document.getElementById('evpnVgwSection');
+  if (vgwSection) {
+    vgwSection.style.opacity       = varpOk ? '' : '0.35';
+    vgwSection.style.pointerEvents = varpOk ? '' : 'none';
+  }
+
   // Anycast GW — requires EVPN
   const anycastLabel = document.getElementById('labelGwAnycast');
   const anycastRadio = document.getElementById('gwL3TypeAnycast');
@@ -4688,7 +4702,6 @@ function applyEvpnGating() {
   if (anycastRadio) anycastRadio.disabled = !evpnOn;
 
   // VARP — requires EVPN or MLAG
-  const varpOk = evpnOn || _techHasMlag;
   const varpLabel = document.getElementById('labelGwVarp');
   const varpRadio = document.getElementById('gwL3TypeVarp');
   if (varpLabel) { varpLabel.style.opacity = varpOk ? '' : '0.35'; varpLabel.style.pointerEvents = varpOk ? '' : 'none'; }
@@ -11306,14 +11319,14 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
       : `${changed} line${changed !== 1 ? 's' : ''} will change`;
     html += `<div style="margin-bottom:8px;color:var(--text-muted,#94a3b8);font-size:11px;">${changeLabel}</div>`;
     html += `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;` +
-            `background:#0f172a;border-radius:4px;padding:8px;overflow-x:auto;` +
+            `background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:8px;overflow-x:auto;` +
             `max-height:280px;white-space:pre;margin:0;">`;
     html += lines.map(l => {
       const esc = escapeHtml(l);
-      if (l.startsWith('+')) return `<span style="color:#4ade80;">${esc}</span>`;
-      if (l.startsWith('-')) return `<span style="color:#f87171;">${esc}</span>`;
-      if (l.startsWith('@')) return `<span style="color:#94a3b8;">${esc}</span>`;
-      return `<span style="color:#cbd5e1;">${esc}</span>`;
+      if (l.startsWith('+')) return `<span style="color:#16a34a;">${esc}</span>`;
+      if (l.startsWith('-')) return `<span style="color:#dc2626;">${esc}</span>`;
+      if (l.startsWith('@')) return `<span style="color:#64748b;">${esc}</span>`;
+      return `<span style="color:#1e293b;">${esc}</span>`;
     }).join('\n');
     html += `</pre>`;
   }
@@ -11466,14 +11479,14 @@ async function commitPushConfig() {
             const dlines = (vRes.diff || '').split('\n');
             _ptSet('pt3', '#f59e0b', `${rem} line${rem !== 1 ? 's' : ''} still differ`);
             if (titleEl) titleEl.textContent = 'Partial Push';
-            let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#0f172a;border-radius:4px;` +
+            let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;` +
               `padding:8px;overflow-x:auto;max-height:220px;white-space:pre;margin:0;">`;
             dhtml += dlines.map(l => {
               const e = escapeHtml(l);
-              if (l.startsWith('+')) return `<span style="color:#4ade80;">${e}</span>`;
-              if (l.startsWith('-')) return `<span style="color:#f87171;">${e}</span>`;
-              if (l.startsWith('@')) return `<span style="color:#94a3b8;">${e}</span>`;
-              return `<span style="color:#cbd5e1;">${e}</span>`;
+              if (l.startsWith('+')) return `<span style="color:#16a34a;">${e}</span>`;
+              if (l.startsWith('-')) return `<span style="color:#dc2626;">${e}</span>`;
+              if (l.startsWith('@')) return `<span style="color:#64748b;">${e}</span>`;
+              return `<span style="color:#1e293b;">${e}</span>`;
             }).join('\n') + '</pre>';
             _ptDetail(dhtml);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
