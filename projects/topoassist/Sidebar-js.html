@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.37 | 2026-04-26 12:54:29 -->
+<!-- TopoAssist v260426.38 | 2026-04-26 12:55:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.37";  // keep in sync with Code.gs
+const APP_VERSION = "260426.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3231,6 +3231,18 @@ function startFlexibleLayout() {
   d3.selectAll(".node:not(.dimmed)")
     .data(nodesData, function (d) { return d ? d.id : (this.dataset ? this.dataset.id : null); })
     .call(drag);
+
+  // Group rect overlay — behind node cards (z-index:1 < node z-index:20)
+  d3.select('#flex-grect-svg').remove();
+  const flexSvg = d3.select('#canvas-surface').append('svg')
+    .attr('id', 'flex-grect-svg')
+    .style('position', 'absolute').style('top', '0').style('left', '0')
+    .style('width', '100%').style('height', '100%')
+    .style('overflow', 'visible').style('pointer-events', 'none')
+    .style('z-index', '1');
+  const flexRectGroup  = flexSvg.append('g').attr('class', 'group-rects');
+  const flexLabelGroup = flexSvg.append('g').attr('class', 'group-rect-labels');
+  renderGroupRectsInto(flexRectGroup, flexLabelGroup);
 }
 
 function stopFlexibleLayout() {
@@ -3239,6 +3251,7 @@ function stopFlexibleLayout() {
     d3Simulation.on("tick", null);
     d3Simulation = null;
   }
+  d3.select('#flex-grect-svg').remove();
 }
 
 /**
@@ -6947,12 +6960,10 @@ function redrawLinks() {
     if (type === 'error') canvasCtx.setLineDash([6, 4]);
     else canvasCtx.setLineDash([]);
 
-    canvasCtx.beginPath();
     links.forEach(l => {
       const pathStr = getLinkPathString(l);
       if (pathStr) canvasCtx.stroke(new Path2D(pathStr));
     });
-    canvasCtx.stroke();
     canvasCtx.restore();
   };
 
@@ -7381,7 +7392,7 @@ function drawInteractionSVG(link) {
 
 function clearInteractionSVG() {
   let svg = document.getElementById("svg-layer");
-  svg.innerHTML = "";
+  if (svg) svg.innerHTML = "";
   document.querySelectorAll(".port-row.highlight").forEach(el => el.classList.remove("highlight"));
 }
 
@@ -14616,9 +14627,15 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
 
 function refreshGroupRects() {
   const rectGroup = d3.select("#svg-layer .group-rects");
-  if (rectGroup.empty()) return;
-  const labelOverlay = d3.select("#svg-layer .group-rect-labels");
-  renderGroupRectsInto(rectGroup, labelOverlay.empty() ? null : labelOverlay);
+  if (!rectGroup.empty()) {
+    const labelOverlay = d3.select("#svg-layer .group-rect-labels");
+    renderGroupRectsInto(rectGroup, labelOverlay.empty() ? null : labelOverlay);
+  }
+  const flexRectGroup = d3.select("#flex-grect-svg .group-rects");
+  if (!flexRectGroup.empty()) {
+    const flexLabelGroup = d3.select("#flex-grect-svg .group-rect-labels");
+    renderGroupRectsInto(flexRectGroup, flexLabelGroup.empty() ? null : flexLabelGroup);
+  }
 }
 
 // --- MODAL ---
