@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.73 | 2026-04-26 18:49:22 -->
+<!-- TopoAssist v260426.74 | 2026-04-26 19:01:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -1249,6 +1249,24 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <div class="info-box" style="border-left-color:#f59e0b;background:#fffbeb;margin-bottom:10px;">
       <b>Note:</b> Config push is supported for <code>ssh</code> and <code>eapi</code> transports only. The <code>rest</code> and <code>gnmi</code> transports are read-only.
+    </div>
+
+    <h3>What Gets Pushed</h3>
+    <p style="font-size:13px;">The config sent to the device is built in two layers:</p>
+
+    <p style="font-size:13px;"><b>Layer 1 — Generated config (View Config)</b><br>
+    The full EOS config is generated from the sheet and is exactly what <b>View Config</b> shows. This is the single source of truth — <code>device_bridge.py</code> does not transform or rewrite it in any way. Vxlan cleanup commands (<code>default vxlan vlan 1-4094 vni</code>, <code>default vxlan flood vtep</code>) are already embedded in the generated config so that stale additive sub-commands are cleared before new mappings are pushed — they are visible in View Config and appear in the dry-run diff.</p>
+
+    <p style="font-size:13px;"><b>Layer 2 — Push-time additions (device-state-dependent)</b><br>
+    Two sets of cleanup commands are prepended by <code>device_bridge.py</code> at push time because they require knowing the device's current running state — they cannot be pre-computed from the sheet alone:</p>
+
+    <ul style="font-size:13px;">
+      <li><b>Orphan interface cleanup</b> — when a full-device push is triggered (not single-interface), the bridge queries <code>show interfaces description</code> and finds any <code>#TA</code>-tagged interface that is not present in the new config. For each orphan it prepends <code>default interface EtX</code> (physical/PO) or <code>no interface EtX.Y</code> / <code>no interface VlanN</code> (sub-interface/SVI) so the interface is removed in the same configure session.</li>
+      <li><b>BGP ASN change</b> — if the config being pushed contains a <code>router bgp &lt;new-asn&gt;</code> block and the device is currently running a <i>different</i> ASN, the bridge prepends <code>no router bgp &lt;old-asn&gt;</code>. EOS cannot change the AS number in-place; the old process must be removed before the new one can be committed. The push modal shows a yellow warning banner when this applies.</li>
+    </ul>
+
+    <div class="info-box info-box--dim">
+      Both push-time additions are always visible in the <b>dry-run diff</b> before you click Commit — so the complete picture of what will change on the device is shown upfront, even for commands that come from device state rather than the sheet.
     </div>
 
     <h3>Reconcile — Orphan Cleanup</h3>
