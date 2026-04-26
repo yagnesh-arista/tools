@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.86 | 2026-04-26 20:09:05 -->
+<!-- TopoAssist v260426.87 | 2026-04-26 20:12:21 -->
 <!DOCTYPE html>
 <html>
 
@@ -672,13 +672,23 @@ clasp login --no-localhost</pre>
     </div>
     <p style="font-size:13px; margin-top:8px;">Assign labels in <b>Device Manager</b> via the Tags column. Multiple labels per device are supported.</p>
 
-    <h3>VTEP Device Cards (Vx1 Row)</h3>
-    <p style="font-size:13px;">For LEAF devices with VXLAN configured (one or more <code>Vx1</code> rows in the sheet), a pinned <b>Vx1 summary row</b> appears at the top of the device card port list — above all physical ports, regardless of the active sort mode.</p>
+    <h3>Loopback &amp; VTEP Pinned Rows</h3>
+    <p style="font-size:13px;">Every Arista device card shows pinned rows above the physical port list for logical interfaces — <b>Loopback</b> and <b>Vx1</b>. These rows have no cabling association and never trigger audit checks. Click any pinned row to view, copy, or push its generated config.</p>
+
+    <h4 style="font-size:13px; margin:10px 0 4px;">Loopback rows (blue)</h4>
+    <ul style="font-size:13px;">
+      <li><b>Lo0</b> — present on every Arista device. Carries the unique device IP (<code>id.id.id.id/32</code>, where <code>id = sheetIndex + lo_base</code>). Used as BGP/OSPF router-id and underlay peer address. For standalone VTEPs, also used as <code>vxlan source-interface</code>.</li>
+      <li><b>Lo1</b> — present on MLAG VTEP devices only. Carries the shared MLAG pair IP (<code>min.min.max.max/32</code>, same on both peers). Used as <code>vxlan mlag source-interface Loopback1</code> so remote VTEPs see the pair as a single VTEP.</li>
+      <li><b>Cat column:</b> <span style="background:rgba(59,130,246,0.12);color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;">LO</span> pill.</li>
+    </ul>
+
+    <h4 style="font-size:13px; margin:10px 0 4px;">Vx1 row (teal) — VTEP devices only</h4>
+    <p style="font-size:13px;">For LEAF devices with VXLAN configured (one or more <code>Vx1</code> rows in the sheet), a pinned <b>Vx1 summary row</b> appears below the loopback rows.</p>
     <ul style="font-size:13px;">
       <li><b>Et column:</b> <code style="color:#0d9488;">Vx1</code> — shown in teal to distinguish it from physical ports.</li>
       <li><b>Mode column:</b> AP VLAN list in compressed range format (e.g. <code>10,20-25,100</code>) — collected from all <code>Vx1</code> rows for that device. Hover to see the full list if truncated.</li>
       <li><b>Cat column:</b> <span style="background:rgba(20,184,166,0.15);color:#0d9488;border-radius:4px;padding:1px 5px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;">VTEP</span> pill.</li>
-      <li>The row is <b>read-only</b> — no click, no cable hover, no connectivity dot. It never triggers audit checks and has no cabling association.</li>
+      <li>Click to open the <code>interface Vxlan1</code> config block — view, copy, or push it independently.</li>
     </ul>
 
     <!-- ================================================================ -->
