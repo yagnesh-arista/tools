@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.69 | 2026-04-26 18:45:10
+# topoassist v260426.71 | 2026-04-26 18:48:15
 """
 TopoAssist Device Bridge
 ========================
@@ -797,8 +797,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
           - 'end' exits to exec mode from any sub-mode; re-entering the session lands
             at session root where show/commit/abort/exit all work.
           - 'terminal length 0' (SSH) suppresses --More-- pagination."""
-        cleaned = _prepend_section_cleaners(config_text)
-        lines = [l for l in cleaned.strip().split('\n') if l.strip()]
+        lines = [l for l in config_text.strip().split('\n') if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
