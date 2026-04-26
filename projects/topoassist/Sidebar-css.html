@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.19 | 2026-04-26 11:59:08 -->
+<!-- TopoAssist v260426.20 | 2026-04-26 12:00:20 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1195,11 +1195,54 @@
   }
 
   .chk-input {
+    appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
-    accent-color: var(--primary);
     width: 14px;
     height: 14px;
-    margin: 0
+    min-width: 14px;
+    margin: 0;
+    flex-shrink: 0;
+    border: 1.5px solid var(--border-light, #cbd5e1);
+    border-radius: 3px;
+    background: var(--bg-body, #fff);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 10px;
+    vertical-align: middle;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .chk-input:checked {
+    background-color: var(--primary, #3b82f6);
+    border-color: var(--primary, #3b82f6);
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 10 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  }
+  .chk-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.18); }
+  .chk-input:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .proto-underlay-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    gap: 16px;
+    background: var(--bg-body, #fff);
+  }
+  .proto-underlay-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    min-width: 36px;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .proto-underlay-opts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 20px;
   }
 
   .tech-radio-label {

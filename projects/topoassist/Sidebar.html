@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.19 | 2026-04-26 11:59:08 -->
+<!-- TopoAssist v260426.20 | 2026-04-26 12:01:22 -->
 <!DOCTYPE html>
 <html>
 
@@ -457,33 +457,41 @@
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input"> IPv4 + IPv6 Unnum</label>
       </div>
 
-      <!-- PROTOCOLS: grid + EVPN service sub-section -->
-      <div class="tech-section-label">PROTOCOLS</div>
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border-light); border-radius:6px; overflow:hidden;">
-        <!-- BGP -->
+      <!-- PROTOCOL UNDERLAY: BGP + OSPF as horizontal option rows -->
+      <div class="tech-section-label">PROTOCOL UNDERLAY</div>
+      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
+        <div class="proto-underlay-row">
+          <span class="proto-underlay-label">BGP</span>
+          <div class="proto-underlay-opts">
+            <label id="row-chkBgpIpv4" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4</label>
+            <label id="row-chkBgpIpv6" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
+            <label id="row-chkBgpIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
+            <label id="row-chkBgpRfc5549" class="tech-radio-label"><input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549</label>
+          </div>
+        </div>
+        <div style="height:1px; background:var(--border-light);"></div>
+        <div class="proto-underlay-row">
+          <span class="proto-underlay-label">OSPF</span>
+          <div class="proto-underlay-opts">
+            <label id="row-chkOspfIpv4" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4</label>
+            <label id="row-chkOspfIpv6" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
+            <label id="row-chkOspfIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTOCOL OVERLAY: DATA (VXLAN) | CONTROL (EVPN) two-column layout -->
+      <div class="tech-section-label">PROTOCOL OVERLAY</div>
+      <div style="display:grid; grid-template-columns:1fr 1.4fr; border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
+        <!-- DATA: VXLAN -->
         <div class="tech-proto-col">
-          <div class="tech-proto-header">BGP</div>
-          <label id="row-chkBgpIpv4" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4</label>
-          <label id="row-chkBgpIpv6" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
-          <label id="row-chkBgpIpv6Unnum" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
-          <label id="row-chkBgpRfc5549" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549</label>
-        </div>
-        <!-- OSPF -->
-        <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
-          <div class="tech-proto-header">OSPF</div>
-          <label id="row-chkOspfIpv4" class="tech-proto-row"><input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4</label>
-          <label id="row-chkOspfIpv6" class="tech-proto-row"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
-          <label id="row-chkOspfIpv6Unnum" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
-        </div>
-        <!-- VXLAN -->
-        <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
-          <div class="tech-proto-header">VXLAN</div>
+          <div class="tech-proto-header">DATA — VXLAN</div>
           <label id="row-chkVxlanIpv4" class="tech-proto-row"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
           <label id="row-chkVxlanIpv6" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
         </div>
-        <!-- EVPN -->
+        <!-- CONTROL: EVPN -->
         <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
-          <div class="tech-proto-header">EVPN</div>
+          <div class="tech-proto-header">CONTROL — EVPN</div>
           <label id="row-chkEvpnIpv4" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
           <label id="row-chkEvpnIpv6" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
           <div id="evpnServiceSection" style="display:flex; align-items:center; gap:4px; padding:6px 10px; border-bottom:1px solid var(--border-light);">
@@ -502,6 +510,14 @@
           </div>
           <label id="labelGwAnycast" class="tech-proto-row"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
           <label id="labelGwVarp" class="tech-proto-row" style="border-bottom:none;"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
+          <!-- Virtual Router MAC — inline, shown when any GW type is selected -->
+          <div id="rowVarpMac" style="display:none; border-top:1px solid var(--border-light); padding:8px 12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label for="inputVarpMac" style="font-size:11px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
+              <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
+                style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:4px 8px; outline:none; min-width:0;">
+            </div>
+          </div>
         </div>
       </div>
 
@@ -516,14 +532,6 @@
       </div>
       <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options are incompatible with the selected P2P interface mode.
-      </div>
-      <!-- Virtual Router MAC — shown for both anycast and VARP (both require ip virtual-router mac-address) -->
-      <div id="rowVarpMac" style="display:none; margin-bottom:18px;">
-        <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
-          <label for="inputVarpMac" style="font-size:12px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
-          <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
-            style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:5px 8px; outline:none; min-width:0;">
-        </div>
       </div>
 
       <!-- Validation error banner -->
