@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.29 | 2026-04-26 12:28:21 -->
+<!-- TopoAssist v260426.30 | 2026-04-26 12:29:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.29";  // keep in sync with Code.gs
+const APP_VERSION = "260426.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5509,32 +5509,39 @@ function clearVlanTrace() {
 * Allows isolating specific VLAN paths by hovering over the legend items.
 */
 function updateVlanLegend(vlanMap) {
+  const vlanIds = Object.keys(vlanMap);
+
+  // --- Floating legend VLAN section ---
+  const floatingGroup = document.getElementById('floatingVlanLegendGroup');
+  const floatingItems = document.getElementById('floatingVlanItems');
+  if (floatingGroup && floatingItems) {
+    if (vlanIds.length === 0) {
+      floatingGroup.style.display = 'none';
+    } else {
+      floatingItems.innerHTML = vlanIds
+        .sort((a, b) => parseInt(a) - parseInt(b))
+        .map(vid => `<div class="l-item" onmouseenter="isolateVlanPath('${vid}')" onmouseleave="restoreAllVlanPaths()"><span class="l-link" style="background:${vlanMap[vid]}"></span>VLAN ${vid}</div>`)
+        .join('');
+      floatingGroup.style.display = '';
+    }
+  }
+
+  // --- Legacy external vlan-legend (bottom-right overlay) ---
   let legend = document.getElementById("vlan-legend");
   if (!legend) {
     legend = document.createElement("div");
     legend.id = "vlan-legend";
     document.body.appendChild(legend);
   }
-
-  const vlanIds = Object.keys(vlanMap);
   if (vlanIds.length === 0) {
     legend.classList.remove("visible");
     return;
   }
-
   let html = `<div class="legend-title">VLAN Paths (Hover to Isolate)</div>`;
-
   vlanIds.sort((a, b) => parseInt(a) - parseInt(b)).forEach(vid => {
     const color = vlanMap[vid];
-    html += `
-<div class="legend-item"
-onmouseenter="isolateVlanPath('${vid}')"
-onmouseleave="restoreAllVlanPaths()">
-<span class="legend-swatch" style="background: ${color}"></span>
-<span class="legend-label">VLAN ${vid}</span>
-</div>`;
+    html += `<div class="legend-item" onmouseenter="isolateVlanPath('${vid}')" onmouseleave="restoreAllVlanPaths()"><span class="legend-swatch" style="background:${color}"></span><span class="legend-label">VLAN ${vid}</span></div>`;
   });
-
   legend.innerHTML = html;
   legend.classList.add("visible");
 }

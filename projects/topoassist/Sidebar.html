@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.29 | 2026-04-26 12:28:21 -->
+<!-- TopoAssist v260426.30 | 2026-04-26 12:28:47 -->
 <!DOCTYPE html>
 <html>
 
@@ -316,10 +316,14 @@
         <div class="legend-group">
           <div class="group-label">Roles</div>
           <div class="legend-row">
-            <div class="l-item"><span class="dot" style="background:#1e293b; border-color:#1e293b"></span>Spine</div>
-            <div class="l-item"><span class="dot" style="background:#3b82f6; border-color:#3b82f6"></span>Leaf</div>
-            <div class="l-item"><span class="dot" style="background:#065f46; border-color:#065f46"></span>L2</div>
-            <div class="l-item"><span class="dot" style="background:#92400e; border-color:#92400e"></span>Non-EOS</div>
+            <div class="l-item"><span class="dot" style="background:#7c3aed;border-color:#7c3aed"></span>Spine</div>
+            <div class="l-item"><span class="dot" style="background:#047857;border-color:#047857"></span>Leaf</div>
+            <div class="l-item"><span class="dot" style="background:#1d4ed8;border-color:#1d4ed8"></span>Harness</div>
+            <div class="l-item"><span class="dot" style="background:#b45309;border-color:#b45309"></span>Transit</div>
+            <div class="l-item"><span class="dot" style="background:#991b1b;border-color:#991b1b"></span>DUT</div>
+            <div class="l-item"><span class="dot" style="background:#0891b2;border-color:#0891b2"></span>IXIA</div>
+            <div class="l-item"><span class="dot" style="background:#be185d;border-color:#be185d"></span>Spirent</div>
+            <div class="l-item"><span class="square" style="background:#f1f5f9;border:1px solid #64748b;border-radius:0"></span>Non-EOS</div>
           </div>
         </div>
 
@@ -330,24 +334,35 @@
           <div class="legend-row">
             <div class="l-item"><span class="square p2p"></span>P2P</div>
             <div class="l-item"><span class="square gw"></span>GW</div>
-            <div class="l-item"><span class="square l2"></span>N/A (L2 Port)</div>
+            <div class="l-item"><span class="square l2"></span>N/A (L2)</div>
           </div>
         </div>
 
         <div class="legend-divider"></div>
 
         <div class="legend-group">
-          <div class="group-label">Status</div>
+          <div class="group-label">Port State</div>
           <div class="legend-row">
-            <div class="l-item">
-              <span class="dot" style="background-color:#10b981; width:8px; height:8px; display:inline-block; border-radius:50%; border:1px solid #059669; margin-right:4px;"></span>
-              Connected
-            </div>
-            <div class="l-item">
-              <span class="dot" style="background-color:#ef4444; width:8px; height:8px; display:inline-block; border-radius:50%; border:1px solid #dc2626; margin-right:4px;"></span>
-              Disconnected
-            </div>
+            <div class="l-item"><span class="dot op-up"></span>Up</div>
+            <div class="l-item"><span class="dot op-down"></span>No Link</div>
+            <div class="l-item"><span class="dot op-errdisabled"></span>Err-Dis</div>
+            <div class="l-item"><span class="dot op-disabled"></span>Disabled</div>
           </div>
+        </div>
+
+        <div class="legend-divider"></div>
+
+        <div class="legend-group">
+          <div class="group-label">Links</div>
+          <div class="legend-row">
+            <div class="l-item"><span class="l-link" style="background:#8b5cf6"></span>MLAG Peer</div>
+          </div>
+        </div>
+
+        <div id="floatingVlanLegendGroup" class="legend-group" style="display:none">
+          <div class="legend-divider"></div>
+          <div class="group-label">VLAN Paths <span style="font-weight:400;color:#94a3b8;font-size:10px">(hover to isolate)</span></div>
+          <div id="floatingVlanItems" class="legend-row"></div>
         </div>
 
       </div>
