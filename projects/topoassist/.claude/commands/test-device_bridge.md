@@ -6,7 +6,7 @@ Run the Python test suite for device_bridge.py pure functions.
 cd ~/claude/projects/topoassist && python3 -m pytest tests/ -v
 ```
 
-Expected: 70 passed, 0 failed.
+Expected: 73 passed, 0 failed.
 
 For GAS tests (Code.gs pure functions):
 - Open Apps Script editor (Extensions → Apps Script)
