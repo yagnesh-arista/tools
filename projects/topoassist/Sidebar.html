@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.67 | 2026-04-25 14:28:44 -->
+<!-- TopoAssist v260426.2 | 2026-04-26 10:14:50 -->
 <!DOCTYPE html>
 <html>
 
@@ -485,24 +485,21 @@
         <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
           <div class="tech-proto-header">EVPN</div>
           <label id="row-chkEvpnIpv4" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
-          <label id="row-chkEvpnIpv6" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
+          <label id="row-chkEvpnIpv6" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
+          <div style="display:flex; align-items:center; gap:4px; padding:6px 10px; border-bottom:1px solid var(--border-light);">
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; flex:1;">SERVICE</span>
+            <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <label class="tech-proto-row"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
+          <label class="tech-proto-row" style="border-bottom:none;"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
         </div>
       </div>
 
-      <!-- EVPN SERVICE MODEL — sub-section under PROTOCOLS -->
-      <div style="display:flex; align-items:center; gap:6px; margin:10px 0 6px;">
-        <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">EVPN SERVICE MODEL</span>
-        <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
-        </button>
-      </div>
       <div id="infoEvpnService" class="info-popup-box">
         <b style="font-style:normal;">Per-VLAN</b>: separate EVPN instance per VLAN — RT = <code class="inline-code">VLAN:VLAN</code>.<br>
         <b style="font-style:normal;">Bundle</b>: single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, RT = <code class="inline-code">ASN_BASE:1</code> — must be identical on all VTEPs.
-      </div>
-      <div style="display:flex; gap:24px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
-        <label class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
-        <label class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> VLAN-aware bundle</label>
       </div>
       <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options are incompatible with the selected P2P interface mode.
