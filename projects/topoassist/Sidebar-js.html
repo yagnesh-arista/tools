@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.22 | 2026-04-26 12:05:47 -->
+<!-- TopoAssist v260426.23 | 2026-04-26 12:07:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.22";  // keep in sync with Code.gs
+const APP_VERSION = "260426.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9315,7 +9315,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260426.16"
+VERSION = "260426.18"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -14803,7 +14803,7 @@ function _updateDevVisItem(deviceId) {
 
 const _DEV_VIS_MIN_IDS = ['devVisSelRow', 'devVisIpSection', 'devVisIntModeSection', 'devVisSviSection', 'devVisVlanSection', 'devVisSearchRow', 'devVisList'];
 
-// Restore full topology visibility — called on DevVis close or minimize.
+// Restore full topology visibility — called on DevVis × close only (not minimize).
 function _devVisRestoreAll() {
   hiddenDevices.clear();
   selectedInDevVis.clear();
@@ -14819,13 +14819,11 @@ function toggleDevVisMinimize(e) {
   if (!panel || !header) return;
   const isMin = panel.classList.toggle('is-minimized');
   if (isMin) {
-    _devVisRestoreAll();
     panel.style.height = header.offsetHeight + 'px';
     panel.style.overflow = 'hidden';
   } else {
     panel.style.height = '';
     panel.style.overflow = '';
-    populateDevVisPanel();
   }
   _DEV_VIS_MIN_IDS.forEach(id => {
     const el = document.getElementById(id);

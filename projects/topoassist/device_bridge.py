@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.22 | 2026-04-26 12:06:22
+# topoassist v260426.23 | 2026-04-26 12:06:52
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.16"
+VERSION           = "260426.18"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -879,11 +879,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # 'end' exits from any sub-mode depth to exec mode (session stays pending).
         # Re-entering puts us at session root so show/commit/abort all work correctly.
         #
-        # open_only: omit the final command entirely — SSH stdin closes naturally (EOF).
-        # EOS leaves the session PENDING without any explicit exit/commit/abort.
-        # Sending 'exit' as the final command can cause EOS to close the SSH stream
-        # before the 'show session-config diffs' output is fully flushed, resulting
-        # in an empty diff being captured.
+        # open_only: omit commit/abort — EOS leaves the session PENDING.
+        # The PTY shell is still closed by the 2× 'exit' _ssh_stdin appends,
+        # but we stop at 'show session-config diffs' so the diff is fully
+        # flushed before the shell exits.
         if open_only:
             core_cmds = (
                 [f"configure session {session}"]
