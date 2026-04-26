@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-26 (Fix + - visible in all views: .segmented-group has display:flex !important so style.display='none' was overridden; added .segmented-group.is-hidden { display:none !important } CSS rule; updateTopoButtons now uses classList.toggle('is-hidden') for nodeSizeGroup. Files: Sidebar-css.html, Sidebar-js.html)
+  Last updated: 2026-04-26 (Center New Group button in TOPO EDIT panel: added justify-content:center to #holistic-controls .hc-btns — single button was left-aligning when nodeSizeGroup hidden. Files: Sidebar-css.html)
+  Previous: 2026-04-26 (Fix + - visible in all views: .segmented-group has display:flex !important so style.display='none' was overridden; added .segmented-group.is-hidden { display:none !important } CSS rule; updateTopoButtons now uses classList.toggle('is-hidden') for nodeSizeGroup. Files: Sidebar-css.html, Sidebar-js.html)
   Previous: 2026-04-26 (Fix stray | in TOPO EDIT toolbar: split nodeSizeMinus/Plus into separate #nodeSizeGroup segmented-group; updateTopoButtons hides group not individual buttons. Files: Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-26 (Close group rect modal on view switch: closeGroupRectModal() added to toggleViewMode() and switchLayout(). Files: Sidebar-js.html)
   Previous: 2026-04-26 (render() calls requestAnimationFrame(refreshGroupRects) at end — group rects persist after data refresh/cable change. Files: Sidebar-js.html)
