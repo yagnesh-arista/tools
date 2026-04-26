@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.23 | 2026-04-26 12:07:05 -->
+<!-- TopoAssist v260426.24 | 2026-04-26 12:15:31 -->
 <!DOCTYPE html>
 <html>
 
@@ -480,42 +480,55 @@
         </div>
       </div>
 
-      <!-- PROTOCOL OVERLAY: DATA (VXLAN) | CONTROL (EVPN) two-column layout -->
+      <!-- PROTOCOL OVERLAY: VXLAN + EVPN as underlay-style rows -->
       <div class="tech-section-label">PROTOCOL OVERLAY</div>
       <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
-        <!-- DATA: VXLAN -->
-        <div class="tech-proto-col">
-          <div class="tech-proto-header">DATA — VXLAN</div>
-          <label id="row-chkVxlanIpv4" class="tech-proto-row"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
-          <label id="row-chkVxlanIpv6" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
+        <!-- VXLAN row -->
+        <div class="proto-underlay-row">
+          <span class="proto-underlay-label">VXLAN</span>
+          <div class="proto-underlay-opts">
+            <label id="row-chkVxlanIpv4" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
+            <label id="row-chkVxlanIpv6" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
+          </div>
         </div>
-        <!-- CONTROL: EVPN -->
-        <div class="tech-proto-col" style="border-top:1px solid var(--border-light);">
-          <div class="tech-proto-header">CONTROL — EVPN</div>
-          <label id="row-chkEvpnIpv4" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
-          <label id="row-chkEvpnIpv6" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
-          <div id="evpnServiceSection" style="display:flex; align-items:center; gap:4px; padding:6px 10px; border-bottom:1px solid var(--border-light);">
-            <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; flex:1;">SERVICE</span>
-            <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
-            </button>
-          </div>
-          <label id="rowEvpnSvcPerVlan" class="tech-proto-row"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
-          <label id="rowEvpnSvcBundle" class="tech-proto-row"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
-          <div id="evpnVgwSection" style="display:flex; align-items:center; gap:4px; padding:6px 10px; border-bottom:1px solid var(--border-light);">
-            <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; flex:1;">VGW</span>
-            <button class="btn-info-popup" data-popup="infoVgw" onclick="toggleInfoPopup('infoVgw')" title="VGW mechanism info">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
-            </button>
-          </div>
-          <label id="labelGwAnycast" class="tech-proto-row"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
-          <label id="labelGwVarp" class="tech-proto-row" style="border-bottom:none;"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
-          <!-- Virtual Router MAC — inline, shown when any GW type is selected -->
-          <div id="rowVarpMac" style="display:none; border-top:1px solid var(--border-light); padding:8px 12px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <label for="inputVarpMac" style="font-size:11px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
-              <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
-                style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:4px 8px; outline:none; min-width:0;">
+        <div style="height:1px; background:var(--border-light);"></div>
+        <!-- EVPN row (multi-group) -->
+        <div class="proto-underlay-row" style="align-items:flex-start;">
+          <span class="proto-underlay-label" style="padding-top:2px;">EVPN</span>
+          <div style="flex:1; display:flex; flex-direction:column;">
+            <!-- IPv4 / IPv6 -->
+            <div class="proto-underlay-opts" style="padding-bottom:8px;">
+              <label id="row-chkEvpnIpv4" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
+              <label id="row-chkEvpnIpv6" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
+            </div>
+            <!-- SERVICE group -->
+            <div id="evpnServiceSection" style="border-top:1px solid var(--border-light); padding:8px 0 0;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">SERVICE</span>
+                <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+                </button>
+                <label id="rowEvpnSvcPerVlan" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
+                <label id="rowEvpnSvcBundle" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
+              </div>
+            </div>
+            <!-- VGW group (contains MAC) -->
+            <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; margin-top:8px;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">VGW</span>
+                <button class="btn-info-popup" data-popup="infoVgw" onclick="toggleInfoPopup('infoVgw')" title="VGW mechanism info">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+                </button>
+                <label id="labelGwAnycast" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
+                <label id="labelGwVarp" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
+              </div>
+              <!-- Virtual Router MAC — sub-row inside VGW, shown when any GW type selected -->
+              <div id="rowVarpMac" style="display:none; align-items:center; gap:10px; margin-top:7px;">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; white-space:nowrap;">MAC</span>
+                <label for="inputVarpMac" style="font-size:11px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
+                <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
+                  style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:4px 8px; outline:none; min-width:0;">
+              </div>
             </div>
           </div>
         </div>
