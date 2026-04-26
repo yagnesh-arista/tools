@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.63 | 2026-04-26 18:28:54 -->
+<!-- TopoAssist v260426.64 | 2026-04-26 18:33:18 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.63";  // keep in sync with Code.gs
+const APP_VERSION = "260426.64";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9538,35 +9538,32 @@ def _extract_session_diff(output):
 
 # -- Section-level cleaners for idempotent push --------------------------------
 
-_SECTION_CLEANERS = [
-    # Vxlan1 must be reset before re-applying: vxlan flood vtep is a list command —
-    # pushing new flood entries does not remove stale ones from a prior device ID config.
-    # 'default interface Vxlan1' resets all config to factory state in-place (cleaner than
-    # 'no interface Vxlan1' which removes + re-creates the interface).
-    (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'default {}'),
-]
-
-_MGMT_IFACE_RE     = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
+_VXLAN_IFACE_RE = re.compile(r'^interface\s+Vxlan\d+\s*$', re.IGNORECASE)
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
 
 
 def _prepend_section_cleaners(config_text):
-    """Prepend section-level cleanup commands before each major EOS config section.
-    Ensures idempotent push: stale BGP neighbors, interface IPs, OSPF areas, etc.
-    are wiped before new config is applied. Management interfaces are never touched."""
+    """Inject Vxlan cleanup sub-commands inside each Vxlan interface block.
+    Injects 'default vxlan vlan 1-4094 vni' and 'default vxlan flood vtep'
+    unconditionally as the first sub-commands — EOS no-ops these when nothing
+    is configured. All other sections pass through unchanged."""
+    lines = config_text.split("\\n")
     out = []
-    for line in config_text.split("\\n"):
-        s = line.strip()
-        if _MGMT_IFACE_RE.match(s):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if _VXLAN_IFACE_RE.match(line.strip()):
             out.append(line)
-            continue
-        for pattern, fmt in _SECTION_CLEANERS:
-            m = pattern.match(s)
-            if m:
-                grp = m.group(1) if m.lastindex else None
-                out.append(fmt.format(grp) if grp else fmt)
-                break
-        out.append(line)
+            i += 1
+            sub_start = i
+            while i < len(lines) and lines[i] and lines[i][0] in (' ', '\\t'):
+                i += 1
+            out.append(' default vxlan vlan 1-4094 vni')
+            out.append(' default vxlan flood vtep')
+            out.extend(lines[sub_start:i])
+        else:
+            out.append(line)
+            i += 1
     return "\\n".join(out)
 
 
@@ -9819,12 +9816,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
             orphan_cmds = self._find_ta_orphans(ip, config_text)
             if orphan_cmds:
                 lines = orphan_cmds + lines
-        if not dry_run:
-            bgp_asn_cmds = self._find_bgp_asn_change(ip, config_text)
-            if bgp_asn_cmds:
-                lines = bgp_asn_cmds + lines
+        asn_changed = None
+        bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
+        if bgp_asn_cmds:
+            lines = bgp_asn_cmds + lines
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
+        _asn_extra = {"asn_changed": asn_changed} if asn_changed else {}
         # open_only: omit the final command entirely — SSH stdin EOF closes naturally.
         # EOS leaves the session PENDING. Sending 'exit' can close the SSH stream before
         # 'show session-config diffs' output is fully flushed, resulting in an empty diff.
@@ -9847,8 +9845,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
             if open_only:
-                return {"ok": True, "diff": diff, "session_name": session}
-            return {"ok": True, "diff": diff, "dry_run": dry_run}
+                return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
         if METHOD == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
                                                force_tty=True)
@@ -9867,8 +9865,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if eos_errs:
                     raise RuntimeError(f"Config session error: {eos_errs[0][:120]}")
             if open_only:
-                return {"ok": True, "diff": diff, "session_name": session}
-            return {"ok": True, "diff": diff, "dry_run": dry_run}
+                return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
         raise NotImplementedError(f"Config push not supported for METHOD={METHOD!r} -- use ssh or eapi")
 
     def _finalize_session(self, ip, session_name, action):
