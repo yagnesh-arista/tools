@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.9 | 2026-04-26 11:16:46
+# topoassist v260426.15 | 2026-04-26 11:52:27
 """
 TopoAssist Device Bridge
 ========================
@@ -349,8 +349,9 @@ def _extract_session_diff(output):
 _SECTION_CLEANERS = [
     # Vxlan1 must be reset before re-applying: vxlan flood vtep is a list command —
     # pushing new flood entries does not remove stale ones from a prior device ID config.
-    # 'no interface Vxlan1' inside a config session is safe (atomic commit clears + re-adds).
-    (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'no {}'),
+    # 'default interface Vxlan1' resets all config to factory state in-place (cleaner than
+    # 'no interface Vxlan1' which removes + re-creates the interface).
+    (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'default {}'),
 ]
 
 # Management interfaces must never be defaulted — would kill SSH connectivity
