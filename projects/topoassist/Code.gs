@@ -1,10 +1,10 @@
-// TopoAssist v260426.96 | 2026-04-26 23:51:03
+// TopoAssist v260426.97 | 2026-04-26 23:58:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.96";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.97";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3446,7 +3446,7 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
   }
 }
 
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-20
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-26
 function canonicalizeInterface(name) {
   if (!name) return "";
 
@@ -4047,7 +4047,7 @@ function expandVlanString(str) {
 }
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-20
+// DUPLICATED in Sidebar-js.html — last synced: 2026-04-26
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
@@ -7118,7 +7118,7 @@ function _breakoutSides(g) {
 /**
  * Testable mirror of buildCableGroups() from Sidebar-js.html.
  * Accepts data as parameters instead of reading client-side globals, so Tests.gs can call it.
- * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-20
+ * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-26
  *
  * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]
  * @param {Object} nodesData   {"dev:port": {device, name, details:{xcvr_speed_,xcvr_type_,et_speed_}}}

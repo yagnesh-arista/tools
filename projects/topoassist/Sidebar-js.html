@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.96 | 2026-04-26 23:51:03 -->
+<!-- TopoAssist v260426.97 | 2026-04-26 23:58:19 -->
 <script>
-// DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.96";  // keep in sync with Code.gs
+// DUPLICATED in Code.gs — last synced: 2026-04-26
+const APP_VERSION = "260426.97";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4143,7 +4143,7 @@ function parseVlanInput(input) {
 
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Code.gs — last synced: 2026-04-20
+// DUPLICATED in Code.gs — last synced: 2026-04-26
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
@@ -6135,7 +6135,7 @@ function processInterfaceConfig(btnId, deviceName, time) {
 /**
 * Helper: Standardizes interface names (Ethernet1 -> Et1)
 * Required for mapping server config data to UI elements.
-* DUPLICATED in Code.gs — last synced: 2026-04-20
+* DUPLICATED in Code.gs — last synced: 2026-04-26
 */
 function canonicalizeInterface(name) {
   if (!name) return "";
@@ -9084,8 +9084,18 @@ function fetchData(force, autoVerify, silent) {
     let isColorEnabled = colorChk ? colorChk.checked : true;
 
     // --- CALL SERVER ---
+    // Guard: GAS framework failures (auth expiry, quota) fire neither handler — overlay sticks forever without this.
+    const _fetchGuard = setTimeout(() => {
+      hideGlobalLoading();
+      isFetching = false;
+      isTopologyLoading = false;
+      clearInterval(progressTimer);
+      if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
+      setStatus("Topology fetch timed out — try again", "status-error");
+    }, 20000);
+
     google.script.run.withSuccessHandler(function (data) {
-      // 🛑 FIX: STOP LOADING SPINNER
+      clearTimeout(_fetchGuard);
       hideGlobalLoading();
 
       isTopologyLoading = false;
@@ -9225,6 +9235,7 @@ function fetchData(force, autoVerify, silent) {
         .checkDeviceIdShift();
 
     }).withFailureHandler(function (err) {
+      clearTimeout(_fetchGuard);
       hideGlobalLoading();
       isFetching = false;
       isTopologyLoading = false;
@@ -12429,7 +12440,7 @@ function openHelpModal() {
 /**
 * Shared grouping logic for cabling export and copy functions.
 * Returns { cableGroups, sheetIndexMap }.
-* DUPLICATED in Code.gs (as _buildCableGroupsForTest) — last synced: 2026-04-20
+* DUPLICATED in Code.gs (as _buildCableGroupsForTest) — last synced: 2026-04-26
 */
 function buildCableGroups() {
   if (!currentData || !currentData.nodes) return { cableGroups: {}, sheetIndexMap: {} };
