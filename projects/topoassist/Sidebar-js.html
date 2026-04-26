@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.36 | 2026-04-26 12:53:42 -->
+<!-- TopoAssist v260426.37 | 2026-04-26 12:54:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.36";  // keep in sync with Code.gs
+const APP_VERSION = "260426.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5688,7 +5688,7 @@ function hoverPort(portId, isEnter) {
     let svg = document.getElementById("svg-layer");
     if (lines) {
       lines.forEach(lid => {
-        let link = globalLinks.find(l => l.id === lid);
+        let link = linkMap[lid];
         if (link && link.coords) {
           drawInteractionSVG(link);
           let peer = (link.u === portId) ? link.v : link.u;
@@ -6882,10 +6882,10 @@ function redrawLinks() {
   const layers = { base_bus: [], base_direct: [], snake: [], non_eos: [], regular_po: [], mlag: [], peer: [], trace: [], search: [], error: [], selected: [] };
 
   validLinks.forEach(link => {
-    // Role Check for Non-EOS color sync
-    const nodeA = allNodesData[link.u];
-    const nodeB = allNodesData[link.v];
-    const isNonEos = (nodeA?.details?.device_type === 'non-arista' || nodeB?.details?.device_type === 'non-arista');
+    // Role Check for Non-EOS color sync — use allDevicesData.type, not allNodesData.details.device_type
+    const devA = allDevicesData[link.u.split(':')[0]];
+    const devB = allDevicesData[link.v.split(':')[0]];
+    const isNonEos = (devA && devA.type === 'non-arista') || (devB && devB.type === 'non-arista');
 
     const isDirect = layoutMode === 'flexible' || isImmediateNeighbor(link);
 
