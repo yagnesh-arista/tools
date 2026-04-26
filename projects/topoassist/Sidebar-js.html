@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.26 | 2026-04-26 12:18:28 -->
+<!-- TopoAssist v260426.27 | 2026-04-26 12:20:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.26";  // keep in sync with Code.gs
+const APP_VERSION = "260426.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6828,7 +6828,11 @@ function redrawLinks() {
         contentMaxX = Math.max(contentMaxX, coords.x1, coords.x2, coords.cp1x, coords.cp2x);
         contentMaxY = Math.max(contentMaxY, coords.y1, coords.y2, coords.cp1y, coords.cp2y);
         validLinks.push(link);
+      } else {
+        link.coords = null;
       }
+    } else {
+      link.coords = null; // endpoint hidden — clear stale coords so hoverPort skips this link
     }
   });
 
