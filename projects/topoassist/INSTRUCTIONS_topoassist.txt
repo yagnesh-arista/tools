@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-26 (Center New Group button in TOPO EDIT panel: added justify-content:center to #holistic-controls .hc-btns — single button was left-aligning when nodeSizeGroup hidden. Files: Sidebar-css.html)
+  Last updated: 2026-04-26 (Fix user-select on <code> in ASN banner: parent div has user-select:none but <code> showing 'no router bgp <old>' must be copyable — added user-select:text;-webkit-user-select:text to <code> inline style in _injectPushAsnChangeWarning(). Also: downloadBridgeScript() embedded template had 3 stale bugs — (1) old _SECTION_CLEANERS list replaced with _VXLAN_IFACE_RE approach, (2) 'if not dry_run:' guard removed from _push_config BGP block, (3) _find_bgp_asn_change returns ([], None) tuple not []; all 4 return paths now include **_asn_extra. VERSION 260426.67. Files: Sidebar-js.html)
+  Previous: 2026-04-26 (Center New Group button in TOPO EDIT panel: added justify-content:center to #holistic-controls .hc-btns — single button was left-aligning when nodeSizeGroup hidden. Files: Sidebar-css.html)
   Previous: 2026-04-26 (Fix + - visible in all views: .segmented-group has display:flex !important so style.display='none' was overridden; added .segmented-group.is-hidden { display:none !important } CSS rule; updateTopoButtons now uses classList.toggle('is-hidden') for nodeSizeGroup. Files: Sidebar-css.html, Sidebar-js.html)
   Previous: 2026-04-26 (Fix stray | in TOPO EDIT toolbar: split nodeSizeMinus/Plus into separate #nodeSizeGroup segmented-group; updateTopoButtons hides group not individual buttons. Files: Sidebar.html, Sidebar-js.html)
   Previous: 2026-04-26 (Close group rect modal on view switch: closeGroupRectModal() added to toggleViewMode() and switchLayout(). Files: Sidebar-js.html)
