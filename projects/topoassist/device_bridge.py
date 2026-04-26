@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.17 | 2026-04-26 11:55:41
+# topoassist v260426.21 | 2026-04-26 12:03:19
 """
 TopoAssist Device Bridge
 ========================
@@ -366,20 +366,16 @@ _TA_ORPHAN_SKIP_RE = re.compile(
 def _prepend_section_cleaners(config_text):
     """Prepend section-level cleanup commands before each major EOS config section.
 
-    Ensures idempotent push: existing config in each section is wiped before
-    the new config is applied, preventing stale commands (old BGP neighbors,
-    old interface IPs, old OSPF areas) from surviving topology changes.
+    Currently handles:
+      - interface Vxlan<N> → 'default interface Vxlan<N>'
+        Vxlan flood vtep entries are additive — stale entries from prior device
+        ID configs don't self-remove. 'default' resets the interface in-place.
 
-    Rules:
-      - Physical/LAG/Loopback/Vxlan/Vlan interfaces → default interface <name>
-      - router bgp <ASN>   → no router bgp <ASN>
-      - router ospf 1      → no router ospf 1
-      - mlag configuration → no mlag configuration
-      - Management interfaces: never touched (SSH safety)
-      - Global/additive lines (hostname, ip routing, vrf, vlan, configure,
-        write memory): passed through unchanged — they are idempotent.
-      - Indented sub-commands (leading space): not matched — patterns require
-        the section header to be unindented (at configure-session root level).
+    Management interfaces are never touched (would kill SSH connectivity).
+    All other section headers (router bgp, router ospf, mlag, etc.) and global
+    additive lines (hostname, ip routing) pass through unchanged.
+    Indented sub-commands are never matched — patterns require an unindented
+    section header (at configure-session root level).
     """
     out = []
     for line in config_text.split('\n'):
