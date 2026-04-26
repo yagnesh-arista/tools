@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.30 | 2026-04-26 12:29:11 -->
+<!-- TopoAssist v260426.31 | 2026-04-26 12:30:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.30";  // keep in sync with Code.gs
+const APP_VERSION = "260426.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13899,6 +13899,15 @@ function closeCablingModal() {
 function closeIpModal() {
   document.getElementById('ipConfigModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
+}
+
+function toggleIpExample() {
+  const grid = document.getElementById('ipExampleGrid');
+  const btn  = document.getElementById('btnIpExampleToggle');
+  if (!grid || !btn) return;
+  const collapsed = grid.style.display === 'none';
+  grid.style.display = collapsed ? '' : 'none';
+  btn.style.transform = collapsed ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 
 // =====================================================================
