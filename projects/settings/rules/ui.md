@@ -289,3 +289,48 @@ if (ov) {
 - [ ] Floating panels: minimize uses JS height-pinning, not CSS-only
 - [ ] `.modal-std` modals: minimize uses `.modal-minimized > *:not(.modal-header) { display:none }` (CSS is sufficient for non-floating)
 - [ ] `toggleModalMinimize()` handles overlay — do NOT write a modal-specific minimize that skips it
+
+## Minimize Button Position Standard (Rule 25)
+
+Every modal minimize button (`.btn-modal-minimize`) must sit **immediately to the left of** `.btn-modal-close`, forming an adjacent `[−][×]` pair flush at the modal header's right edge.
+
+### Auto-injection — never hand-write in HTML
+
+`_injectMinimizeButtons()` runs once at `initApp()` and inserts the minimize button into every `.modal-std` and `.modal-floating` header that lacks one, using `insertBefore(btn, closeBtn)`:
+
+```javascript
+document.querySelectorAll('.modal-std .modal-header, .modal-floating .modal-header').forEach(hdr => {
+  if (hdr.querySelector('.btn-modal-minimize')) return;
+  const closeBtn = hdr.querySelector('.btn-modal-close');
+  if (!closeBtn) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn-modal-minimize';
+  // SVG − + click wiring
+  hdr.insertBefore(btn, closeBtn); // always immediately before ×
+});
+```
+
+**Never** place `<button class="btn-modal-minimize">` directly in HTML — the injector handles all modals uniformly.
+
+### CSS positioning
+
+```css
+.btn-modal-minimize {
+  margin-left: auto;  /* pushes [−][×] pair flush-right */
+}
+```
+
+`margin-left: auto` on `.btn-modal-minimize` absorbs all remaining header space, pushing both `[−]` and `[×]` to the far right. The header title/label naturally sits left (normal flow) — never apply `margin-left: auto` to the title.
+
+### Hard rules
+
+- `[−]` is always **left** of `[×]` — never `[×][−]`
+- Do NOT manually add `btn-modal-minimize` in HTML — `_injectMinimizeButtons()` covers all modals
+- `_injectMinimizeButtons()` must be called at `initApp()` (once, after DOM is ready)
+- The injector is idempotent: it skips headers that already have a `.btn-modal-minimize`
+
+### Checklist for every new modal (addition to Rule 24 checklist)
+- [ ] Do NOT add `<button class="btn-modal-minimize">` in HTML
+- [ ] Confirm `_injectMinimizeButtons()` is called at `initApp()`
+- [ ] `.btn-modal-minimize { margin-left: auto }` exists in the project CSS
+- [ ] After injection, the pair reads `[−][×]` left-to-right, never reversed
