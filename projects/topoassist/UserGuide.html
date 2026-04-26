@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.49 | 2026-04-26 14:56:55 -->
+<!-- TopoAssist v260426.50 | 2026-04-26 15:05:12 -->
 <!DOCTYPE html>
 <html>
 
@@ -498,7 +498,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span></td>
-        <td><b>Technology Stack</b> — enable/disable BGP, VXLAN, EVPN. Affects config generation output.</td>
+        <td><b>Technology Stack</b> — configure GW interface, P2P mode, Protocol Underlay (BGP/OSPF), and Protocol Overlay (VXLAN/EVPN with SERVICE and VGW options). Affects config generation output.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span></td>
@@ -823,8 +823,8 @@ clasp login --no-localhost</pre>
     <h3>7. Technology Stack</h3>
     <p style="font-size:13px;">Configure interface types and routing protocols via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
     <ul style="font-size:13px;">
-      <li><b>Gateway (top)</b> — two independent checkboxes: <b>IPv4</b> (ip address + VARP) and <b>IPv6</b> (ipv6 address + VARP) on SVI, sub-interface, and L3 routed ports. Both default on.</li>
-      <li><b>P2P Interface (5-mode radio)</b> — sets the addressing mode for point-to-point underlay links:
+      <li><b>GATEWAY (GW) INTERFACE</b> — two independent checkboxes: <b>IPv4</b> and <b>IPv6</b>. Controls whether gateway addressing is emitted on SVI, sub-interface, and L3 routed ports. The gateway <em>mechanism</em> (Anycast GW vs VARP) is configured in the EVPN VGW section below.</li>
+      <li><b>POINT-TO-POINT (P2P) INTERFACE (5-mode radio)</b> — sets the addressing mode for point-to-point underlay links:
         <ul>
           <li><b>IPv4</b> — ip address only</li>
           <li><b>IPv6</b> — ipv6 address only (explicit, no IPv4)</li>
@@ -833,7 +833,24 @@ clasp login --no-localhost</pre>
           <li><b>IPv4 + IPv6 Unnum</b> — ip address + <code>ipv6 enable</code> (link-local IPv6)</li>
         </ul>
       </li>
-      <li><b>Protocol grid (4 columns)</b> — checkboxes for BGP, OSPF, VXLAN, and EVPN variants. Options that are incompatible with the selected P2P mode are greyed out and automatically unchecked.</li>
+      <li><b>PROTOCOL UNDERLAY</b> — two protocol rows with variant checkboxes:
+        <ul>
+          <li><b>BGP</b> — IPv4 · IPv6 · Unnumbered · RFC5549</li>
+          <li><b>OSPF</b> — v2/IPv4 · v3/IPv6 · Unnumbered</li>
+        </ul>
+        Checkboxes incompatible with the selected P2P mode are greyed out and automatically unchecked.
+      </li>
+      <li><b>PROTOCOL OVERLAY</b> — two protocol rows:
+        <ul>
+          <li><b>VXLAN</b> — IPv4 VTEP · IPv6 VTEP</li>
+          <li><b>EVPN</b> — IPv4 · IPv6 address families, plus two sub-sections:
+            <ul>
+              <li><b>SERVICE</b> — <b>Per-VLAN</b> (separate EVPN instance per VLAN, RT = VLAN:VLAN) or <b>Bundle</b> (single <code>EVPN_VLAN_AWARE_BUNDLE</code>, RT = ASN_BASE:1 — must be identical on all VTEPs)</li>
+              <li><b>VGW</b> — gateway mechanism: <b>Anycast GW</b> (emits <code>ip address virtual</code>, same IP on all VTEPs) or <b>VARP</b> (unique physical <code>ip address</code> per device + shared <code>ip virtual-router address</code>). When VARP is selected, a <b>Virtual Router MAC</b> input appears — this MAC must be identical on all switches in the domain.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
       <li><b>Validation errors</b> — the modal blocks Save and shows an error banner if an invalid combination is chosen (e.g. IPv6 GW with no IPv6 routing protocol, VXLAN without an underlay, EVPN without BGP).</li>
     </ul>
 
