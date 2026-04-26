@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.23 | 2026-04-26 12:06:52
+# topoassist v260426.26 | 2026-04-26 12:18:17
 """
 TopoAssist Device Bridge
 ========================
@@ -131,9 +131,9 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.18"
+VERSION           = "260426.19"
 PORT              = 8765
-# CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
+# CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
 JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -142,7 +142,7 @@ TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 # TIMEOUT (-t) is for read queries (show, lldp, etc.) and should stay small.
 # Large configs (10k+ commands) can exceed TIMEOUT — set this independently.
 # Default: max(TIMEOUT*4, 300) so it auto-scales with -t but never below 5 min.
-PUSH_TIMEOUT = int(_arg("-P") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
+PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                  str(max(TIMEOUT * 4, 300))))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
@@ -1227,25 +1227,26 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   ─────────────────────────────────────
-  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-P PUSH_TIMEOUT] [-v] [-h]
+  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-p PUSH_TIMEOUT] [-v] [-h]
 
   Options:
     -u USER       SSH username          default: admin
     -b JUMP_HOST  Jump host for SSH     default: bus-home
                   Use -b "" for direct SSH (no jump host)
-    -t TIMEOUT    Per-device timeout    default: 15  (seconds)
-                  Used for show/LLDP/devstatus queries. Keep small so
-                  unreachable devices fail fast.
-    -P TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
-                  Used for configure-session pushes (>5 cmds). Increase
-                  for large configs (10k+ lines). Example: -P 600
+    -t TIMEOUT    Query timeout         default: 15  (seconds)
+                  Per-device limit for show/LLDP/status queries.
+                  Keep small — unreachable devices fail fast.
+    -p TIMEOUT    Push timeout          default: max(-t * 4, 300)  (seconds)
+                  Per-device limit for configure-session pushes.
+                  Default auto-scales with -t but never drops below 300s (5 min).
+                  Raise this for very large configs. Example: -p 600
     -v            Verbose — print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
   Examples:
     python device_bridge.py -u root -b jumphost -t 30 -v
     python device_bridge.py -u admin -b ""             # direct SSH, no jump
-    python device_bridge.py -t 30 -P 600              # large-config push headroom
+    python device_bridge.py -t 30 -p 600              # large-config push headroom
 """)
         sys.exit(0)
 
@@ -1269,10 +1270,10 @@ if __name__ == "__main__":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
     elif METHOD == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
-    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-P)")
+    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
-    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -P PUSH_TIMEOUT  -v  (run -h for details)")
+    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
