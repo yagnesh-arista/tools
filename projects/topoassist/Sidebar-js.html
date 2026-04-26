@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.53 | 2026-04-26 15:36:01 -->
+<!-- TopoAssist v260426.54 | 2026-04-26 15:41:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.53";  // keep in sync with Code.gs
+const APP_VERSION = "260426.54";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7907,6 +7907,9 @@ function render(data) {
     if (layoutMode === 'flexible') startFlexibleLayout();
     updateCanvasBounds();
     if (hiddenDevices.size > 0) { applyDeviceVisibility(); populateDevVisPanel(); }
+    // Refresh group rect overlays after every render — handles data refresh in linear/flex
+    // Safe no-op when no group rect SVG layers exist (each guard checks .empty())
+    requestAnimationFrame(refreshGroupRects);
 
   } catch (e) {
     let st = document.getElementById("status");
