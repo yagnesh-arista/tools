@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.70 | 2026-04-26 18:45:58 -->
+<!-- TopoAssist v260426.72 | 2026-04-26 18:49:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.70";  // keep in sync with Code.gs
+const APP_VERSION = "260426.72";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3696,6 +3696,28 @@ function cancelTooltip() {
 function hideTooltip() {
   activeTooltipPortId = null;
   document.getElementById("tooltip").style.display = "none";
+}
+
+// Open config modal for Vx1 — sets portFilter:"Vx1" so push extracts interface Vxlan1 block.
+// Cache-first: shows immediately if already fetched, else triggers fetchFullConfig then shows.
+function _openVx1Config(deviceName) {
+  _configViewContext = { deviceName, portFilter: "Vx1" };
+  _setCfgModalPushBtns('interface');
+  const _show = function() {
+    const cfg = configCache[deviceName] && configCache[deviceName].data && configCache[deviceName].data['055_VXLAN']
+      ? configCache[deviceName].data['055_VXLAN'].full : null;
+    if (cfg) {
+      showConfigModal(deviceName, cfg);
+    } else {
+      setStatus("No Vxlan1 config for " + deviceName + " — check VXLAN settings", "status-warn");
+    }
+  };
+  if (configCache[deviceName] && configCache[deviceName].data) {
+    _show();
+  } else {
+    setStatus("Fetching " + deviceName + " config\u2026", "status-info");
+    fetchFullConfig(deviceName, _show);
+  }
 }
 
 // Tooltip for the Vx1 summary row — shows the generated interface Vxlan1 config block.
@@ -10686,7 +10708,8 @@ function _expandIfaceName(name) {
     .replace(/^Et(\d)/i,  'Ethernet$1')
     .replace(/^Ma(\d)/i,  'Management$1')
     .replace(/^Po(\d)/i,  'Port-Channel$1')
-    .replace(/^Vl(\d)/i,  'Vlan$1');
+    .replace(/^Vl(\d)/i,  'Vlan$1')
+    .replace(/^Vx(\d)/i,  'Vxlan$1');
 }
 
 // Update every .dev-model-line: manual model wins over bridge platform; flag mismatch in amber.
