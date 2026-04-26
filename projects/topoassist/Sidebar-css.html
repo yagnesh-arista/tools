@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.9 | 2026-04-26 11:15:57 -->
+<!-- TopoAssist v260426.12 | 2026-04-26 11:25:16 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3165,40 +3165,39 @@
     /* ALLOW SCROLL */
     padding: 20px;
     margin: 0;
-    background: #1e293b;
-    color: #cbd5e1;
+    background: #ffffff;
+    color: #1e293b;
     line-height: 1.6;
     flex: 1;
     font-size: 12px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid #cbd5e1;
   }
 
-  /* EOS Syntax Highlighting */
-  #configBody .cfg-error     { color: #f87171; font-weight: bold; }
-  #configBody .cfg-comment   { color: #475569; font-style: italic; }
-  #configBody .cfg-interface { color: #60a5fa; font-weight: bold; }
-  #configBody .cfg-router    { color: #a78bfa; font-weight: bold; }
-  #configBody .cfg-vlan      { color: #fb923c; font-weight: bold; }
-  #configBody .cfg-mlag      { color: #818cf8; font-weight: bold; }
-  #configBody .cfg-routing   { color: #34d399; font-weight: 600; }
-  #configBody .cfg-ip        { color: #34d399; }
-  #configBody .cfg-neighbor  { color: #38bdf8; }
-  #configBody .cfg-shutdown  { color: #f87171; }
-  #configBody .cfg-desc      { color: #64748b; font-style: italic; }
+  /* EOS Syntax Highlighting — light mode */
+  #configBody .cfg-error     { color: #dc2626; font-weight: bold; }
+  #configBody .cfg-comment   { color: #64748b; font-style: italic; }
+  #configBody .cfg-interface { color: #1d4ed8; font-weight: bold; }
+  #configBody .cfg-router    { color: #7c3aed; font-weight: bold; }
+  #configBody .cfg-vlan      { color: #c2410c; font-weight: bold; }
+  #configBody .cfg-mlag      { color: #4f46e5; font-weight: bold; }
+  #configBody .cfg-routing   { color: #15803d; font-weight: 600; }
+  #configBody .cfg-ip        { color: #0d9488; }
+  #configBody .cfg-neighbor  { color: #0369a1; }
+  #configBody .cfg-shutdown  { color: #dc2626; }
+  #configBody .cfg-desc      { color: #94a3b8; font-style: italic; }
 
-  /* Optional: Style the scrollbar for a more "Terminal" feel */
   #configBody::-webkit-scrollbar {
     height: 8px;
     width: 8px;
   }
 
   #configBody::-webkit-scrollbar-thumb {
-    background: var(--cfg-scrollbar-thumb, #475569);
+    background: #cbd5e1;
     border-radius: 10px;
   }
 
   #configBody::-webkit-scrollbar-track {
-    background: var(--cfg-scrollbar-track, #1e293b);
+    background: #ffffff;
   }
 
   /* 3. MODAL HEADER */
