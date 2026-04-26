@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.90 | 2026-04-26 20:35:10 -->
+<!-- TopoAssist v260426.91 | 2026-04-26 20:37:03 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1230,7 +1230,7 @@
 
   .proto-underlay-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     padding: 10px 14px;
     gap: 16px;
     background: var(--bg-body, #fff);
@@ -1245,12 +1245,25 @@
     font-family: 'JetBrains Mono', monospace;
     user-select: none;
     -webkit-user-select: none;
-    padding-top: 3px;
   }
+  .proto-plane-badge {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+    vertical-align: middle;
+  }
+  .proto-plane-badge--data { background: rgba(59,130,246,0.12); color: #3b82f6; }
+  .proto-plane-badge--ctrl { background: rgba(139,92,246,0.12); color: #7c3aed; }
   .proto-underlay-opts {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 20px;
   }
 
   .tech-radio-label {
@@ -1306,30 +1319,6 @@
     transition: opacity 0.15s, background 0.1s;
   }
   .tech-proto-row:hover { background: rgba(59,130,246,0.05); }
-
-  .tech-plane-divider {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    margin-top: 2px;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .tech-plane-divider-label {
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #3b82f6;
-    font-family: 'JetBrains Mono', monospace;
-    white-space: nowrap;
-  }
-  .tech-plane-divider-line {
-    flex: 1;
-    height: 1px;
-    background: var(--border-light);
-  }
 
   .tech-section-label {
     font-size: 10px;
