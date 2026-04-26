@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.21 | 2026-04-26 12:03:19
+# topoassist v260426.22 | 2026-04-26 12:06:22
 """
 TopoAssist Device Bridge
 ========================
@@ -1062,7 +1062,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
             return []
-        iface_descs = raw.get("interfaceDescriptions", {})
+        iface_descs = (raw or {}).get("interfaceDescriptions", {})
 
         # Collect abbreviated names of interfaces explicitly configured in config_text
         config_ifaces = set()
@@ -1106,7 +1106,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             return [], None
         # EOS nests AS under vrfs.<vrf>.as — not at the top level
-        vrfs = summary.get("vrfs", {})
+        vrfs = (summary or {}).get("vrfs", {})
         old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
         if not old_asn:
             return [], None  # BGP not configured on device yet
