@@ -106,6 +106,38 @@ after any code change was made this session.
 
 ---
 
+## Check 9 — Modal Button Standard (CLAUDE.md Rule 21)
+
+Scan every `<div id="*Modal"` in Sidebar.html and every modal created in Sidebar-js.html.
+
+### 9a — Exactly one header close button
+- Every modal must have exactly one `.btn-modal-close` with the standard SVG × path:
+  `M1 1l10 10M11 1L1 11`
+- ✗ FAIL if a modal has zero `.btn-modal-close` buttons
+- ✗ FAIL if a modal has more than one `.btn-modal-close` button
+
+### 9b — No duplicate Close in footer
+- Footer must NEVER contain a "Close" button — that duplicates the header ×
+- Allowed footer patterns by modal type:
+  - **Edit/confirm**: `[Delete isolated-left]` · `[Cancel]` · `[Primary Action]`
+  - **Action-only**: action buttons only (Enable All, Disable All, etc.) — no close
+  - **View-only**: no footer at all — header × only
+- ✗ FAIL if any footer button is labeled "Close" — rename to "Cancel" (edit/confirm) or remove (action-only/view-only)
+
+### 9c — No Unicode ✕ or text "Close" in header
+- ✗ FAIL if header uses text "Close" or Unicode ✕ instead of `.btn-modal-close` SVG
+
+### 9d — Esc key registration
+- Every modal must appear in both `modalOrder` array AND `closeFuncs` map in the global keydown handler
+- ✗ FAIL if a modal is missing from either list
+
+```bash
+grep -n "btn-modal-close\|>Close<\|>Cancel<" ~/claude/projects/topoassist/Sidebar.html
+grep -n "modalOrder\|closeFuncs" ~/claude/projects/topoassist/Sidebar-js.html | head -20
+```
+
+---
+
 # Part 2 — Global Review
 
 ## Step 1 — Detect Scope
