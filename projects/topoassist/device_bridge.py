@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.57 | 2026-04-26 15:59:13
+# topoassist v260426.58 | 2026-04-26 16:03:03
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.20"
+VERSION           = "260426.21"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -346,50 +346,62 @@ def _extract_session_diff(output):
 
 # ── Section-level cleaners for idempotent push ────────────────────────────────
 
-_SECTION_CLEANERS = [
-    # Vxlan1 must be reset before re-applying: vxlan flood vtep is a list command —
-    # pushing new flood entries does not remove stale ones from a prior device ID config.
-    # 'default interface Vxlan1' resets all config to factory state in-place (cleaner than
-    # 'no interface Vxlan1' which removes + re-creates the interface).
-    (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'default {}'),
-]
-
-# Management interfaces must never be defaulted — would kill SSH connectivity
-_MGMT_IFACE_RE = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
-
 # Interfaces excluded from #TA orphan cleanup — system/VTEP/MLAG-control, not per-link
 _TA_ORPHAN_SKIP_RE = re.compile(
     r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE
 )
 
+_VXLAN_IFACE_RE   = re.compile(r'^interface\s+(Vxlan\d+)\s*$', re.IGNORECASE)
+_VXLAN_FLOOD_RE   = re.compile(r'^\s*vxlan\s+flood\s+vtep\b', re.IGNORECASE)
+_VXLAN_VLAN_VNI_RE = re.compile(r'^\s*vxlan\s+vlan\s+(\d+)\s+vni\b', re.IGNORECASE)
+
 
 def _prepend_section_cleaners(config_text):
-    """Prepend section-level cleanup commands before each major EOS config section.
+    """Inject surgical cleanup sub-commands inside Vxlan interface blocks.
 
-    Currently handles:
-      - interface Vxlan<N> → 'default interface Vxlan<N>'
-        Vxlan flood vtep entries are additive — stale entries from prior device
-        ID configs don't self-remove. 'default' resets the interface in-place.
+    Two Vxlan sub-commands are additive — pushing new values does not remove
+    stale entries from a prior device ID config:
+      - 'vxlan flood vtep'    is a list; old IPs persist until explicitly removed
+      - 'vxlan vlan X vni Y'  is a map;  old entries persist until explicitly removed
 
-    Management interfaces are never touched (would kill SSH connectivity).
-    All other section headers (router bgp, router ospf, mlag, etc.) and global
-    additive lines (hostname, ip routing) pass through unchanged.
-    Indented sub-commands are never matched — patterns require an unindented
-    section header (at configure-session root level).
+    For each Vxlan block in config_text this injects, as the first sub-commands:
+      no vxlan flood vtep           (if any 'vxlan flood vtep' line is present)
+      no vxlan vlan <id> vni        (for each 'vxlan vlan X vni' line)
+
+    Non-additive sub-commands (vxlan source-interface, vxlan mlag source-interface,
+    etc.) are left untouched — 'default interface Vxlan1' was too aggressive and
+    cleared those as well.
+
+    All other sections (router bgp, router ospf, mlag, Ethernet, Management, etc.)
+    pass through unchanged.
     """
+    lines = config_text.split('\n')
     out = []
-    for line in config_text.split('\n'):
-        s = line.strip()
-        if _MGMT_IFACE_RE.match(s):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = _VXLAN_IFACE_RE.match(line)
+        if m:
             out.append(line)
-            continue
-        for pattern, fmt in _SECTION_CLEANERS:
-            m = pattern.match(s)
-            if m:
-                grp = m.group(1) if m.lastindex else None
-                out.append(fmt.format(grp) if grp else fmt)
-                break
-        out.append(line)
+            i += 1
+            # Collect the indented sub-block
+            sub_start = i
+            while i < len(lines) and lines[i] and lines[i][0] in (' ', '\t'):
+                i += 1
+            sub_lines = lines[sub_start:i]
+            # Determine which cleanup is needed
+            flood_vtep = any(_VXLAN_FLOOD_RE.match(s) for s in sub_lines)
+            vlan_ids   = [_VXLAN_VLAN_VNI_RE.match(s).group(1)
+                          for s in sub_lines if _VXLAN_VLAN_VNI_RE.match(s)]
+            # Inject cleanup before the real sub-commands
+            if flood_vtep:
+                out.append(' no vxlan flood vtep')
+            for vid in vlan_ids:
+                out.append(f' no vxlan vlan {vid} vni')
+            out.extend(sub_lines)
+        else:
+            out.append(line)
+            i += 1
     return '\n'.join(out)
 
 
