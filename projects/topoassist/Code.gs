@@ -1,10 +1,10 @@
-// TopoAssist v260426.42 | 2026-04-26 13:19:48
+// TopoAssist v260426.43 | 2026-04-26 13:40:38
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.42";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.43";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -45,7 +45,6 @@ function onOpen() {
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet Manager')
       .addItem('Manage Column & Formatting', 'showDeviceDataUi')
       .addItem('Change Sheet Name', 'promptRenameSheet')
-      .addItem('Remove Empty Rows', 'compactSheetFromMenu')
       .addSeparator()
       .addItem('Create Sheet Checkpoint', 'createTopologySnapshot')
       .addItem('Restore Sheet Checkpoint', 'showRestoreWizard')
@@ -7183,81 +7182,3 @@ function _buildCableGroupsForTest(links, nodesData, devicesData) {
   return cableGroups;
 }
 
-// ── Sheet Compaction ───────────────────────────────────────────────────────────
-
-/**
- * Remove rows from the data sheet where every int_ column is empty.
- * Handles both mid-sheet gaps (cleared links) and trailing buffer rows.
- * Writes compacted data in one batch, then deletes surplus physical rows.
- * Returns { removed, kept } count on success or { error } on failure.
- */
-function compactSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_DATA);
-  if (!sheet) return { error: 'Data sheet not found' };
-
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow < 3 || lastCol < 1) return { removed: 0, kept: 0 };
-
-  const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-  const intCols = [];
-  headers.forEach(function(h, i) {
-    if (String(h).startsWith('int_')) intCols.push(i);
-  });
-  if (intCols.length === 0) return { removed: 0, kept: 0 };
-
-  const dataRows = sheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
-
-  const kept = [];
-  dataRows.forEach(function(row) {
-    const hasPort = intCols.some(function(ci) {
-      return String(row[ci] || '').trim() !== '';
-    });
-    if (hasPort) kept.push(row);
-  });
-
-  const removed = dataRows.length - kept.length;
-  if (removed === 0) return { removed: 0, kept: kept.length };
-
-  // Write compacted rows back starting at row 3
-  const writeRange = sheet.getRange(3, 1, kept.length, lastCol);
-  writeRange.setValues(kept);
-
-  // Clear and delete the now-surplus rows at the bottom
-  const surplusStart = 3 + kept.length;
-  const surplusCount = lastRow - surplusStart + 1;
-  if (surplusCount > 0) {
-    sheet.getRange(surplusStart, 1, surplusCount, lastCol).clearContent();
-    sheet.deleteRows(surplusStart, surplusCount);
-  }
-
-  return { removed: removed, kept: kept.length };
-}
-
-/**
- * Menu entry point — confirms before compacting, shows result toast.
- */
-function compactSheetFromMenu() {
-  const ui = SpreadsheetApp.getUi();
-  const resp = ui.alert(
-    'Remove Empty Rows',
-    'This will delete all rows where every interface cell is empty.\n\nA checkpoint is recommended before proceeding.\n\nContinue?',
-    ui.ButtonSet.YES_NO
-  );
-  if (resp !== ui.Button.YES) return;
-
-  const result = compactSheet();
-  if (result.error) {
-    ui.alert('Error: ' + result.error);
-    return;
-  }
-  if (result.removed === 0) {
-    SpreadsheetApp.getActiveSpreadsheet().toast('No empty rows found — sheet is already compact.', 'Compact Sheet', 4);
-  } else {
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      `Removed ${result.removed} empty row${result.removed === 1 ? '' : 's'}. ${result.kept} data row${result.kept === 1 ? '' : 's'} remain.`,
-      'Compact Sheet', 5
-    );
-  }
-}

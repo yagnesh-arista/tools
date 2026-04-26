@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.42 | 2026-04-26 13:18:50 -->
+<!-- TopoAssist v260426.43 | 2026-04-26 13:38:17 -->
 <!DOCTYPE html>
 <html>
 
@@ -425,7 +425,7 @@
         <span class="hc-label">TOPO EDIT</span>
         <div class="hc-btns">
           <div class="segmented-group">
-            <button class="icon-btn" id="groupRectBtn" onclick="toggleGroupRectMode()" title="Draw Group">
+            <button class="icon-btn" id="groupRectBtn" onclick="newGroupRect()" title="New Group">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="5 3"/><path d="M12 8v8M8 12h8"/></svg>
             </button>
             <button class="icon-btn" id="nodeSizeMinusBtn" onclick="adjustHolisticNodeSize(-4)" title="Shrink nodes">
@@ -1137,6 +1137,13 @@
         <span class="grect-swatch" data-color="#f59e0b20" style="background:#f59e0b;" onclick="selectGroupRectColor(this)"></span>
         <span class="grect-swatch" data-color="#ef444420" style="background:#ef4444;" onclick="selectGroupRectColor(this)"></span>
         <span class="grect-swatch" data-color="#8b5cf620" style="background:#8b5cf6;" onclick="selectGroupRectColor(this)"></span>
+      </div>
+
+      <div>
+        <span style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:6px;">Members:</span>
+        <div id="groupRectMemberList" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding:8px; border:1px solid var(--border); border-radius:6px; background:var(--bg-body); font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-main);">
+          <!-- populated by openGroupRectModal -->
+        </div>
       </div>
 
       <div style="display:flex; align-items:flex-start; gap:14px;">

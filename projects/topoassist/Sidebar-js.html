@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.42 | 2026-04-26 13:18:50 -->
+<!-- TopoAssist v260426.43 | 2026-04-26 13:41:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.42";  // keep in sync with Code.gs
+const APP_VERSION = "260426.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2072,7 +2072,6 @@ function setupZoomPan() {
 
   // 2. Mouse Pan (Desktop Drag)
   viewport.addEventListener('mousedown', function (e) {
-    if (isGroupRectMode && (currentViewMode === 'holistic' || layoutMode === 'flexible')) { beginGroupRectDraw(e); return; }
     // Only allow pan on empty space or specific background elements
     if (e.target.id === 'viewport' || e.target.id === 'canvas-surface' || e.target.tagName === 'CANVAS' || e.target.tagName === 'svg') {
       isPanning = true;
@@ -3226,6 +3225,8 @@ function startFlexibleLayout() {
 
       // Commit to LocalStorage
       saveCurrentStateToStorage();
+      // Refresh member-based group rect bounds after node repositioned
+      refreshGroupRects();
     });
 
   d3.selectAll(".node:not(.dimmed)")
@@ -3461,23 +3462,11 @@ function _updateNodeSizeBtns() {
   if (plusBtn) plusBtn.disabled = holisticNodeR >= 72;
 }
 
-function toggleGroupRectMode() {
+function newGroupRect() {
   if (currentViewMode !== 'holistic' && layoutMode !== 'flexible') return;
-  isGroupRectMode = !isGroupRectMode;
-
-  const btn = document.getElementById("groupRectBtn");
-  const statusEl = document.getElementById("status");
-  const vp = document.getElementById("viewport");
-
-  if (isGroupRectMode) {
-    if (btn) { btn.classList.add("active"); btn.style.background = "#8b5cf6"; btn.style.color = "white"; }
-    setStatus("Group Mode — Drag to draw, Dbl-click rect to edit/delete");
-    if (vp) vp.style.cursor = "crosshair";
-  } else {
-    if (btn) { btn.classList.remove("active"); btn.style.background = ""; btn.style.color = ""; }
-    setStatus(getReadyStatus());
-    if (vp) vp.style.cursor = "grab";
-  }
+  editingGroupRectId = null;
+  pendingGroupRectGeom = null;
+  openGroupRectModal();
 }
 
 
@@ -14362,48 +14351,54 @@ function _activeGroupRectSvg() {
   return layoutMode === 'flexible' ? d3.select("#flex-grect-svg") : d3.select("#svg-layer");
 }
 
-function beginGroupRectDraw(e) {
-  e.preventDefault();
-  drawStartSVG = viewportToSVG(e.clientX, e.clientY);
-  const svg = _activeGroupRectSvg();
-  activeDrawRect = svg.select(".group-rects").append("rect")
-    .attr("class", "grect-preview")
-    .attr("x", drawStartSVG.x).attr("y", drawStartSVG.y)
-    .attr("width", 0).attr("height", 0)
-    .attr("rx", 8)
-    .attr("fill", "none")
-    .attr("stroke", "#8b5cf6")
-    .attr("stroke-width", 2)
-    .attr("stroke-dasharray", "6 3")
-    .style("pointer-events", "none");
+function _getTopologyDevices() {
+  const devices = [];
+  const seen = new Set();
+  if (layoutMode === 'flexible') {
+    document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
+      const id = el.dataset.id || '';
+      if (id && !seen.has(id)) { seen.add(id); devices.push(id); }
+    });
+  } else if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
+    holisticSimulation.nodes().forEach(n => {
+      if (n.id && !seen.has(n.id)) { seen.add(n.id); devices.push(n.id); }
+    });
+  }
+  return devices.sort();
 }
 
-function updateGroupRectDraw(e) {
-  if (!activeDrawRect || !drawStartSVG) return;
-  const cur = viewportToSVG(e.clientX, e.clientY);
-  const x = Math.min(drawStartSVG.x, cur.x);
-  const y = Math.min(drawStartSVG.y, cur.y);
-  const w = Math.abs(cur.x - drawStartSVG.x);
-  const h = Math.abs(cur.y - drawStartSVG.y);
-  activeDrawRect.attr("x", x).attr("y", y).attr("width", w).attr("height", h);
-}
-
-function endGroupRectDraw() {
-  if (!activeDrawRect || !drawStartSVG) return;
-  const x = parseFloat(activeDrawRect.attr("x"));
-  const y = parseFloat(activeDrawRect.attr("y"));
-  const w = parseFloat(activeDrawRect.attr("width"));
-  const h = parseFloat(activeDrawRect.attr("height"));
-  activeDrawRect.remove();
-  activeDrawRect = null;
-  drawStartSVG = null;
-
-  // Discard accidental tiny clicks
-  if (w < 30 || h < 30) return;
-
-  pendingGroupRectGeom = { x, y, width: w, height: h };
-  editingGroupRectId = null;
-  openGroupRectModal();
+function _computeGroupBounds(memberIds, padding) {
+  padding = (padding !== undefined) ? padding : 40;
+  if (!memberIds || !memberIds.length) return null;
+  const set = new Set(memberIds.map(id => (id || '').toLowerCase()));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let found = 0;
+  if (layoutMode === 'flexible') {
+    document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
+      if (!set.has((el.dataset.id || '').toLowerCase())) return;
+      const x = parseFloat(el.style.left) || 0;
+      const y = parseFloat(el.style.top) || 0;
+      const w = el.offsetWidth || 220;
+      const h = el.offsetHeight || 80;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x + w > maxX) maxX = x + w;
+      if (y + h > maxY) maxY = y + h;
+      found++;
+    });
+  } else if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
+    const r = (typeof holisticNodeR !== 'undefined' ? holisticNodeR : 50);
+    holisticSimulation.nodes().forEach(n => {
+      if (!set.has((n.id || '').toLowerCase())) return;
+      if (n.x - r < minX) minX = n.x - r;
+      if (n.y - r < minY) minY = n.y - r;
+      if (n.x + r > maxX) maxX = n.x + r;
+      if (n.y + r > maxY) maxY = n.y + r;
+      found++;
+    });
+  }
+  if (!found) return null;
+  return { x: minX - padding, y: minY - padding, width: (maxX - minX) + 2 * padding, height: (maxY - minY) + 2 * padding };
 }
 
 // --- RENDER: Draw all saved rects into the SVG group-rects layer ---
@@ -14467,6 +14462,12 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
   if (labelGroup) labelGroup.selectAll(".grect-label-item").remove();
 
   groupRects.forEach(gr => {
+    // Member-based rects: recompute bounds from current node positions every render
+    const isMemberRect = gr.members && gr.members.length > 0;
+    if (isMemberRect) {
+      const computed = _computeGroupBounds(gr.members);
+      if (computed) { gr.x = computed.x; gr.y = computed.y; gr.width = computed.width; gr.height = computed.height; }
+    }
     const strokeColor = gr.color.replace(/[0-9a-f]{2}$/i, "ff");
     const g = rectGroup.append("g").attr("class", "grect-item").attr("data-id", gr.id);
     // Label lives in labelGroup overlay (above cables) if provided, else falls back to g
@@ -14501,8 +14502,8 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
       g.select(".grect-handle-se").attr("x", gr.x + gr.width - HANDLE/2).attr("y", gr.y + gr.height - HANDLE/2);
     }
 
-    // Main body rect — drag moves the whole rectangle
-    g.append("rect").attr("class", "grect-body")
+    // Main body rect — drag only for non-member rects
+    const bodyRect = g.append("rect").attr("class", "grect-body")
       .attr("x", gr.x).attr("y", gr.y)
       .attr("width", gr.width).attr("height", gr.height)
       .attr("rx", 8)
@@ -14511,10 +14512,12 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
       .attr("stroke-width", 2)
       .attr("stroke-dasharray", "8 4")
       .style("pointer-events", "all")
-      .style("cursor", "move")
-      .call(d3.drag()
+      .style("cursor", isMemberRect ? "default" : "move");
+    if (!isMemberRect) {
+      bodyRect.call(d3.drag()
         .on("drag", (event) => { gr.x += event.dx; gr.y += event.dy; syncGrect(); })
         .on("end", () => saveGroupRects()));
+    }
 
     // Label text — rendered into lg (overlay layer or same g if no overlay)
     const ta0 = getTextAttrs(gr);
@@ -14557,54 +14560,55 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
       labelEl.style("pointer-events", "none");
     }
 
-    // Corner resize handles — NW, NE, SW, SE
-    const corners = [
-      { cls: "grect-handle-nw", cursor: "nw-resize",
-        x: () => gr.x - HANDLE/2, y: () => gr.y - HANDLE/2,
-        drag: (dx, dy) => {
-          const newW = gr.width - dx, newH = gr.height - dy;
-          if (newW >= 30) { gr.x += dx; gr.width = newW; }
-          if (newH >= 30) { gr.y += dy; gr.height = newH; }
+    // Corner resize handles — NW, NE, SW, SE (skipped for member-bound rects)
+    if (!isMemberRect) {
+      const corners = [
+        { cls: "grect-handle-nw", cursor: "nw-resize",
+          x: () => gr.x - HANDLE/2, y: () => gr.y - HANDLE/2,
+          drag: (dx, dy) => {
+            const newW = gr.width - dx, newH = gr.height - dy;
+            if (newW >= 30) { gr.x += dx; gr.width = newW; }
+            if (newH >= 30) { gr.y += dy; gr.height = newH; }
+          }
+        },
+        { cls: "grect-handle-ne", cursor: "ne-resize",
+          x: () => gr.x + gr.width - HANDLE/2, y: () => gr.y - HANDLE/2,
+          drag: (dx, dy) => {
+            const newW = gr.width + dx, newH = gr.height - dy;
+            if (newW >= 30) gr.width = newW;
+            if (newH >= 30) { gr.y += dy; gr.height = newH; }
+          }
+        },
+        { cls: "grect-handle-sw", cursor: "sw-resize",
+          x: () => gr.x - HANDLE/2, y: () => gr.y + gr.height - HANDLE/2,
+          drag: (dx, dy) => {
+            const newW = gr.width - dx, newH = gr.height + dy;
+            if (newW >= 30) { gr.x += dx; gr.width = newW; }
+            if (newH >= 30) gr.height = newH;
+          }
+        },
+        { cls: "grect-handle-se", cursor: "se-resize",
+          x: () => gr.x + gr.width - HANDLE/2, y: () => gr.y + gr.height - HANDLE/2,
+          drag: (dx, dy) => {
+            if (gr.width  + dx >= 30) gr.width  += dx;
+            if (gr.height + dy >= 30) gr.height += dy;
+          }
         }
-      },
-      { cls: "grect-handle-ne", cursor: "ne-resize",
-        x: () => gr.x + gr.width - HANDLE/2, y: () => gr.y - HANDLE/2,
-        drag: (dx, dy) => {
-          const newW = gr.width + dx, newH = gr.height - dy;
-          if (newW >= 30) gr.width = newW;
-          if (newH >= 30) { gr.y += dy; gr.height = newH; }
-        }
-      },
-      { cls: "grect-handle-sw", cursor: "sw-resize",
-        x: () => gr.x - HANDLE/2, y: () => gr.y + gr.height - HANDLE/2,
-        drag: (dx, dy) => {
-          const newW = gr.width - dx, newH = gr.height + dy;
-          if (newW >= 30) { gr.x += dx; gr.width = newW; }
-          if (newH >= 30) gr.height = newH;
-        }
-      },
-      { cls: "grect-handle-se", cursor: "se-resize",
-        x: () => gr.x + gr.width - HANDLE/2, y: () => gr.y + gr.height - HANDLE/2,
-        drag: (dx, dy) => {
-          if (gr.width  + dx >= 30) gr.width  += dx;
-          if (gr.height + dy >= 30) gr.height += dy;
-        }
-      }
-    ];
-
-    corners.forEach(c => {
-      g.append("rect").attr("class", "grect-handle " + c.cls)
-        .attr("x", c.x()).attr("y", c.y())
-        .attr("width", HANDLE).attr("height", HANDLE)
-        .attr("rx", 2)
-        .attr("fill", strokeColor)
-        .style("cursor", c.cursor)
-        .style("pointer-events", "all")
-        .call(d3.drag()
-          .on("drag", (event) => { c.drag(event.dx, event.dy); syncGrect(); })
-          .on("end", () => saveGroupRects()))
-        .on("dblclick", (e) => e.stopPropagation()); // don't bubble to edit modal
-    });
+      ];
+      corners.forEach(c => {
+        g.append("rect").attr("class", "grect-handle " + c.cls)
+          .attr("x", c.x()).attr("y", c.y())
+          .attr("width", HANDLE).attr("height", HANDLE)
+          .attr("rx", 2)
+          .attr("fill", strokeColor)
+          .style("cursor", c.cursor)
+          .style("pointer-events", "all")
+          .call(d3.drag()
+            .on("drag", (event) => { c.drag(event.dx, event.dy); syncGrect(); })
+            .on("end", () => saveGroupRects()))
+          .on("dblclick", (e) => e.stopPropagation());
+      });
+    }
 
     // Double-click body to edit/delete
     g.on("dblclick", (e) => {
@@ -14667,6 +14671,32 @@ function openGroupRectModal() {
   if (boldOpt) boldOpt.classList.toggle("active", selectedGroupRectBoldText);
   const vertOpt = document.getElementById("groupRectVerticalOpt");
   if (vertOpt) vertOpt.classList.toggle("active", selectedGroupRectVertical);
+
+  // Populate member device checklist
+  const memberList = document.getElementById("groupRectMemberList");
+  if (memberList) {
+    memberList.innerHTML = "";
+    const existing = editingGroupRectId ? groupRects.find(r => r.id === editingGroupRectId) : null;
+    const currentMembers = new Set((existing && existing.members || []).map(m => (m || "").toLowerCase()));
+    const devices = _getTopologyDevices();
+    if (!devices.length) {
+      memberList.innerHTML = '<span style="color:#94a3b8;font-style:italic;font-family:\'JetBrains Mono\',monospace;font-size:11px;">No devices in topology</span>';
+    } else {
+      devices.forEach(devId => {
+        const lbl = document.createElement("label");
+        lbl.style.cssText = "display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-main);user-select:none;-webkit-user-select:none;";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = devId;
+        cb.checked = currentMembers.has(devId.toLowerCase());
+        cb.style.cssText = "accent-color:#8b5cf6;cursor:pointer;flex-shrink:0;";
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(devId));
+        memberList.appendChild(lbl);
+      });
+    }
+  }
+
   modal.style.display = "flex";
   overlay.style.display = "block";
   setTimeout(() => document.getElementById("groupRectLabelInp").focus(), 50);
@@ -14681,13 +14711,14 @@ function closeGroupRectModal() {
 
 function confirmGroupRect() {
   const label = (document.getElementById("groupRectLabelInp").value || "").trim();
-  if (!label || !pendingGroupRectGeom) { closeGroupRectModal(); return; }
+  if (!label) { closeGroupRectModal(); return; }
 
-  // Auto-expand width so the label always fits inside the rect.
-  // JetBrains Mono 12px ≈ 7.2px per char (same constant used in applyWrapToLabel).
-  // Skip for vertical and wrap modes — those aren't single-line width-constrained.
+  // Collect checked members
+  const members = [];
+  document.querySelectorAll("#groupRectMemberList input[type=checkbox]:checked").forEach(cb => members.push(cb.value));
+
   function minWidthForLabel(lbl) {
-    return Math.ceil(lbl.length * 7.2) + 20; // 10px padding each side
+    return Math.ceil(lbl.length * 7.2) + 20;
   }
 
   if (editingGroupRectId) {
@@ -14699,24 +14730,31 @@ function confirmGroupRect() {
       existing.wrapText = selectedGroupRectWrapText;
       existing.boldText = selectedGroupRectBoldText;
       existing.vertical = selectedGroupRectVertical;
-      if (!selectedGroupRectVertical && !selectedGroupRectWrapText) {
-        existing.width = Math.max(existing.width, minWidthForLabel(label));
+      existing.members = members;
+      if (!members.length && !selectedGroupRectVertical && !selectedGroupRectWrapText) {
+        existing.width = Math.max(existing.width || 100, minWidthForLabel(label));
       }
       if (selectedGroupRectTextPos !== "custom") { delete existing.textOffsetX; delete existing.textOffsetY; }
     }
   } else {
-    if (!selectedGroupRectVertical && !selectedGroupRectWrapText) {
-      pendingGroupRectGeom.width = Math.max(pendingGroupRectGeom.width, minWidthForLabel(label));
+    let geom;
+    if (members.length) {
+      geom = _computeGroupBounds(members) || { x: 100, y: 100, width: 200, height: 100 };
+    } else {
+      geom = pendingGroupRectGeom || { x: 100, y: 100, width: 200, height: 100 };
+      if (!selectedGroupRectVertical && !selectedGroupRectWrapText) {
+        geom.width = Math.max(geom.width, minWidthForLabel(label));
+      }
     }
     groupRects.push({
       id: "grect_" + Date.now(),
-      x: pendingGroupRectGeom.x, y: pendingGroupRectGeom.y,
-      width: pendingGroupRectGeom.width, height: pendingGroupRectGeom.height,
-      label: label, color: selectedGroupRectColor,
+      x: geom.x, y: geom.y, width: geom.width, height: geom.height,
+      label, color: selectedGroupRectColor,
       textPos: selectedGroupRectTextPos,
       wrapText: selectedGroupRectWrapText,
       boldText: selectedGroupRectBoldText,
-      vertical: selectedGroupRectVertical
+      vertical: selectedGroupRectVertical,
+      members
     });
   }
   saveGroupRects();
