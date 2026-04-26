@@ -97,7 +97,7 @@ Session end (Stop)
 | Command | What it does |
 |---|---|
 | `/project:topoassist-review-code-design` | TopoAssist-specific compliance review (Sidebar-js, CSS, Code.gs, UI rules) |
-| `/project:topoassist-review-code-full` | Full review: TopoAssist-specific checks + global review |
+| `/project:topoassist-review-code-full` | Full review: 9 TopoAssist checks (JetBrains Mono, SVG icons, user-select, canvas bounds, symmetry, VERSION, canonicalizeInterface, INSTRUCTIONS, **Modal Button Standard**) + global review |
 | `/project:topoassist-review-deploy` | Three-way sync check: git → local → GAS remote + commit history |
 | `/project:topoassist-review-userguide` | Update UserGuide.html to match current session changes |
 | `/project:topoassist-deploy-gas-clasp` | Deploy TopoAssist to Google Apps Script via `clasp push` |
