@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.61 | 2026-04-26 16:11:50
+# topoassist v260426.62 | 2026-04-26 16:25:09
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260426.20","port":8765}
+  GET  /health      → {"status":"ok","version":"260426.23","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -1102,16 +1102,27 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return [], None  # no BGP in config being pushed
         new_asn = int(m.group(1))
 
+        # Use 'show running-config | include router bgp' (plain text via SSH) rather than
+        # 'show ip bgp summary | json' — the JSON `vrfs.<vrf>.as` field returns 0 when BGP
+        # has no established peers, making it unreliable for ASN detection.
         try:
-            (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
+            eos_cmd = "show running-config | include router bgp"
+            base = _ssh_base()
+            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                        if JUMP_HOST else
+                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
+            if VERBOSE:
+                print(f"  [show] {ip}: {eos_cmd}", flush=True)
+            out = subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
+                                          stderr=subprocess.DEVNULL, env=_SSH_ENV)
+            if VERBOSE:
+                print(f"  [show] {ip}: {eos_cmd} → ok", flush=True)
         except Exception:
             return [], None
-        # EOS nests AS under vrfs.<vrf>.as — not at the top level
-        vrfs = (summary or {}).get("vrfs", {})
-        old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
-        if not old_asn:
-            return [], None  # BGP not configured on device yet
-        old_asn = int(old_asn)
+        m2 = re.search(r'^router bgp\s+(\d+)', out, re.MULTILINE | re.IGNORECASE)
+        if not m2:
+            return [], None  # BGP not in running config
+        old_asn = int(m2.group(1))
         if old_asn == new_asn:
             return [], None
         if VERBOSE:
