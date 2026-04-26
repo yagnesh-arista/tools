@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.74 | 2026-04-26 19:01:57 -->
+<!-- TopoAssist v260426.75 | 2026-04-26 19:02:37 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.74";  // keep in sync with Code.gs
+const APP_VERSION = "260426.75";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10711,6 +10711,7 @@ function _expandIfaceName(name) {
   if (!name) return '';
   return name
     .replace(/^Et(\d)/i,  'Ethernet$1')
+    .replace(/^Lo(\d)/i,  'Loopback$1')
     .replace(/^Ma(\d)/i,  'Management$1')
     .replace(/^Po(\d)/i,  'Port-Channel$1')
     .replace(/^Vl(\d)/i,  'Vlan$1')
