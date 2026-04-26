@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.5 | 2026-04-26 10:59:27 -->
+<!-- TopoAssist v260426.6 | 2026-04-26 11:03:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.5";  // keep in sync with Code.gs
+const APP_VERSION = "260426.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11291,6 +11291,8 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (alreadyInSync) {
     body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
+    const _ftr = modal.querySelector('.modal-actions');
+    if (_ftr) _ftr.style.display = 'none';
     modal.style.display = 'flex';
     return;
   }
@@ -11652,7 +11654,7 @@ function _injectMinimizeButtons() {
   const _minSvg = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   document.querySelectorAll('.modal-std, .modal-floating').forEach(modal => {
     if (!modal.id) return;
-    const header = modal.querySelector('.modal-header');
+    const header = modal.querySelector('.modal-header, .modal-keep-on-min');
     if (!header) return;
     if (header.querySelector('.btn-modal-minimize')) return; // already has one
     const closeBtn = header.querySelector('.btn-modal-close');
@@ -11721,6 +11723,8 @@ function closePushConfirmModal() {
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
   if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
+  const _ftr = m && m.querySelector('.modal-actions');
+  if (_ftr) _ftr.style.display = '';
 }
 
 function pushLinkSide(side) {
