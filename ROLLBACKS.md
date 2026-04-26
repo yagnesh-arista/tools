@@ -47,3 +47,7 @@ Files: Code.gs (setWidth 580→490), SheetAssistPanel.html (col-left 280→230)
 **rollback-log: topoassist bridge URL configurability removed 2026-04-24**  
 Files: ROLLBACKS.md,projects/topoassist/Code.gs,projects/topoassist/SheetAssistPanel.html,projects/topoassist/Sidebar-css.html,projects/topoassist/Sidebar-js.html,projects/topoassist/Sidebar.html,projects/topoassist/Tests.gs,projects/topoassist/UserGuide.html
 
+## 2026-04-26 | topoassist | 79a62d4
+**revert: remove compactSheet; keep Force Sync buffer +5→+2**  
+Files: projects/topoassist/Code.gs,projects/topoassist/SheetAssistPanel.html,projects/topoassist/Sidebar-css.html,projects/topoassist/Sidebar-js.html,projects/topoassist/Sidebar.html,projects/topoassist/Tests.gs,projects/topoassist/UserGuide.html
+
