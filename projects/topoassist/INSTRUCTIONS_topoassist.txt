@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-26 (Duplicate close button fix: Sheet Manager footer "Close"→"Cancel" (edit/confirm modal — Cancel is correct, not a second close); Audit Settings footer "Close" removed entirely (action-only modal — Enable All/Disable All + header × is sufficient). Files: Sidebar.html)
+  Last updated: 2026-04-26 (Linear view group rect support: New Group button now shown in linear mode (updateTopoButtons condition includes 'linear'); newGroupRect() guard allows layoutMode==='linear'; toggleViewMode cleanup removes #linear-grect-svg alongside #flex-grect-svg; refreshGroupRects() refreshes #linear-grect-svg layer. Files: Sidebar-js.html)
+  Previous: 2026-04-26 (Duplicate close button fix: Sheet Manager footer "Close"→"Cancel" (edit/confirm modal — Cancel is correct, not a second close); Audit Settings footer "Close" removed entirely (action-only modal — Enable All/Disable All + header × is sufficient). Files: Sidebar.html)
   Previous: 2026-04-26 (UserGuide.html section 7 Technology Stack updated: replaced stale "Protocol grid (4 columns)" bullet with PROTOCOL UNDERLAY (BGP: IPv4/IPv6/Unnumbered/RFC5549, OSPF: v2-v3/Unnumbered) and PROTOCOL OVERLAY (VXLAN IPv4/IPv6 VTEP; EVPN with SERVICE Per-VLAN/Bundle and VGW Anycast GW/VARP including Virtual Router MAC field). Gateway description updated to clarify mechanism is set in VGW section. Toolbar "Technology Stack" description updated. Files: UserGuide.html)
   Previous: 2026-04-26 (Fix .info-box--dim .ip-ex-key width: 68px→100px — Auto Config example lives inside info-box--dim, so 68px override fired on GW section keys causing "GW Anycast vip" text to bleed past its element box (92px text > 68px element, both < 110px grid column so no clip, but technically wrong). Files: Sidebar-css.html)
   Previous: 2026-04-26 (Fix flex group rect persisting on view switch: #flex-grect-svg is appended to canvas-surface, not svg-layer — toggleViewMode cleanup only did svgLayer.innerHTML="" so the flex SVG survived Flex→Simple/Linear switches. Fix: d3.select('#flex-grect-svg').remove() added to toggleViewMode cleanup block. Files: Sidebar-js.html)
@@ -2419,14 +2420,22 @@ Server-side: getUiSettings() / saveUiSettings() for refresh and auto settings.
 SECTION 22: GROUP RECTS (SIMPLE/HOLISTIC VIEW ONLY)
 --------------------------------------------------------------------------------
 
-Draw rectangles over the holistic view to label logical device groups.
-Toggle: groupRectBtn in toolbar (only active in simple mode).
+Draw rectangles over the topology to label logical device groups.
+Active in: simple (holistic), flexible, and linear modes. "New Group" button in toolbar.
 
-Each rect has: id, x, y, width, height, color, text, textPosition.
-Saved to localStorage under 'topology_group_rects'.
-groupRects[] array; rendered as SVG <rect> + <text> elements.
+Each rect has: id, x, y, w, h, color, label, textPos, members:[deviceId].
+Saved to localStorage under 'holistic_group_rects'.
+groupRects[] array; rendered into per-view SVG overlays:
+  - Simple/holistic: #svg-layer .group-rects
+  - Flexible: #flex-grect-svg (appended to canvas-surface)
+  - Linear: #linear-grect-svg (appended to canvas-surface, created in requestAnimationFrame after render())
 
-Edit a rect by clicking it → opens edit modal (text, color, position).
+Member rects: bounds computed live from node positions by _computeGroupBounds(); not draggable.
+Manual rects: freely draggable, resize handles on corners.
+refreshGroupRects(): refreshes all three SVG layers (holistic + flex + linear).
+toggleViewMode() cleanup removes both #flex-grect-svg and #linear-grect-svg explicitly.
+
+Edit a rect by double-clicking it → opens edit modal (label, color, members, text position).
 
 --------------------------------------------------------------------------------
 SECTION 23: IXIA INTEGRATION
