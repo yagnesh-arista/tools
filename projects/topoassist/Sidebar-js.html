@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.84 | 2026-04-26 20:03:34 -->
+<!-- TopoAssist v260426.85 | 2026-04-26 20:04:21 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.84";  // keep in sync with Code.gs
+const APP_VERSION = "260426.85";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7774,12 +7774,12 @@ function render(data) {
         pList.sort((a, b) => a.order - b.order);
       }
 
-      // Loopback pinned rows — Lo0 for all Arista devices, Lo1+Lo10 for VTEP (MLAG) devices.
+      // Loopback pinned rows — Lo0 for all Arista devices, Lo1 (shared MLAG VTEP) for VTEP devices.
       // No cabling, no audit. Click opens config modal via _openLoopbackConfig(deviceName, loNum).
       const _isArista = !(allDevicesData[node.id] && allDevicesData[node.id].type === 'non-arista');
       if (_isArista) {
         const _loNums = [0];
-        if (node.vtepVlans) { _loNums.push(1, 10); }
+        if (node.vtepVlans) { _loNums.push(1); }
         _loNums.forEach(function(loNum) {
           const loRow = document.createElement("div");
           loRow.className = "port-row";

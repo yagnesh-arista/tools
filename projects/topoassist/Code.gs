@@ -1,10 +1,10 @@
-// TopoAssist v260426.84 | 2026-04-26 20:03:34
+// TopoAssist v260426.85 | 2026-04-26 20:04:02
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.84";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.85";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6258,35 +6258,26 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
   let myVtepIpV6 = "";
 
   if (isMlag) {
-    // Split Source IP — unique Lo1 per device (control plane/BGP), shared Lo10 (data plane VTEP)
+    // Lo0: unique per device (BGP/router-id) — also vxlan source-interface
+    // Lo1: shared across MLAG pair (min.min.max.max) — vxlan mlag source-interface
     const myLoId   = (parseInt(myId)   || 0) + loBase;
     const peerLoId = (parseInt(peerId) || 0) + loBase;
     const low  = Math.min(myLoId, peerLoId);
     const high = Math.max(myLoId, peerLoId);
 
-    // Lo1: unique per device (x.x.x.x)
-    const myUniqIpV4 = `${myLoId}.${myLoId}.${myLoId}.${myLoId}`;
-    const myUniqIpV6 = `${myLoId}:${myLoId}:${myLoId}::${myLoId}`;
-
-    // Lo10: shared on both peers (x.x.y.y where x=min device id, y=max device id)
+    // Lo1: shared on both peers (x.x.y.y where x=min device id, y=max device id)
     myVtepIpV4 = `${low}.${low}.${high}.${high}`;
     myVtepIpV6 = `${low}:${low}:${high}::${high}`;
 
     lines.push("interface Loopback1");
-    lines.push(" description VTEP_UNIQUE");
-    lines.push(` ip address ${myUniqIpV4}/32`);
-    if (addVtepIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${myUniqIpV6}/128`); }
-    lines.push("!");
-
-    lines.push("interface Loopback10");
     lines.push(" description VTEP_MLAG_SHARED");
     lines.push(` ip address ${myVtepIpV4}/32`);
     if (addVtepIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${myVtepIpV6}/128`); }
     lines.push("!");
 
     lines.push("interface Vxlan1");
-    lines.push(" vxlan source-interface Loopback1");
-    lines.push(" vxlan mlag source-interface Loopback10");
+    lines.push(" vxlan source-interface Loopback0");
+    lines.push(" vxlan mlag source-interface Loopback1");
     lines.push(" vxlan virtual-router encapsulation mac-address mlag-system-id");
 
   } else {
