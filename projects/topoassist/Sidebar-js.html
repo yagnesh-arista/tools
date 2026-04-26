@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.72 | 2026-04-26 18:49:00 -->
+<!-- TopoAssist v260426.73 | 2026-04-26 18:49:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.72";  // keep in sync with Code.gs
+const APP_VERSION = "260426.73";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7764,20 +7764,25 @@ function render(data) {
         pList.sort((a, b) => a.order - b.order);
       }
 
-      // Vx1 pinned row — first for VTEP devices; read-only, no click, no cabling, no audit
+      // Vx1 pinned row — first for VTEP devices; click opens config modal, no cabling, no audit
       if (node.vtepVlans) {
         const vx1Row = document.createElement("div");
         vx1Row.className = "port-row";
-        vx1Row.style.cssText = "background-color:rgba(20,184,166,0.07)!important;border-left:3px solid rgba(20,184,166,0.5)!important;border-bottom:1px solid rgba(20,184,166,0.15);cursor:default;user-select:none;-webkit-user-select:none;";
-        // col-et: just "Vx1" — hover shows interface Vxlan1 config tooltip
+        vx1Row.style.cssText = "background-color:rgba(20,184,166,0.07)!important;border-left:3px solid rgba(20,184,166,0.5)!important;border-bottom:1px solid rgba(20,184,166,0.15);cursor:pointer;user-select:none;-webkit-user-select:none;";
+        // col-et: just "Vx1" — click opens config modal, hover shows tooltip
         const vx1Et = document.createElement("span");
         vx1Et.className = "col-et";
         vx1Et.style.cssText = "color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;";
         vx1Et.innerText = "Vx1";
         vx1Row.appendChild(vx1Et);
 
-        // Hover → show interface Vxlan1 config via the shared tooltip
         const _vx1NodeId = node.id;
+        // Click → open config modal (view / copy / push interface Vxlan1)
+        vx1Row.addEventListener("click", function() {
+          cancelTooltip(); hideTooltip();
+          _openVx1Config(_vx1NodeId);
+        });
+        // Hover → show interface Vxlan1 config via the shared tooltip
         vx1Row.addEventListener("mouseenter", function(e) {
           cancelTooltip();
           tooltipShowTimer = setTimeout(function() {
