@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.2 | 2026-04-26 10:14:29 -->
+<!-- TopoAssist v260426.3 | 2026-04-26 10:53:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.2";  // keep in sync with Code.gs
+const APP_VERSION = "260426.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4660,6 +4660,51 @@ function updateVarpMacVisibility() {
   if (typeof checkTechDirty === 'function') checkTechDirty();
 }
 
+// Tracks whether any MLAG pairs are declared (loaded from server on modal open).
+let _techHasMlag = false;
+
+// Gates EVPN service radios and VGW options based on EVPN/MLAG selection.
+// Anycast GW requires EVPN. VARP requires EVPN or MLAG.
+function applyEvpnGating() {
+  const evpnOn = !!(document.getElementById('chkEvpnIpv4') && document.getElementById('chkEvpnIpv4').checked) ||
+                 !!(document.getElementById('chkEvpnIpv6') && document.getElementById('chkEvpnIpv6').checked);
+
+  // EVPN SERVICE rows — only usable when EVPN is enabled
+  ['evpnServiceSection', 'rowEvpnSvcPerVlan', 'rowEvpnSvcBundle'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.opacity       = evpnOn ? '' : '0.35';
+    el.style.pointerEvents = evpnOn ? '' : 'none';
+  });
+  ['evpnServicePerVlan', 'evpnServiceBundle'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !evpnOn;
+  });
+
+  // Anycast GW — requires EVPN
+  const anycastLabel = document.getElementById('labelGwAnycast');
+  const anycastRadio = document.getElementById('gwL3TypeAnycast');
+  if (anycastLabel) { anycastLabel.style.opacity = evpnOn ? '' : '0.35'; anycastLabel.style.pointerEvents = evpnOn ? '' : 'none'; }
+  if (anycastRadio) anycastRadio.disabled = !evpnOn;
+
+  // VARP — requires EVPN or MLAG
+  const varpOk = evpnOn || _techHasMlag;
+  const varpLabel = document.getElementById('labelGwVarp');
+  const varpRadio = document.getElementById('gwL3TypeVarp');
+  if (varpLabel) { varpLabel.style.opacity = varpOk ? '' : '0.35'; varpLabel.style.pointerEvents = varpOk ? '' : 'none'; }
+  if (varpRadio) varpRadio.disabled = !varpOk;
+
+  // Auto-switch: if the currently selected option just became disabled, switch to the other
+  const selectedGw = document.querySelector('input[name="gwL3Type"]:checked');
+  if (selectedGw) {
+    if (selectedGw.value === 'anycast' && !evpnOn) {
+      if (varpOk && varpRadio) { varpRadio.checked = true; updateVarpMacVisibility(); }
+    } else if (selectedGw.value === 'varp' && !varpOk) {
+      if (evpnOn && anycastRadio) { anycastRadio.checked = true; updateVarpMacVisibility(); }
+    }
+  }
+}
+
 function toggleInfoPopup(id) {
   const box = document.getElementById(id);
   const btn = document.querySelector('[data-popup="' + id + '"]');
@@ -4843,8 +4888,10 @@ function openTechModal() {
       if (varpMacEl) varpMacEl.value = settings.varp_mac || '';
       updateVarpMacVisibility();
 
-      // 6. Apply compat filter (dims + unchecks options incompatible with P2P mode)
+      // 6. Apply compat filter + EVPN gating
+      _techHasMlag = !!settings.hasMlag;
       applyTechCompat(p2pMode);
+      applyEvpnGating();
 
       // 7. Attach handlers: P2P radios update compat then dirty; checkboxes just dirty
       document.querySelectorAll('#techModal input[name="p2pMode"]').forEach(el => {
@@ -4852,6 +4899,11 @@ function openTechModal() {
       });
       document.querySelectorAll('#techModal input[type="checkbox"]').forEach(el => {
         el.onchange = checkTechDirty;
+      });
+      // EVPN checkboxes also re-run gating (overrides the generic checkTechDirty above)
+      ['chkEvpnIpv4', 'chkEvpnIpv6'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.onchange = function() { applyEvpnGating(); checkTechDirty(); };
       });
       document.querySelectorAll('#techModal input[name="evpnService"]').forEach(el => {
         el.onchange = checkTechDirty;

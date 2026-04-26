@@ -1,10 +1,10 @@
-// TopoAssist v260426.2 | 2026-04-26 10:14:29
+// TopoAssist v260426.3 | 2026-04-26 10:53:06
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -693,7 +693,9 @@ function getNetworkSettings() {
     // Legacy derived (used by old call sites)
     underlay,
     vxlan: String(vxlan_ipv4 || vxlan_ipv6),
-    evpn:  String(evpn_ipv4  || evpn_ipv6)
+    evpn:  String(evpn_ipv4  || evpn_ipv6),
+    // UI gating: VARP radio enabled when EVPN or MLAG is active
+    hasMlag: Object.keys(getDeviceMlagPeers()).length > 0
   };
 }
 
@@ -4953,6 +4955,7 @@ function generateAttributesBlock(d) {
   if (sp_mode.startsWith("l2")) {
     block += " switchport\n";
     block += " default switchport trunk allowed vlan\n";
+    block += " no switchport trunk native vlan\n";
     block += " default switchport access vlan\n";
   } else if (sp_mode.startsWith("l3")) {
     block += " no switchport\n";
