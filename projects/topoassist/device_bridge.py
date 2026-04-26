@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.5 | 2026-04-26 10:58:37
+# topoassist v260426.7 | 2026-04-26 11:14:48
 """
 TopoAssist Device Bridge
 ========================
@@ -351,15 +351,6 @@ _SECTION_CLEANERS = [
     # pushing new flood entries does not remove stale ones from a prior device ID config.
     # 'no interface Vxlan1' inside a config session is safe (atomic commit clears + re-adds).
     (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'no {}'),
-    # BGP: 'no router bgp <asn>' before 'router bgp <asn>' wipes old neighbors/networks so
-    # stale BGP peers (old IPs after device-ID shift) don't persist alongside new ones.
-    # ASN-change case is handled separately by _find_bgp_asn_change (needs current-device ASN).
-    (re.compile(r'^(router bgp \d+)', re.IGNORECASE), 'no {}'),
-    # OSPF/OSPFv3: process ID is always 1 in TopoAssist but could have stale areas/neighbors.
-    # Handles both 'router ospf 1' and 'router ospf3 1', with optional 'vrf <name>' suffix.
-    (re.compile(r'^(router ospf\d*\s+\d+(?:\s+vrf\s+\S+)?)', re.IGNORECASE), 'no {}'),
-    # MLAG: wipe stale peer/peer-link/domain-id before re-applying.
-    (re.compile(r'^(mlag configuration)', re.IGNORECASE), 'no {}'),
 ]
 
 # Management interfaces must never be defaulted — would kill SSH connectivity

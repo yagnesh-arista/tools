@@ -1,10 +1,10 @@
-// TopoAssist v260426.7 | 2026-04-26 11:15:18
+// TopoAssist v260426.8 | 2026-04-26 11:15:42
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.7";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.8";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4313,7 +4313,7 @@ function getDeviceConfig(deviceName) {
     allDevices.forEach(d => { peerRoles[d.name] = (d.role || '').toUpperCase(); });
 
     // 2. Detect MLAG State
-    const mlagState = detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings);
+    const mlagState = detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings, deviceRole === 'LEAF');
     const devData = collectDeviceData(rows, headers, targetColIndex, deviceName, topo.mlagPeerMap);
     // Pre-compute VTEP leaves for static flood list (only computed when VXLAN is enabled)
     const vtepNames = isVxlan ? computeVtepNames(allDevices, rows, headers, topo) : new Set();
