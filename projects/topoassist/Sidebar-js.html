@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.94 | 2026-04-26 22:19:15 -->
+<!-- TopoAssist v260426.95 | 2026-04-26 23:48:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.94";  // keep in sync with Code.gs
+const APP_VERSION = "260426.95";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -610,7 +610,7 @@ function openDeviceManager() {
   document.getElementById("emptyMsg").style.display = "none";
   document.getElementById("reorderList").innerHTML = `
 <div style="padding:40px; text-align:center; color:#94a3b8;">
-<div style="display:inline-block; animation:spin 1s linear infinite; font-size:24px; margin-bottom:10px;">🔄</div>
+<div style="display:inline-block; animation:spin 1s linear infinite; margin-bottom:10px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
 <div>Loading Devices...</div>
 </div>`;
 
@@ -1345,7 +1345,7 @@ function saveDeviceChanges() {
     // bumping DATA_VERSION — same race-condition fix as the fast path.
     dbg("Slow Path: Rebuilding sheet...");
     btn.innerText = "Reordering Sheet...";
-    showGlobalLoading('🔍 Preparing sheet rebuild...');
+    showGlobalLoading('Preparing sheet rebuild...');
     const rebuildPollTimer = setInterval(() => {
       google.script.run.withSuccessHandler(msg => {
         if (!msg) return;
@@ -1408,7 +1408,7 @@ function attemptCloseManager() {
 function initSchemaManager() {
   const body = document.getElementById("schemaBody");
   body.innerHTML = `<div style="padding:40px; text-align:center; color:#94a3b8;">
-<div style="font-size:24px; animation:spin 1s linear infinite; display:inline-block;">◌</div>
+<div style="display:inline-block; animation:spin 1s linear infinite;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
 <div>Loading Schema...</div>
 </div>`;
 
@@ -1796,7 +1796,7 @@ function saveSchemaChanges() {
               deleteOrphans = confirm(msg);
             }
             btn.innerText = "Syncing Columns...";
-            showGlobalLoading('🔍 Starting column sync...');
+            showGlobalLoading('Starting column sync...');
             syncPollTimer = setInterval(() => {
               google.script.run.withSuccessHandler(msg => {
                 if (!msg) return;
@@ -1883,7 +1883,7 @@ function triggerSyncOnly() {
   const applyFormatting = document.getElementById("chkApplyFormatting").checked;
 
   setUiBusy(true);
-  btn.innerHTML = '<span class="btn-icon">🔍</span> Checking...';
+  btn.innerHTML = '<span class="btn-icon" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span> Checking...';
 
   // Step 1: detect orphaned columns — show confirmation dialog before deleting
   google.script.run
@@ -1912,8 +1912,8 @@ function triggerSyncOnly() {
 }
 
 function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
-  btn.innerHTML = '<span class="btn-icon" style="animation:spin 1s linear infinite">🔄</span> Syncing...';
-  showGlobalLoading('🔍 Starting sync...');
+  btn.innerHTML = '<span class="btn-icon" style="display:inline-flex;align-items:center;animation:spin 1s linear infinite"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></span> Syncing...';
+  showGlobalLoading('Starting sync...');
 
   const syncPollTimer = setInterval(() => {
     google.script.run.withSuccessHandler(msg => {
@@ -6651,7 +6651,7 @@ function runSchemaAudit() {
   setUiBusy(true);
 
   // 2. Keep icon structure (No jumping)
-  btn.innerHTML = `<span class="btn-icon" style="animation:spin 1s linear infinite">🔍</span> Checking...`;
+  btn.innerHTML = `<span class="btn-icon" style="display:inline-flex;align-items:center;animation:spin 1s linear infinite"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span> Checking...`;
 
   google.script.run
     .withSuccessHandler(res => {
@@ -8873,7 +8873,7 @@ function scheduleBackgroundPrefetch() {
 
     if (isMoving) {
       // Cabling is still settling. Check again in 1 second.
-      // console.log("⏳ Waiting for topology layout to stabilize...");
+      dbg("Waiting for topology layout to stabilize...");
       prefetchStartTimer = setTimeout(checkSteadyState, 1000);
     } else {
       // Setup is completely steady! Start caching.
@@ -8935,7 +8935,7 @@ function startBackgroundPrefetch() {
     if (!configCache[nextDev]) {
       // Update the status bar text dynamically (Non-blocking)
       if (st && !st.innerText.includes("△") && !st.innerText.includes("Error")) {
-        setStatus(`🔄 Background caching: ${nextDev} (${currentCount} of ${prefetchTotal})`, 'status-info');
+        setStatus(`Background caching: ${nextDev} (${currentCount} of ${prefetchTotal})`, 'status-info');
         // status-info color applied via setStatus above
       }
 
