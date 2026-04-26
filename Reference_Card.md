@@ -6,7 +6,7 @@ Last updated: 2026-04-26 (Rule 25 added — minimize button position: _injectMin
 
 ---
 
-## 24 Global Rules
+## 25 Global Rules
 
 | # | Rule | Layer | File |
 |---|---|---|---|
@@ -40,6 +40,7 @@ Last updated: 2026-04-26 (Rule 25 added — minimize button position: _injectMin
 | 21 | Modal button standard — SVG × header (`.btn-modal-close`); footer order: Delete-isolated-left · Cancel · Primary-right; view-only = no footer; no duplicate close/cancel; every new modal must register in `modalOrder` + `closeFuncs` for Esc handling | `rules/` | `rules/ui.md` |
 | 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
 | 23 | Memory tiering — Tier 1 (CLAUDE.md+rules/+project CLAUDE.md) always loaded; Tier 2 (memory) only for things NOT in Tier 1; never write a memory file for something already in Tier 1; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
+| 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
 
 ---
 
