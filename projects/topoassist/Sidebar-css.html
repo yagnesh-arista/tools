@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.92 | 2026-04-26 21:10:38 -->
+<!-- TopoAssist v260426.93 | 2026-04-26 21:32:40 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1924,7 +1924,7 @@
   }
   #holistic-controls .hc-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.06em;
     color: #ffffff;
@@ -3298,6 +3298,12 @@
     flex: 1;
     padding: 25px;
     background: var(--bg-card);
+  }
+
+  .modal-body-scroll {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
   }
 
   .modal-body-padded {
@@ -5280,7 +5286,7 @@
   .dev-vis-vlan-chip:hover       { opacity: 1; }
   .dev-vis-vlan-clear {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
     padding: 1px 5px; border-radius: 3px; letter-spacing: 0.3px;
     background: transparent; border: 1px solid var(--border);
     color: var(--text-muted); cursor: pointer; display: none;

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.92 | 2026-04-26 21:10:38 -->
+<!-- TopoAssist v260426.93 | 2026-04-26 21:33:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.92";  // keep in sync with Code.gs
+const APP_VERSION = "260426.93";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1357,8 +1357,17 @@ function saveDeviceChanges() {
     const renames = currentDeviceList.filter(d => d.name !== d.originalName).map(d => ({ old: d.originalName, new: d.name }));
     const finalOrder = currentDeviceList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" }));
 
+    const _guard = setTimeout(() => {
+      clearInterval(rebuildPollTimer);
+      hideGlobalLoading();
+      setStatus("Sheet rebuild timed out — try again", "status-error");
+      btn.innerText = origText;
+      btn.disabled = false;
+    }, 60000);
+
     google.script.run
       .withSuccessHandler(() => {
+        clearTimeout(_guard);
         clearInterval(rebuildPollTimer);
         hideGlobalLoading();
         google.script.run
@@ -1367,6 +1376,7 @@ function saveDeviceChanges() {
           .saveDeviceVisibility(hiddenList);
       })
       .withFailureHandler(err => {
+        clearTimeout(_guard);
         clearInterval(rebuildPollTimer);
         hideGlobalLoading();
         handleError(err);
