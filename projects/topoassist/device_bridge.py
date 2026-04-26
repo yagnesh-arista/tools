@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.58 | 2026-04-26 16:03:03
+# topoassist v260426.60 | 2026-04-26 16:08:25
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.21"
+VERSION           = "260426.22"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -395,9 +395,9 @@ def _prepend_section_cleaners(config_text):
                           for s in sub_lines if _VXLAN_VLAN_VNI_RE.match(s)]
             # Inject cleanup before the real sub-commands
             if flood_vtep:
-                out.append(' no vxlan flood vtep')
+                out.append(' default vxlan flood vtep')
             for vid in vlan_ids:
-                out.append(f' no vxlan vlan {vid} vni')
+                out.append(f' default vxlan vlan {vid} vni')
             out.extend(sub_lines)
         else:
             out.append(line)
