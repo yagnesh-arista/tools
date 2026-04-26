@@ -1,4 +1,4 @@
-# topoassist v260426.60 | 2026-04-26 16:08:13
+# topoassist v260426.61 | 2026-04-26 16:11:43
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -417,46 +417,41 @@ class TestBuildDevstatusSsh:
 # ── _prepend_section_cleaners ──────────────────────────────────────────────────
 
 class TestPrependSectionCleaners:
-    """Surgical Vxlan cleanup: injects 'no' sub-commands for additive entries only."""
+    """Vxlan cleanup: always injects 'default vxlan vlan 1-4094 vni' and
+    'default vxlan flood vtep' as first sub-commands in every Vxlan block."""
 
     def _run(self, cfg):
         return db._prepend_section_cleaners(cfg)
 
-    def test_flood_vtep_cleanup_injected(self):
-        cfg = "interface Vxlan1\n vxlan source-interface Loopback0\n vxlan flood vtep 1.1.1.1 2.2.2.2"
+    def test_cleanup_always_injected(self):
+        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
         result = self._run(cfg)
         lines = result.splitlines()
         assert lines[0] == "interface Vxlan1"
-        assert lines[1] == " default vxlan flood vtep"
+        assert lines[1] == " default vxlan vlan 1-4094 vni"
+        assert lines[2] == " default vxlan flood vtep"
         assert " vxlan source-interface Loopback0" in lines
-        assert " vxlan flood vtep 1.1.1.1 2.2.2.2" in lines
-
-    def test_vlan_vni_cleanup_injected(self):
-        cfg = "interface Vxlan1\n vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020"
-        result = self._run(cfg)
-        lines = result.splitlines()
-        assert " default vxlan vlan 10 vni" in lines
-        assert " default vxlan vlan 20 vni" in lines
-        assert " vxlan vlan 10 vni 10010" in lines
-        assert " vxlan vlan 20 vni 10020" in lines
 
     def test_cleanup_before_original_subcmds(self):
         cfg = "interface Vxlan1\n vxlan flood vtep 1.1.1.1\n vxlan vlan 10 vni 10010"
         result = self._run(cfg)
         lines = result.splitlines()
-        no_flood_idx  = lines.index(" default vxlan flood vtep")
-        no_vlan_idx   = lines.index(" default vxlan vlan 10 vni")
-        flood_idx     = next(i for i, l in enumerate(lines) if "vxlan flood vtep 1.1.1.1" in l)
-        vlan_idx      = next(i for i, l in enumerate(lines) if "vxlan vlan 10 vni 10010" in l)
-        assert no_flood_idx < flood_idx
-        assert no_vlan_idx  < vlan_idx
+        vni_idx   = lines.index(" default vxlan vlan 1-4094 vni")
+        flood_idx = lines.index(" default vxlan flood vtep")
+        orig_flood_idx = next(i for i, l in enumerate(lines) if "vxlan flood vtep 1.1.1.1" in l)
+        orig_vlan_idx  = next(i for i, l in enumerate(lines) if "vxlan vlan 10 vni 10010" in l)
+        assert vni_idx   < orig_vlan_idx
+        assert flood_idx < orig_flood_idx
 
-    def test_source_interface_not_touched(self):
-        # vxlan source-interface is not additive — no cleanup injected for it
-        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
+    def test_original_subcmds_preserved(self):
+        cfg = "interface Vxlan1\n vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020"
         result = self._run(cfg)
-        assert " default vxlan flood vtep" not in result
-        assert " no vxlan" not in result.replace(" vxlan source-interface", "X")
+        assert " vxlan vlan 10 vni 10010" in result
+        assert " vxlan vlan 20 vni 10020" in result
+
+    def test_source_interface_preserved(self):
+        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
+        assert " vxlan source-interface Loopback0" in self._run(cfg)
 
     def test_no_vxlan_block_passthrough(self):
         cfg = "interface Ethernet1\n no shutdown"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.60 | 2026-04-26 16:08:25
+# topoassist v260426.61 | 2026-04-26 16:11:50
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.22"
+VERSION           = "260426.23"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -351,54 +351,44 @@ _TA_ORPHAN_SKIP_RE = re.compile(
     r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE
 )
 
-_VXLAN_IFACE_RE   = re.compile(r'^interface\s+(Vxlan\d+)\s*$', re.IGNORECASE)
-_VXLAN_FLOOD_RE   = re.compile(r'^\s*vxlan\s+flood\s+vtep\b', re.IGNORECASE)
-_VXLAN_VLAN_VNI_RE = re.compile(r'^\s*vxlan\s+vlan\s+(\d+)\s+vni\b', re.IGNORECASE)
+_VXLAN_IFACE_RE = re.compile(r'^interface\s+Vxlan\d+\s*$', re.IGNORECASE)
 
 
 def _prepend_section_cleaners(config_text):
-    """Inject surgical cleanup sub-commands inside Vxlan interface blocks.
+    """Inject Vxlan cleanup sub-commands before each Vxlan interface block.
 
-    Two Vxlan sub-commands are additive — pushing new values does not remove
-    stale entries from a prior device ID config:
-      - 'vxlan flood vtep'    is a list; old IPs persist until explicitly removed
-      - 'vxlan vlan X vni Y'  is a map;  old entries persist until explicitly removed
+    Two Vxlan sub-commands are additive — stale entries from a prior device ID
+    config don't self-remove when new values are pushed:
+      - 'vxlan flood vtep'   is a list
+      - 'vxlan vlan X vni Y' is a map
 
-    For each Vxlan block in config_text this injects, as the first sub-commands:
-      no vxlan flood vtep           (if any 'vxlan flood vtep' line is present)
-      no vxlan vlan <id> vni        (for each 'vxlan vlan X vni' line)
+    For every Vxlan interface block, inject unconditionally as the first
+    sub-commands:
+      default vxlan vlan 1-4094 vni   — clears all vlan-vni mappings
+      default vxlan flood vtep        — clears all flood vtep entries
 
-    Non-additive sub-commands (vxlan source-interface, vxlan mlag source-interface,
-    etc.) are left untouched — 'default interface Vxlan1' was too aggressive and
-    cleared those as well.
+    EOS no-ops these if nothing is currently configured, so they are safe to
+    inject on every push. Non-additive sub-commands (vxlan source-interface,
+    vxlan mlag source-interface, etc.) are unaffected.
 
-    All other sections (router bgp, router ospf, mlag, Ethernet, Management, etc.)
-    pass through unchanged.
+    All other sections pass through unchanged.
     """
     lines = config_text.split('\n')
     out = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = _VXLAN_IFACE_RE.match(line)
-        if m:
+        if _VXLAN_IFACE_RE.match(line):
             out.append(line)
             i += 1
             # Collect the indented sub-block
             sub_start = i
             while i < len(lines) and lines[i] and lines[i][0] in (' ', '\t'):
                 i += 1
-            sub_lines = lines[sub_start:i]
-            # Determine which cleanup is needed
-            flood_vtep = any(_VXLAN_FLOOD_RE.match(s) for s in sub_lines)
-            vlan_ids   = [_VXLAN_VLAN_VNI_RE.match(s).group(1)
-                          for s in sub_lines if _VXLAN_VLAN_VNI_RE.match(s)]
-            # Inject cleanup before the real sub-commands
-            if flood_vtep:
-                out.append(' default vxlan flood vtep')
-            for vid in vlan_ids:
-                out.append(f' default vxlan vlan {vid} vni')
-            out.extend(sub_lines)
+            # Inject unconditional cleanup before the real sub-commands
+            out.append(' default vxlan vlan 1-4094 vni')
+            out.append(' default vxlan flood vtep')
+            out.extend(lines[sub_start:i])
         else:
             out.append(line)
             i += 1
