@@ -260,6 +260,7 @@ Mode   : [Git / Local]
 6 — VERSION Sync          ✓ / ✗ / ⚠
 7 — canonicalizeInterface ✓ / ✗ / ⚠
 8 — INSTRUCTIONS Updated  ✓ / ✗ / ⚠
+9 — Modal Button Standard ✓ / ✗ / ⚠
 
 ── Part 2: Global ──────────────────────
 A — Scope & Hygiene       ✓ / ✗ / ⚠
