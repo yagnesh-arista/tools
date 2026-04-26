@@ -1,10 +1,10 @@
-// TopoAssist v260426.6 | 2026-04-26 11:01:42
+// TopoAssist v260426.7 | 2026-04-26 11:15:18
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.6";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5545,7 +5545,7 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
   });
 }
 
-function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive) {
+function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
   let globalCfgText = getGlobalConfig() || "";
   let mandatory = ["!"];
   // multi-agent model is required for EVPN; skip on pure-underlay devices (e.g. HARNESS)
@@ -5557,10 +5557,12 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive) {
     mandatory.push("ip routing ipv6 interfaces");
     mandatory.push("ipv6 unicast-routing");
   }
-  // Both VARP and anycast require ip virtual-router mac-address on standalone devices.
-  // Only emit when a GW is actually configured — skip for pure L2/routing-only devices.
-  // MLAG block already includes it for MLAG-paired devices regardless of GW type.
-  if (netSettings && !mlagIsActive && (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
+  // Only LEAF devices acting as EVPN gateways need ip virtual-router mac-address.
+  // Standalone (non-MLAG) path: requires LEAF role + EVPN enabled + GW configured.
+  // MLAG path handled in generateMlagConfig() — same LEAF guard there.
+  if (netSettings && !mlagIsActive && isLeaf &&
+      (netSettings.evpn_ipv4 || netSettings.evpn_ipv6) &&
+      (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
   mandatory.push("!");
@@ -5570,7 +5572,7 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive) {
 /**
 * REFACTORED HELPER: Detects MLAG & Neighbors using Topology Engine
 */
-function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings) {
+function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColIndex, topo, allDevices, isVxlan, settings, isLeaf) {
   const state = {
     isActive: false,
     peerId: null,
@@ -5604,7 +5606,7 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
       if (!peerLinkPort) {
         state.mlagConfigBlock = "!! ERROR: No Physical Peer-Link detected in Topology !!";
       } else {
-        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, settings, ipPrefs);
+        const mlagData = generateMlagConfig(deviceSheetIndex, peerObj, peerLinkPort, state.bgpNeighbors, isVxlan, settings, ipPrefs, isLeaf);
         state.mlagConfigBlock = mlagData.mlagConfigBlock;
       }
     }
@@ -5644,7 +5646,7 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
 * Helper: Generates MLAG Global Config, SVIs, and BGP Peering
 * Updates the bgpNeighbors object by reference.
 */
-function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings, ipPrefs) {
+function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isVxlan, settings, ipPrefs, isLeaf) {
   const isOspf = !!(settings && settings.ospf_ipv4);
   const hasMlagIpv6 = !settings || settings.int_ipv6 || settings.int_ipv6_unnum;
   const partnerId = partnerObj.sheetIndex;
@@ -5663,8 +5665,8 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
 
   mlagLines.push("! MLAG Infrastructure");
   mlagLines.push("no spanning-tree vlan 4093-4094");
-  // Only emit when GW is configured — same guard as standalone generateGlobalBlock()
-  if (settings && (settings.gw_ipv4 || settings.gw_ipv6)) {
+  // MLAG LEAF acting as gateway — same LEAF+GW guard as standalone path (EVPN not required; MLAG is sufficient).
+  if (settings && isLeaf && (settings.gw_ipv4 || settings.gw_ipv6)) {
     mlagLines.push(`ip virtual-router mac-address ${settings.varp_mac || '001c.7300.0099'}`);
   }
   mlagLines.push("!");
