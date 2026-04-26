@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.65 | 2026-04-26 18:33:45 -->
+<!-- TopoAssist v260426.67 | 2026-04-26 18:40:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.65";  // keep in sync with Code.gs
+const APP_VERSION = "260426.67";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13568,7 +13568,7 @@ function _injectPushAsnChangeWarning(asnChanged) {
     'padding:8px 10px;margin-bottom:8px;color:#713f12;line-height:1.5;' +
     'user-select:none;-webkit-user-select:none;">' +
     '<b>BGP AS mismatch:</b> device is running AS <b>' + asnChanged.from + '</b>, config uses AS <b>' + asnChanged.to + '</b>.<br>' +
-    '<code style="font-family:\'JetBrains Mono\',monospace;font-size:11px;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">no router bgp ' + asnChanged.from + '</code>' +
+    '<code style="font-family:\'JetBrains Mono\',monospace;font-size:11px;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;user-select:text;-webkit-user-select:text;">no router bgp ' + asnChanged.from + '</code>' +
     ' is included in the diff above. BGP will reconverge after commit.' +
     '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
