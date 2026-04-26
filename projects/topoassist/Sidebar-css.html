@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.66 | 2026-04-25 13:46:20 -->
+<!-- TopoAssist v260425.67 | 2026-04-25 14:24:58 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1269,6 +1269,29 @@
     user-select: none;
     -webkit-user-select: none;
   }
+
+  .btn-info-popup {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.2px solid var(--border-light); background: transparent;
+    cursor: pointer; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace; flex-shrink: 0; padding: 0;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    user-select: none; -webkit-user-select: none; vertical-align: middle;
+  }
+  .btn-info-popup:hover { background: rgba(59,130,246,0.08); border-color: #93c5fd; color: #3b82f6; }
+  .btn-info-popup.active { background: #eff6ff; border-color: #93c5fd; color: #3b82f6; }
+
+  .info-popup-box {
+    display: none;
+    border-left: 3px solid var(--border-light);
+    background: var(--bg-section, #f8fafc);
+    padding: 9px 12px; margin-bottom: 8px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: #94a3b8; font-style: italic; line-height: 1.6;
+    border-radius: 0 4px 4px 0;
+  }
+  .info-popup-box.visible { display: block; }
 
   .tech-stack-row {
     display: flex;

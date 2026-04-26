@@ -1,4 +1,4 @@
-<!-- TopoAssist v260425.66 | 2026-04-25 13:46:20 -->
+<!-- TopoAssist v260425.67 | 2026-04-25 14:28:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -450,109 +450,75 @@
       <!-- POINT-TO-POINT (P2P) INTERFACE: 5-mode radio (gates protocol grid) -->
       <div class="tech-section-label">POINT-TO-POINT (P2P) INTERFACE</div>
       <div style="display:flex; flex-wrap:wrap; gap:6px 16px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
-        <label class="tech-radio-label">
-          <input type="radio" name="p2pMode" id="p2pModeIpv4" value="ipv4" class="chk-input">
-          IPv4
-        </label>
-        <label class="tech-radio-label">
-          <input type="radio" name="p2pMode" id="p2pModeIpv6" value="ipv6" class="chk-input">
-          IPv6
-        </label>
-        <label class="tech-radio-label">
-          <input type="radio" name="p2pMode" id="p2pModeIpv6Unnum" value="ipv6unnum" class="chk-input">
-          IPv6 Unnum
-        </label>
-        <label class="tech-radio-label">
-          <input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6" value="ipv4ipv6" class="chk-input">
-          IPv4 + IPv6
-        </label>
-        <label class="tech-radio-label">
-          <input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input">
-          IPv4 + IPv6 Unnum
-        </label>
+        <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4" value="ipv4" class="chk-input"> IPv4</label>
+        <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6" value="ipv6" class="chk-input"> IPv6</label>
+        <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6Unnum" value="ipv6unnum" class="chk-input"> IPv6 Unnum</label>
+        <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6" value="ipv4ipv6" class="chk-input"> IPv4 + IPv6</label>
+        <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input"> IPv4 + IPv6 Unnum</label>
       </div>
 
-      <!-- PROTOCOL GRID: 4 columns, gated by P2P mode -->
+      <!-- PROTOCOLS: grid + EVPN service sub-section -->
       <div class="tech-section-label">PROTOCOLS</div>
       <div style="display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border-light); border-radius:6px; overflow:hidden;">
-
         <!-- BGP -->
         <div class="tech-proto-col">
           <div class="tech-proto-header">BGP</div>
-          <label id="row-chkBgpIpv4" class="tech-proto-row">
-            <input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4
-          </label>
-          <label id="row-chkBgpIpv6" class="tech-proto-row">
-            <input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6
-          </label>
-          <label id="row-chkBgpIpv6Unnum" class="tech-proto-row">
-            <input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered
-          </label>
-          <label id="row-chkBgpRfc5549" class="tech-proto-row" style="border-bottom:none;">
-            <input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549
-          </label>
+          <label id="row-chkBgpIpv4" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4</label>
+          <label id="row-chkBgpIpv6" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
+          <label id="row-chkBgpIpv6Unnum" class="tech-proto-row"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
+          <label id="row-chkBgpRfc5549" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549</label>
         </div>
-
         <!-- OSPF -->
         <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
           <div class="tech-proto-header">OSPF</div>
-          <label id="row-chkOspfIpv4" class="tech-proto-row">
-            <input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4
-          </label>
-          <label id="row-chkOspfIpv6" class="tech-proto-row">
-            <input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6
-          </label>
-          <label id="row-chkOspfIpv6Unnum" class="tech-proto-row" style="border-bottom:none;">
-            <input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered
-          </label>
+          <label id="row-chkOspfIpv4" class="tech-proto-row"><input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4</label>
+          <label id="row-chkOspfIpv6" class="tech-proto-row"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
+          <label id="row-chkOspfIpv6Unnum" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
         </div>
-
         <!-- VXLAN -->
         <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
           <div class="tech-proto-header">VXLAN</div>
-          <label id="row-chkVxlanIpv4" class="tech-proto-row">
-            <input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP
-          </label>
-          <label id="row-chkVxlanIpv6" class="tech-proto-row" style="border-bottom:none;">
-            <input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP
-          </label>
+          <label id="row-chkVxlanIpv4" class="tech-proto-row"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
+          <label id="row-chkVxlanIpv6" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
         </div>
-
         <!-- EVPN -->
         <div class="tech-proto-col" style="border-left:1px solid var(--border-light);">
           <div class="tech-proto-header">EVPN</div>
-          <label id="row-chkEvpnIpv4" class="tech-proto-row">
-            <input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4
-          </label>
-          <label id="row-chkEvpnIpv6" class="tech-proto-row" style="border-bottom:none;">
-            <input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6
-          </label>
+          <label id="row-chkEvpnIpv4" class="tech-proto-row"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
+          <label id="row-chkEvpnIpv6" class="tech-proto-row" style="border-bottom:none;"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
         </div>
-
       </div>
 
-      <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
+      <!-- EVPN SERVICE MODEL — sub-section under PROTOCOLS -->
+      <div style="display:flex; align-items:center; gap:6px; margin:10px 0 6px;">
+        <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">EVPN SERVICE MODEL</span>
+        <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div id="infoEvpnService" class="info-popup-box">
+        <b style="font-style:normal;">Per-VLAN</b>: separate EVPN instance per VLAN — RT = <code class="inline-code">VLAN:VLAN</code>.<br>
+        <b style="font-style:normal;">Bundle</b>: single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, RT = <code class="inline-code">ASN_BASE:1</code> — must be identical on all VTEPs.
+      </div>
+      <div style="display:flex; gap:24px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+        <label class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
+        <label class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> VLAN-aware bundle</label>
+      </div>
+      <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options are incompatible with the selected P2P interface mode.
       </div>
 
-      <!-- EVPN SERVICE MODEL -->
-      <div class="tech-section-label" style="margin-top:18px;">EVPN SERVICE MODEL</div>
-      <div style="display:flex; gap:24px; margin-bottom:12px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
-        <label class="tech-radio-label">
-          <input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input">
-          Per-VLAN
-        </label>
-        <label class="tech-radio-label">
-          <input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input">
-          VLAN-aware bundle
-        </label>
+      <!-- VIRTUAL GATEWAY (VGW) -->
+      <div style="display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border-light); padding-bottom:6px; margin-bottom:10px;">
+        <span style="font-size:10px; font-weight:800; letter-spacing:0.08em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; flex:1;">VIRTUAL GATEWAY (VGW)</span>
+        <button class="btn-info-popup" data-popup="infoVgw" onclick="toggleInfoPopup('infoVgw')" title="VGW mechanism info">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+        </button>
       </div>
-      <div class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-        Per-VLAN: separate EVPN instance per VLAN, RT = <code class="inline-code">VLAN:VLAN</code>. &nbsp;Bundle: single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, RT = <code class="inline-code">ASN_BASE:1</code> (same on all VTEPs).
+      <div id="infoVgw" class="info-popup-box">
+        <b style="font-style:normal;">Anycast GW</b>: emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces — works with or without EVPN. EVPN adds control-plane MAC/IP distribution via Type-2 routes.<br><br>
+        <b style="font-style:normal;">Virtual Router MAC</b>: applied as <code class="inline-code">ip virtual-router mac-address</code> globally — same MAC on all devices (standalone and MLAG).
       </div>
-
-      <!-- L3 GATEWAY MECHANISM -->
-      <div class="tech-section-label">L3 GATEWAY MECHANISM</div>
       <div style="display:flex; gap:24px; margin-bottom:12px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label">
           <input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()">
@@ -563,22 +529,16 @@
           <code class="inline-code">ip virtual-router address</code> &nbsp;(VARP)
         </label>
       </div>
-      <!-- Virtual Router MAC row — shown for both VARP and anycast (both require ip virtual-router mac-address) -->
+      <!-- Virtual Router MAC — shown for both anycast and VARP (both require ip virtual-router mac-address) -->
       <div id="rowVarpMac" style="display:none; margin-bottom:18px;">
         <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
           <label for="inputVarpMac" style="font-size:12px; color:var(--text-muted); white-space:nowrap; user-select:none; -webkit-user-select:none; font-family:'JetBrains Mono',monospace;">Virtual Router MAC</label>
           <input type="text" id="inputVarpMac" placeholder="001c.7300.0099"
             style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:5px 8px; outline:none; min-width:0;">
         </div>
-        <div class="info-box info-box--dim" style="margin-top:6px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-          Applied as <code class="inline-code">ip virtual-router mac-address</code> globally — same configured MAC on all devices (standalone and MLAG).
-        </div>
-      </div>
-      <div id="rowGwL3Hint" class="info-box info-box--dim" style="margin-bottom:18px; font-size:11px; font-family:'JetBrains Mono',monospace;">
-        Emits <code class="inline-code">ip address virtual</code> on SVIs/sub-interfaces. Works with or without EVPN — EVPN adds control-plane MAC/IP distribution via Type-2 routes.
       </div>
 
-      <!-- Validation error banner (hidden until validateTechSettings finds errors) -->
+      <!-- Validation error banner -->
       <div id="techValidationErrors" style="display:none; margin-top:10px; padding:9px 13px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; font-size:12px; color:#b91c1c; font-family:'JetBrains Mono',monospace; line-height:1.6;"></div>
     </div>
     <div class="modal-actions right-align">

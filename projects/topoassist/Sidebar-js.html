@@ -1,7 +1,7 @@
-<!-- TopoAssist v260425.66 | 2026-04-25 13:46:53 -->
+<!-- TopoAssist v260425.67 | 2026-04-25 14:25:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260425.66";  // keep in sync with Code.gs
+const APP_VERSION = "260425.67";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4654,12 +4654,23 @@ function getCurrentTechState() {
 
 function updateVarpMacVisibility() {
   const gwType = (document.querySelector('input[name="gwL3Type"]:checked') || {}).value;
-  const rowVarpMac  = document.getElementById('rowVarpMac');
-  const rowGwL3Hint = document.getElementById('rowGwL3Hint');
+  const rowVarpMac = document.getElementById('rowVarpMac');
   // Both VARP and anycast require ip virtual-router mac-address — show MAC row for both
-  if (rowVarpMac)  rowVarpMac.style.display  = gwType ? '' : 'none';
-  if (rowGwL3Hint) rowGwL3Hint.style.display = (gwType === 'anycast') ? '' : 'none';
+  if (rowVarpMac) rowVarpMac.style.display = gwType ? '' : 'none';
   if (typeof checkTechDirty === 'function') checkTechDirty();
+}
+
+function toggleInfoPopup(id) {
+  const box = document.getElementById(id);
+  const btn = document.querySelector('[data-popup="' + id + '"]');
+  if (!box) return;
+  const isVisible = box.classList.contains('visible');
+  document.querySelectorAll('.info-popup-box.visible').forEach(function(el) { el.classList.remove('visible'); });
+  document.querySelectorAll('.btn-info-popup.active').forEach(function(el) { el.classList.remove('active'); });
+  if (!isVisible) {
+    box.classList.add('visible');
+    if (btn) btn.classList.add('active');
+  }
 }
 
 function checkTechDirty() {
@@ -4871,6 +4882,8 @@ function openTechModal() {
 }
 
 function closeTechModal() {
+  document.querySelectorAll('.info-popup-box.visible').forEach(function(el) { el.classList.remove('visible'); });
+  document.querySelectorAll('.btn-info-popup.active').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('techModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
