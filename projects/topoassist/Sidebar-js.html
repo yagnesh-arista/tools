@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.47 | 2026-04-26 14:25:59 -->
+<!-- TopoAssist v260426.48 | 2026-04-26 14:30:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.47";  // keep in sync with Code.gs
+const APP_VERSION = "260426.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8269,6 +8269,8 @@ function toggleViewMode(mode, doZoom = true) {
 
   if (nodesLayer) nodesLayer.innerHTML = "";
   if (svgLayer) svgLayer.innerHTML = "";
+  // #flex-grect-svg lives on canvas-surface (not svg-layer) — must remove explicitly on every view switch
+  d3.select('#flex-grect-svg').remove();
 
   // 5. RENDER
   if (isDetail) {
