@@ -432,6 +432,65 @@ grep -A20 "function toggleModalMinimize" \
 
 ---
 
+## Check 22 — Modal White Background (CLAUDE.md Rule 7)
+
+Every `.modal-std` and `.modal-floating` must use a white background by default.
+Dark mode overrides via `--bg-modal` CSS variable or a dark-mode selector — never
+hardcode a dark background on a modal outside a dark-mode rule.
+
+```bash
+# Check for hardcoded dark backgrounds on modals outside dark-mode selectors
+grep -n "modal-std\|modal-floating" ~/claude/projects/topoassist/Sidebar-css.html \
+  | grep -i "background\|bg" | head -20
+
+# Verify --bg-modal is defined as white in base (non-dark) scope
+grep -n "\-\-bg-modal" ~/claude/projects/topoassist/Sidebar-css.html | head -10
+
+# Check for dark bg colors on modals NOT inside a dark-mode selector
+grep -B5 "background.*#1e\|background.*#0f\|background.*#111\|background.*#222" \
+  ~/claude/projects/topoassist/Sidebar-css.html | grep -A5 "modal" | head -30
+```
+
+✗ FAIL if any `.modal-std` or `.modal-floating` has a hardcoded dark background outside a dark-mode selector
+✗ FAIL if `--bg-modal` is not set to `#ffffff` in the base (light) scope
+⚠ WARN if modal background is set without using `--bg-modal` (makes dark-mode overrides harder)
+
+---
+
+## Check 23 — Minimize Button Position (CLAUDE.md Rule 25)
+
+`.btn-modal-minimize` must sit immediately to the left of `.btn-modal-close`, forming
+an adjacent `[−][×]` pair at the far right of the modal header. The button must be
+auto-injected by `_injectMinimizeButtons()` — never hand-written in HTML.
+
+```bash
+# Verify _injectMinimizeButtons() exists in Sidebar-js.html
+grep -n "_injectMinimizeButtons" ~/claude/projects/topoassist/Sidebar-js.html | head -10
+
+# Verify it is called at initApp()
+grep -n "initApp\|_injectMinimizeButtons" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "^.*function" | head -20
+
+# Verify margin-left: auto on .btn-modal-minimize in CSS
+grep -A5 "btn-modal-minimize" ~/claude/projects/topoassist/Sidebar-css.html | grep "margin-left" | head -5
+
+# Verify NO hand-written btn-modal-minimize in Sidebar.html
+grep -c "btn-modal-minimize" ~/claude/projects/topoassist/Sidebar.html
+
+# Verify insertBefore(btn, closeBtn) pattern in _injectMinimizeButtons()
+grep -A20 "_injectMinimizeButtons" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep "insertBefore" | head -5
+```
+
+✗ FAIL if `_injectMinimizeButtons()` does not exist in Sidebar-js.html
+✗ FAIL if `_injectMinimizeButtons()` is not called at `initApp()`
+✗ FAIL if `.btn-modal-minimize` does not have `margin-left: auto` in CSS
+✗ FAIL if `<button class="btn-modal-minimize">` appears directly in Sidebar.html (must be injected, not hand-written)
+✗ FAIL if `insertBefore(btn, closeBtn)` pattern is absent (ensures `[−]` is left of `[×]`)
+⚠ WARN if any modal header manually positions a minimize button without using the injector
+
+---
+
 ## Output Format
 
 ```
@@ -455,6 +514,8 @@ TOPOASSIST CODE REVIEW
 16 — Inline code font      ✓ / ✗ / ⚠
 17 — GAS loading guard     ✓ / ✗ / ⚠
 18 — Modal button standard ✓ / ✗ / ⚠
+22 — Modal white bg        ✓ / ✗ / ⚠
+23 — Minimize btn position ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
