@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.75 | 2026-04-26 19:02:37 -->
+<!-- TopoAssist v260426.76 | 2026-04-26 19:08:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.75";  // keep in sync with Code.gs
+const APP_VERSION = "260426.76";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3696,6 +3696,30 @@ function cancelTooltip() {
 function hideTooltip() {
   activeTooltipPortId = null;
   document.getElementById("tooltip").style.display = "none";
+}
+
+// Open config modal for any Loopback interface (Lo0, Lo1, Lo10, …).
+// portFilter "Lo<N>" → _expandIfaceName → "Loopback<N>" → _extractInterfaceBlock finds the block.
+function _openLoopbackConfig(deviceName, loNum) {
+  const portFilter = "Lo" + loNum;
+  _configViewContext = { deviceName, portFilter };
+  _setCfgModalPushBtns('interface');
+  const _show = function() {
+    const data = configCache[deviceName] && configCache[deviceName].data;
+    if (!data) { setStatus("No config for " + deviceName, "status-warn"); return; }
+    const block = _extractInterfaceBlock(formatConfigText(data), portFilter);
+    if (block) {
+      showConfigModal(deviceName, block);
+    } else {
+      setStatus("No Loopback" + loNum + " config for " + deviceName, "status-warn");
+    }
+  };
+  if (configCache[deviceName] && configCache[deviceName].data) {
+    _show();
+  } else {
+    setStatus("Fetching " + deviceName + " config\u2026", "status-info");
+    fetchFullConfig(deviceName, _show);
+  }
 }
 
 // Open config modal for Vx1 — sets portFilter:"Vx1" so push extracts interface Vxlan1 block.
@@ -7764,7 +7788,40 @@ function render(data) {
         pList.sort((a, b) => a.order - b.order);
       }
 
-      // Vx1 pinned row — first for VTEP devices; click opens config modal, no cabling, no audit
+      // Loopback pinned rows — Lo0 for all Arista devices, Lo1+Lo10 for VTEP (MLAG) devices.
+      // No cabling, no audit. Click opens config modal via _openLoopbackConfig(deviceName, loNum).
+      const _isArista = !(allDevicesData[node.id] && allDevicesData[node.id].type === 'non-arista');
+      if (_isArista) {
+        const _loNums = [0];
+        if (node.vtepVlans) { _loNums.push(1, 10); }
+        _loNums.forEach(function(loNum) {
+          const loRow = document.createElement("div");
+          loRow.className = "port-row";
+          loRow.style.cssText = "background-color:rgba(59,130,246,0.05)!important;border-left:3px solid rgba(59,130,246,0.35)!important;border-bottom:1px solid rgba(59,130,246,0.12);cursor:pointer;user-select:none;-webkit-user-select:none;";
+          const loEt = document.createElement("span");
+          loEt.className = "col-et";
+          loEt.style.cssText = "color:#3b82f6;font-family:'JetBrains Mono',monospace;font-size:11px;";
+          loEt.innerText = "Lo" + loNum;
+          loRow.appendChild(loEt);
+          const loMode = document.createElement("span");
+          loMode.className = "col-mode";
+          loMode.style.cssText = "color:#94a3b8;font-style:italic;font-family:'JetBrains Mono',monospace;font-size:10px;";
+          loMode.innerText = "N/A";
+          loRow.appendChild(loMode);
+          const loType = document.createElement("span");
+          loType.className = "col-type";
+          loType.style.cssText = "color:#3b82f6!important;background-color:rgba(59,130,246,0.12)!important;border-radius:4px;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:10px;";
+          loType.innerText = "LO";
+          loRow.appendChild(loType);
+          ["col-po", "col-bridge"].forEach(function(cls) { const s = document.createElement("span"); s.className = cls; loRow.appendChild(s); });
+          const loBox = document.createElement("div"); loBox.className = "port-box"; loRow.appendChild(loBox);
+          const _loDevId = node.id;
+          loRow.addEventListener("click", function() { _openLoopbackConfig(_loDevId, loNum); });
+          body.appendChild(loRow);
+        });
+      }
+
+      // Vx1 pinned row — for VTEP devices; click opens config modal, no cabling, no audit
       if (node.vtepVlans) {
         const vx1Row = document.createElement("div");
         vx1Row.className = "port-row";
@@ -8323,6 +8380,7 @@ function toggleViewMode(mode, doZoom = true) {
   if (isDetail) {
     render(currentData);
     if (layoutMode === 'flexible') startFlexibleLayout();
+    else if (layoutMode === 'linear') _initLinearGroupRectSvg();
   } else {
     renderHolistic(currentData);
   }
@@ -14704,6 +14762,26 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
       });
       openGroupRectModal();
     });
+  });
+}
+
+// Creates #linear-grect-svg overlay and renders group rects into it.
+// Deferred one rAF so render()'s node style.left/top are committed and
+// offsetWidth/offsetHeight are valid for _computeGroupBounds().
+// Called from both switchLayout('linear') and toggleViewMode() so group rects
+// appear on every topology load, not only when the user clicks the Linear button.
+function _initLinearGroupRectSvg() {
+  requestAnimationFrame(() => {
+    d3.select('#linear-grect-svg').remove();
+    const linSvg = d3.select('#canvas-surface').append('svg')
+      .attr('id', 'linear-grect-svg')
+      .style('position', 'absolute').style('top', '0').style('left', '0')
+      .style('width', '100%').style('height', '100%')
+      .style('overflow', 'visible').style('pointer-events', 'none')
+      .style('z-index', '1');
+    const linRectGroup  = linSvg.append('g').attr('class', 'group-rects');
+    const linLabelGroup = linSvg.append('g').attr('class', 'group-rect-labels');
+    renderGroupRectsInto(linRectGroup, linLabelGroup);
   });
 }
 
