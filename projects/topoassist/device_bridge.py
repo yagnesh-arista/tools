@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260425.66 | 2026-04-25 13:46:41
+# topoassist v260426.5 | 2026-04-26 10:58:37
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260425.66","port":8765}
+  GET  /health      → {"status":"ok","version":"260426.5","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260425.66"
+VERSION           = "260426.5"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-P) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -351,6 +351,15 @@ _SECTION_CLEANERS = [
     # pushing new flood entries does not remove stale ones from a prior device ID config.
     # 'no interface Vxlan1' inside a config session is safe (atomic commit clears + re-adds).
     (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'no {}'),
+    # BGP: 'no router bgp <asn>' before 'router bgp <asn>' wipes old neighbors/networks so
+    # stale BGP peers (old IPs after device-ID shift) don't persist alongside new ones.
+    # ASN-change case is handled separately by _find_bgp_asn_change (needs current-device ASN).
+    (re.compile(r'^(router bgp \d+)', re.IGNORECASE), 'no {}'),
+    # OSPF/OSPFv3: process ID is always 1 in TopoAssist but could have stale areas/neighbors.
+    # Handles both 'router ospf 1' and 'router ospf3 1', with optional 'vrf <name>' suffix.
+    (re.compile(r'^(router ospf\d*\s+\d+(?:\s+vrf\s+\S+)?)', re.IGNORECASE), 'no {}'),
+    # MLAG: wipe stale peer/peer-link/domain-id before re-applying.
+    (re.compile(r'^(mlag configuration)', re.IGNORECASE), 'no {}'),
 ]
 
 # Management interfaces must never be defaulted — would kill SSH connectivity
@@ -1106,9 +1115,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
         except Exception:
             return []
-        old_asn = summary.get("as")
+        # EOS nests AS under vrfs.<vrf>.as — not at the top level
+        vrfs = summary.get("vrfs", {})
+        old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
         if not old_asn:
-            return []  # no BGP on device yet
+            return []  # BGP not configured on device yet
         old_asn = int(old_asn)
         if old_asn == new_asn:
             return []

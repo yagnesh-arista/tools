@@ -1,4 +1,4 @@
-# topoassist v260424.37 | 2026-04-24 14:11:13
+# topoassist v260426.5 | 2026-04-26 10:58:28
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -426,17 +426,28 @@ class TestPrependSectionCleaners:
         cfg = "interface Ethernet1\n no shutdown"
         assert self._run(cfg) == cfg
 
-    def test_passthrough_bgp(self):
+    def test_cleanup_bgp(self):
+        # router bgp must be wiped before re-applying so stale neighbors don't persist
         cfg = "router bgp 65001\n no bgp default ipv4-unicast"
-        assert self._run(cfg) == cfg
+        assert self._run(cfg) == "no router bgp 65001\n" + cfg
 
-    def test_passthrough_ospf(self):
+    def test_cleanup_ospf(self):
+        # router ospf must be wiped so stale areas/neighbors don't persist
         cfg = "router ospf 1\n router-id 1.1.1.1"
-        assert self._run(cfg) == cfg
+        assert self._run(cfg) == "no router ospf 1\n" + cfg
 
-    def test_passthrough_mlag(self):
+    def test_cleanup_ospf3(self):
+        cfg = "router ospf3 1\n router-id 1.1.1.1"
+        assert self._run(cfg) == "no router ospf3 1\n" + cfg
+
+    def test_cleanup_ospf_vrf(self):
+        cfg = "router ospf 1 vrf MGMT\n router-id 2.2.2.2"
+        assert self._run(cfg) == "no router ospf 1 vrf MGMT\n" + cfg
+
+    def test_cleanup_mlag(self):
+        # mlag configuration must be wiped so stale peer-ip/peer-link/domain-id don't persist
         cfg = "mlag configuration\n domain-id Leaf1"
-        assert self._run(cfg) == cfg
+        assert self._run(cfg) == "no mlag configuration\n" + cfg
 
     def test_passthrough_management_untouched(self):
         cfg = "interface Management0\n ip address 192.168.1.1/24"
@@ -446,9 +457,10 @@ class TestPrependSectionCleaners:
         cfg = "hostname Leaf1\nip routing\nipv6 unicast-routing"
         assert self._run(cfg) == cfg
 
-    def test_passthrough_multiple_sections(self):
+    def test_cleanup_multiple_sections(self):
         cfg = "interface Ethernet1\n no shutdown\n!\nrouter bgp 65001\n redistribute connected"
-        assert self._run(cfg) == cfg
+        expected = "interface Ethernet1\n no shutdown\n!\nno router bgp 65001\nrouter bgp 65001\n redistribute connected"
+        assert self._run(cfg) == expected
 
 
 # ── _norm_iface ───────────────────────────────────────────────────────────────

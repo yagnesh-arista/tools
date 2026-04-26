@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.3 | 2026-04-26 10:53:25 -->
+<!-- TopoAssist v260426.5 | 2026-04-26 10:59:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.3";  // keep in sync with Code.gs
+const APP_VERSION = "260426.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9302,7 +9302,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260425.66"
+VERSION = "260426.5"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9468,8 +9468,14 @@ def _extract_session_diff(output):
 # -- Section-level cleaners for idempotent push --------------------------------
 
 _SECTION_CLEANERS = [
-    # Removed: default interface / no router bgp / no router ospf / no mlag configuration
-    # Generated config is self-sufficient; switchport defaults are in the config itself.
+    # Vxlan1 must be reset before re-applying: vxlan flood vtep is a list command.
+    (re.compile(r'^(interface Vxlan\d+)', re.IGNORECASE), 'no {}'),
+    # BGP: wipe old neighbors/networks so stale peers don't persist after device-ID shift.
+    (re.compile(r'^(router bgp \d+)', re.IGNORECASE), 'no {}'),
+    # OSPF/OSPFv3: wipe stale areas/neighbors before re-applying.
+    (re.compile(r'^(router ospf\d*\s+\d+(?:\s+vrf\s+\S+)?)', re.IGNORECASE), 'no {}'),
+    # MLAG: wipe stale peer-ip/peer-link/domain-id before re-applying.
+    (re.compile(r'^(mlag configuration)', re.IGNORECASE), 'no {}'),
 ]
 
 _MGMT_IFACE_RE     = re.compile(r'^interface\s+(?:Ma|Management)\d+', re.I)
@@ -9887,9 +9893,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
         except Exception:
             return []
-        old_asn = summary.get("as")
+        # EOS nests AS under vrfs.<vrf>.as — not at the top level
+        vrfs = summary.get("vrfs", {})
+        old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
         if not old_asn:
-            return []
+            return []  # BGP not configured on device yet
         old_asn = int(old_asn)
         if old_asn == new_asn:
             return []
