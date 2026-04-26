@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.87 | 2026-04-26 20:11:49 -->
+<!-- TopoAssist v260426.88 | 2026-04-26 20:18:56 -->
 <!DOCTYPE html>
 <html>
 
@@ -455,7 +455,7 @@
 
       <!-- GATEWAY (GW) INTERFACE: independent IPv4/IPv6 checkboxes (always enabled) -->
       <div class="tech-section-label">GATEWAY (GW) INTERFACE</div>
-      <div style="display:flex; gap:28px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+      <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label">
           <input type="checkbox" id="chkGwIpv4" class="chk-input"> IPv4
         </label>
@@ -466,7 +466,7 @@
 
       <!-- POINT-TO-POINT (P2P) INTERFACE: 5-mode radio (gates protocol grid) -->
       <div class="tech-section-label">POINT-TO-POINT (P2P) INTERFACE</div>
-      <div style="display:flex; flex-wrap:wrap; gap:6px 16px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
+      <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:18px; padding:11px 14px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-section,#f8fafc);">
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4" value="ipv4" class="chk-input"> IPv4</label>
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6" value="ipv6" class="chk-input"> IPv6</label>
         <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6Unnum" value="ipv6unnum" class="chk-input"> IPv6 Unnum</label>
@@ -520,22 +520,26 @@
             </div>
             <!-- SERVICE group -->
             <div id="evpnServiceSection" style="border-top:1px solid var(--border-light); padding:8px 0 0;">
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                 <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">SERVICE</span>
                 <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
                 </button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
                 <label id="rowEvpnSvcPerVlan" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
                 <label id="rowEvpnSvcBundle" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
               </div>
             </div>
             <!-- VGW group (contains MAC) -->
             <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; margin-top:8px;">
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                 <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">VGW</span>
                 <button class="btn-info-popup" data-popup="infoVgw" onclick="toggleInfoPopup('infoVgw')" title="VGW mechanism info">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
                 </button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
                 <label id="labelGwAnycast" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
                 <label id="labelGwVarp" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
               </div>

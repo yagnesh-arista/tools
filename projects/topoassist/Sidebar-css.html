@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.87 | 2026-04-26 20:11:49 -->
+<!-- TopoAssist v260426.88 | 2026-04-26 20:18:13 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1230,7 +1230,7 @@
 
   .proto-underlay-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: 10px 14px;
     gap: 16px;
     background: var(--bg-body, #fff);
@@ -1245,12 +1245,12 @@
     font-family: 'JetBrains Mono', monospace;
     user-select: none;
     -webkit-user-select: none;
+    padding-top: 3px;
   }
   .proto-underlay-opts {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 20px;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .tech-radio-label {
