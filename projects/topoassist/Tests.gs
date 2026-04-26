@@ -1,4 +1,4 @@
-// TopoAssist v260426.40 | 2026-04-26 12:56:05
+// TopoAssist v260426.42 | 2026-04-26 13:20:28
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1349,6 +1349,53 @@ function test_deviceIdSnapshot() {
   return results;
 }
 
+function test_compactSheet() {
+  const t = assert_;
+  const results = [];
+
+  // Simulate the row-filter logic from compactSheet():
+  // keep rows where at least one int_ column is non-empty.
+  function _filterRows(headers, rows) {
+    const intCols = [];
+    headers.forEach(function(h, i) { if (String(h).startsWith('int_')) intCols.push(i); });
+    return rows.filter(function(row) {
+      return intCols.some(function(ci) { return String(row[ci] || '').trim() !== ''; });
+    });
+  }
+
+  const hdrs = ['int_Leaf1', 'sp_mode_Leaf1', 'int_Leaf2', 'sp_mode_Leaf2'];
+
+  // 1. All rows populated — nothing removed
+  const allFull = [['Et1', 'l2-et-trunk', 'Et1', 'l2-et-trunk'], ['Et2', '', 'Et2', '']];
+  results.push(t("all rows have ports — none removed", _filterRows(hdrs, allFull).length, 2));
+
+  // 2. Trailing empty rows removed
+  const withTrailing = [['Et1', 'l2-et-trunk', 'Et2', ''], ['', '', '', ''], ['', '', '', '']];
+  results.push(t("trailing empty rows removed", _filterRows(hdrs, withTrailing).length, 1));
+
+  // 3. Mid-sheet gap removed
+  const withGap = [['Et1', '', 'Et1', ''], ['', '', '', ''], ['Et3', '', 'Et3', '']];
+  const gapResult = _filterRows(hdrs, withGap);
+  results.push(t("mid-sheet gap removed", gapResult.length, 2));
+  results.push(t("first kept row is Et1", gapResult[0][0], 'Et1'));
+  results.push(t("second kept row is Et3", gapResult[1][0], 'Et3'));
+
+  // 4. Partial row (one device has port, other empty) — kept
+  const partial = [['Et1', '', '', '']];
+  results.push(t("partial row (one int_ set) is kept", _filterRows(hdrs, partial).length, 1));
+
+  // 5. Whitespace-only int_ treated as empty
+  const whitespace = [['   ', '', '   ', '']];
+  results.push(t("whitespace-only int_ treated as empty", _filterRows(hdrs, whitespace).length, 0));
+
+  // 6. No int_ columns — nothing filtered
+  const noIntHdrs = ['sp_mode_Leaf1', 'vlan_Leaf1'];
+  const rows = [['l2-et-trunk', '10'], ['', '']];
+  results.push(t("no int_ cols — rows unchanged", _filterRows(noIntHdrs, rows).length, 2));
+
+  return results;
+}
+
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
 function runAllTests() {
@@ -1375,6 +1422,7 @@ function runAllTests() {
     { name: "generateComplexL3Block (GW)",    fn: test_generateComplexL3BlockGwType },
     { name: "_compressVniLines",              fn: test_compressVniLines },
     { name: "deviceIdSnapshot",              fn: test_deviceIdSnapshot },
+    { name: "compactSheet (filter logic)",   fn: test_compactSheet },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);
