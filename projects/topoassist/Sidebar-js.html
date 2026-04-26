@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.64 | 2026-04-26 18:33:18 -->
+<!-- TopoAssist v260426.65 | 2026-04-26 18:33:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.64";  // keep in sync with Code.gs
+const APP_VERSION = "260426.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9948,28 +9948,37 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
-        """Return ['no router bgp <old_asn>'] if the device's current BGP AS number
-        differs from the one in config_text, else []. Best-effort — returns [] on error.
-        EOS cannot change the AS number in-place; the old block must be removed first."""
+        """Return ([cmd], asn_info) when the device's running BGP AS differs from
+        config_text, else ([], None). Uses 'show running-config | include router bgp'
+        (plain text SSH) — show ip bgp summary | json returns asn=0 when BGP has no
+        established peers, making it unreliable for ASN detection."""
         m = re.search(r"^router bgp\s+(\d+)", config_text, re.MULTILINE | re.IGNORECASE)
         if not m:
-            return []
+            return [], None
         new_asn = int(m.group(1))
         try:
-            (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
+            eos_cmd = "show running-config | include router bgp"
+            base = _ssh_base()
+            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                        if JUMP_HOST else
+                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
+            if VERBOSE:
+                print(f"  [show] {ip}: {eos_cmd}", flush=True)
+            out = subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
+                                          stderr=subprocess.DEVNULL, env=_SSH_ENV)
+            if VERBOSE:
+                print(f"  [show] {ip}: {eos_cmd} → ok", flush=True)
         except Exception:
-            return []
-        # EOS nests AS under vrfs.<vrf>.as — not at the top level
-        vrfs = summary.get("vrfs", {})
-        old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
-        if not old_asn:
-            return []  # BGP not configured on device yet
-        old_asn = int(old_asn)
+            return [], None
+        m2 = re.search(r"^router bgp\s+(\d+)", out, re.MULTILINE | re.IGNORECASE)
+        if not m2:
+            return [], None
+        old_asn = int(m2.group(1))
         if old_asn == new_asn:
-            return []
+            return [], None
         if VERBOSE:
-            print(f"  [bgp-asn] {ip}: ASN change {old_asn} -> {new_asn} -- prepending no router bgp {old_asn}")
-        return [f"no router bgp {old_asn}"]
+            print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} -- prepending no router bgp {old_asn}")
+        return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
