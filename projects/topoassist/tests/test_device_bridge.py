@@ -1,4 +1,4 @@
-# topoassist v260426.8 | 2026-04-26 11:15:36
+# topoassist v260426.16 | 2026-04-26 11:55:19
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -417,10 +417,14 @@ class TestBuildDevstatusSsh:
 # ── _prepend_section_cleaners ──────────────────────────────────────────────────
 
 class TestPrependSectionCleaners:
-    """_SECTION_CLEANERS is empty — function is now a pass-through."""
+    """Only interface Vxlan* is cleaned (default {}); all other sections pass through."""
 
     def _run(self, cfg):
         return db._prepend_section_cleaners(cfg)
+
+    def test_default_vxlan1(self):
+        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
+        assert self._run(cfg) == "default interface Vxlan1\n" + cfg
 
     def test_passthrough_interface(self):
         cfg = "interface Ethernet1\n no shutdown"

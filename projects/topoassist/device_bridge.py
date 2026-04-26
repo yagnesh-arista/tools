@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.15 | 2026-04-26 11:52:27
+# topoassist v260426.16 | 2026-04-26 11:53:10
 """
 TopoAssist Device Bridge
 ========================
@@ -869,14 +869,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
         # Best-effort; runs on any push (not just all_ifaces) in case config_text
-        # includes BGP from a port-specific push. Returns [] when no BGP in config.
+        # includes BGP from a port-specific push. Returns ([], None) when no BGP or no change.
+        asn_changed = None
         if not dry_run:
-            bgp_asn_cmds = self._find_bgp_asn_change(ip, config_text)
+            bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
             if bgp_asn_cmds:
                 lines = bgp_asn_cmds + lines
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
+        _asn_extra = {"asn_changed": asn_changed} if asn_changed else {}
 
         # 'end' exits from any sub-mode depth to exec mode (session stays pending).
         # Re-entering puts us at session root so show/commit/abort all work correctly.
@@ -906,8 +908,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
             if open_only:
-                return {"ok": True, "diff": diff, "session_name": session}
-            return {"ok": True, "diff": diff, "dry_run": dry_run}
+                return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         if METHOD == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
@@ -926,11 +928,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if open_only:
                 diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
                 if VERBOSE: print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)")
-                return {"ok": True, "diff": diff, "session_name": session}
+                return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             action = "dry-run (aborted)" if dry_run else "committed"
             diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
             if VERBOSE: print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
-            return {"ok": True, "diff": diff, "dry_run": dry_run}
+            return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         raise NotImplementedError(
             f"Config push not supported for METHOD={METHOD!r} — use ssh or eapi")
@@ -1088,36 +1090,36 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
-        """Return ['no router bgp <old_asn>'] if config_text targets a different
-        AS number than the one currently configured on the device, else [].
+        """Return (cmds, asn_info) where cmds=['no router bgp <old>'] and
+        asn_info={"from": old, "to": new} when config_text targets a different
+        AS than currently configured on the device, else ([], None).
 
         EOS does not allow changing the BGP AS number in-place — the old
         'router bgp <old_asn>' block must be removed before the new one is applied.
         Called during full-device push so the removal lands in the same configure
         session and is visible in the diff for user approval.
-        Returns [] on any query failure — best-effort.
+        Returns ([], None) on any query failure — best-effort.
         """
-        # Extract new ASN from config_text
         m = re.search(r'^router bgp\s+(\d+)', config_text, re.MULTILINE | re.IGNORECASE)
         if not m:
-            return []  # no BGP in config being pushed
+            return [], None  # no BGP in config being pushed
         new_asn = int(m.group(1))
 
         try:
             (summary,), _ = self._run_cmds(ip, "show ip bgp summary")
         except Exception:
-            return []
+            return [], None
         # EOS nests AS under vrfs.<vrf>.as — not at the top level
         vrfs = summary.get("vrfs", {})
         old_asn = next((v.get("as") for v in vrfs.values() if v.get("as")), None)
         if not old_asn:
-            return []  # BGP not configured on device yet
+            return [], None  # BGP not configured on device yet
         old_asn = int(old_asn)
         if old_asn == new_asn:
-            return []
+            return [], None
         if VERBOSE:
             print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
-        return [f"no router bgp {old_asn}"]
+        return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
     def _reconcile_device(self, ip, expected_ports):
