@@ -1,10 +1,10 @@
-// TopoAssist v260426.8 | 2026-04-26 11:15:42
+// TopoAssist v260426.9 | 2026-04-26 11:16:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.8";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.9";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4357,7 +4357,7 @@ function getDeviceConfig(deviceName) {
 
     // [SECTION 000] GLOBAL
     configMap["000_GLOBAL"] = {
-      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings, mlagState.isActive),
+      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings, mlagState.isActive, deviceRole === 'LEAF'),
       blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
     };
 
