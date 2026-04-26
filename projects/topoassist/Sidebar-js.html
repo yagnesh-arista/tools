@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.46 | 2026-04-26 14:11:41 -->
+<!-- TopoAssist v260426.47 | 2026-04-26 14:25:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.46";  // keep in sync with Code.gs
+const APP_VERSION = "260426.47";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3233,6 +3233,10 @@ function startFlexibleLayout() {
     .data(nodesData, function (d) { return d ? d.id : (this.dataset ? this.dataset.id : null); })
     .call(drag);
 
+  // Apply initial simulation positions to DOM before rendering group rects —
+  // DOM still holds linear-layout positions before the first tick fires.
+  nodesData.forEach(d => { d.element.style.left = d.x + "px"; d.element.style.top = d.y + "px"; });
+
   // Group rect overlay — behind node cards (z-index:1 < node z-index:20)
   d3.select('#flex-grect-svg').remove();
   const flexSvg = d3.select('#canvas-surface').append('svg')
@@ -3244,6 +3248,8 @@ function startFlexibleLayout() {
   const flexRectGroup  = flexSvg.append('g').attr('class', 'group-rects');
   const flexLabelGroup = flexSvg.append('g').attr('class', 'group-rect-labels');
   renderGroupRectsInto(flexRectGroup, flexLabelGroup);
+  // Re-render group rects after flex simulation settles so member bounds follow final node positions
+  d3Simulation.on("end.grects", refreshGroupRects);
 }
 
 function stopFlexibleLayout() {
@@ -8621,6 +8627,9 @@ function renderHolistic(data) {
 
       if (typeof updateCanvasBounds === 'function') updateCanvasBounds();
     });
+
+    // Re-render group rects after simulation settles so member bounds follow final node positions
+    holisticSimulation.on("end", refreshGroupRects);
 
     // Start simulation.
     // hasNewNodes: some nodes have no saved position (new devices added since last holistic save).
