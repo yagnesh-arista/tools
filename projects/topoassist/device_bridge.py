@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.62 | 2026-04-26 16:25:09
+# topoassist v260426.69 | 2026-04-26 18:45:10
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.23"
+VERSION           = "260426.70"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -350,49 +350,6 @@ def _extract_session_diff(output):
 _TA_ORPHAN_SKIP_RE = re.compile(
     r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE
 )
-
-_VXLAN_IFACE_RE = re.compile(r'^interface\s+Vxlan\d+\s*$', re.IGNORECASE)
-
-
-def _prepend_section_cleaners(config_text):
-    """Inject Vxlan cleanup sub-commands before each Vxlan interface block.
-
-    Two Vxlan sub-commands are additive — stale entries from a prior device ID
-    config don't self-remove when new values are pushed:
-      - 'vxlan flood vtep'   is a list
-      - 'vxlan vlan X vni Y' is a map
-
-    For every Vxlan interface block, inject unconditionally as the first
-    sub-commands:
-      default vxlan vlan 1-4094 vni   — clears all vlan-vni mappings
-      default vxlan flood vtep        — clears all flood vtep entries
-
-    EOS no-ops these if nothing is currently configured, so they are safe to
-    inject on every push. Non-additive sub-commands (vxlan source-interface,
-    vxlan mlag source-interface, etc.) are unaffected.
-
-    All other sections pass through unchanged.
-    """
-    lines = config_text.split('\n')
-    out = []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if _VXLAN_IFACE_RE.match(line):
-            out.append(line)
-            i += 1
-            # Collect the indented sub-block
-            sub_start = i
-            while i < len(lines) and lines[i] and lines[i][0] in (' ', '\t'):
-                i += 1
-            # Inject unconditional cleanup before the real sub-commands
-            out.append(' default vxlan vlan 1-4094 vni')
-            out.append(' default vxlan flood vtep')
-            out.extend(lines[sub_start:i])
-        else:
-            out.append(line)
-            i += 1
-    return '\n'.join(out)
 
 
 # ── SSH stderr cleaner ────────────────────────────────────────────────────────

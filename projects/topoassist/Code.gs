@@ -1,10 +1,10 @@
-// TopoAssist v260426.67 | 2026-04-26 18:40:26
+// TopoAssist v260426.69 | 2026-04-26 18:44:13
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260426.67";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260426.69";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6299,6 +6299,10 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
     lines.push(" vxlan source-interface Loopback0");
   }
 
+  // Additive sub-commands: clear stale mappings/vteps before pushing new config.
+  // EOS no-ops these if nothing is configured, so safe to inject unconditionally.
+  lines.push(" default vxlan vlan 1-4094 vni");
+  lines.push(" default vxlan flood vtep");
   lines.push(" vxlan udp-port 4789");
 
   // 2. VNI Mapping — consecutive VLANs collapsed into range lines via _compressVniLines()

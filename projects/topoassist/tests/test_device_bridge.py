@@ -1,4 +1,4 @@
-# topoassist v260426.61 | 2026-04-26 16:11:43
+# topoassist v260426.69 | 2026-04-26 18:44:54
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -413,73 +413,6 @@ class TestBuildDevstatusSsh:
         assert r["interfaces"] == {}
         assert r["internalVlans"] == []
 
-
-# ── _prepend_section_cleaners ──────────────────────────────────────────────────
-
-class TestPrependSectionCleaners:
-    """Vxlan cleanup: always injects 'default vxlan vlan 1-4094 vni' and
-    'default vxlan flood vtep' as first sub-commands in every Vxlan block."""
-
-    def _run(self, cfg):
-        return db._prepend_section_cleaners(cfg)
-
-    def test_cleanup_always_injected(self):
-        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
-        result = self._run(cfg)
-        lines = result.splitlines()
-        assert lines[0] == "interface Vxlan1"
-        assert lines[1] == " default vxlan vlan 1-4094 vni"
-        assert lines[2] == " default vxlan flood vtep"
-        assert " vxlan source-interface Loopback0" in lines
-
-    def test_cleanup_before_original_subcmds(self):
-        cfg = "interface Vxlan1\n vxlan flood vtep 1.1.1.1\n vxlan vlan 10 vni 10010"
-        result = self._run(cfg)
-        lines = result.splitlines()
-        vni_idx   = lines.index(" default vxlan vlan 1-4094 vni")
-        flood_idx = lines.index(" default vxlan flood vtep")
-        orig_flood_idx = next(i for i, l in enumerate(lines) if "vxlan flood vtep 1.1.1.1" in l)
-        orig_vlan_idx  = next(i for i, l in enumerate(lines) if "vxlan vlan 10 vni 10010" in l)
-        assert vni_idx   < orig_vlan_idx
-        assert flood_idx < orig_flood_idx
-
-    def test_original_subcmds_preserved(self):
-        cfg = "interface Vxlan1\n vxlan vlan 10 vni 10010\n vxlan vlan 20 vni 10020"
-        result = self._run(cfg)
-        assert " vxlan vlan 10 vni 10010" in result
-        assert " vxlan vlan 20 vni 10020" in result
-
-    def test_source_interface_preserved(self):
-        cfg = "interface Vxlan1\n vxlan source-interface Loopback0"
-        assert " vxlan source-interface Loopback0" in self._run(cfg)
-
-    def test_no_vxlan_block_passthrough(self):
-        cfg = "interface Ethernet1\n no shutdown"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_bgp(self):
-        cfg = "router bgp 65001\n no bgp default ipv4-unicast"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_ospf(self):
-        cfg = "router ospf 1\n router-id 1.1.1.1"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_mlag(self):
-        cfg = "mlag configuration\n domain-id Leaf1"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_management_untouched(self):
-        cfg = "interface Management0\n ip address 192.168.1.1/24"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_global_lines(self):
-        cfg = "hostname Leaf1\nip routing\nipv6 unicast-routing"
-        assert self._run(cfg) == cfg
-
-    def test_passthrough_multiple_sections(self):
-        cfg = "interface Ethernet1\n no shutdown\n!\nrouter bgp 65001\n redistribute connected"
-        assert self._run(cfg) == cfg
 
 
 # ── _norm_iface ───────────────────────────────────────────────────────────────
