@@ -1,7 +1,7 @@
-<!-- TopoAssist v260426.45 | 2026-04-26 14:04:07 -->
+<!-- TopoAssist v260426.46 | 2026-04-26 14:11:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-20
-const APP_VERSION = "260426.45";  // keep in sync with Code.gs
+const APP_VERSION = "260426.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14351,30 +14351,50 @@ function _activeGroupRectSvg() {
   return layoutMode === 'flexible' ? d3.select("#flex-grect-svg") : d3.select("#svg-layer");
 }
 
+function _isHolisticView() {
+  return currentViewMode === 'holistic';
+}
+
 function _getTopologyDevices() {
   const devices = [];
   const seen = new Set();
-  if (layoutMode === 'flexible') {
+  if (_isHolisticView()) {
+    if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
+      holisticSimulation.nodes().forEach(n => {
+        if (n.id && !seen.has(n.id)) { seen.add(n.id); devices.push(n.id); }
+      });
+    }
+  } else {
     document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
       const id = el.dataset.id || '';
       if (id && !seen.has(id)) { seen.add(id); devices.push(id); }
-    });
-  } else if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
-    holisticSimulation.nodes().forEach(n => {
-      if (n.id && !seen.has(n.id)) { seen.add(n.id); devices.push(n.id); }
     });
   }
   return devices.sort();
 }
 
 function _computeGroupBounds(memberIds, padding) {
-  // Default 30px uniform padding for both views
   padding = (padding !== undefined) ? padding : 30;
   if (!memberIds || !memberIds.length) return null;
   const set = new Set(memberIds.map(id => (id || '').toLowerCase()));
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   let found = 0;
-  if (layoutMode === 'flexible') {
+  if (_isHolisticView()) {
+    if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
+      const r = (typeof holisticNodeR !== 'undefined' ? holisticNodeR : 52);
+      // Pill labels (role/model/tags) render below circle: NODE_R+8 gap + up to 3 pills×20px+16px.
+      // Use r+84 as effective bottom so pills are always enclosed.
+      const pillBottom = r + 84;
+      holisticSimulation.nodes().forEach(n => {
+        if (!set.has((n.id || '').toLowerCase())) return;
+        if (n.x - r < minX) minX = n.x - r;
+        if (n.y - r < minY) minY = n.y - r;
+        if (n.x + r > maxX) maxX = n.x + r;
+        if (n.y + pillBottom > maxY) maxY = n.y + pillBottom;
+        found++;
+      });
+    }
+  } else {
     document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
       if (!set.has((el.dataset.id || '').toLowerCase())) return;
       const x = parseFloat(el.style.left) || 0;
@@ -14385,19 +14405,6 @@ function _computeGroupBounds(memberIds, padding) {
       if (y < minY) minY = y;
       if (x + w > maxX) maxX = x + w;
       if (y + h > maxY) maxY = y + h;
-      found++;
-    });
-  } else if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
-    const r = (typeof holisticNodeR !== 'undefined' ? holisticNodeR : 52);
-    // Pill labels (role/model/tags) render below the circle: NODE_R + 8 offset + up to 3 pills × 20px.
-    // Use r + 84 as the effective bottom of each node to ensure pills are always enclosed.
-    const pillBottom = r + 84;
-    holisticSimulation.nodes().forEach(n => {
-      if (!set.has((n.id || '').toLowerCase())) return;
-      if (n.x - r < minX) minX = n.x - r;
-      if (n.y - r < minY) minY = n.y - r;
-      if (n.x + r > maxX) maxX = n.x + r;
-      if (n.y + pillBottom > maxY) maxY = n.y + pillBottom;
       found++;
     });
   }
