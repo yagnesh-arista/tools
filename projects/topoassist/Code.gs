@@ -1,10 +1,10 @@
-// TopoAssist v260427.46 | 2026-04-27 21:32:14
+// TopoAssist v260427.47 | 2026-04-27 21:47:33
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260427.46";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260427.47";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4305,6 +4305,9 @@ function getDeviceConfig(deviceName) {
     const deviceRole = ((targetDeviceObj && targetDeviceObj.role) || '').toUpperCase();
     const isEvpnDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
     const isVxlanDevice = deviceRole === 'LEAF' || deviceRole === 'SPINE';
+    // Shallow copy of settings with deviceRole injected — lets generateComplexL3Block gate GW
+    // config on role (SPINE must never get ip address virtual / ip virtual-router address).
+    const callSettings = Object.assign({}, settings, { deviceRole });
     const isVxlan = (settings.vxlan_ipv4 || settings.vxlan_ipv6) && isVxlanDevice;
     const isEvpn  = (settings.evpn_ipv4  || settings.evpn_ipv6)  && isEvpnDevice;
 
@@ -4566,7 +4569,7 @@ function getDeviceConfig(deviceName) {
         }
 
         {
-          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, settings, vx1VlanSet);
+          const cfg = generateConfig(pName, details, ipPrefs, deviceSeenPos, callSettings, vx1VlanSet);
           if (pName.startsWith("Po")) {
             configMap["060_" + pName] = { full: cfg, blockStatus: "Logical" };
           } else {
@@ -4594,7 +4597,7 @@ function getDeviceConfig(deviceName) {
         // Peer info: secondary's peer is the primary on the same device
         const snakeLinkEntry = topo.globalLinkMap.get(deviceName + ":" + secondaryPort);
         if (snakeLinkEntry) { det.peerDev = snakeLinkEntry.dev; det.peerPort = snakeLinkEntry.port; }
-        const cfg2 = generateConfig(secondaryPort, det, ipPrefs, deviceSeenPos, settings, vx1VlanSet);
+        const cfg2 = generateConfig(secondaryPort, det, ipPrefs, deviceSeenPos, callSettings, vx1VlanSet);
         configMap["050_" + secondaryPort] = { full: cfg2, blockStatus: "Physical (Snake Secondary)" };
       });
     }
@@ -5089,9 +5092,9 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         }
       }
     }
-    // B. GATEWAY (SVI/Sub-Int/L3-routed)
+    // B. GATEWAY (SVI/Sub-Int/L3-routed) — LEAF only; SPINEs never get GW config
     // GW type is driven by EVPN settings: anycast (ip address virtual) or VARP (ip virtual-router address)
-    else if (ipType.includes("gw")) {
+    else if (ipType.includes("gw") && (!netSettings || netSettings.deviceRole === 'LEAF')) {
       // Description: ANYCAST_GW_<vrf>_<vlan> when EVPN active and VRF set, else ANYCAST_GW_<vlan>
       if (isEvpnActive) {
         const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;

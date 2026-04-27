@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.46 | 2026-04-27 21:32:37 -->
+<!-- TopoAssist v260427.47 | 2026-04-27 21:55:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.46";  // keep in sync with Code.gs
+const APP_VERSION = "260427.47";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6174,9 +6174,8 @@ function processDeviceConfig(deviceName, configData) {
         // Resolve End A (Left)
         if (link.u.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
           currentLeftConfig = allNodesData[link.u]?.details?.config;
-          const vBtn = document.getElementById("btnViewLeft");
-          // ONLY update if it's currently disabled (meaning it was in "Loading" state)
-          if (vBtn && vBtn.disabled) {
+          const splitL = document.getElementById("splitLeft");
+          if (splitL && splitL.style.background !== "rgb(16, 185, 129)" && splitL.style.background !== "#10b981") {
             const portL = link.u.split(':')[1] || "";
             const sheetIdL = allDevicesData[deviceName]?.sheetIndex || "-";
             setSplitBtnState("splitLeft", `[${sheetIdL}] ${deviceName}:Config:${portL} [${formatAgeLabel(allDevicesData[deviceName].fetchEpoch)}]`, "#10b981", false);
@@ -6186,9 +6185,8 @@ function processDeviceConfig(deviceName, configData) {
         // Resolve End B (Right)
         if (link.v.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
           currentRightConfig = allNodesData[link.v]?.details?.config;
-          const vBtn = document.getElementById("btnViewRight");
-          // ONLY update if it's currently disabled
-          if (vBtn && vBtn.disabled) {
+          const splitR = document.getElementById("splitRight");
+          if (splitR && splitR.style.background !== "rgb(16, 185, 129)" && splitR.style.background !== "#10b981") {
             const portR = link.v.split(':')[1] || "";
             const sheetIdR = allDevicesData[deviceName]?.sheetIndex || "-";
             setSplitBtnState("splitRight", `[${sheetIdR}] ${deviceName}:Config:${portR} [${formatAgeLabel(allDevicesData[deviceName].fetchEpoch)}]`, "#10b981", false);
@@ -13694,20 +13692,38 @@ function openConfigFromButton(target) {
       const portL    = link.u.split(':')[1] || null;
       _configViewContext = { deviceName: devNameL, portFilter: portL };
       _setCfgModalPushBtns('interface');
-      if (currentLeftConfig) {
-        showConfigModal(devNameL, currentLeftConfig);
+      const _showLeft = () => {
+        const cfg = currentLeftConfig
+          || (portL && allDevicesData[devNameL]?.fullConfig
+              ? _extractInterfaceBlock(allDevicesData[devNameL].fullConfig, portL) : null)
+          || allDevicesData[devNameL]?.fullConfig;
+        if (cfg) showConfigModal(devNameL, cfg);
+        else setStatus("Config unavailable for " + devNameL, "status-error");
+      };
+      if (currentLeftConfig || allDevicesData[devNameL]?.configLoaded) {
+        _showLeft();
       } else {
-        setStatus("⏳ Loading End A config...");
+        setStatus("⏳ Fetching " + devNameL + " config...");
+        fetchFullConfig(devNameL, _showLeft);
       }
     } else if (target === 'right') {
       const devNameR = link.v.split(':')[0];
       const portR    = link.v.split(':')[1] || null;
       _configViewContext = { deviceName: devNameR, portFilter: portR };
       _setCfgModalPushBtns('interface');
-      if (currentRightConfig) {
-        showConfigModal(devNameR, currentRightConfig);
+      const _showRight = () => {
+        const cfg = currentRightConfig
+          || (portR && allDevicesData[devNameR]?.fullConfig
+              ? _extractInterfaceBlock(allDevicesData[devNameR].fullConfig, portR) : null)
+          || allDevicesData[devNameR]?.fullConfig;
+        if (cfg) showConfigModal(devNameR, cfg);
+        else setStatus("Config unavailable for " + devNameR, "status-error");
+      };
+      if (currentRightConfig || allDevicesData[devNameR]?.configLoaded) {
+        _showRight();
       } else {
-        setStatus("⏳ Loading End B config...");
+        setStatus("⏳ Fetching " + devNameR + " config...");
+        fetchFullConfig(devNameR, _showRight);
       }
     }
     return;
