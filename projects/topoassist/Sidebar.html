@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.2 | 2026-04-27 10:23:07 -->
+<!-- TopoAssist v260427.3 | 2026-04-27 10:27:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -481,7 +481,7 @@
       <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:18px;">
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">BGP</span>
-          <div class="proto-underlay-opts">
+          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(4,1fr);">
             <label id="row-chkBgpIpv4" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4</label>
             <label id="row-chkBgpIpv6" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
             <label id="row-chkBgpIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
@@ -491,7 +491,7 @@
         <div style="height:1px; background:var(--border-light);"></div>
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">OSPF</span>
-          <div class="proto-underlay-opts">
+          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(4,1fr);">
             <label id="row-chkOspfIpv4" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4</label>
             <label id="row-chkOspfIpv6" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
             <label id="row-chkOspfIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
@@ -505,7 +505,7 @@
         <!-- VXLAN row -->
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">VXLAN <span class="proto-plane-badge proto-plane-badge--data">DATA</span></span>
-          <div class="proto-underlay-opts">
+          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(2,1fr);">
             <label id="row-chkVxlanIpv4" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
             <label id="row-chkVxlanIpv6" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
           </div>
@@ -516,7 +516,7 @@
           <span class="proto-underlay-label" style="padding-top:3px;">EVPN <span class="proto-plane-badge proto-plane-badge--ctrl">CTRL</span></span>
           <div style="flex:1; display:flex; flex-direction:column;">
             <!-- IPv4 / IPv6 -->
-            <div class="proto-underlay-opts" style="padding-bottom:8px;">
+            <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(2,1fr); padding-bottom:8px;">
               <label id="row-chkEvpnIpv4" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
               <label id="row-chkEvpnIpv6" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
             </div>
