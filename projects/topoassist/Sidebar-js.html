@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.4 | 2026-04-27 11:24:45 -->
+<!-- TopoAssist v260427.5 | 2026-04-27 11:45:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.4";  // keep in sync with Code.gs
+const APP_VERSION = "260427.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2293,6 +2293,7 @@ function applyAuditOnlyView() {
       if (el.dataset.auditHidden) { el.style.display = ''; delete el.dataset.auditHidden; }
     });
     requestAnimationFrame(redrawLinks);
+    requestAnimationFrame(refreshGroupRects);
     return;
   }
   const devsWithErrors = new Set();
@@ -2318,6 +2319,7 @@ function applyAuditOnlyView() {
     }
   });
   requestAnimationFrame(redrawLinks);
+  requestAnimationFrame(refreshGroupRects);
 }
 
 function runValidation(logIssues) {
