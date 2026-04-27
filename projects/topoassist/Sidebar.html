@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.16 | 2026-04-27 12:30:26 -->
+<!-- TopoAssist v260427.17 | 2026-04-27 12:35:26 -->
 <!DOCTYPE html>
 <html>
 
@@ -466,12 +466,16 @@
         <div style="height:1px; background:var(--border-light);"></div>
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">P2P</span>
-          <div class="proto-underlay-opts" style="flex-wrap:nowrap;">
+          <div class="proto-underlay-opts" style="gap:6px; flex:1;">
             <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4" value="ipv4" class="chk-input"> IPv4</label>
-            <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6" value="ipv6" class="chk-input"> IPv6</label>
-            <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6Unnum" value="ipv6unnum" class="chk-input"> IPv6 Unnum</label>
-            <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6" value="ipv4ipv6" class="chk-input"> IPv4 + IPv6</label>
-            <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input"> IPv4 + IPv6 Unnum</label>
+            <div class="tech-chip-group">
+              <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6" value="ipv6" class="chk-input"> IPv6</label>
+              <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv6Unnum" value="ipv6unnum" class="chk-input"> IPv6 Unnum</label>
+            </div>
+            <div class="tech-chip-group">
+              <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6" value="ipv4ipv6" class="chk-input"> IPv4 + IPv6</label>
+              <label class="tech-radio-label"><input type="radio" name="p2pMode" id="p2pModeIpv4Ipv6Unnum" value="ipv4ipv6unnum" class="chk-input"> IPv4 + IPv6 Unnum</label>
+            </div>
           </div>
         </div>
       </div>
