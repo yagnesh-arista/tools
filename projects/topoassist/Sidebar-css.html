@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.6 | 2026-04-27 11:46:02 -->
+<!-- TopoAssist v260427.7 | 2026-04-27 11:49:50 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1291,6 +1291,19 @@
   .tech-incompat:hover { color: var(--primary, #3b82f6); }
   .tech-incompat:hover input[type="checkbox"],
   .tech-incompat:hover input[type="radio"] { opacity: 0.85; }
+
+  .tech-hint-icon {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    color: #94a3b8;
+    opacity: 0.7;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tech-incompat:hover .tech-hint-icon { color: var(--primary, #3b82f6); opacity: 1; }
 
   .tech-proto-col {
     display: flex;

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.6 | 2026-04-27 11:46:19 -->
+<!-- TopoAssist v260427.7 | 2026-04-27 11:49:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.6";  // keep in sync with Code.gs
+const APP_VERSION = "260427.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4863,6 +4863,9 @@ function _enableTechChk(id) {
 
 function applyTechCompat(mode) {
   const allowed = TECH_COMPAT[mode] || TECH_COMPAT.ipv4;
+  const _priority = ['ipv4ipv6','ipv4ipv6unnum','ipv6','ipv6unnum','ipv4'];
+  const _modeLabel = { ipv4:'IPv4', ipv6:'IPv6', ipv6unnum:'IPv6 Unnum', ipv4ipv6:'IPv4+IPv6', ipv4ipv6unnum:'IPv4+IPv6 Unnum' };
+  const _iconSvg = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M5 3v4M3 5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
   TECH_ALL_CHKS.forEach(id => {
     const el  = document.getElementById(id);
     const row = document.getElementById('row-' + id);
@@ -4870,6 +4873,15 @@ function applyTechCompat(mode) {
     const ok = allowed.has(id);
     if (!ok) el.checked = false;
     row.classList.toggle('tech-incompat', !ok);
+    let hint = row.querySelector('.tech-hint-icon');
+    if (!ok) {
+      const best = _priority.find(m => TECH_COMPAT[m] && TECH_COMPAT[m].has(id)) || 'ipv4';
+      row.title = 'Click to enable — will switch P2P to ' + (_modeLabel[best] || best);
+      if (!hint) { hint = document.createElement('span'); hint.className = 'tech-hint-icon'; hint.innerHTML = _iconSvg; row.appendChild(hint); }
+    } else {
+      row.title = '';
+      if (hint) hint.remove();
+    }
   });
 }
 
