@@ -1,4 +1,4 @@
-<!-- TopoAssist v260426.97 | 2026-04-26 23:57:44 -->
+<!-- TopoAssist v260427.1 | 2026-04-27 10:08:53 -->
 <!DOCTYPE html>
 <html>
 
@@ -455,7 +455,7 @@
 
       <!-- INTERFACE: GW + P2P as underlay-style rows -->
       <div class="tech-section-label">INTERFACE</div>
-      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
+      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:18px;">
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">GW</span>
           <div class="proto-underlay-opts">
@@ -478,7 +478,7 @@
 
       <!-- PROTOCOL UNDERLAY: BGP + OSPF as horizontal option rows -->
       <div class="tech-section-label">PROTOCOL UNDERLAY</div>
-      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
+      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:18px;">
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">BGP</span>
           <div class="proto-underlay-opts">
@@ -501,7 +501,7 @@
 
       <!-- PROTOCOL OVERLAY: VXLAN [DATA] + EVPN [CTRL] as underlay-style rows -->
       <div class="tech-section-label">PROTOCOL OVERLAY</div>
-      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:14px;">
+      <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:18px;">
         <!-- VXLAN row -->
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">VXLAN <span class="proto-plane-badge proto-plane-badge--data">DATA</span></span>
@@ -521,7 +521,7 @@
               <label id="row-chkEvpnIpv6" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
             </div>
             <!-- SERVICE group (inline: label + info + options on one line) -->
-            <div id="evpnServiceSection" style="border-top:1px solid var(--border-light); padding:8px 0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div id="evpnServiceSection" style="border-top:1px solid var(--border-light); padding:8px 0; display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap;">
               <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">SERVICE</span>
               <button class="btn-info-popup" data-popup="infoEvpnService" onclick="toggleInfoPopup('infoEvpnService')" title="EVPN service model info">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
@@ -530,7 +530,7 @@
               <label id="rowEvpnSvcBundle" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
             </div>
             <!-- VGW group (inline: label + info + options on one line) -->
-            <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap;">
               <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">VGW</span>
               <button class="btn-info-popup" data-popup="infoVgw" onclick="toggleInfoPopup('infoVgw')" title="VGW mechanism info">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
