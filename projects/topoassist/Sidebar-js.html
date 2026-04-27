@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.12 | 2026-04-27 12:18:48 -->
+<!-- TopoAssist v260427.13 | 2026-04-27 12:21:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.12";  // keep in sync with Code.gs
+const APP_VERSION = "260427.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10407,12 +10407,12 @@ function refreshAuditSettingsDots() {
     else if (enabled)       dot.className = 'audit-issue-ind ind-red';
     else                    dot.className = 'audit-issue-ind ind-gray';
 
-    // Count badge — only shown when count > 0
-    if (count > 0) {
-      cnt.textContent = count > 99 ? '99+' : String(count);
-      cnt.className = 'audit-count-ind ' + (enabled ? 'cnt-red' : 'cnt-gray');
-    } else {
+    // Count badge — always shown after first run; 0 when clean
+    if (!auditHasRun) {
       cnt.className = 'audit-count-ind hidden';
+    } else {
+      cnt.textContent = count > 99 ? '99+' : String(count);
+      cnt.className = 'audit-count-ind ' + (count > 0 ? (enabled ? 'cnt-red' : 'cnt-gray') : 'cnt-clean');
     }
   });
 }
