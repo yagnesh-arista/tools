@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.34 | 2026-04-27 14:45:13 -->
+<!-- TopoAssist v260427.35 | 2026-04-27 15:03:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.34";  // keep in sync with Code.gs
+const APP_VERSION = "260427.35";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9458,7 +9458,7 @@ Transport options (set METHOD below):
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"260427.1","port":8765}
+  GET  /health      -> {"status":"ok","version":"260427.2","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
@@ -9714,8 +9714,17 @@ def _extract_eos_errors(text):
       2. Bare exec-mode prompt ('HOSTNAME#') -- 'end' was processed, config phase over.
          Condition: line ends with '#' and contains no '(config'.
 
-    Returns a list of stripped % lines, or [] if none found."""
+    In PTY (SSH) mode EOS echoes each command as 'HOSTNAME(config-s-...)#<command>'.
+    When a % error follows, the preceding echo is captured as command context so the
+    caller can show 'channel-group 4003 mode active -> % Invalid input' instead of
+    just '% Invalid input'. Context is only extracted from PTY prompt echoes (lines
+    containing both '#' and '(config') -- plain eAPI result lines are not treated as
+    command echoes, so eAPI mode falls back to bare % lines with no context.
+
+    Returns a list of strings: 'cmd -> % error' when context is available, '% error'
+    otherwise. Empty list if no % lines found."""
     errors = []
+    prev_cmd = ""
     for line in text.split("\\n"):
         s = line.strip()
         if s.startswith("--- ") or s.startswith("+++ "):
@@ -9723,7 +9732,11 @@ def _extract_eos_errors(text):
         if s.endswith("#") and "(config" not in s:
             break
         if s.startswith("%"):
-            errors.append(s)
+            errors.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
+        elif "#" in s and "(config" in s:
+            cmd = s.split("#", 1)[-1].strip()
+            if cmd:
+                prev_cmd = cmd
     return errors
 
 
@@ -12132,7 +12145,7 @@ async function pushAllConfigs() {
       const safeDetails = escapeHtml(details);
       html +=
         `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f87171;` +
-        `background:#0f172a;border-radius:3px;padding:5px 8px;margin:0 0 6px;">${safeDetails}</div>`;
+        `background:#0f172a;border-radius:3px;padding:5px 8px;margin:0 0 6px;white-space:pre-wrap;">${safeDetails}</div>`;
     }
     const rowEl = document.getElementById(rowId);
     if (rowEl) rowEl.outerHTML = html;
@@ -12297,7 +12310,7 @@ async function pushAllConfigs() {
         else if (vRes.ok) {
           const _vEosErrs = _eosErrors(vRes);
           if (_vEosErrs && !(vRes.diff || '').trim()) {
-            vError = 'EOS command rejection: ' + _vEosErrs.join('; ');
+            vError = _vEosErrs.join('\n');
           } else {
             vDiff = (vRes.diff || '').trim();
           }
@@ -13814,9 +13827,15 @@ function _injectPushAsnChangeWarning(asnChanged) {
   bodyEl.insertAdjacentHTML('afterbegin', banner);
 }
 
-// Returns the eos_errors array from a bridge response, or null if absent/empty.
+// Returns deduplicated eos_errors from a bridge response, or null if absent/empty.
+// Duplicate entries are collapsed with a count suffix: 'cmd → % err (×3)'.
 function _eosErrors(res) {
-  return (res && res.eos_errors && res.eos_errors.length) ? res.eos_errors : null;
+  if (!res || !res.eos_errors || !res.eos_errors.length) return null;
+  const counts = Object.create(null);
+  res.eos_errors.forEach(function(e) { counts[e] = (counts[e] || 0) + 1; });
+  return Object.entries(counts).map(function(pair) {
+    return pair[1] > 1 ? pair[0] + ' (\xd7' + pair[1] + ')' : pair[0];
+  });
 }
 
 // Injects a red EOS command-rejection banner into the push confirm modal body.

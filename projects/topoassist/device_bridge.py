@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260427.26 | 2026-04-27 14:18:33
+# topoassist v260427.35 | 2026-04-27 15:02:57
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260427.1"
+VERSION           = "260427.2"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -355,12 +355,17 @@ def _extract_eos_errors(text):
          Condition: line ends with '#' and contains no '(config' (which would indicate
          a configure-session context rather than exec mode).
 
-    Both boundaries ensure % lines are only captured during the config-command phase
-    (between 'configure session' and 'end'), not from the re-entry or show-diffs phase.
-    For joined eAPI output: diff lines start with '---'/'+++' so stop-condition 1 applies.
+    In PTY (SSH) mode EOS echoes each command as 'HOSTNAME(config-s-...)#<command>'.
+    When a % error follows, the preceding echo is captured as command context so the
+    caller can show 'channel-group 4003 mode active → % Invalid input' instead of just
+    '% Invalid input'.  Context is only extracted from PTY prompt echoes (lines
+    containing both '#' and '(config') — plain eAPI result lines are not treated as
+    command echoes, so eAPI mode falls back to bare % lines with no context.
 
-    Returns a list of stripped % lines, or [] if none found."""
+    Returns a list of strings: 'cmd → % error' when context is available, '% error'
+    otherwise.  Empty list if no % lines found."""
     errors = []
+    prev_cmd = ''
     for line in text.split('\n'):
         s = line.strip()
         if s.startswith('--- ') or s.startswith('+++ '):
@@ -368,7 +373,12 @@ def _extract_eos_errors(text):
         if s.endswith('#') and '(config' not in s:
             break   # bare exec-mode prompt — 'end' was processed, config phase over
         if s.startswith('%'):
-            errors.append(s)
+            errors.append(f'{prev_cmd} \u2192 {s}' if prev_cmd else s)
+        elif '#' in s and '(config' in s:
+            # PTY prompt echo: 'HOSTNAME(config-s-...)#the command' → 'the command'
+            cmd = s.split('#', 1)[-1].strip()
+            if cmd:
+                prev_cmd = cmd
     return errors
 
 

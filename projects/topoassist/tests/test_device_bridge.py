@@ -1,4 +1,4 @@
-# topoassist v260427.32 | 2026-04-27 14:39:47
+# topoassist v260427.35 | 2026-04-27 15:00:31
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -29,7 +29,7 @@ class TestExtractEosErrors:
             "+++ session:/topoassist-session-config\n"
             "Arista(config-s-1)#commit\n"
         )
-        assert db._extract_eos_errors(output) == ["% BGP is already running with AS number 65002"]
+        assert db._extract_eos_errors(output) == ["router bgp 1 \u2192 % BGP is already running with AS number 65002"]
 
     def test_multiple_rejections(self):
         output = (
@@ -97,16 +97,16 @@ class TestExtractEosErrors:
         assert result == ["% BGP is already running with AS number 65002"]
 
     def test_exec_mode_prompt_with_config_context_not_a_stop(self):
-        # A prompt that contains '(config' is a session/configure context, not exec mode —
-        # must NOT trigger the stop so % lines after it are still captured.
+        # A prompt that contains '(config' is a session/configure context — must NOT
+        # stop the scan; the following % line is captured with command context.
         output = (
-            "Arista(config-s-topoas-mst)#end\n"     # sub-mode echo, not a stop
+            "Arista(config-s-topoas-mst)#router bgp 65002\n"  # real cmd, not 'end'
             "% BGP is already running with AS number 65002\n"
             "Arista#\n"                              # now exec mode — stop here
             "% Should not be captured\n"
         )
         result = db._extract_eos_errors(output)
-        assert result == ["% BGP is already running with AS number 65002"]
+        assert result == ["router bgp 65002 \u2192 % BGP is already running with AS number 65002"]
 
     def test_spanning_tree_submode_scenario(self):
         # Full PTY output for a spanning-tree MST push: % errors from config phase only,
@@ -138,7 +138,7 @@ class TestExtractEosErrors:
             "DUT#\n"                                  # exec-mode — stop
             "--- system:/running-config\n"
         )
-        assert db._extract_eos_errors(output) == ["% Invalid input"]
+        assert db._extract_eos_errors(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
 
     def test_timestamped_prompt_submode_not_a_stop_exec_is(self):
         # EOS can embed a clock in the prompt (e.g. 'clock format %H:%M:%S').
@@ -151,7 +151,7 @@ class TestExtractEosErrors:
             "DUT.02:03:50#\n"                                 # timestamped exec-mode — STOP
             "% Should not be captured\n"
         )
-        assert db._extract_eos_errors(output) == ["% Invalid input"]
+        assert db._extract_eos_errors(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
 
 
 # ── _extract_session_diff ──────────────────────────────────────────────────────
