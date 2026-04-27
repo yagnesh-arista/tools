@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.23 | 2026-04-27 13:53:02 -->
+<!-- TopoAssist v260427.24 | 2026-04-27 14:01:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.23";  // keep in sync with Code.gs
+const APP_VERSION = "260427.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11455,6 +11455,21 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
       _updatePushPreviewError(res.error || 'something went wrong');
       return;
     }
+    // EOS command rejections — commands silently failed inside the session.
+    // Empty diff + eos_errors = nothing staged (false "already in sync") → show as error.
+    // Non-empty diff + eos_errors = partial staging → show diff with rejection banner.
+    const _p1EosErrs = _eosErrors(res);
+    if (_p1EosErrs && (!res.diff || !res.diff.trim())) {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+      if (res.session_name) {
+        fetch(BRIDGE_URL + '/pushconfig/finalize', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: res.session_name } }, action: 'abort' }),
+        }).catch(() => {});
+      }
+      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _p1EosErrs.join('\n'));
+      return;
+    }
     // Empty diff = already in sync — abort the open session silently, show modal briefly
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -11470,6 +11485,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     // Store pending push details + session_name, show confirm modal (button stays disabled)
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
     _showPushConfirmModal(label, res.diff);
+    if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
     // Guard: auto-abort the open EOS session if user doesn't commit within 5 minutes
     if (res.session_name) {
@@ -11690,9 +11706,10 @@ async function commitPushConfig() {
         const vData = await vResp.json();
         const vRes  = vData[deviceName] || { ok: false, error: 'No response from bridge for verify step' };
         if (vRes.ok) {
+          const _v3EosErrs = _eosErrors(vRes);
           const rem = (vRes.diff || '').split('\n')
             .filter(l => l.startsWith('+') || l.startsWith('-')).length;
-          if (rem === 0) {
+          if (rem === 0 && !_v3EosErrs) {
             _ptSet('pt3', '#10b981', 'no diff remaining');
             if (titleEl) titleEl.textContent = 'Push Successful';
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
@@ -11702,6 +11719,16 @@ async function commitPushConfig() {
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
             }
             setTimeout(() => { setStatus(getReadyStatus()); }, 5000);
+          } else if (rem === 0 && _v3EosErrs) {
+            // Empty diff but EOS rejected commands — false "in sync", device not fully updated
+            _ptSet('pt3', '#f87171', 'EOS command rejection');
+            if (titleEl) titleEl.textContent = 'Push Succeeded — EOS Rejection on Verify';
+            _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#dc2626;padding:4px 0;">` +
+              `<b>EOS rejected commands during verify:</b><br>` + _v3EosErrs.map(escapeHtml).join('<br>') + `</div>`);
+            if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
+            _setPushStatus(`<b>${label || deviceName}</b> — ` +
+              `<span style="color:#f87171;font-weight:600;">EOS command rejection during verify</span>`);
+            if (btn) { btn.disabled = false; btn.textContent = origText; }
           } else {
             // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
@@ -13656,6 +13683,13 @@ async function _pushConfigText(deviceName, config, label, btnId) {
       _updatePushPreviewError(errMsg);
       return;
     }
+    // EOS command rejections with empty diff — false "already in sync"
+    const _ptEosErrs = _eosErrors(res);
+    if (_ptEosErrs && (!res.diff || !res.diff.trim())) {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _ptEosErrs.join('\n'));
+      return;
+    }
     // Empty diff = already in sync — update modal for in-sync state
     if (!res.diff || !res.diff.trim()) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -13664,6 +13698,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     }
     _pendingPush = { deviceName, ip, config, btnId, origText, label };
     _showPushConfirmModal(label, res.diff);
+    if (_ptEosErrs) _injectEosRejectionBanner(_ptEosErrs);
     // ASN injected first (afterbegin) so id-shift banner ends up above it when both present.
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
     if (_lastIdShiftResult && !_lastIdShiftResult.isFirstRun && _lastIdShiftResult.shifted.length > 0) {
@@ -13733,6 +13768,24 @@ function _injectPushAsnChangeWarning(asnChanged) {
     '<code style="font-family:\'JetBrains Mono\',monospace;font-size:11px;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;user-select:text;-webkit-user-select:text;">no router bgp ' + asnChanged.from + '</code>' +
     ' is included in the diff above. BGP will reconverge after commit.' +
     '</div>';
+  bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+// Returns the eos_errors array from a bridge response, or null if absent/empty.
+function _eosErrors(res) {
+  return (res && res.eos_errors && res.eos_errors.length) ? res.eos_errors : null;
+}
+
+// Injects a red EOS command-rejection banner into the push confirm modal body.
+function _injectEosRejectionBanner(errors) {
+  const bodyEl = document.getElementById('pushConfirmBody');
+  if (!bodyEl) return;
+  const lines = errors.map(function(e) { return escapeHtml(e); }).join('<br>');
+  const banner = '<div id="pushEosRejectionBanner" style="' +
+    'font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;' +
+    'padding:8px 10px;margin-bottom:8px;color:#dc2626;line-height:1.5;">' +
+    '<b>EOS rejected commands:</b><br>' + lines + '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
 }
 
