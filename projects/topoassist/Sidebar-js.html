@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.27 | 2026-04-27 14:22:14 -->
+<!-- TopoAssist v260427.28 | 2026-04-27 14:24:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.27";  // keep in sync with Code.gs
+const APP_VERSION = "260427.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9458,7 +9458,7 @@ Transport options (set METHOD below):
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"260426.70","port":8765}
+  GET  /health      -> {"status":"ok","version":"260427.1","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
@@ -9704,6 +9704,27 @@ def _extract_session_diff(output):
                 break
             diff.append(s)
     return "\\n".join(diff).strip()
+
+
+def _extract_eos_errors(text):
+    """Collect EOS % error/warning lines from session output (SSH or joined eAPI text).
+
+    Two stop conditions bound the scan to the config-command phase only:
+      1. Diff header ('--- ' or '+++ ') -- reached show session-config diffs output.
+      2. Bare exec-mode prompt ('HOSTNAME#') -- 'end' was processed, config phase over.
+         Condition: line ends with '#' and contains no '(config'.
+
+    Returns a list of stripped % lines, or [] if none found."""
+    errors = []
+    for line in text.split("\\n"):
+        s = line.strip()
+        if s.startswith("--- ") or s.startswith("+++ "):
+            break
+        if s.endswith("#") and "(config" not in s:
+            break
+        if s.startswith("%"):
+            errors.append(s)
+    return errors
 
 
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
@@ -9985,6 +10006,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-1].strip() if results else ""
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
+            eos_errs = _extract_eos_errors("\\n".join(results))
+            if eos_errs:
+                _asn_extra["eos_errors"] = eos_errs
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
@@ -10001,10 +10025,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "EOS pending session limit reached -- Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
             diff = _extract_session_diff(output)
-            if not diff and not open_only:
-                eos_errs = [l.strip() for l in output.split("\\n") if l.strip().startswith("%")]
-                if eos_errs:
-                    raise RuntimeError(f"Config session error: {eos_errs[0][:120]}")
+            eos_errs = _extract_eos_errors(output)
+            if eos_errs:
+                _asn_extra["eos_errors"] = eos_errs
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
