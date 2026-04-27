@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.1 | 2026-04-27 10:08:02 -->
+<!-- TopoAssist v260427.2 | 2026-04-27 10:23:26 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5738,14 +5738,32 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .audit-status-dot {
+  /* Audit issue indicator — dot when empty, count badge when populated */
+  .audit-issue-ind {
+    flex-shrink: 0;
+    margin-left: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+  }
+  .audit-issue-ind:empty {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: #94a3b8;
-    flex-shrink: 0;
-    margin-left: 10px;
+    padding: 0;
   }
-  .audit-status-dot.dot-green { background: #22c55e; }
-  .audit-status-dot.dot-red   { background: #ef4444; }
+  .audit-issue-ind:not(:empty) {
+    min-width: 20px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 5px;
+  }
+  .audit-issue-ind.ind-green:empty  { background: #22c55e; }
+  .audit-issue-ind.ind-red:not(:empty)  { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.35); }
+  .audit-issue-ind.ind-gray:not(:empty) { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.35); }
 </style>
