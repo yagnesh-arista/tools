@@ -2,7 +2,7 @@
 # settings v260421.31 | 2026-04-21 12:35:43
 # Auto-syncs project .claude/commands/<name>.md → ~/.claude/commands/<proj>-<name>.md
 # on every Write/Edit to a project command file.
-# Also copies to settings backup.
+# Also copies to settings backup (claude-skills/).
 
 input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
@@ -12,7 +12,7 @@ if echo "$f" | grep -qP '/claude/projects/[^/]+/\.claude/commands/[^/]+\.md$'; t
   proj=$(echo "$f" | grep -oP '/claude/projects/\K[^/]+')
   name=$(basename "$f")
   dest="$HOME/.claude/commands/${proj}-${name}"
-  bkp="$HOME/claude/projects/settings/commands/${proj}-${name}"
+  bkp="$HOME/claude/projects/settings/claude-skills/${proj}-${name}"
 
   # flock: prevent interleaved writes if two sessions sync commands simultaneously
   exec 9>/tmp/claude-commands.lock
