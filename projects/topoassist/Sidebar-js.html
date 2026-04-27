@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.14 | 2026-04-27 12:25:25 -->
+<!-- TopoAssist v260427.15 | 2026-04-27 12:28:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.14";  // keep in sync with Code.gs
+const APP_VERSION = "260427.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2378,8 +2378,8 @@ function runValidation(logIssues) {
   // 3. Data Structures for Global Aggregation
   const vlanGwUsage = {};
 
-  // Reset per-check issue tracking for this run
-  auditCheckHadIssue = {};
+  // Reset only enabled checks — disabled checks keep their last count so [n] badge stays visible
+  _ALL_AUDIT_FLAGS.forEach(name => { if (_getAuditFlag(name)) auditCheckHadIssue[name] = 0; });
 
   // =========================================================
   // CHECK GROUP 1: LINK-BASED CHECKS
