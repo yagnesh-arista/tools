@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.5 | 2026-04-27 11:45:41 -->
+<!-- TopoAssist v260427.6 | 2026-04-27 11:46:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.5";  // keep in sync with Code.gs
+const APP_VERSION = "260427.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14532,6 +14532,7 @@ function _computeGroupBounds(memberIds, padding) {
   } else {
     document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
       if (!set.has((el.dataset.id || '').toLowerCase())) return;
+      if (el.style.display === 'none') return; // skip nodes hidden by any visibility filter
       const x = parseFloat(el.style.left) || 0;
       const y = parseFloat(el.style.top) || 0;
       const w = el.offsetWidth || 220;
@@ -14612,7 +14613,8 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
     const isMemberRect = gr.members && gr.members.length > 0;
     if (isMemberRect) {
       const computed = _computeGroupBounds(gr.members);
-      if (computed) { gr.x = computed.x; gr.y = computed.y; gr.width = computed.width; gr.height = computed.height; }
+      if (!computed) return; // all members hidden — skip this group rect
+      gr.x = computed.x; gr.y = computed.y; gr.width = computed.width; gr.height = computed.height;
     }
     const strokeColor = gr.color.replace(/[0-9a-f]{2}$/i, "ff");
     const g = rectGroup.append("g").attr("class", "grect-item").attr("data-id", gr.id);
