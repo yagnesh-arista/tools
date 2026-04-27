@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260427.24 | 2026-04-27 13:58:21
+# topoassist v260427.26 | 2026-04-27 14:18:33
 """
 TopoAssist Device Bridge
 ========================
@@ -347,17 +347,26 @@ def _extract_session_diff(output):
 def _extract_eos_errors(text):
     """Collect EOS % error/warning lines from session output (SSH or joined eAPI text).
 
-    Scans until the first diff-header line ('--- ' or '+++ '), so only rejection
-    messages emitted while config commands were processed are captured — not diff
-    content.  For joined eAPI output the same rule applies: % lines only appear in
-    command outputs that precede the 'show session-config diffs' result.
+    Two stop conditions bound the scan to the config-command phase only:
+      1. Diff header ('--- ' or '+++ ') — reached the show session-config diffs output.
+      2. Bare exec-mode prompt ('HOSTNAME#') — 'end' was processed and the session
+         sub-mode has been exited.  In PTY mode (_ssh_stdin force_tty=True) EOS
+         emits a standalone prompt line after 'end' before echoing the next command.
+         Condition: line ends with '#' and contains no '(config' (which would indicate
+         a configure-session context rather than exec mode).
+
+    Both boundaries ensure % lines are only captured during the config-command phase
+    (between 'configure session' and 'end'), not from the re-entry or show-diffs phase.
+    For joined eAPI output: diff lines start with '---'/'+++' so stop-condition 1 applies.
 
     Returns a list of stripped % lines, or [] if none found."""
     errors = []
     for line in text.split('\n'):
         s = line.strip()
         if s.startswith('--- ') or s.startswith('+++ '):
-            break   # reached diff section — stop
+            break   # reached diff section
+        if s.endswith('#') and '(config' not in s:
+            break   # bare exec-mode prompt — 'end' was processed, config phase over
         if s.startswith('%'):
             errors.append(s)
     return errors

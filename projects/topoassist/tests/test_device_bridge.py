@@ -1,4 +1,4 @@
-# topoassist v260427.24 | 2026-04-27 13:58:43
+# topoassist v260427.26 | 2026-04-27 14:18:55
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -80,6 +80,49 @@ class TestExtractEosErrors:
             "interface Ethernet1\n"
             "+   description spine\n"
             "Arista(config-s-topoas)#commit\n"
+        )
+        assert db._extract_eos_errors(output) == []
+
+    def test_stops_at_exec_mode_prompt(self):
+        # PTY mode: EOS emits bare HOSTNAME# after 'end' exits the configure session.
+        # % lines after this exec-mode prompt are from re-entry/show-diffs phase,
+        # not config commands — must NOT be captured.
+        output = (
+            "% BGP is already running with AS number 65002\n"
+            "Arista#\n"                              # bare exec-mode prompt after 'end'
+            "% Should not be captured (re-entry phase)\n"
+            "--- system:/running-config\n"
+        )
+        result = db._extract_eos_errors(output)
+        assert result == ["% BGP is already running with AS number 65002"]
+
+    def test_exec_mode_prompt_with_config_context_not_a_stop(self):
+        # A prompt that contains '(config' is a session/configure context, not exec mode —
+        # must NOT trigger the stop so % lines after it are still captured.
+        output = (
+            "Arista(config-s-topoas-mst)#end\n"     # sub-mode echo, not a stop
+            "% BGP is already running with AS number 65002\n"
+            "Arista#\n"                              # now exec mode — stop here
+            "% Should not be captured\n"
+        )
+        result = db._extract_eos_errors(output)
+        assert result == ["% BGP is already running with AS number 65002"]
+
+    def test_spanning_tree_submode_scenario(self):
+        # Full PTY output for a spanning-tree MST push: % errors from config phase only,
+        # exec-mode prompt stops capture before re-entry, diff captured separately.
+        output = (
+            "Arista(config-s-topoas)#spanning-tree mst configuration\n"
+            "Arista(config-s-topoas-mst)#instance 2 vlan 2001-4001\n"
+            "Arista(config-s-topoas-mst)#end\n"
+            "Arista#\n"                              # exec-mode prompt — stop
+            "Arista#configure session topoassist_1234\n"
+            "Arista(config-s-topoas)#show session-config diffs\n"
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "spanning-tree mst configuration\n"
+            "-   instance 2 vlan 2001-4000\n"
+            "+   instance 2 vlan 2001-4001\n"
         )
         assert db._extract_eos_errors(output) == []
 
