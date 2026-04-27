@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.30 | 2026-04-27 14:30:40 -->
+<!-- TopoAssist v260427.31 | 2026-04-27 14:31:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.30";  // keep in sync with Code.gs
+const APP_VERSION = "260427.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12050,15 +12050,19 @@ async function pushAllConfigs() {
   const body = document.getElementById('generateAllRight');
   body.style.display = '';  // reveal right pane
 
-  // Device list: all EOS devices in current topology — no pre-generated configs needed
+  // Device list: EOS devices in current topology, filtered by Push Targets checklist (all selected by default)
   const deviceNames = (currentData && currentData.nodes || [])
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
-    .map(n => n.id);
+    .map(n => n.id)
+    .filter(name => {
+      const cb = document.getElementById('genAllDev_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
+      return !cb || cb.checked;
+    });
 
   if (!deviceNames.length) {
     body.insertAdjacentHTML('beforeend',
       `<div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:10px;">` +
-      `No EOS devices found in topology.</div>`);
+      `No devices selected — check Push Targets above.</div>`);
     return;
   }
 
@@ -14252,10 +14256,50 @@ function _resetStopPushBtn() {
   b.onclick = null;
 }
 
+function _populateGenAllDeviceList() {
+  const container = document.getElementById('genAllDeviceList');
+  if (!container) return;
+  const devices = (currentData && currentData.nodes || [])
+    .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
+    .map(n => n.id)
+    .sort();
+  if (!devices.length) {
+    container.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted);font-style:italic;">No EOS devices.</span>';
+    _updateGenAllSelCount();
+    return;
+  }
+  container.innerHTML = devices.map(name => {
+    const safe = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeName = escapeHtml(name);
+    return `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;-webkit-user-select:none;">` +
+      `<input type="checkbox" id="genAllDev_${safe}" checked onchange="_updateGenAllSelCount()" ` +
+      `style="cursor:pointer;accent-color:#3b82f6;flex-shrink:0;">` +
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-main);">${safeName}</span></label>`;
+  }).join('');
+  _updateGenAllSelCount();
+}
+
+function _updateGenAllSelCount() {
+  const container = document.getElementById('genAllDeviceList');
+  if (!container) return;
+  const total   = container.querySelectorAll('input[type=checkbox]').length;
+  const checked = container.querySelectorAll('input[type=checkbox]:checked').length;
+  const el = document.getElementById('genAllSelCount');
+  if (el) el.textContent = `${checked}/${total} selected`;
+}
+
+function _genAllSelectAll(state) {
+  const container = document.getElementById('genAllDeviceList');
+  if (!container) return;
+  container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = state; });
+  _updateGenAllSelCount();
+}
+
 function openGenerateAllModal() {
   document.getElementById('generateAllLeft').innerHTML =
     '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>';
   document.getElementById('generateAllRight').style.display = 'none';
+  _populateGenAllDeviceList();
   _resetStopGenerateBtn();
   _resetStopPushBtn();
   const btn = document.getElementById('btnRunGenerateAll');
