@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.40 | 2026-04-27 15:56:26 -->
+<!-- TopoAssist v260427.41 | 2026-04-27 16:11:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.40";  // keep in sync with Code.gs
+const APP_VERSION = "260427.41";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11756,10 +11756,10 @@ async function commitPushConfig() {
           const rem = (vRes.diff || '').split('\n')
             .filter(l => l.startsWith('+') || l.startsWith('-')).length;
           if (rem === 0 && !_v3EosErrs) {
-            _ptSet('pt3', '#10b981', 'no diff remaining');
+            _ptSet('pt3', '#10b981', 'verified — in sync');
             if (titleEl) titleEl.textContent = 'Push Successful';
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
-              `<span style="color:#10b981;font-weight:600;">Push successful, no config diff</span>`);
+              `<span style="color:#10b981;font-weight:600;">Committed — in sync</span>`);
             if (btn) {
               btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
@@ -11767,19 +11767,19 @@ async function commitPushConfig() {
             setTimeout(() => { setStatus(getReadyStatus()); }, 5000);
           } else if (rem === 0 && _v3EosErrs) {
             // Empty diff but EOS rejected commands — false "in sync", device not fully updated
-            _ptSet('pt3', '#f87171', 'EOS command rejection');
-            if (titleEl) titleEl.textContent = 'Push Succeeded — EOS Rejection on Verify';
+            _ptSet('pt3', '#f87171', 'EOS rejection on verify');
+            if (titleEl) titleEl.textContent = 'Committed — EOS rejection on verify';
             _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#dc2626;padding:4px 0;">` +
               `<b>EOS rejected commands during verify:</b><br>` + _v3EosErrs.map(escapeHtml).join('<br>') + `</div>`);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
             _setPushStatus(`<b>${label || deviceName}</b> — ` +
-              `<span style="color:#f87171;font-weight:600;">EOS command rejection during verify</span>`);
+              `<span style="color:#f87171;font-weight:600;">Committed — EOS rejection on verify</span>`);
             if (btn) { btn.disabled = false; btn.textContent = origText; }
           } else {
             // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
             _ptSet('pt3', '#f59e0b', `${rem} line${rem !== 1 ? 's' : ''} still differ`);
-            if (titleEl) titleEl.textContent = 'Partial Push';
+            if (titleEl) titleEl.textContent = 'Partial Commit';
             let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;` +
               `padding:8px;overflow-x:auto;max-height:220px;white-space:pre;margin:0;">`;
             dhtml += dlines.map(l => {
@@ -11792,7 +11792,7 @@ async function commitPushConfig() {
             _ptDetail(dhtml);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
             _setPushStatus(`<b>${label || deviceName}</b> — ` +
-              `<span style="color:#f59e0b;font-weight:600;">${rem} line${rem !== 1 ? 's' : ''} still differ after push</span>`);
+              `<span style="color:#f59e0b;font-weight:600;">Committed — ${rem} line${rem !== 1 ? 's' : ''} still differ</span>`);
             if (btn) {
               btn.textContent = 'Partial';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 4000);
@@ -11801,21 +11801,21 @@ async function commitPushConfig() {
         } else {
           const vErrSafe = escapeHtml(vRes.error || 'something went wrong');
           _ptSet('pt3', '#f87171', 'verify failed');
-          if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
+          if (titleEl) titleEl.textContent = 'Committed — verify failed';
           _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
           if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
           _setPushStatus(`<b>${label || deviceName}</b> — ` +
-            `<span style="color:#f87171;font-weight:600;">verify failed: ${vErrSafe}</span>`);
+            `<span style="color:#f87171;font-weight:600;">Committed — verify failed: ${vErrSafe}</span>`);
           if (btn) { btn.disabled = false; btn.textContent = origText; }
         }
       } catch (verifyErr) {
         const vErrSafe = escapeHtml(verifyErr.message);
         _ptSet('pt3', '#f87171', 'verify error');
-        if (titleEl) titleEl.textContent = 'Push Succeeded — Verify Failed';
+        if (titleEl) titleEl.textContent = 'Committed — verify failed';
         _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
         if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
         _setPushStatus(`<b>${label || deviceName}</b> — ` +
-          `<span style="color:#f87171;font-weight:600;">verify error: ${vErrSafe}</span>`);
+          `<span style="color:#f87171;font-weight:600;">Committed — verify error: ${vErrSafe}</span>`);
         if (btn) { btn.disabled = false; btn.textContent = origText; }
       }
     } else {
@@ -12301,7 +12301,7 @@ async function pushAllConfigs() {
       if (_pushEosErrs && (!res.diff || !res.diff.trim())) {
         completed++;
         _updateSummary();
-        _setResultRow(rowId, safeName, '#f87171', 'EOS rejected — nothing committed', null, _pushEosErrs.join('\n'));
+        _setResultRow(rowId, safeName, '#f87171', 'All rejected — device unchanged', null, _pushEosErrs.join('\n'));
         return;
       }
 
@@ -12346,15 +12346,14 @@ async function pushAllConfigs() {
       _updateSummary();
 
       if (vDiff === null) {
-        _setResultRow(rowId, safeName, '#f59e0b', 'Pushed — verify check failed', null, vError);
+        _setResultRow(rowId, safeName, '#f59e0b', 'Committed — verify failed', null, vError);
       } else if (vDiff === '') {
         if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
-          // Partial rejection: some commands committed, some rejected — show both
           const lbl = _pushEosErrs
-            ? `Pushed (+${added} / -${removed}) — some rejected`
-            : `Pushed (+${added} / -${removed})`;
+            ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected`
+            : `Committed (+${added} / -${removed})`;
           const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
           _setResultRow(rowId, safeName, clr, lbl, pushDiff, _pushEosErrs ? _pushEosErrs.join('\n') : null);
         } else {
@@ -12363,7 +12362,7 @@ async function pushAllConfigs() {
       } else {
         const remLines = vDiff.split('\n').filter(l => l.startsWith('+') || l.startsWith('-')).length;
         _setResultRow(rowId, safeName, '#f59e0b',
-          `${remLines} line${remLines !== 1 ? 's' : ''} remaining after push`, vDiff);
+          `Committed — ${remLines} line${remLines !== 1 ? 's' : ''} still differ`, vDiff);
       }
     } finally {
       _semRelease();  // always release slot so next queued device can start
