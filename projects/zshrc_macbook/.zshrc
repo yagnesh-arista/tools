@@ -1,4 +1,4 @@
-# zshrc_macbook v260427.1 | 2026-04-27 10:12:03
+# zshrc_macbook v260427.2 | 2026-04-27 10:18:16
 # Managed via ~/claude/projects/zshrc_macbook/ on bus-home
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
@@ -65,7 +65,7 @@ bus() {
         }
 
         # --- Fetch Session List ---
-        # No -t: we don't need a PTY here; -t causes terminal init escape sequences
+        # No -t: no PTY needed here; -t causes terminal init escape sequences
         # to leak into expect_out(buffer) and corrupt the session list.
         spawn ssh -S $socket -q bus-home "bash -l -c \047tmux list-sessions -F \"#{session_name}\"\047 2>/dev/null || true"
         expect eof

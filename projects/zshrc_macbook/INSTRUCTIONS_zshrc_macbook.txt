@@ -1,5 +1,5 @@
 INSTRUCTIONS — zshrc_macbook project
-Last updated: 2026-04-27 (bus(): two fixes for garbage chars and missing sessions — (1) removed -t from session-list fetch spawn to stop PTY escape sequences leaking into expect_out(buffer); (2) added regsub to strip non-digit chars from user_input after expect_user read, filtering ^[[O/[[I sequences iTerm2 sends in raw mode; (3) added \x1b filter in session loop to skip any escape-containing lines that slip through)
+Last updated: 2026-04-27 (bus(): fixed parse error — apostrophe in comment ("don't") inside expect -c '...' block closed the zsh single-quoted string early, causing zsh to parse Tcl as shell code; replaced with "do not"; also: (1) removed -t from session-list fetch spawn to stop PTY escape sequences leaking into expect_out(buffer); (2) added regsub to strip non-digit chars from user_input, filtering ^[[O/[[I sequences iTerm2 sends in raw mode; (3) added \x1b filter in session loop to skip escape-containing lines)
 Previous: 2026-04-21 (busclaude: wrap command in bash -l -c to source login profile so ~/.local/bin/claude is in PATH)
 Previous: 2026-04-21 (Added busclaude(): like bus0 but ssh -t bus-home 'cd ~/claude && ./lclaude')
 Previous: 2026-04-18 (Review fixes: bus0 title; ls GNU/BSD conditional; drop redundant HIST_IGNORE_DUPS + HIST_APPEND)

@@ -24,3 +24,5 @@ scp bus-home:~/claude/projects/zshrc_macbook/.zshrc ~/.zshrc && source ~/.zshrc
 **iTerm2 self-skips inside tmux** — the integration checks `$TERM == tmux-256color` and skips itself automatically. No guard needed.
 
 **zsh syntax only** — use `setopt`/`[[ ]]`/`(( ))`. Never use bash-isms (`set -o`, `[ ]`, `shopt`).
+
+**`expect -c '...'` — NO apostrophes inside the block** — the entire Tcl script is passed as a zsh single-quoted string. Any apostrophe (including contractions like "don't", "it's", "we'll") closes the string early, causing zsh to parse the rest of the Tcl code as shell syntax. Use "do not", "it is", etc. in comments, and `\047` for literal single quotes in Tcl string arguments.
