@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.28 | 2026-04-27 14:23:15 -->
+<!-- TopoAssist v260427.30 | 2026-04-27 14:30:40 -->
 <!DOCTYPE html>
 <html>
 
@@ -1238,6 +1238,16 @@
         <button class="btn-mono genall-btn" id="btnStopPush" disabled>Stop</button>
         <span class="genall-desc" style="color:#f59e0b;">&#9888; Commits directly — no per-device diff review. Use single Push to review before committing.</span>
       </div>
+    </div>
+    <!-- Push Targets device selection -->
+    <div id="genallDeviceFilter" style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;user-select:none;-webkit-user-select:none;">Push Targets</span>
+        <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(true)">All</button>
+        <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(false)">None</button>
+        <span id="genAllSelCount" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;user-select:none;-webkit-user-select:none;"></span>
+      </div>
+      <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 14px;"></div>
     </div>
     <!-- Results section -->
     <div style="display:flex;max-height:50vh;background:var(--bg-modal,#ffffff);">
