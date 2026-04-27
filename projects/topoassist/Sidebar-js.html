@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.31 | 2026-04-27 14:31:39 -->
+<!-- TopoAssist v260427.34 | 2026-04-27 14:45:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.31";  // keep in sync with Code.gs
+const APP_VERSION = "260427.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14262,7 +14262,7 @@ function _populateGenAllDeviceList() {
   const devices = (currentData && currentData.nodes || [])
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
     .map(n => n.id)
-    .sort();
+    .sort((a, b) => (allDevicesData[a].sheetIndex || 0) - (allDevicesData[b].sheetIndex || 0));
   if (!devices.length) {
     container.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted);font-style:italic;">No EOS devices.</span>';
     _updateGenAllSelCount();
