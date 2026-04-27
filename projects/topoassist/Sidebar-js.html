@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.36 | 2026-04-27 15:06:55 -->
+<!-- TopoAssist v260427.37 | 2026-04-27 15:45:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.36";  // keep in sync with Code.gs
+const APP_VERSION = "260427.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11641,10 +11641,12 @@ async function commitPushConfig() {
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
 
-  // Disable commit + both cancel buttons; switch body to phase tracker
+  // Disable commit + both cancel buttons + header × (commit is irreversible once started)
+  const closeXBtn = document.getElementById('btnPushConfirmClose');
   if (commitBtn) { commitBtn.disabled = true; commitBtn.textContent = 'Committing…'; }
   if (cancelHdr) cancelHdr.style.display = 'none';
   if (cancelFtr) cancelFtr.style.display = 'none';
+  if (closeXBtn) closeXBtn.disabled = true;
 
   const _ptRowHtml = (label, id, initColor, initText) =>
     `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;` +
@@ -12023,6 +12025,8 @@ function closePushConfirmModal() {
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
   if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
+  const closeXBtn = document.getElementById('btnPushConfirmClose');
+  if (closeXBtn) closeXBtn.disabled = false;
   const _ftr = m && m.querySelector('.modal-actions');
   if (_ftr) _ftr.style.display = '';
 }
@@ -12080,6 +12084,7 @@ async function pushAllConfigs() {
   }
 
   _pushAllStopped = false;
+  _pushAllActive  = true;
   btn.disabled = true;
   btn.textContent = 'Pushing…';
   _setGenToolbarActive(true);
@@ -12276,12 +12281,12 @@ async function pushAllConfigs() {
         return;
       }
 
-      // EOS rejected commands during push — surface immediately, skip Phase 3
+      // EOS rejected commands during push — nothing staged means nothing committed
       const _pushEosErrs = _eosErrors(res);
       if (_pushEosErrs && (!res.diff || !res.diff.trim())) {
         completed++;
         _updateSummary();
-        _setResultRow(rowId, safeName, '#f87171', 'EOS rejected commands', null, _pushEosErrs.join('\n'));
+        _setResultRow(rowId, safeName, '#f87171', 'EOS rejected — nothing committed', null, _pushEosErrs.join('\n'));
         return;
       }
 
@@ -12331,7 +12336,12 @@ async function pushAllConfigs() {
         if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
-          _setResultRow(rowId, safeName, '#10b981', `Pushed (+${added} / -${removed})`, pushDiff);
+          // Partial rejection: some commands committed, some rejected — show both
+          const lbl = _pushEosErrs
+            ? `Pushed (+${added} / -${removed}) — some rejected`
+            : `Pushed (+${added} / -${removed})`;
+          const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
+          _setResultRow(rowId, safeName, clr, lbl, pushDiff, _pushEosErrs ? _pushEosErrs.join('\n') : null);
         } else {
           _setResultRow(rowId, safeName, '#64748b', 'Already in sync', null);
         }
@@ -12345,6 +12355,7 @@ async function pushAllConfigs() {
     }
   }));
 
+  _pushAllActive = false;
   btn.disabled = false;
   btn.textContent = 'Push All';
   _setGenToolbarActive(false);
@@ -14262,6 +14273,7 @@ function toggleIpExample() {
 
 let _generateAllAborted = false;
 let _pushAllStopped     = false;
+let _pushAllActive      = false;
 
 function _setGenToolbarActive(on) {
   const tb = document.getElementById('btnGenerateAllToolbar');
