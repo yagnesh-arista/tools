@@ -1,4 +1,4 @@
-# zshrc_macbook v260421.2 | 2026-04-21 11:13:27
+# zshrc_macbook v260427.1 | 2026-04-27 10:12:03
 # Managed via ~/claude/projects/zshrc_macbook/ on bus-home
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
@@ -65,7 +65,9 @@ bus() {
         }
 
         # --- Fetch Session List ---
-        spawn ssh -S $socket -t -q bus-home "bash -l -c \047tmux list-sessions -F \"#{session_name}\"\047 2>/dev/null || true"
+        # No -t: we don't need a PTY here; -t causes terminal init escape sequences
+        # to leak into expect_out(buffer) and corrupt the session list.
+        spawn ssh -S $socket -q bus-home "bash -l -c \047tmux list-sessions -F \"#{session_name}\"\047 2>/dev/null || true"
         expect eof
 
         if {[info exists expect_out(buffer)]} { set sessions $expect_out(buffer) } else { set sessions "" }
@@ -76,7 +78,11 @@ bus() {
 
         foreach line [split $sessions "\n"] {
             set line [string trim $line]
-            if {[string length $line] > 0 && ![string match "Connection to*" $line] && ![string match "*exit status*" $line]} {
+            # Skip empty lines, SSH noise, and any line containing escape sequences
+            if {[string length $line] > 0
+                && ![string match "Connection to*" $line]
+                && ![string match "*exit status*" $line]
+                && ![string match "*\x1b*" $line]} {
                 lappend session_list $line
                 if {$i == 1} { append clean_sessions "\nTMUX sessions\n" }
                 append clean_sessions "$i) $line\n"
@@ -116,6 +122,8 @@ bus() {
                     -re "(.*)\n" {
                         set user_input $expect_out(1,string)
                         set user_input [string trim $user_input]
+                        # Strip escape sequences (e.g. ^[[O, [[I) that iTerm2 sends in raw mode
+                        regsub -all {[^0-9]} $user_input "" user_input
                         break
                     }
                     eof { send_user "\nExiting menu.\n"; exit }
