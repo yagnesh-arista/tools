@@ -334,3 +334,79 @@ document.querySelectorAll('.modal-std .modal-header, .modal-floating .modal-head
 - [ ] Confirm `_injectMinimizeButtons()` is called at `initApp()`
 - [ ] `.btn-modal-minimize { margin-left: auto }` exists in the project CSS
 - [ ] After injection, the pair reads `[−][×]` left-to-right, never reversed
+
+## Label-Column Alignment (Rule 26)
+
+When a UI section has multiple rows of options under a shared category, all rows must use a **fixed-width label column** so option items align vertically across rows. This is called tabular alignment (also: label-column alignment, horizontal form layout, definition list pattern).
+
+### Flex implementation (preferred for GAS dialogs)
+
+```css
+/* Row container */
+.proto-underlay-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Fixed label column — same width on every row */
+.row-label {
+  min-width: 76px;   /* size to widest label in the group */
+  flex-shrink: 0;    /* never compress below min-width */
+  white-space: nowrap;
+}
+
+/* Options fill the rest equally */
+.row-option { flex: 1; }
+```
+
+```html
+<div class="proto-underlay-row">
+  <span class="row-label">BGP</span>
+  <label class="row-option">IPv4</label>
+  <label class="row-option">IPv6</label>
+  <label class="row-option">Unnumbered</label>
+  <label class="row-option">RFC5549</label>
+</div>
+<div class="proto-underlay-row">
+  <span class="row-label">OSPF</span>
+  <label class="row-option">v2 / IPv4</label>
+  <label class="row-option">v3 / IPv6</label>
+  <label class="row-option">Unnumbered</label>
+</div>
+```
+
+With the same `min-width` + `flex-shrink:0` on every label, and `flex:1` on every option, the option columns align vertically regardless of label text length.
+
+### CSS Grid implementation (when column count is fixed)
+
+```css
+.option-grid { display: grid; grid-template-columns: 80px repeat(4, 1fr); }
+```
+
+Use grid when: (a) the column count is known and fixed; (b) you need the browser to share column widths across separate row elements automatically.
+
+### Nested sub-labels (e.g. EVPN SERVICE/VGW within an EVPN block)
+
+When a row has sub-sections beneath it, wrap the sub-label **and any icon button** together in a fixed-width span:
+
+```html
+<div style="display:flex; align-items:center; gap:0 8px; flex-wrap:nowrap;">
+  <span style="display:flex; align-items:center; gap:4px; width:80px; flex-shrink:0;">
+    SERVICE <button class="btn-info-popup">…</button>
+  </span>
+  <label style="flex:1;">Per-VLAN</label>
+  <label style="flex:1;">Bundle</label>
+</div>
+```
+
+All sub-sections in the same group must share the same `width` value — this is what creates vertical alignment between SERVICE/VGW/MAC rows.
+
+### Rules
+
+- **Set `min-width` to the widest label in the group** — measure the longest text + any inline badges; use that as the fixed column width for all rows in the section.
+- **Always pair `min-width` with `flex-shrink:0`** — without it, the label can compress and break alignment.
+- **`flex:1` on every option label** — ensures equal column widths within each row; since all rows share the same container width, columns align across rows.
+- **Nested sub-label width must be the same across all sub-rows** — if SERVICE is `width:80px`, VGW and MAC must also be `width:80px`.
+- **Wrap label text + icon button in one span** — the span is the fixed-width cell; separating them breaks the column.
+- **Full-width rows (e.g. MAC input) use `width:100%; flex-wrap:wrap`** — they wrap to a new line inside the flex container, inheriting the container padding/gap.
