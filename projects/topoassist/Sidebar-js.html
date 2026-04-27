@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.38 | 2026-04-27 15:45:31 -->
+<!-- TopoAssist v260427.39 | 2026-04-27 15:50:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.38";  // keep in sync with Code.gs
+const APP_VERSION = "260427.39";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9085,6 +9085,14 @@ CLIENT-SIDE FETCH LOGIC
 /* --- UPDATED CLIENT-SIDE FETCH LOGIC --- */
 function fetchData(force, autoVerify, silent) {
   if (isFetching) return;
+
+  // Warn if a push is in progress — refresh will orphan push status UI
+  if (_commitInFlight || _pendingPush || _pushAllActive) {
+    const what = _pushAllActive ? 'Push All is in progress' : 'A config push is in progress';
+    const ok = confirm(what + '.\n\nRefreshing will clear push status. Continue?');
+    if (!ok) return;
+  }
+
   isFetching = true;
   let isTopologyLoading = true;
 
@@ -9422,6 +9430,7 @@ let _pushRightDev  = null; // device name for the right split-btn push action
 let _pushLeftPort  = null; // interface name for left push (link selection → single-interface push)
 let _pushRightPort = null; // interface name for right push (link selection → single-interface push)
 let _pendingPush        = null; // {deviceName, ip, config, btnId, origText, label} — awaiting confirm modal
+let _commitInFlight     = false; // true while Phase 2 commit fetch is in flight
 let _lastIdShiftResult  = null; // cached result of last checkDeviceIdShift() — {shifted, isFirstRun}
 let _configViewContext  = null; // {deviceName, portFilter} — tracks what the config modal is showing
 let _bridgeClickTimer   = null; // debounce single vs double-click on bridge toolbar icon
@@ -11641,12 +11650,11 @@ async function commitPushConfig() {
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
 
-  // Disable commit + both cancel buttons + header × (commit is irreversible once started)
-  const closeXBtn = document.getElementById('btnPushConfirmClose');
+  // Disable commit + both cancel buttons; × stays enabled (will confirm if clicked mid-commit)
+  _commitInFlight = true;
   if (commitBtn) { commitBtn.disabled = true; commitBtn.textContent = 'Committing…'; }
   if (cancelHdr) cancelHdr.style.display = 'none';
   if (cancelFtr) cancelFtr.style.display = 'none';
-  if (closeXBtn) closeXBtn.disabled = true;
 
   const _ptRowHtml = (label, id, initColor, initText) =>
     `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;` +
@@ -11837,6 +11845,7 @@ async function commitPushConfig() {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     _setPushStatus(`<b>${label || deviceName}</b> — <span style="color:#f87171;font-weight:600;">Push error: ${err.message} — is device_bridge.py running?</span>`);
   } finally {
+    _commitInFlight = false;
     _pendingPush = null;
   }
 }
@@ -11976,6 +11985,14 @@ function cancelPushConfig() {
     closePushConfirmModal();
     return;
   }
+  // Commit is in-flight — warn before aborting (abort may race against an already-applied commit)
+  if (_commitInFlight) {
+    const ok = confirm(
+      'Config commit is in progress on ' + _pendingPush.deviceName + '.\n\n' +
+      'Closing now cannot undo changes already applied to the device.\nClose anyway?'
+    );
+    if (!ok) return;
+  }
   const { deviceName, ip, sessionName, btnId, origText } = _pendingPush;
   _pendingPush = null;
   const btn = document.getElementById(btnId);
@@ -12025,8 +12042,6 @@ function closePushConfirmModal() {
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
   if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
-  const closeXBtn = document.getElementById('btnPushConfirmClose');
-  if (closeXBtn) closeXBtn.disabled = false;
   const _ftr = m && m.querySelector('.modal-actions');
   if (_ftr) _ftr.style.display = '';
 }
