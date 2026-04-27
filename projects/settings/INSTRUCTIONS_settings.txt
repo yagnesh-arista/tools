@@ -1,5 +1,6 @@
 INSTRUCTIONS — settings
-Last updated: 2026-04-17 (added auto-sync PostToolUse hook; all global config edits now self-propagate to backup)
+Last updated: 2026-04-27 (renamed commands/ → claude-skills/ in backup; hooks updated to read from ~/.claude/commands/ and back up to claude-skills/; README.md added to claude-skills/)
+Previous: 2026-04-17 (added auto-sync PostToolUse hook; all global config edits now self-propagate to backup)
 
 === PROJECT OVERVIEW ===
 Backup and restore kit for ~/.claude/settings.json (Claude Code global config).
