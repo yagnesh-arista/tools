@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.35 | 2026-04-27 15:03:10 -->
+<!-- TopoAssist v260427.36 | 2026-04-27 15:06:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.35";  // keep in sync with Code.gs
+const APP_VERSION = "260427.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12285,6 +12285,9 @@ async function pushAllConfigs() {
         return;
       }
 
+      // Capture committed diff for summary display in Phase 3 success row
+      const pushDiff = (res.diff || '').trim();
+
       // ── Phase 3: dry-run verify (confirm nothing remains after commit) ────────
       // Show "verifying…" state — keep the row id so Phase 3 can replace it
       const verifyPlaceholder =
@@ -12325,7 +12328,13 @@ async function pushAllConfigs() {
       if (vDiff === null) {
         _setResultRow(rowId, safeName, '#f59e0b', 'Pushed — verify check failed', null, vError);
       } else if (vDiff === '') {
-        _setResultRow(rowId, safeName, '#10b981', 'Push successful, no config diff', null);
+        if (pushDiff) {
+          const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
+          const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
+          _setResultRow(rowId, safeName, '#10b981', `Pushed (+${added} / -${removed})`, pushDiff);
+        } else {
+          _setResultRow(rowId, safeName, '#64748b', 'Already in sync', null);
+        }
       } else {
         const remLines = vDiff.split('\n').filter(l => l.startsWith('+') || l.startsWith('-')).length;
         _setResultRow(rowId, safeName, '#f59e0b',
