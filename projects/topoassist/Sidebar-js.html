@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.42 | 2026-04-27 16:36:20 -->
+<!-- TopoAssist v260427.43 | 2026-04-27 16:52:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.42";  // keep in sync with Code.gs
+const APP_VERSION = "260427.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9552,7 +9552,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260426.70"
+VERSION = "260427.3"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -13872,11 +13872,14 @@ function _eosErrors(res) {
   });
 }
 
-// Formats EOS error list with '!' separator between interface blocks (plain text).
+// Matches EOS block-entering commands: interface, router bgp/ospf/isis, vlan N, address-family.
+const _EOS_BLOCK_RE = /^(?:interface|router\s+(?:bgp|ospf|isis)|vlan\s+\d|address-family)\s/i;
+
+// Formats EOS error list with '!' separator between config-block boundaries (plain text).
 function _formatEosErrors(errs) {
   const out = [];
   errs.forEach(function(e, i) {
-    if (i > 0 && /^interface\s/i.test(e)) out.push('!');
+    if (i > 0 && _EOS_BLOCK_RE.test(e)) out.push('!');
     out.push(e);
   });
   return out.join('\n');
@@ -13886,7 +13889,7 @@ function _formatEosErrors(errs) {
 function _formatEosErrorsHtml(errs) {
   const parts = [];
   errs.forEach(function(e, i) {
-    if (i > 0 && /^interface\s/i.test(e)) {
+    if (i > 0 && _EOS_BLOCK_RE.test(e)) {
       parts.push('<span style="display:block;color:#94a3b8;">!</span>');
     }
     parts.push('<span style="display:block;">' + escapeHtml(e) + '</span>');

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260427.35 | 2026-04-27 15:02:57
+# topoassist v260427.43 | 2026-04-27 16:51:48
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260427.2"
+VERSION           = "260427.3"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -344,6 +344,14 @@ def _extract_session_diff(output):
     return '\n'.join(diff).strip()
 
 
+# EOS block-entering commands — entering these sub-modes changes the PTY prompt context.
+# Used to inject context lines into eos_errors so '!' separators can be inserted between blocks.
+_BLOCK_CMD_RE = re.compile(
+    r'^(?:interface|router\s+(?:bgp|ospf|isis)|vlan\s+\d|address-family)\s',
+    re.IGNORECASE,
+)
+
+
 def _extract_eos_errors(text):
     """Collect EOS % error/warning lines from session output (SSH or joined eAPI text).
 
@@ -362,10 +370,17 @@ def _extract_eos_errors(text):
     containing both '#' and '(config') — plain eAPI result lines are not treated as
     command echoes, so eAPI mode falls back to bare % lines with no context.
 
+    When a block command (interface, router bgp, vlan, address-family) succeeds but
+    sub-commands inside it fail, the block command itself is injected as a context line
+    before the first sub-command error.  This lets the caller insert '!' separators
+    between distinct config blocks even when the block-entry command produced no error.
+
     Returns a list of strings: 'cmd → % error' when context is available, '% error'
     otherwise.  Empty list if no % lines found."""
     errors = []
     prev_cmd = ''
+    current_block = ''        # most recent block-entering command seen
+    last_block_in_errors = '' # last block whose context line was injected into errors
     for line in text.split('\n'):
         s = line.strip()
         if s.startswith('--- ') or s.startswith('+++ '):
@@ -373,12 +388,25 @@ def _extract_eos_errors(text):
         if s.endswith('#') and '(config' not in s:
             break   # bare exec-mode prompt — 'end' was processed, config phase over
         if s.startswith('%'):
+            # If we're inside a block that succeeded (e.g. 'interface Eth13' entered OK
+            # but 'speed 25g' failed), inject the block command as a context line so
+            # the caller can group errors by block with '!' separators.
+            if (current_block and current_block != last_block_in_errors
+                    and not _BLOCK_CMD_RE.match(prev_cmd)):
+                errors.append(current_block)
+                last_block_in_errors = current_block
             errors.append(f'{prev_cmd} \u2192 {s}' if prev_cmd else s)
+            # If the block command itself failed, mark it represented so sub-commands
+            # in the same block don't re-inject the context line.
+            if _BLOCK_CMD_RE.match(prev_cmd):
+                last_block_in_errors = current_block
         elif '#' in s and '(config' in s:
             # PTY prompt echo: 'HOSTNAME(config-s-...)#the command' → 'the command'
             cmd = s.split('#', 1)[-1].strip()
             if cmd:
                 prev_cmd = cmd
+                if _BLOCK_CMD_RE.match(cmd):
+                    current_block = cmd
     return errors
 
 
