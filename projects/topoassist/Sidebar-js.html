@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.39 | 2026-04-27 15:50:15 -->
+<!-- TopoAssist v260427.40 | 2026-04-27 15:56:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.39";  // keep in sync with Code.gs
+const APP_VERSION = "260427.40";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14366,7 +14366,11 @@ function openGenerateAllModal() {
 
 function closeGenerateAllModal() {
   if (_pushAllActive) {
-    setStatus('Push in progress — use Stop Push to cancel first, or wait for completion.', 'status-warn');
+    const warn = document.getElementById('genAllPushWarn');
+    if (warn) {
+      warn.style.display = 'block';
+      setTimeout(() => { warn.style.display = 'none'; }, 3500);
+    }
     return;
   }
   document.getElementById('generateAllModal').style.display = 'none';
