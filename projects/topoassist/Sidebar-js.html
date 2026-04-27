@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.41 | 2026-04-27 16:11:23 -->
+<!-- TopoAssist v260427.42 | 2026-04-27 16:36:20 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.41";  // keep in sync with Code.gs
+const APP_VERSION = "260427.42";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11512,7 +11512,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
           body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: res.session_name } }, action: 'abort' }),
         }).catch(() => {});
       }
-      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _p1EosErrs.join('\n'));
+      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_p1EosErrs));
       return;
     }
     // Empty diff = already in sync — abort the open session silently, show modal briefly
@@ -11770,7 +11770,7 @@ async function commitPushConfig() {
             _ptSet('pt3', '#f87171', 'EOS rejection on verify');
             if (titleEl) titleEl.textContent = 'Committed — EOS rejection on verify';
             _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#dc2626;padding:4px 0;">` +
-              `<b>EOS rejected commands during verify:</b><br>` + _v3EosErrs.map(escapeHtml).join('<br>') + `</div>`);
+              `<b>EOS rejected commands during verify:</b><br>` + _formatEosErrorsHtml(_v3EosErrs) + `</div>`);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
             _setPushStatus(`<b>${label || deviceName}</b> — ` +
               `<span style="color:#f87171;font-weight:600;">Committed — EOS rejection on verify</span>`);
@@ -12301,7 +12301,7 @@ async function pushAllConfigs() {
       if (_pushEosErrs && (!res.diff || !res.diff.trim())) {
         completed++;
         _updateSummary();
-        _setResultRow(rowId, safeName, '#f87171', 'All rejected — device unchanged', null, _pushEosErrs.join('\n'));
+        _setResultRow(rowId, safeName, '#f87171', 'All rejected — device unchanged', null, _formatEosErrors(_pushEosErrs));
         return;
       }
 
@@ -12333,7 +12333,7 @@ async function pushAllConfigs() {
         else if (vRes.ok) {
           const _vEosErrs = _eosErrors(vRes);
           if (_vEosErrs && !(vRes.diff || '').trim()) {
-            vError = _vEosErrs.join('\n');
+            vError = _formatEosErrors(_vEosErrs);
           } else {
             vDiff = (vRes.diff || '').trim();
           }
@@ -12355,7 +12355,7 @@ async function pushAllConfigs() {
             ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected`
             : `Committed (+${added} / -${removed})`;
           const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
-          _setResultRow(rowId, safeName, clr, lbl, pushDiff, _pushEosErrs ? _pushEosErrs.join('\n') : null);
+          _setResultRow(rowId, safeName, clr, lbl, pushDiff, _pushEosErrs ? _formatEosErrors(_pushEosErrs) : null);
         } else {
           _setResultRow(rowId, safeName, '#64748b', 'Already in sync', null);
         }
@@ -13777,7 +13777,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     const _ptEosErrs = _eosErrors(res);
     if (_ptEosErrs && (!res.diff || !res.diff.trim())) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _ptEosErrs.join('\n'));
+      _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_ptEosErrs));
       return;
     }
     // Empty diff = already in sync — update modal for in-sync state
@@ -13812,7 +13812,7 @@ function _updatePushPreviewError(msg) {
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   if (titleEl)   titleEl.textContent = 'Push Preview Failed';
-  if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(msg)}</div>`;
+  if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;white-space:pre-wrap;">${escapeHtml(msg)}</div>`;
   if (commitBtn) commitBtn.style.display = 'none';
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
 }
@@ -13872,11 +13872,33 @@ function _eosErrors(res) {
   });
 }
 
+// Formats EOS error list with '!' separator between interface blocks (plain text).
+function _formatEosErrors(errs) {
+  const out = [];
+  errs.forEach(function(e, i) {
+    if (i > 0 && /^interface\s/i.test(e)) out.push('!');
+    out.push(e);
+  });
+  return out.join('\n');
+}
+
+// HTML version — styled '!' separator lines for inline HTML rendering.
+function _formatEosErrorsHtml(errs) {
+  const parts = [];
+  errs.forEach(function(e, i) {
+    if (i > 0 && /^interface\s/i.test(e)) {
+      parts.push('<span style="display:block;color:#94a3b8;">!</span>');
+    }
+    parts.push('<span style="display:block;">' + escapeHtml(e) + '</span>');
+  });
+  return parts.join('');
+}
+
 // Injects a red EOS command-rejection banner into the push confirm modal body.
 function _injectEosRejectionBanner(errors) {
   const bodyEl = document.getElementById('pushConfirmBody');
   if (!bodyEl) return;
-  const lines = errors.map(function(e) { return escapeHtml(e); }).join('<br>');
+  const lines = _formatEosErrorsHtml(errors);
   const banner = '<div id="pushEosRejectionBanner" style="' +
     'font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
     'background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;' +
