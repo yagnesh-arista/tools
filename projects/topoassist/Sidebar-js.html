@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.7 | 2026-04-27 11:49:27 -->
+<!-- TopoAssist v260427.8 | 2026-04-27 12:08:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.7";  // keep in sync with Code.gs
+const APP_VERSION = "260427.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2244,13 +2244,23 @@ function applyValidationState() {
   if (errBtn) errBtn.disabled = !isValidationMode;
 }
 
-function _updateAuditToolbarIcon(hasIssues) {
+function _updateAuditToolbarIcon(hasIssues, count) {
   const btn = document.getElementById('validateBtn');
   if (!btn) return;
   btn.classList.remove('audit-clean', 'audit-issues', 'audit-disabled');
   if (!isValidationMode)   btn.classList.add('audit-disabled');
   else if (hasIssues)      btn.classList.add('audit-issues');
   else                     btn.classList.add('audit-clean');
+
+  const badge = document.getElementById('auditBadge');
+  if (badge) {
+    if (isValidationMode && count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
 }
 
 function toggleValidationMode() {
@@ -2932,7 +2942,7 @@ function runValidation(logIssues) {
     setStatus(portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`, portErrorCount > 0 ? "status-error" : "");
   }
 
-  _updateAuditToolbarIcon(portErrorCount > 0);
+  _updateAuditToolbarIcon(portErrorCount > 0, portErrorCount);
   applyAuditOnlyView();
   requestAnimationFrame(redrawLinks);
 }
