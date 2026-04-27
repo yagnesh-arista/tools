@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.19 | 2026-04-27 12:37:20 -->
+<!-- TopoAssist v260427.20 | 2026-04-27 12:56:46 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1291,6 +1291,17 @@
 
   .tech-incompat { background: #f1f5f9; border-color: #e2e8f0; color: #94a3b8; cursor: pointer; }
   .tech-incompat:hover { background: #e8ecf1; border-color: #cbd5e1; color: #64748b; }
+
+  /* Section-level gating: overrides chip colours (incl. tech-selected) with higher specificity */
+  .tech-section-gated .tech-radio-label,
+  .tech-section-gated .tech-radio-label:hover,
+  .tech-section-gated .tech-radio-label.tech-selected,
+  .tech-section-gated .tech-radio-label.tech-selected:hover {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: default;
+  }
 
   .tech-chip-group { display: flex; gap: 0; }
   .tech-chip-group .tech-radio-label { border-radius: 0; }

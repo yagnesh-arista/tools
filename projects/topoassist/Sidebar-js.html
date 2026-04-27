@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.19 | 2026-04-27 12:41:59 -->
+<!-- TopoAssist v260427.20 | 2026-04-27 13:00:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.19";  // keep in sync with Code.gs
+const APP_VERSION = "260427.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4753,9 +4753,10 @@ function getCurrentTechState() {
 }
 
 function updateVarpMacVisibility() {
-  const gwType = (document.querySelector('input[name="gwL3Type"]:checked') || {}).value;
+  const vgwSection = document.getElementById('evpnVgwSection');
+  const vgwGated = vgwSection && vgwSection.classList.contains('tech-section-gated');
+  const gwType = vgwGated ? null : ((document.querySelector('input[name="gwL3Type"]:checked') || {}).value || null);
   const rowVarpMac = document.getElementById('rowVarpMac');
-  // Both VARP and anycast require ip virtual-router mac-address — show MAC row for both
   if (rowVarpMac) rowVarpMac.style.display = gwType ? 'flex' : 'none';
   if (typeof checkTechDirty === 'function') checkTechDirty();
 }
@@ -4765,55 +4766,45 @@ let _techHasMlag = false;
 
 // Gates EVPN service radios and VGW options based on EVPN/MLAG selection.
 // Anycast GW requires EVPN. VARP requires EVPN or MLAG. VGW section header visible when either applies.
+// Visual greying uses tech-section-gated on the container (CSS handles chips via specificity 0,3,0).
 function applyEvpnGating() {
   const evpnOn = !!(document.getElementById('chkEvpnIpv4') && document.getElementById('chkEvpnIpv4').checked) ||
                  !!(document.getElementById('chkEvpnIpv6') && document.getElementById('chkEvpnIpv6').checked);
   const varpOk = evpnOn || _techHasMlag;
 
-  // EVPN SERVICE rows — only usable when EVPN is enabled
-  ['evpnServiceSection', 'rowEvpnSvcPerVlan', 'rowEvpnSvcBundle'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.pointerEvents = evpnOn ? '' : 'none';
-  });
+  // EVPN SERVICE section — gate whole container when EVPN is off
+  const svcSection = document.getElementById('evpnServiceSection');
+  if (svcSection) {
+    svcSection.style.pointerEvents = evpnOn ? '' : 'none';
+    svcSection.classList.toggle('tech-section-gated', !evpnOn);
+  }
   ['evpnServicePerVlan', 'evpnServiceBundle'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.disabled = !evpnOn;
   });
-  ['rowEvpnSvcPerVlan', 'rowEvpnSvcBundle'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('tech-incompat', !evpnOn);
-  });
 
-  // VGW section — visible when EVPN or MLAG active (VARP alone is sufficient)
+  // VGW section — gate whole container when neither EVPN nor MLAG active
   const vgwSection = document.getElementById('evpnVgwSection');
-  if (vgwSection) vgwSection.style.pointerEvents = varpOk ? '' : 'none';
-
-  // Anycast GW — requires EVPN
-  const anycastLabel = document.getElementById('labelGwAnycast');
+  if (vgwSection) {
+    vgwSection.style.pointerEvents = varpOk ? '' : 'none';
+    vgwSection.classList.toggle('tech-section-gated', !varpOk);
+  }
   const anycastRadio = document.getElementById('gwL3TypeAnycast');
-  if (anycastLabel) anycastLabel.style.pointerEvents = evpnOn ? '' : 'none';
   if (anycastRadio) anycastRadio.disabled = !evpnOn;
-  if (anycastLabel) anycastLabel.classList.toggle('tech-incompat', !evpnOn);
-
-  // VARP — requires EVPN or MLAG
-  const varpLabel = document.getElementById('labelGwVarp');
   const varpRadio = document.getElementById('gwL3TypeVarp');
-  if (varpLabel) varpLabel.style.pointerEvents = varpOk ? '' : 'none';
   if (varpRadio) varpRadio.disabled = !varpOk;
-  if (varpLabel) varpLabel.classList.toggle('tech-incompat', !varpOk);
 
   // Auto-switch: if the currently selected option just became disabled, switch to the other
   const selectedGw = document.querySelector('input[name="gwL3Type"]:checked');
   if (selectedGw) {
     if (selectedGw.value === 'anycast' && !evpnOn) {
-      if (varpOk && varpRadio) { varpRadio.checked = true; updateVarpMacVisibility(); }
+      if (varpOk && varpRadio) { varpRadio.checked = true; }
     } else if (selectedGw.value === 'varp' && !varpOk) {
-      if (evpnOn && anycastRadio) { anycastRadio.checked = true; updateVarpMacVisibility(); }
+      if (evpnOn && anycastRadio) { anycastRadio.checked = true; }
     }
   }
 
-  syncTechChipState();
+  updateVarpMacVisibility();
 }
 
 function toggleInfoPopup(id) {
