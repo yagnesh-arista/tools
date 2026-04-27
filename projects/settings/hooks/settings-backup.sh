@@ -25,9 +25,9 @@ case "$f" in
     changed=1
     RULES_CHANGED=1 ;;
   "$HOME/.claude/commands/"*.md)
-    mkdir -p "$SETTINGS_BACKUP/commands"
-    cp "$f" "$SETTINGS_BACKUP/commands/"
-    backup_path="$SETTINGS_BACKUP/commands/$(basename "$f")"
+    mkdir -p "$SETTINGS_BACKUP/claude-skills"
+    cp "$f" "$SETTINGS_BACKUP/claude-skills/"
+    backup_path="$SETTINGS_BACKUP/claude-skills/$(basename "$f")"
     changed=1 ;;
   "$HOME/.claude/settings.json")
     sed "s|$HOME|\$HOME|g" "$f" > "$SETTINGS_BACKUP/settings.json.template"
@@ -55,7 +55,7 @@ if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   REPO_NAME=$(echo "$REMOTE_URL" | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
 
   if [ "${RULES_CHANGED:-0}" -eq 1 ]; then
-    msg="[SETTINGS BACKUP] ${fname} auto-synced. RULES CHANGED — update: (1) ~/claude/Reference_Card.md, (2) bump 'rules-synced' date in ~/.claude/commands/topoassist-review-code-design.md and add/update checks for any new rules. Then commit and push ~/claude."
+    msg="[SETTINGS BACKUP] ${fname} auto-synced. RULES CHANGED — update: (1) ~/claude/Reference_Card.md, (2) bump 'rules-synced' date in ~/.claude/claude-skills/topoassist-review-code-design.md and add/update checks for any new rules. Then commit and push ~/claude."
   else
     msg="[SETTINGS BACKUP] ${fname} auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude."
   fi
