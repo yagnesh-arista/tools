@@ -1,4 +1,4 @@
-# topoassist v260426.69 | 2026-04-26 18:44:54
+# topoassist v260427.24 | 2026-04-27 13:58:43
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -9,6 +9,79 @@ data out with no network, filesystem, or GAS API dependencies.
 """
 
 import device_bridge as db
+
+
+# ── _extract_eos_errors ────────────────────────────────────────────────────────
+
+class TestExtractEosErrors:
+    def test_empty_string(self):
+        assert db._extract_eos_errors("") == []
+
+    def test_no_percent_lines(self):
+        output = "Arista(config-s-topoas)#router bgp 65001\nArista(config-s-topoas)#commit\n"
+        assert db._extract_eos_errors(output) == []
+
+    def test_single_rejection_before_diff(self):
+        output = (
+            "Arista(config-s-1)#router bgp 1\n"
+            "% BGP is already running with AS number 65002\n"
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "Arista(config-s-1)#commit\n"
+        )
+        assert db._extract_eos_errors(output) == ["% BGP is already running with AS number 65002"]
+
+    def test_multiple_rejections(self):
+        output = (
+            "% Invalid input (at token 2: 'bgp')\n"
+            "% BGP is already running with AS number 65002\n"
+            "--- system:/running-config\n"
+        )
+        result = db._extract_eos_errors(output)
+        assert len(result) == 2
+        assert "% Invalid input (at token 2: 'bgp')" in result
+        assert "% BGP is already running with AS number 65002" in result
+
+    def test_percent_after_diff_header_ignored(self):
+        # % line appearing after --- should NOT be captured (it would be inside diff content)
+        output = (
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "% This would be unusual but must not be captured\n"
+        )
+        assert db._extract_eos_errors(output) == []
+
+    def test_stops_at_plus_plus_plus_header(self):
+        output = (
+            "% BGP is already running with AS number 65002\n"
+            "+++ session:/topoassist-session-config\n"
+            "% Should not be captured\n"
+        )
+        result = db._extract_eos_errors(output)
+        assert result == ["% BGP is already running with AS number 65002"]
+
+    def test_eapi_joined_results(self):
+        # Simulates '\n'.join(eapi_results) — % errors in config cmds, diff at end
+        output = (
+            "output of session open\n"
+            "% BGP is already running with AS number 65002\n"
+            "\n"
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+        )
+        assert db._extract_eos_errors(output) == ["% BGP is already running with AS number 65002"]
+
+    def test_no_errors_clean_push(self):
+        output = (
+            "Arista(config-s-topoas)#interface Ethernet1\n"
+            "Arista(config-s-topoas-if-Et1)#description spine\n"
+            "--- system:/running-config\n"
+            "+++ session:/topoassist-session-config\n"
+            "interface Ethernet1\n"
+            "+   description spine\n"
+            "Arista(config-s-topoas)#commit\n"
+        )
+        assert db._extract_eos_errors(output) == []
 
 
 # ── _extract_session_diff ──────────────────────────────────────────────────────

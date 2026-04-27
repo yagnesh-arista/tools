@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260426.90 | 2026-04-26 20:34:49
+# topoassist v260427.24 | 2026-04-27 13:58:21
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260426.70"
+VERSION           = "260427.1"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -342,6 +342,25 @@ def _extract_session_diff(output):
                 break
             diff.append(s)
     return '\n'.join(diff).strip()
+
+
+def _extract_eos_errors(text):
+    """Collect EOS % error/warning lines from session output (SSH or joined eAPI text).
+
+    Scans until the first diff-header line ('--- ' or '+++ '), so only rejection
+    messages emitted while config commands were processed are captured — not diff
+    content.  For joined eAPI output the same rule applies: % lines only appear in
+    command outputs that precede the 'show session-config diffs' result.
+
+    Returns a list of stripped % lines, or [] if none found."""
+    errors = []
+    for line in text.split('\n'):
+        s = line.strip()
+        if s.startswith('--- ') or s.startswith('+++ '):
+            break   # reached diff section — stop
+        if s.startswith('%'):
+            errors.append(s)
+    return errors
 
 
 # ── Section-level cleaners for idempotent push ────────────────────────────────
@@ -860,6 +879,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
+            eos_errs = _extract_eos_errors('\n'.join(results))
+            if eos_errs:
+                _asn_extra["eos_errors"] = eos_errs
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
@@ -877,7 +899,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 raise RuntimeError(
                     "EOS pending session limit reached — Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
-            diff = _extract_session_diff(output)
+            diff     = _extract_session_diff(output)
+            eos_errs = _extract_eos_errors(output)
+            if eos_errs:
+                _asn_extra["eos_errors"] = eos_errs
             if open_only:
                 diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
                 if VERBOSE: print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)")
