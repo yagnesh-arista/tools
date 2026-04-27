@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.43 | 2026-04-27 16:52:04 -->
+<!-- TopoAssist v260427.44 | 2026-04-27 17:39:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.43";  // keep in sync with Code.gs
+const APP_VERSION = "260427.44";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3876,6 +3876,7 @@ function filterTopology() {
     document.querySelectorAll(".port-row").forEach(p => { p.classList.remove("hidden-global"); });
     searchActiveLinks.clear();
     requestAnimationFrame(redrawLinks);
+    requestAnimationFrame(refreshGroupRects);
     return;
   } else {
     captureCameraState();
@@ -4009,6 +4010,7 @@ function filterTopology() {
   }
 
   requestAnimationFrame(redrawLinks);
+  requestAnimationFrame(refreshGroupRects);
 
   // 5. UPDATE VIEW & STATUS
   searchContainer?.classList.toggle('search-matched', hasMatch);
