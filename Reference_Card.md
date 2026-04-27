@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-26 (Rule 25 added — minimize button position: _injectMinimizeButtons() auto-injection, insertBefore closeBtn, margin-left:auto keeps [−][×] flush-right)
+Last updated: 2026-04-27 (Rule 26 added — label-column alignment: fixed-width label column + flex:1 options for tabular row alignment; nested sub-labels use same fixed width; wrap label+icon in one span)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -41,6 +41,7 @@ Last updated: 2026-04-26 (Rule 25 added — minimize button position: _injectMin
 | 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
 | 23 | Memory tiering — Tier 1 (CLAUDE.md+rules/+project CLAUDE.md) always loaded; Tier 2 (memory) only for things NOT in Tier 1; never write a memory file for something already in Tier 1; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
 | 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
+| 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
 
 ---
 
