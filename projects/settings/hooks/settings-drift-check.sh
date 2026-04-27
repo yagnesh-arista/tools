@@ -51,8 +51,8 @@ done
 # Sync commands
 for src in "$HOME/.claude/commands/"*.md; do
   [ -f "$src" ] || continue
-  dst="$SETTINGS_BACKUP/commands/$(basename "$src")"
-  sync_file "$src" "$dst" "commands/$(basename "$src")"
+  dst="$SETTINGS_BACKUP/claude-skills/$(basename "$src")"
+  sync_file "$src" "$dst" "claude-skills/$(basename "$src")"
 done
 
 # Sync settings.json
