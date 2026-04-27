@@ -487,6 +487,34 @@ grep -A20 "_injectMinimizeButtons" ~/claude/projects/topoassist/Sidebar-js.html 
 ✗ FAIL if `.btn-modal-minimize` does not have `margin-left: auto` in CSS
 ✗ FAIL if `<button class="btn-modal-minimize">` appears directly in Sidebar.html (must be injected, not hand-written)
 ✗ FAIL if `insertBefore(btn, closeBtn)` pattern is absent (ensures `[−]` is left of `[×]`)
+
+---
+
+## Check 24 — Label-Column Alignment (Rule 26)
+
+Any UI section with multiple rows of options under a shared category must use tabular alignment:
+fixed-width label column + `flex:1` options so items align vertically across rows.
+
+```bash
+# Find proto-underlay-label usage — verify min-width and flex-shrink:0 present
+grep -n "proto-underlay-label\|row-label" ~/claude/projects/topoassist/Sidebar-css.html \
+  | grep -v "^.*<!--"
+
+# Verify flex-shrink:0 is set on label columns
+grep -A10 "proto-underlay-label" ~/claude/projects/topoassist/Sidebar-css.html \
+  | grep "flex-shrink\|min-width"
+
+# Check for any fixed-width sub-label spans inside EVPN service/VGW rows
+grep -n "width:80px\|width: 80px" ~/claude/projects/topoassist/Sidebar.html | head -10
+
+# Check for flex:1 on option labels inside aligned rows
+grep -n "flex:1" ~/claude/projects/topoassist/Sidebar.html | grep "tech-radio-label\|rowEvpn\|labelGw" | head -10
+```
+
+✗ FAIL if a multi-row option group uses no fixed-width label column (options will not column-align)
+✗ FAIL if `flex-shrink:0` is missing from the label column (label can compress and break alignment)
+✗ FAIL if nested sub-label widths differ across rows in the same group (e.g. SERVICE=80px but VGW=auto)
+✗ FAIL if a sub-label span contains only text but its sibling icon button is outside the span (breaks fixed-cell width)
 ⚠ WARN if any modal header manually positions a minimize button without using the injector
 
 ---
