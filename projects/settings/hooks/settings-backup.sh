@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260421.50 | 2026-04-21 13:08:29
+# settings v260427.3 | 2026-04-27 11:10:40
 # settings-backup.sh
 # PostToolUse:Write|Edit — fires when Claude edits a settings file.
 # Syncs the file to ~/claude/projects/settings/, auto-commits, and pushes.
@@ -55,7 +55,7 @@ if ! git -C "$REPO" diff --cached --quiet 2>/dev/null; then
   REPO_NAME=$(echo "$REMOTE_URL" | sed 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||')
 
   if [ "${RULES_CHANGED:-0}" -eq 1 ]; then
-    msg="[SETTINGS BACKUP] ${fname} auto-synced. RULES CHANGED — update: (1) ~/claude/Reference_Card.md, (2) bump 'rules-synced' date in ~/.claude/claude-skills/topoassist-review-code-design.md and add/update checks for any new rules. Then commit and push ~/claude."
+    msg="[SETTINGS BACKUP] ${fname} auto-synced. RULES CHANGED — update: (1) ~/claude/Reference_Card.md, (2) bump 'rules-synced' date in ~/.claude/commands/topoassist-review-code-design.md and add/update checks for any new rules. Then commit and push ~/claude."
   else
     msg="[SETTINGS BACKUP] ${fname} auto-synced. If rules or workflow changed, update ~/claude/Reference_Card.md. Then commit and push ~/claude."
   fi
