@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.10 | 2026-04-27 12:17:23 -->
+<!-- TopoAssist v260427.11 | 2026-04-27 12:18:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.10";  // keep in sync with Code.gs
+const APP_VERSION = "260427.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5035,6 +5035,12 @@ function openTechModal() {
             _enableTechChk(id);
           }, true);
         });
+      }
+
+      // Delegated change listener: keeps chip selected-state in sync on every input change
+      if (!document.getElementById('techModal')._changeInit) {
+        document.getElementById('techModal')._changeInit = true;
+        document.getElementById('techModal').addEventListener('change', syncTechChipState);
       }
 
       // 6. Capture initial state + run first validation
@@ -10376,19 +10382,33 @@ function refreshAuditSettings() {
 
 function refreshAuditSettingsDots() {
   _ALL_AUDIT_FLAGS.forEach(name => {
-    const el = document.getElementById('auditDot_' + name);
-    if (!el) return;
+    const dot = document.getElementById('auditDot_' + name);
+    if (!dot) return;
     const enabled = _getAuditFlag(name);
     const count = auditCheckHadIssue[name] || 0;
-    if (!auditHasRun || count === 0) {
-      el.textContent = '';
-      el.className = 'audit-issue-ind' + (enabled && auditHasRun ? ' ind-green' : '');
-    } else if (enabled) {
-      el.textContent = count > 99 ? '99+' : String(count);
-      el.className = 'audit-issue-ind ind-red';
+
+    // Inject count span once, reuse after
+    let cnt = document.getElementById('auditCount_' + name);
+    if (!cnt) {
+      cnt = document.createElement('span');
+      cnt.id = 'auditCount_' + name;
+      cnt.className = 'audit-count-ind hidden';
+      dot.parentNode.insertBefore(cnt, dot);
+    }
+
+    // Status dot — always empty (dot shape), color reflects state
+    dot.textContent = '';
+    if (!auditHasRun)       dot.className = 'audit-issue-ind';
+    else if (count === 0)   dot.className = 'audit-issue-ind' + (enabled ? ' ind-green' : '');
+    else if (enabled)       dot.className = 'audit-issue-ind ind-red';
+    else                    dot.className = 'audit-issue-ind ind-gray';
+
+    // Count badge — only shown when count > 0
+    if (count > 0) {
+      cnt.textContent = count > 99 ? '99+' : String(count);
+      cnt.className = 'audit-count-ind ' + (enabled ? 'cnt-red' : 'cnt-gray');
     } else {
-      el.textContent = count > 99 ? '99+' : String(count);
-      el.className = 'audit-issue-ind ind-gray';
+      cnt.className = 'audit-count-ind hidden';
     }
   });
 }
