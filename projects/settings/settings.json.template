@@ -108,7 +108,7 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/winnow-auth-check.sh",
-            "statusMessage": "Winnow tool failure — checking auth..."
+            "statusMessage": "Winnow tool failure \u2014 checking auth..."
           }
         ]
       }
@@ -119,12 +119,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); content=$(echo \"$input\" | jq -r '.tool_input.content // .tool_input.new_string // \"\"'); if [ -n \"$content\" ]; then ext=\"${f##*.}\"; issues=\"\"; sec=$(echo \"$content\" | grep -icE '(password|secret|api_key|apikey|token|auth_token)\\s*=' 2>/dev/null); [ \"${sec:-0}\" -gt 0 ] && issues=\"$issues [POSSIBLE_SECRETS:$sec]\"; skip_debug=0; case \"$ext\" in md|txt|json|yaml|yml|toml) skip_debug=1 ;; esac; echo \"$f\" | grep -q '/.claude/hooks/' && skip_debug=1; if [ \"$skip_debug\" -eq 0 ]; then dbg=$(echo \"$content\" | grep -cE 'console\\.(log|debug|warn|error)\\(|debugger;|pdb\\.set_trace|breakpoint\\(\\)|var_dump\\(' 2>/dev/null); todo=$(echo \"$content\" | grep -cE '\\b(TODO|FIXME|HACK|XXX)\\b' 2>/dev/null); [ \"${dbg:-0}\" -gt 0 ] && issues=\"$issues [DEBUG_STATEMENTS:$dbg]\"; [ \"${todo:-0}\" -gt 0 ] && issues=\"$issues [UNRESOLVED_TODOS:$todo]\"; fi; if [ -n \"$issues\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"PRE-WRITE SCAN FAILED:$issues — fix these before writing this file.\\\"}}\"; fi; fi",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); content=$(echo \"$input\" | jq -r '.tool_input.content // .tool_input.new_string // \"\"'); if [ -n \"$content\" ]; then ext=\"${f##*.}\"; issues=\"\"; sec=$(echo \"$content\" | grep -icE '(password|secret|api_key|apikey|token|auth_token)\\s*=' 2>/dev/null); [ \"${sec:-0}\" -gt 0 ] && issues=\"$issues [POSSIBLE_SECRETS:$sec]\"; skip_debug=0; case \"$ext\" in md|txt|json|yaml|yml|toml) skip_debug=1 ;; esac; echo \"$f\" | grep -q '/.claude/hooks/' && skip_debug=1; if [ \"$skip_debug\" -eq 0 ]; then dbg=$(echo \"$content\" | grep -cE 'console\\.(log|debug|warn|error)\\(|debugger;|pdb\\.set_trace|breakpoint\\(\\)|var_dump\\(' 2>/dev/null); todo=$(echo \"$content\" | grep -cE '\\b(TODO|FIXME|HACK|XXX)\\b' 2>/dev/null); [ \"${dbg:-0}\" -gt 0 ] && issues=\"$issues [DEBUG_STATEMENTS:$dbg]\"; [ \"${todo:-0}\" -gt 0 ] && issues=\"$issues [UNRESOLVED_TODOS:$todo]\"; fi; if [ -n \"$issues\" ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"PRE-WRITE SCAN FAILED:$issues \u2014 fix these before writing this file.\\\"}}\"; fi; fi",
             "statusMessage": "Scanning content for debug code, secrets, TODOs..."
           },
           {
             "type": "command",
-            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ -n \"$f\" ] && [ -f \"$f\" ] && echo \"$f\" | grep -q '$HOME/claude/projects/'; then if ! git -C \"$(dirname \"$f\")\" rev-parse --git-dir > /dev/null 2>&1; then proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); bdir=\"$proj/.claude/backups\"; mkdir -p \"$bdir\"; ts=$(date +%Y%m%d_%H%M%S); fname=$(basename \"$f\"); cp \"$f\" \"$bdir/${fname}.${ts}.bak\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"[WARNING] $(basename $proj) has no git repo — this project is unprotected. Run: git init $proj && git -C $proj add -A && git -C $proj commit -m 'Initial commit'. Backup created: .claude/backups/${fname}.${ts}.bak\\\"}}\"; fi; fi",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if [ -n \"$f\" ] && [ -f \"$f\" ] && echo \"$f\" | grep -q '$HOME/claude/projects/'; then if ! git -C \"$(dirname \"$f\")\" rev-parse --git-dir > /dev/null 2>&1; then proj=$(echo \"$f\" | grep -oP '$HOME/claude/projects/[^/]+'); bdir=\"$proj/.claude/backups\"; mkdir -p \"$bdir\"; ts=$(date +%Y%m%d_%H%M%S); fname=$(basename \"$f\"); cp \"$f\" \"$bdir/${fname}.${ts}.bak\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"additionalContext\\\":\\\"[WARNING] $(basename $proj) has no git repo \u2014 this project is unprotected. Run: git init $proj && git -C $proj add -A && git -C $proj commit -m 'Initial commit'. Backup created: .claude/backups/${fname}.${ts}.bak\\\"}}\"; fi; fi",
             "statusMessage": "Backing up file before edit (non-git project)..."
           }
         ]
@@ -199,5 +199,67 @@
   },
   "enabledPlugins": {},
   "autoUpdatesChannel": "stable",
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "mcpServers": {
+    "arista-eos": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/arista-eos/eos_server.py"
+      ]
+    },
+    "arista-sonic": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/arista-sonic/sonic_server.py"
+      ]
+    },
+    "arista-ixia": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/arista-ixia/ixia_server.py"
+      ]
+    },
+    "arista-bugsby": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/arista-bugsby/bugsby_server.py"
+      ]
+    },
+    "swat-lab": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/swat-lab-mcp/swat_lab_server.py"
+      ]
+    },
+    "swat-config": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/swat-config-mcp/swat_config_server.py"
+      ]
+    },
+    "swat-debug": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/swat-debug-mcp/swat_debug_server.py"
+      ]
+    },
+    "swat-release": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/swat-release-mcp/swat_release_server.py"
+      ]
+    },
+    "gdoc-mcp": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/gdoc-mcp/gdoc_server.py"
+      ]
+    },
+    "claudeGHCBot": {
+      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
+      "args": [
+        "/export/users/ash.chan/MCP/claudeGHCBot/claudeGHCBot.py"
+      ]
+    }
+  }
 }

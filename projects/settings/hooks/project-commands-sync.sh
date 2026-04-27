@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260421.31 | 2026-04-21 12:35:43
+# settings v260427.4 | 2026-04-27 11:10:56
 # Auto-syncs project .claude/commands/<name>.md → ~/.claude/commands/<proj>-<name>.md
 # on every Write/Edit to a project command file.
 # Also copies to settings backup (claude-skills/).
