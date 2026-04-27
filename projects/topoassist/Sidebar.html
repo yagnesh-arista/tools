@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.9 | 2026-04-27 12:13:35 -->
+<!-- TopoAssist v260427.10 | 2026-04-27 12:17:14 -->
 <!DOCTYPE html>
 <html>
 
@@ -481,20 +481,24 @@
       <div style="border:1px solid var(--border-light); border-radius:6px; overflow:hidden; margin-bottom:18px;">
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">BGP</span>
-          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(4,1fr);">
+          <div class="proto-underlay-opts" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; flex:1;">
             <label id="row-chkBgpIpv4" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv4" class="chk-input"> IPv4</label>
-            <label id="row-chkBgpIpv6" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
-            <label id="row-chkBgpIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
+            <div class="tech-chip-group">
+              <label id="row-chkBgpIpv6" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6" class="chk-input"> IPv6</label>
+              <label id="row-chkBgpIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkBgpIpv6Unnum" class="chk-input"> Unnumbered</label>
+            </div>
             <label id="row-chkBgpRfc5549" class="tech-radio-label"><input type="checkbox" id="chkBgpRfc5549" class="chk-input"> RFC5549</label>
           </div>
         </div>
         <div style="height:1px; background:var(--border-light);"></div>
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">OSPF</span>
-          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(4,1fr);">
+          <div class="proto-underlay-opts" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; flex:1;">
             <label id="row-chkOspfIpv4" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv4" class="chk-input"> v2 / IPv4</label>
-            <label id="row-chkOspfIpv6" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
-            <label id="row-chkOspfIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
+            <div class="tech-chip-group">
+              <label id="row-chkOspfIpv6" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6" class="chk-input"> v3 / IPv6</label>
+              <label id="row-chkOspfIpv6Unnum" class="tech-radio-label"><input type="checkbox" id="chkOspfIpv6Unnum" class="chk-input"> Unnumbered</label>
+            </div>
           </div>
         </div>
       </div>
@@ -505,7 +509,7 @@
         <!-- VXLAN row -->
         <div class="proto-underlay-row">
           <span class="proto-underlay-label">VXLAN <span class="proto-plane-badge proto-plane-badge--data">DATA</span></span>
-          <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(2,1fr); flex:1;">
+          <div class="proto-underlay-opts" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; flex:1;">
             <label id="row-chkVxlanIpv4" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv4" class="chk-input"> IPv4 VTEP</label>
             <label id="row-chkVxlanIpv6" class="tech-radio-label"><input type="checkbox" id="chkVxlanIpv6" class="chk-input"> IPv6 VTEP</label>
           </div>
@@ -516,7 +520,7 @@
           <span class="proto-underlay-label" style="padding-top:3px;">EVPN <span class="proto-plane-badge proto-plane-badge--ctrl">CTRL</span></span>
           <div style="flex:1; display:flex; flex-direction:column;">
             <!-- IPv4 / IPv6 -->
-            <div class="proto-underlay-opts" style="display:grid; grid-template-columns:repeat(2,1fr); padding-bottom:8px;">
+            <div class="proto-underlay-opts" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding-bottom:8px;">
               <label id="row-chkEvpnIpv4" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv4" class="chk-input"> IPv4</label>
               <label id="row-chkEvpnIpv6" class="tech-radio-label"><input type="checkbox" id="chkEvpnIpv6" class="chk-input"> IPv6</label>
             </div>
@@ -527,8 +531,8 @@
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
                 </button>
               </span>
-              <label id="rowEvpnSvcPerVlan" class="tech-radio-label" style="flex:1;"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
-              <label id="rowEvpnSvcBundle" class="tech-radio-label" style="flex:1;"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
+              <label id="rowEvpnSvcPerVlan" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
+              <label id="rowEvpnSvcBundle" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
             </div>
             <!-- VGW group: fixed 80px sub-label + aligned options; MAC wraps to full-width next line -->
             <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:0 8px; flex-wrap:wrap;">
@@ -537,8 +541,8 @@
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
                 </button>
               </span>
-              <label id="labelGwAnycast" class="tech-radio-label" style="flex:1;"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
-              <label id="labelGwVarp" class="tech-radio-label" style="flex:1;"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
+              <label id="labelGwAnycast" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeAnycast" value="anycast" class="chk-input" onchange="updateVarpMacVisibility()"> Anycast GW</label>
+              <label id="labelGwVarp" class="tech-radio-label"><input type="radio" name="gwL3Type" id="gwL3TypeVarp" value="varp" class="chk-input" onchange="updateVarpMacVisibility()"> VARP</label>
               <!-- Virtual Router MAC — wraps to full-width next line when shown -->
               <div id="rowVarpMac" style="display:none; align-items:center; gap:10px; width:100%; padding-top:7px;">
                 <span style="width:80px; flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none; white-space:nowrap;">MAC</span>

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.9 | 2026-04-27 12:13:35 -->
+<!-- TopoAssist v260427.10 | 2026-04-27 12:14:32 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1268,42 +1268,34 @@
   }
 
   .tech-radio-label {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
     cursor: pointer;
     font-size: 12px;
     font-weight: 700;
-    color: var(--text-main);
     font-family: 'JetBrains Mono', monospace;
-    padding: 4px 2px;
-    min-width: 80px;
-    border-radius: 4px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #86efac;
+    background: #f0fdf4;
+    color: #15803d;
     user-select: none;
     -webkit-user-select: none;
-    transition: color 0.1s;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    white-space: nowrap;
   }
-  .tech-radio-label:hover { color: var(--primary, #3b82f6); }
+  .tech-radio-label .chk-input { display: none; }
+  .tech-radio-label:hover { background: #dcfce7; border-color: #4ade80; }
+  .tech-radio-label.tech-selected { background: #16a34a; border-color: #15803d; color: #ffffff; }
+  .tech-radio-label.tech-selected:hover { background: #15803d; }
 
-  .tech-incompat { color: #94a3b8; cursor: pointer; }
-  .tech-incompat input[type="checkbox"],
-  .tech-incompat input[type="radio"] { opacity: 0.45; }
-  .tech-incompat:hover { color: var(--primary, #3b82f6); }
-  .tech-incompat:hover input[type="checkbox"],
-  .tech-incompat:hover input[type="radio"] { opacity: 0.85; }
+  .tech-incompat { background: #f1f5f9; border-color: #e2e8f0; color: #94a3b8; cursor: pointer; }
+  .tech-incompat:hover { background: #e8ecf1; border-color: #cbd5e1; color: #64748b; }
 
-  .tech-hint-icon {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    color: #94a3b8;
-    opacity: 0.7;
-    font-family: 'JetBrains Mono', monospace;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .tech-incompat:hover .tech-hint-icon { color: var(--primary, #3b82f6); opacity: 1; }
+  .tech-chip-group { display: flex; gap: 0; }
+  .tech-chip-group .tech-radio-label { border-radius: 0; }
+  .tech-chip-group .tech-radio-label:first-child { border-radius: 5px 0 0 5px; }
+  .tech-chip-group .tech-radio-label:last-child { border-radius: 0 5px 5px 0; border-left-width: 0; }
 
   .tech-proto-col {
     display: flex;
