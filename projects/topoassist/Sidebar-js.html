@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.11 | 2026-04-27 12:18:30 -->
+<!-- TopoAssist v260427.12 | 2026-04-27 12:18:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.11";  // keep in sync with Code.gs
+const APP_VERSION = "260427.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2254,8 +2254,12 @@ function _updateAuditToolbarIcon(hasIssues, count) {
 
   const badge = document.getElementById('auditBadge');
   if (badge) {
-    badge.textContent = (isValidationMode && count > 0) ? count : 0;
-    badge.classList.remove('hidden');
+    if (isValidationMode && count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
   }
 }
 

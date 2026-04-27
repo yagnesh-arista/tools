@@ -1,4 +1,4 @@
-<!-- TopoAssist v260427.11 | 2026-04-27 12:17:48 -->
+<!-- TopoAssist v260427.12 | 2026-04-27 12:19:12 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5776,7 +5776,17 @@
     border-radius: 8px;
     padding: 0 5px;
   }
-  .audit-issue-ind.ind-green:empty  { background: #22c55e; }
-  .audit-issue-ind.ind-red:not(:empty)  { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.35); }
-  .audit-issue-ind.ind-gray:not(:empty) { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.35); }
+  .audit-issue-ind.ind-green:empty { background: #22c55e; }
+  .audit-issue-ind.ind-red:empty   { background: #ef4444; }
+  /* Per-check count badge — shown only when count > 0 */
+  .audit-count-ind {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    min-width: 20px; height: 16px; border-radius: 8px; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-right: 4px;
+  }
+  .audit-count-ind.hidden { display: none; }
+  .audit-count-ind.cnt-red  { background: rgba(239,68,68,0.12);  color: #ef4444; border: 1px solid rgba(239,68,68,0.35); }
+  .audit-count-ind.cnt-gray { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.35); }
 </style>
