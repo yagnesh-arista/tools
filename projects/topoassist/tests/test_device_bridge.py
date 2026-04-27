@@ -1,4 +1,4 @@
-# topoassist v260427.26 | 2026-04-27 14:18:55
+# topoassist v260427.32 | 2026-04-27 14:39:47
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -125,6 +125,33 @@ class TestExtractEosErrors:
             "+   instance 2 vlan 2001-4001\n"
         )
         assert db._extract_eos_errors(output) == []
+
+    def test_invalid_input_in_session_submode(self):
+        # EOS rejects a command inside a configure-session interface sub-mode with
+        # '% Invalid input'. The sub-mode prompt ending in '#' must NOT trigger the
+        # exec-mode stop because it contains '(config'.
+        output = (
+            "DUT(config-s-topoas-if-Et4.4019)#channel-group 4003 mode active\n"
+            "% Invalid input\n"
+            "DUT(config-s-topoas-if-Et4.4019)#\n"   # sub-mode prompt — NOT a stop
+            "DUT(config-s-topoas)#end\n"
+            "DUT#\n"                                  # exec-mode — stop
+            "--- system:/running-config\n"
+        )
+        assert db._extract_eos_errors(output) == ["% Invalid input"]
+
+    def test_timestamped_prompt_submode_not_a_stop_exec_is(self):
+        # EOS can embed a clock in the prompt (e.g. 'clock format %H:%M:%S').
+        # Sub-mode timestamped prompt contains '(config' — NOT a stop condition.
+        # Bare exec-mode timestamped prompt has no '(config' — IS a stop condition.
+        output = (
+            "DUT.02:03:38(config-s-topoas-if-Et4.4019)#channel-group 4003 mode active\n"
+            "% Invalid input\n"
+            "DUT.02:03:43(config-s-topoas-if-Et4.4019)#\n"  # timestamped sub-mode — NOT a stop
+            "DUT.02:03:50#\n"                                 # timestamped exec-mode — STOP
+            "% Should not be captured\n"
+        )
+        assert db._extract_eos_errors(output) == ["% Invalid input"]
 
 
 # ── _extract_session_diff ──────────────────────────────────────────────────────
