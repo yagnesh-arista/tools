@@ -1,10 +1,10 @@
-// TopoAssist v260428.41 | 2026-04-28 12:18:33
+// TopoAssist v260428.42 | 2026-04-28 12:24:00
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260428.41";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260428.42";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5098,12 +5098,13 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     }
     // B. GATEWAY (SVI/Sub-Int/L3-routed)
     // LEAF: anycast (ip address virtual) or VARP (ip virtual-router address) per GW settings.
-    // Non-LEAF (SPINE/HARNESS/etc): plain ip address using sheetIndex for per-device uniqueness.
+    // Non-LEAF (SPINE/HARNESS/etc): plain ip address using gwLastV4/V6 (operator-configured last
+    // octet) — same value the operator set for the virtual/anycast IP, applied as a plain address.
     else if (ipType.includes("gw")) {
       if (netSettings && netSettings.deviceRole !== 'LEAF') {
         // Non-LEAF: plain routed IP — no virtual or virtual-router address
-        if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${sheetIndex}${cfg.gw_v4_mask}`);
-        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${sheetIndex}${cfg.gw_v6_mask}`); }
+        if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${gwLastV4}${cfg.gw_v4_mask}`);
+        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${gwLastV6}${cfg.gw_v6_mask}`); }
       } else {
       // Description: ANYCAST_GW_<vrf>_<vlan> when EVPN active and VRF set, else ANYCAST_GW_<vlan>
       if (isEvpnActive) {

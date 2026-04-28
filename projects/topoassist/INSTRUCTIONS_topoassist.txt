@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-28 (processDeviceConfig: _isEosDev guard moved above CASE 1 — covers both device strip (CASE 1) and link strips (CASE 2); non-EOS never turns any strip green. Files: Sidebar-js.html)
+  Last updated: 2026-04-28 (GW formula fix for non-LEAF: getIpBlock() non-LEAF branch was using sheetIndex (device Arista counter) as the last octet — SPINE #6 was getting .6 instead of .1. Correct value is gwLastV4/gwLastV6 (parseInt(cfg.gw_v4_last/gw_v6_last)) — the operator-configured last octet, same field used by LEAF anycast. sheetIndex is arbitrary order-dependent counter, not an IP convention. Files: Code.gs, CLAUDE.md)
+  Previous: 2026-04-28 (processDeviceConfig: _isEosDev guard moved above CASE 1 — covers both device strip (CASE 1) and link strips (CASE 2); non-EOS never turns any strip green. Files: Sidebar-js.html)
   Previous: 2026-04-28 (_selectiveConfigInvalidate fingerprint expanded — added vlan_, ip_type_, svi_vlan_, vrf_, desc_ to port-level fingerprint; previously changes to these fields left configCache stale and config showed old values after smart-poll refresh. File: Sidebar-js.html)
   Previous: 2026-04-28 (non-EOS strip green bug: (1) processDeviceConfig CASE 2 now guards with _isEosDev before turning strip green; (2) setSplitBtnState for all non-EOS strips passes actionsDisabled=true — prevents spurious ready-flash and button enable. Files: Sidebar-js.html)
   Previous: 2026-04-28 (_parseSviVlans: 1-4094 guard on incoming vlans array + explicitly requested VLAN IDs — silently drops out-of-range values before any `interface Vlan<N>` is generated. vlan_ NOT guarded (8888 valid for L3-et/po-int sub-interface). File: Code.gs)
