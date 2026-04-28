@@ -1,4 +1,4 @@
-<!-- TopoAssist v260428.7 | 2026-04-28 09:28:32 -->
+<!-- TopoAssist v260428.9 | 2026-04-28 09:38:11 -->
 <!DOCTYPE html>
 <html>
 
@@ -984,6 +984,14 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>EP1 / EP2 descriptions</b> — set <code>desc_=TRAFFIC_SNAKE_EP1_L3</code> on one generator-connected port row and <code>desc_=TRAFFIC_SNAKE_EP2_L3</code> on the other. The snake VRF chain is built relative to these two anchors.</li>
     </ol>
     <p style="font-size:13px;">Everything else — VRF declarations, interface configs, ARP entries, and the full bidirectional routing chain — is generated automatically from the sheet data.</p>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Audit Enforcement — Snake / IXIA</h4>
+    <p style="font-size:13px;">The audit engine enforces two rules for snake and IXIA ports (both default ON in Audit Settings → <b>Snake / IXIA</b>):</p>
+    <table class="legend-table" style="font-size:12px;">
+      <tr><th>Check</th><th>What it flags</th><th>Why</th></tr>
+      <tr><td><b>Snake loopback port not p2p</b></td><td>Any snake primary or secondary port where <code>ip_type_</code> is not <code>p2p</code></td><td>Snake ports need <code>ip address {base}.oct2.oct3.1/24</code> — only the <code>p2p</code> type generates this. Any other type produces the wrong address or command inside the isolated SNAKE VRF.</td></tr>
+      <tr><td><b>IXIA EP port not p2p</b></td><td>Any port with <code>desc_=TRAFFIC_SNAKE_EP1_L3</code> or <code>TRAFFIC_SNAKE_EP2_L3</code> where <code>ip_type_</code> is not <code>p2p</code></td><td>EP1/EP2 ports are regular P2P interfaces — they need a plain <code>ip address</code> so the traffic generator can ARP and connect. The VRF is already assigned via <code>desc_</code> regardless of <code>ip_type_</code>, but the address command depends on it. Using <code>gw</code> generates <code>ip address virtual</code> (LEAF) or the GW prefix <code>100.x.x.x</code> (SPINE) — neither works for a traffic generator connection.</td></tr>
+    </table>
 
     <!-- ================================================================ -->
     <h3>9. Per-VLAN VRF</h3>
