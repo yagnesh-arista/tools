@@ -1,10 +1,10 @@
-// TopoAssist v260428.43 | 2026-04-28 12:28:57
+// TopoAssist v260428.44 | 2026-04-28 12:49:05
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260428.43";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260428.44";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4368,10 +4368,24 @@ function getDeviceConfig(deviceName) {
       blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
     };
 
-    // [SECTION 001] SYSTEM
-    const sysBlock = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings, ipPrefs);
+    // [SECTIONS 000_LO0 / 000_LO1 / 001_SYSTEM] LOOPBACK0 + LOOPBACK1 (MLAG VTEP) + SYSTEM
+    const sysBlocks = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings, ipPrefs);
+    configMap["000_LO0"] = { full: sysBlocks.lo0, blockStatus: "Loopback0" };
+    // Lo1: MLAG VTEP devices only — shared IP (min.min.max.max) for vxlan mlag source-interface
+    if (isVxlan && mlagState.isActive && devData.hasP2p && devData.gwVlans.size > 0) {
+      const _loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
+      const _myLoId   = deviceSheetIndex + _loBase;
+      const _peerLoId = (parseInt(mlagState.peerId) || 0) + _loBase;
+      const _low  = Math.min(_myLoId, _peerLoId);
+      const _high = Math.max(_myLoId, _peerLoId);
+      const _lo1Ip  = `${_low}.${_low}.${_high}.${_high}`;
+      const _lo1Ip6 = `${_low}:${_low}:${_high}::${_high}`;
+      const _lo1Lines = [`interface Loopback1`, ` description VTEP_MLAG_SHARED`, ` ip address ${_lo1Ip}/32`];
+      if (settings.vxlan_ipv6) { _lo1Lines.push(` no ipv6 address`); _lo1Lines.push(` ipv6 address ${_lo1Ip6}/128`); }
+      configMap["000_LO1"] = { full: _lo1Lines.join('\n'), blockStatus: "Loopback1 (MLAG VTEP)" };
+    }
     configMap["001_SYSTEM"] = {
-      full: "!--- SYSTEM CONFIG ---\n" + sysBlock + "\n!--------------------",
+      full: "!--- SYSTEM CONFIG ---\n" + sysBlocks.system + "\n!--------------------",
       blockStatus: "System"
     };
 
@@ -4744,19 +4758,21 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   // Any IPv6 (P2P or GW) → gates VRF ipv6 unicast-routing
   const hasAnyIpv6 = hasP2pIpv6 || !!(netSettings && netSettings.gw_ipv6);
 
-  let lines = [];
-
-  // System IDs
   const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
   const loId = deviceId + loBase;
-  lines.push(`! System IDs (Derived from ID: ${deviceId}${loBase ? ` + base ${loBase}` : ''})`);
-  lines.push(`interface Loopback0`);
-  lines.push(` ip address ${loId}.${loId}.${loId}.${loId}/32`);
+
+  // Lo0 block — returned separately so getDeviceConfig assigns it its own configMap key (000_LO0)
+  const lo0Lines = [
+    `! System IDs (Derived from ID: ${deviceId}${loBase ? ` + base ${loBase}` : ''})`,
+    `interface Loopback0`,
+    ` ip address ${loId}.${loId}.${loId}.${loId}/32`,
+  ];
   if (hasP2pIpv6) {
-    lines.push(` no ipv6 address`);
-    lines.push(` ipv6 address ${loId}:${loId}:${loId}::${loId}/128`);
+    lo0Lines.push(` no ipv6 address`);
+    lo0Lines.push(` ipv6 address ${loId}:${loId}:${loId}::${loId}/128`);
   }
-  lines.push(`!`);
+
+  let lines = [];
   lines.push(`router general`);
   lines.push(` router-id ipv4 ${loId}.${loId}.${loId}.${loId}`);
   if (hasP2pIpv6) {
@@ -4805,7 +4821,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   }
   lines.push(`!`);
 
-  return lines.join("\n");
+  return { lo0: lo0Lines.join('\n'), system: lines.join('\n') };
 }
 
 /**
@@ -6263,32 +6279,25 @@ function _compressVniLines(vlansIterable, vniBase) {
 */
 function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDeviceName, topo, sheetData, headers, isEvpnEnabled, vniBase, vtepNames, settings, ipPrefs) {
   const lines = [];
-  lines.push("!");
   const s = settings || {};
   const addVtepIpv6 = s.vxlan_ipv6;  // gated on explicit VXLAN IPv6 flag only
   const loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
 
   // 1. Calculate My VTEP IP (IPv4 + IPv6)
+  // Lo1 interface block is now in configMap["000_LO1"] (getDeviceConfig) — not emitted here.
   let myVtepIpV4 = "";
   let myVtepIpV6 = "";
 
   if (isMlag) {
-    // Lo0: unique per device (BGP/router-id) — also vxlan source-interface
+    // Lo0: unique per device (BGP/router-id) — vxlan source-interface
     // Lo1: shared across MLAG pair (min.min.max.max) — vxlan mlag source-interface
     const myLoId   = (parseInt(myId)   || 0) + loBase;
     const peerLoId = (parseInt(peerId) || 0) + loBase;
     const low  = Math.min(myLoId, peerLoId);
     const high = Math.max(myLoId, peerLoId);
 
-    // Lo1: shared on both peers (x.x.y.y where x=min device id, y=max device id)
     myVtepIpV4 = `${low}.${low}.${high}.${high}`;
     myVtepIpV6 = `${low}:${low}:${high}::${high}`;
-
-    lines.push("interface Loopback1");
-    lines.push(" description VTEP_MLAG_SHARED");
-    lines.push(` ip address ${myVtepIpV4}/32`);
-    if (addVtepIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${myVtepIpV6}/128`); }
-    lines.push("!");
 
     lines.push("interface Vxlan1");
     lines.push(" vxlan source-interface Loopback0");
