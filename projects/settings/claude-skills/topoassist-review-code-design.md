@@ -519,31 +519,100 @@ grep -n "flex:1" ~/claude/projects/topoassist/Sidebar.html | grep "tech-radio-la
 
 ---
 
+## Check 25 — Full-Screen Dialog Minimize (GAS Modeless Dialog Baseline)
+
+Full-screen mode containers (`mode-schema #schemaContainer`, `mode-reorder #reorderModal`,
+`mode-view_custom #viewCustomContainer`) are pinned to `height: 100vh !important` via their
+mode class. This beats the `height: auto !important` in `.modal-minimized` at the same
+`!important` weight (last rule evaluated wins). Two things must both be present:
+
+1. **Higher-specificity CSS override** — container + `.modal-minimized` combined selector
+   wins over the mode-class rule (ID + 2 classes > ID + 1 class):
+   ```css
+   body.mode-schema #schemaContainer.modal-minimized,
+   body.mode-reorder #reorderModal.modal-minimized,
+   body.mode-view_custom #viewCustomContainer.modal-minimized {
+     height: auto !important;
+   }
+   ```
+
+2. **`google.script.host.setHeight()` in `toggleModalMinimize()`** — CSS collapsing the
+   container alone leaves the GAS dialog window at its original 800px height, showing a
+   blank rectangle below the minimized header. The dialog must be resized via host API.
+
+```bash
+# 1. Check higher-specificity .modal-minimized CSS overrides exist for all three modes
+grep -c "schemaContainer\.modal-minimized\|reorderModal\.modal-minimized\|viewCustomContainer\.modal-minimized" \
+  ~/claude/projects/topoassist/Sidebar-css.html
+
+# 2. Check toggleModalMinimize() calls google.script.host.setHeight
+grep -A40 "function toggleModalMinimize" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep "setHeight"
+
+# 3. Verify restore height matches Code.gs dialog height
+grep "setHeight" ~/claude/projects/topoassist/Sidebar-js.html | grep "toggleModal\|800"
+grep "setHeight(800)" ~/claude/projects/topoassist/Code.gs
+```
+
+✗ FAIL if the CSS `.modal-minimized` override is missing for ANY of the three full-screen containers
+✗ FAIL if `google.script.host.setHeight()` is absent from `toggleModalMinimize()`
+⚠ WARN if the restore height in `setHeight(N)` doesn't match the `.setHeight(N)` in Code.gs
+
+**Auto-fix recipe** (apply when check fails):
+
+CSS — add inside the mode-block section of Sidebar-css.html, after the border-radius removal rule:
+```css
+body.mode-schema #schemaContainer.modal-minimized,
+body.mode-reorder #reorderModal.modal-minimized,
+body.mode-view_custom #viewCustomContainer.modal-minimized {
+  height: auto !important;
+}
+```
+
+JS — add at the end of `toggleModalMinimize()`, before the closing `}`:
+```javascript
+if (typeof google !== 'undefined' && google.script && google.script.host) {
+  if (document.body.classList.contains('mode-schema') ||
+      document.body.classList.contains('mode-reorder') ||
+      document.body.classList.contains('mode-view_custom')) {
+    if (isMin) {
+      const hdr = modal.querySelector('.modal-header');
+      google.script.host.setHeight(hdr ? hdr.offsetHeight + 2 : 50);
+    } else {
+      google.script.host.setHeight(800);
+    }
+  }
+}
+```
+
+---
+
 ## Output Format
 
 ```
 TOPOASSIST CODE REVIEW
 ======================
- 1 — JetBrains Mono        ✓ / ✗ / ⚠
- 2 — SVG Icons             ✓ / ✗ / ⚠
- 3 — user-select           ✓ / ✗ / ⚠
- 4 — Canvas Bounds         ✓ / ✗ / ⚠
- 5 — UI/UX Symmetry        ✓ / ✗ / ⚠
- 6 — VERSION Sync          ✓ / ✗ / ⚠
- 7 — canonicalizeInterface ✓ / ✗ / ⚠
- 8 — INSTRUCTIONS Updated  ✓ / ✗ / ⚠
- 9 — generateConfig params ✓ / ✗ / ⚠
-10 — hasKey() usage        ✓ / ✗ / ⚠
-11 — MLAG explicit only    ✓ / ✗ / ⚠
-12 — info-box--dim CSS     ✓ / ✗ / ⚠
-13 — Input state taxonomy  ✓ / ✗ / ⚠
-14 — Font scale            ✓ / ✗ / ⚠
-15 — Textarea resize       ✓ / ✗ / ⚠
-16 — Inline code font      ✓ / ✗ / ⚠
-17 — GAS loading guard     ✓ / ✗ / ⚠
-18 — Modal button standard ✓ / ✗ / ⚠
-22 — Modal white bg        ✓ / ✗ / ⚠
-23 — Minimize btn position ✓ / ✗ / ⚠
+ 1 — JetBrains Mono           ✓ / ✗ / ⚠
+ 2 — SVG Icons                ✓ / ✗ / ⚠
+ 3 — user-select              ✓ / ✗ / ⚠
+ 4 — Canvas Bounds            ✓ / ✗ / ⚠
+ 5 — UI/UX Symmetry           ✓ / ✗ / ⚠
+ 6 — VERSION Sync             ✓ / ✗ / ⚠
+ 7 — canonicalizeInterface    ✓ / ✗ / ⚠
+ 8 — INSTRUCTIONS Updated     ✓ / ✗ / ⚠
+ 9 — generateConfig params    ✓ / ✗ / ⚠
+10 — hasKey() usage           ✓ / ✗ / ⚠
+11 — MLAG explicit only       ✓ / ✗ / ⚠
+12 — info-box--dim CSS        ✓ / ✗ / ⚠
+13 — Input state taxonomy     ✓ / ✗ / ⚠
+14 — Font scale               ✓ / ✗ / ⚠
+15 — Textarea resize          ✓ / ✗ / ⚠
+16 — Inline code font         ✓ / ✗ / ⚠
+17 — GAS loading guard        ✓ / ✗ / ⚠
+18 — Modal button standard    ✓ / ✗ / ⚠
+22 — Modal white bg           ✓ / ✗ / ⚠
+23 — Minimize btn position    ✓ / ✗ / ⚠
+25 — Full-screen dialog min.  ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
