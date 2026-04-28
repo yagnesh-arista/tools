@@ -587,6 +587,27 @@ if (typeof google !== 'undefined' && google.script && google.script.host) {
 
 ---
 
+## Check 26 — Split Strip Divider / Button Parity
+
+When Copy/View/Push buttons are hidden in any split strip (`splitDevice`, `splitLeft`, `splitRight`)
+for non-EOS devices, the `.split-action-divider` elements must be hidden too.
+Hiding buttons alone leaves 1px bars visible after the label, rendering as stray `|` characters.
+
+```bash
+# Confirm all three strips hide their dividers alongside buttons
+grep -n "split-action-divider" ~/claude/projects/topoassist/Sidebar-js.html
+```
+
+For each strip where buttons are conditionally hidden:
+- `querySelectorAll('#splitXxx .split-action-divider').forEach(d => d.style.display = ...)` must be present
+- The display value must mirror the button visibility (same condition, same value)
+- Must cover ALL three strips — `splitDevice`, `splitLeft`, `splitRight`
+
+✗ FAIL if any strip hides buttons without a matching divider hide on the same condition
+✗ FAIL if fewer than three strips have divider-hide logic
+
+---
+
 ## Output Format
 
 ```
