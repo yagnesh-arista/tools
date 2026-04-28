@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.47 | 2026-04-27 21:55:10 -->
+<!-- TopoAssist v260427.48 | 2026-04-27 22:08:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.47";  // keep in sync with Code.gs
+const APP_VERSION = "260427.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6140,7 +6140,7 @@ function processDeviceConfig(deviceName, configData) {
   for (let portName in configData) {
     let shortPort = canonicalizeInterface(portName.replace(/^\d+_/, ""));
     let fullId = deviceName + ":" + shortPort;
-    if (allNodesData[fullId]) {
+    if (allNodesData[fullId] && allNodesData[fullId].details) {
       allNodesData[fullId].details.config = configData[portName].full;
       allNodesData[fullId].details.configLoaded = true;
     }
@@ -6153,45 +6153,31 @@ function processDeviceConfig(deviceName, configData) {
     allDevicesData[deviceName].fetchTime = time;
     allDevicesData[deviceName].fetchEpoch = Date.now();
 
-    // CASE 1: CURRENTLY SELECTED DEVICE
+    const sheetId = allDevicesData[deviceName]?.sheetIndex || "-";
+    const ageLabel = formatAgeLabel(allDevicesData[deviceName].fetchEpoch);
+
+    // CASE 1: CURRENTLY SELECTED DEVICE — always update, no background guard
     if (selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
       currentDeviceConfig = fullCfg;
-      const btn = document.getElementById("btnDevice");
-
-      // Anti-Flicker: Only update if transitioning from Fetching (Yellow) to Ready (Green)
-      const splitDev = document.getElementById("splitDevice");
-      if (splitDev && splitDev.style.background !== "rgb(16, 185, 129)" && splitDev.style.background !== "#10b981") {
-        const sheetId = allDevicesData[deviceName]?.sheetIndex || "-";
-        setSplitBtnState("splitDevice", `[${sheetId}] ${deviceName}:Config [${formatAgeLabel(allDevicesData[deviceName].fetchEpoch)}]`, "#10b981", false);
-        if (!wasAlreadyLoaded) triggerButtonFlash("btnDevice");
-      }
+      setSplitBtnState("splitDevice", `[${sheetId}] ${deviceName}:Config [${ageLabel}]`, "#10b981", false);
+      if (!wasAlreadyLoaded) triggerButtonFlash("btnDevice");
     }
 
-    // CASE 2: CURRENTLY SELECTED LINK
+    // CASE 2: CURRENTLY SELECTED LINK — always update, no background guard
     if (selectedLineId) {
       const link = linkMap[selectedLineId];
       if (link) {
-        // Resolve End A (Left)
         if (link.u.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
           currentLeftConfig = allNodesData[link.u]?.details?.config;
-          const splitL = document.getElementById("splitLeft");
-          if (splitL && splitL.style.background !== "rgb(16, 185, 129)" && splitL.style.background !== "#10b981") {
-            const portL = link.u.split(':')[1] || "";
-            const sheetIdL = allDevicesData[deviceName]?.sheetIndex || "-";
-            setSplitBtnState("splitLeft", `[${sheetIdL}] ${deviceName}:Config:${portL} [${formatAgeLabel(allDevicesData[deviceName].fetchEpoch)}]`, "#10b981", false);
-            processInterfaceConfig("btnLeft", deviceName, time);
-          }
+          const portL = link.u.split(':')[1] || "";
+          setSplitBtnState("splitLeft", `[${sheetId}] ${deviceName}:Config:${portL} [${ageLabel}]`, "#10b981", false);
+          if (!wasAlreadyLoaded) triggerButtonFlash("btnLeft");
         }
-        // Resolve End B (Right)
         if (link.v.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
           currentRightConfig = allNodesData[link.v]?.details?.config;
-          const splitR = document.getElementById("splitRight");
-          if (splitR && splitR.style.background !== "rgb(16, 185, 129)" && splitR.style.background !== "#10b981") {
-            const portR = link.v.split(':')[1] || "";
-            const sheetIdR = allDevicesData[deviceName]?.sheetIndex || "-";
-            setSplitBtnState("splitRight", `[${sheetIdR}] ${deviceName}:Config:${portR} [${formatAgeLabel(allDevicesData[deviceName].fetchEpoch)}]`, "#10b981", false);
-            processInterfaceConfig("btnRight", deviceName, time);
-          }
+          const portR = link.v.split(':')[1] || "";
+          setSplitBtnState("splitRight", `[${sheetId}] ${deviceName}:Config:${portR} [${ageLabel}]`, "#10b981", false);
+          if (!wasAlreadyLoaded) triggerButtonFlash("btnRight");
         }
       }
     }
