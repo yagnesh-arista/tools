@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.28 | 2026-04-28 11:21:26 -->
+<!-- TopoAssist v260428.31 | 2026-04-28 11:39:12 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.28";  // keep in sync with Code.gs
+const APP_VERSION = "260428.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12494,9 +12494,12 @@ function _compareBridgeData(bridgeData) {
     const bridgeU = bridgeMap[link.u]; // what LLDP says U sees
     const bridgeV = bridgeMap[link.v]; // what LLDP says V sees
 
-    // Check each direction independently (only if device was successfully queried)
-    const uMatch = !okU ? null : (bridgeU && bridgeU.remoteDevice === devV && bridgeU.remoteIface === ifV);
-    const vMatch = !okV ? null : (bridgeV && bridgeV.remoteDevice === devU && bridgeV.remoteIface === ifU);
+    // Check each direction independently (only if device was successfully queried).
+    // `|| false` is critical: bridgeU/bridgeV may be undefined (no LLDP neighbor on that port).
+    // undefined && expr = undefined, and undefined !== false, so without || false the
+    // mismatch branch is skipped and the link incorrectly shows as "SSH failed" (partial).
+    const uMatch = !okU ? null : ((bridgeU && bridgeU.remoteDevice === devV && bridgeU.remoteIface === ifV) || false);
+    const vMatch = !okV ? null : ((bridgeV && bridgeV.remoteDevice === devU && bridgeV.remoteIface === ifU) || false);
 
     // Populate per-port status for topology card indicators
     if (okU) bridgePortStatus[link.u] = uMatch ? 'match' : (bridgeU ? 'mismatch' : 'missing');
