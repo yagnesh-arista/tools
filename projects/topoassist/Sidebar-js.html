@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.44 | 2026-04-28 12:50:17 -->
+<!-- TopoAssist v260428.45 | 2026-04-28 12:53:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.44";  // keep in sync with Code.gs
+const APP_VERSION = "260428.45";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11583,7 +11583,13 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   // When called from a link strip, push only the selected interface block
   let config = fullConfig;
   if (portFilter) {
-    const ifBlock = _extractInterfaceBlock(fullConfig, portFilter);
+    // Lo0/Lo1/Vx1 have dedicated configMap sections — use direct lookup to avoid
+    // _extractInterfaceBlock missing them due to section preamble comments.
+    const _sectionKeys = { lo0: '000_LO0', lo1: '000_LO1', vx1: '055_VXLAN' };
+    const _directKey = _sectionKeys[(portFilter || '').toLowerCase()];
+    const _cachedData = configCache[deviceName] && configCache[deviceName].data;
+    const ifBlock = (_directKey && _cachedData && _cachedData[_directKey] && _cachedData[_directKey].full)
+      || _extractInterfaceBlock(fullConfig, portFilter);
     if (!ifBlock) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _updatePushPreviewError(`Interface ${portFilter} not found in ${deviceName} config`);
