@@ -2497,6 +2497,9 @@ BACKGROUND PREFETCH SYSTEM:
   scheduleBackgroundPrefetch(forceRestart) — smart scheduler; signature:
     - If _prefetchEverRan && !forceRestart: return — skip smart-poll restarts when
       nothing changed (avoids re-caching after all configs are warm).
+    - If forceRestart && prefetchInterval !== null: calls stopBackgroundPrefetch() first
+      so the queue is rebuilt with newly-invalidated devices (leaving it running would
+      orphan them — deleted from configCache but not in the running queue).
     - Waits for D3/holistic alpha < 0.1, isFetching=false, _prefetchHold=false,
       then calls startBackgroundPrefetch().
     Call sites:
