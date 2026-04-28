@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.27 | 2026-04-28 10:57:28 -->
+<!-- TopoAssist v260428.28 | 2026-04-28 11:21:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.27";  // keep in sync with Code.gs
+const APP_VERSION = "260428.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5943,6 +5943,7 @@ function selectDevice(deviceId) {
   if (pushDevBtn) pushDevBtn.style.display = nonEosDev ? 'none' : '';
   if (copyDevBtn) copyDevBtn.style.display = nonEosDev ? 'none' : '';
   if (viewDevBtn) viewDevBtn.style.display = nonEosDev ? 'none' : '';
+  document.querySelectorAll('#splitDevice .split-action-divider').forEach(d => d.style.display = nonEosDev ? 'none' : '');
 
   if (devData && devData.type === 'non-arista') {
     currentDeviceConfig = "";
@@ -12554,20 +12555,11 @@ function _compareBridgeData(bridgeData) {
   return { results, orphans };
 }
 
-// Log bridge check issues to the status log for persistent visibility.
-// Call after _renderLldpResults — logs LLDP mismatches, extra cables, cmd failures.
+// Log bridge check operational issues to the status log.
+// LLDP mismatches and extra cables are shown in the bridge modal — not logged here.
+// Only logs SSH/cmd failures ([Bridge]) which are operational, not audit findings.
 // dsData: devstatus response map (may be null if devstatus fetch failed).
 function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
-  if (results) {
-    results.filter(r => r.status === 'mismatch').forEach(r => {
-      setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
-    });
-  }
-  if (orphans && orphans.length) {
-    orphans.forEach(o => {
-      setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
-    });
-  }
   if (dsData) {
     Object.entries(dsData).forEach(([devId, ds]) => {
       if (ds && ds.ok && ds.cmdErrors) {
