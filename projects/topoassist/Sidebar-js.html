@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.25 | 2026-04-28 10:54:08 -->
+<!-- TopoAssist v260428.27 | 2026-04-28 10:57:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.25";  // keep in sync with Code.gs
+const APP_VERSION = "260428.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12572,7 +12572,7 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
     Object.entries(dsData).forEach(([devId, ds]) => {
       if (ds && ds.ok && ds.cmdErrors) {
         Object.entries(ds.cmdErrors).forEach(([cmd, err]) => {
-          setStatus(`[Audit - Live] Cmd failed on ${devId}: ${cmd.replace('show ', '')} (${err})`, 'status-error');
+          setStatus(`[Bridge] Cmd failed on ${devId}: ${cmd.replace('show ', '')} (${err})`, 'status-error');
         });
       }
     });
