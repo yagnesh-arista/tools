@@ -634,6 +634,7 @@ TOPOASSIST CODE REVIEW
 22 — Modal white bg           ✓ / ✗ / ⚠
 23 — Minimize btn position    ✓ / ✗ / ⚠
 25 — Full-screen dialog min.  ✓ / ✗ / ⚠
+26 — Strip divider parity      ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
