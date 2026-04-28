@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.40 | 2026-04-28 12:14:39 -->
+<!-- TopoAssist v260428.41 | 2026-04-28 12:18:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.40";  // keep in sync with Code.gs
+const APP_VERSION = "260428.41";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6212,9 +6212,10 @@ function processDeviceConfig(deviceName, configData) {
 
     const sheetId = allDevicesData[deviceName]?.sheetIndex || "-";
     const ageLabel = formatAgeLabel(allDevicesData[deviceName].fetchEpoch);
+    const _isEosDev = allDevicesData[deviceName] && allDevicesData[deviceName].type !== 'non-arista';
 
     // CASE 1: CURRENTLY SELECTED DEVICE — always update, no background guard
-    if (selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
+    if (_isEosDev && selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
       currentDeviceConfig = fullCfg;
       setSplitBtnState("splitDevice", `[${sheetId}] ${deviceName}:Config [${ageLabel}]`, "#10b981", false);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnDevice");
@@ -6224,7 +6225,6 @@ function processDeviceConfig(deviceName, configData) {
     // redrawLinks/filterTopology which can clear selectedLineId while strip stays visible).
     const splitLeftEl  = document.getElementById("splitLeft");
     const splitRightEl = document.getElementById("splitRight");
-    const _isEosDev = allDevicesData[deviceName] && allDevicesData[deviceName].type !== 'non-arista';
     if (_isEosDev && _leftDev && _leftDev.toLowerCase() === deviceName.toLowerCase()
         && splitLeftEl && splitLeftEl.style.display !== "none") {
       const portL = _leftPort || "";
