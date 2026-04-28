@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.31 | 2026-04-28 11:39:12 -->
+<!-- TopoAssist v260428.32 | 2026-04-28 11:42:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.31";  // keep in sync with Code.gs
+const APP_VERSION = "260428.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12558,11 +12558,21 @@ function _compareBridgeData(bridgeData) {
   return { results, orphans };
 }
 
-// Log bridge check operational issues to the status log.
-// LLDP mismatches and extra cables are shown in the bridge modal — not logged here.
-// Only logs SSH/cmd failures ([Bridge]) which are operational, not audit findings.
+// Log bridge check issues to the status log.
+// [Audit - Live] for real LLDP mismatches (wrong neighbor) and extra cables.
+// [Bridge] for SSH/cmd failures (operational, not audit findings).
 // dsData: devstatus response map (may be null if devstatus fetch failed).
 function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
+  if (results) {
+    results.filter(r => r.status === 'mismatch').forEach(r => {
+      setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+    });
+  }
+  if (orphans && orphans.length) {
+    orphans.forEach(o => {
+      setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
+    });
+  }
   if (dsData) {
     Object.entries(dsData).forEach(([devId, ds]) => {
       if (ds && ds.ok && ds.cmdErrors) {
