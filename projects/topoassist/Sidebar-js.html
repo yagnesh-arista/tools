@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.34 | 2026-04-28 11:52:12 -->
+<!-- TopoAssist v260428.35 | 2026-04-28 12:02:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.34";  // keep in sync with Code.gs
+const APP_VERSION = "260428.35";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -33,9 +33,10 @@ const APP_VERSION = "260428.34";  // keep in sync with Code.gs
 
   function _inferLogType(msg) {
     const m = msg.toLowerCase();
-    // explicit prefix OR bare "audit …" / "audit:" messages (e.g. "Audit Clean.", "Audit: N Issues Found")
-    if (m.startsWith('[audit]') || /^audit[\s:]/.test(m)) return 'audit';
-    if (m.startsWith('[bridge]')) return 'bridge';
+    // [Audit - Design], [Audit - Live], bare "Audit: N Issues Found", "Audit Clean."
+    if (m.startsWith('[audit') || /^audit[\s:]/.test(m)) return 'audit';
+    // [Bridge] operational failures
+    if (m.startsWith('[bridge')) return 'bridge';
     // pref covers both "prefs" and "preferences"; refresh covers "Manual refresh" and topology reload msgs
     if (/config|pref|settings|sync|fetch|cache|refresh/.test(m)) return 'config';
     if (/push|session|abort|commit/.test(m))                      return 'push';
@@ -2430,7 +2431,7 @@ function runValidation(logIssues) {
         let vlanB = normalizeVlan(nodeB.details.vlan_);
         if (vlanA !== vlanB) {
           auditCheckHadIssue.auditFlagVlanMismatch = (auditCheckHadIssue.auditFlagVlanMismatch || 0) + 1;
-          if (auditFlagVlanMismatch) pairErrors.push(`VLAN Mismatch`);
+          if (auditFlagVlanMismatch) pairErrors.push(`VLAN Mismatch: ${nodeA.device}:${nodeA.name} (${vlanA}) \u2194 ${nodeB.device}:${nodeB.name} (${vlanB})`);
         }
 
         // D. MODE COMPATIBILITY
@@ -12568,7 +12569,7 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
       const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
       if (noNeighbor) {
         if (bridgeAuditFlagMissing)
-          setStatus(`[Audit - Live] No neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
+          setStatus(`[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
       } else {
         if (bridgeAuditFlagMismatch)
           setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
