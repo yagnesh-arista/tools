@@ -662,6 +662,7 @@ TOPOASSIST CODE REVIEW
 23 — Minimize btn position    ✓ / ✗ / ⚠
 25 — Full-screen dialog min.  ✓ / ✗ / ⚠
 26 — Strip divider parity      ✓ / ✗ / ⚠
+27 — Non-EOS strip EOS guard   ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
