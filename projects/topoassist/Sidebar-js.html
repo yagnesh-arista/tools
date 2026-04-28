@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.39 | 2026-04-28 12:13:41 -->
+<!-- TopoAssist v260428.40 | 2026-04-28 12:14:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.39";  // keep in sync with Code.gs
+const APP_VERSION = "260428.40";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9087,7 +9087,9 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
         const d = p.details || {};
         return [p.name, p.connected ? 1 : 0,
                 d.sp_mode_ || '', d.po_ || '', d.xcvr_speed_ || '',
-                d.et_speed_ || '', d.category || ''].join(':');
+                d.et_speed_ || '', d.category || '',
+                d.vlan_ || '', d.ip_type_ || '', d.svi_vlan_ || '',
+                d.vrf_ || '', d.desc_ || ''].join(':');
       }).sort().join('|');
       return [dev.role || '', dev.mlagPeer || '', dev.hostname || '', portSig].join('\x00');
     }
