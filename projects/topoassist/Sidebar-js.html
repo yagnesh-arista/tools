@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.19 | 2026-04-28 10:22:35 -->
+<!-- TopoAssist v260428.20 | 2026-04-28 10:33:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.19";  // keep in sync with Code.gs
+const APP_VERSION = "260428.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6050,6 +6050,8 @@ function selectLine(id) {
     if (pbr) pbr.style.display = nonEos2 ? 'none' : '';
     if (cbr) cbr.style.display = nonEos2 ? 'none' : '';
     if (vbr) vbr.style.display = nonEos2 ? 'none' : '';
+    document.querySelectorAll('#splitLeft .split-action-divider').forEach(d => d.style.display = nonEos1 ? 'none' : '');
+    document.querySelectorAll('#splitRight .split-action-divider').forEach(d => d.style.display = nonEos2 ? 'none' : '');
 
     if (allDevicesData[dev1] && allDevicesData[dev1].type === 'non-arista') {
       currentLeftConfig = "";
