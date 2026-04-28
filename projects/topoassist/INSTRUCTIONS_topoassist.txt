@@ -1,8 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-28 (ROOT CAUSE FIX strip-amber+View-"select a device or link first": selectedLineId cleared by redrawLinks()/filterTopology() without hiding strip — processDeviceConfig CASE 2 and openConfigFromButton read null selectedLineId. Fix: both now use _pushLeftDev/_pushRightDev (stable, set by selectLine, never cleared by render/filter). Files: Sidebar-js.html)
-  Previous: 2026-04-28 (Audit checks R+S: snake loopback ports (isSnakePrimary/isSnakeSecondary) and IXIA EP ports (desc_=TRAFFIC_SNAKE_EP1/EP2_L3) must have ip_type_=p2p — any other type generates wrong IP/command in SNAKE VRF. Two new flags: auditFlagSnakeIpType + auditFlagIxiaIpType (localStorage, default ON). New "Snake / IXIA" category in Audit Settings modal. Files: Sidebar-js.html, Sidebar.html)
+  Last updated: 2026-04-28 (Background prefetch restart fix: scheduleBackgroundPrefetch(forceRestart) — skips re-run when _prefetchEverRan&&!forceRestart; _prefetchEverRan set in startBackgroundPrefetch(); _selectiveConfigInvalidate returns invalidated count; fetchData passes _invalidated!==0; save handlers pass true. Files: Sidebar-js.html)
+  Previous: 2026-04-28 (ROOT CAUSE FIX strip-amber+View-"select a device or link first": selectedLineId cleared by redrawLinks()/filterTopology() without hiding strip — processDeviceConfig CASE 2 and openConfigFromButton read null selectedLineId. Fix: both now use _pushLeftDev/_pushRightDev (stable, set by selectLine, never cleared by render/filter). Files: Sidebar-js.html)
   Previous: 2026-04-28 (UserGuide.html: added "Audit Enforcement — Snake / IXIA" subsection at end of section 8 (Snake Test), just before section 9 (Per-VLAN VRF). Table documents auditFlagSnakeIpType (flags isSnakePrimary/isSnakeSecondary ports not p2p — needed for 200.oct2.oct3.1/24 host address, static ARP, and SNAKE VRF chain) and auditFlagIxiaIpType (flags TRAFFIC_SNAKE_EP1/EP2_L3 desc ports not p2p — gw generates ip address virtual on LEAF or wrong prefix on SPINE; p2p gives plain ip address for IXIA ARP). Files: UserGuide.html)
   Previous: 2026-04-28 (Background prefetch timing fix: _prefetchHold flag added to globals; _autoRunBridge() sets _prefetchHold=true at start, clears via _done() on completion or error; checkSteadyState() now checks isFetching||_prefetchHold in addition to D3/holistic alpha — prevents prefetch from starting while bridge scan (LLDP+devstatus) or any in-flight fetchData is still running. FILES: Sidebar-js.html)
   Previous: 2026-04-28 (Root cause fix for strip-not-green and View-button-disabled-forever: added _updateStripFetchError(deviceName, label) which sets selected device/link strips to red (#ef4444) with buttons re-enabled when fetchFullConfig fails. Called from three paths: (1) _fcGuard timeout — GAS framework failure leaves strip amber indefinitely; (2) withSuccessHandler res.error branch — server error leaves strip amber; (3) withFailureHandler — GAS script error leaves strip amber. Also added processDeviceConfig guard-removal from prior session: always calls setSplitBtnState in CASE 1/2 with no background-color guard; added null guard on allNodesData[fullId].details in for-loop. Files: Sidebar-js.html)
@@ -2467,15 +2467,37 @@ SMART POLLING GUARDS (startSmartPolling — all 4 must pass before polling fires
   4. Visibility guard:   document.hidden === true → skip (saves quota when tab backgrounded)
 
 BACKGROUND PREFETCH SYSTEM:
-  scheduleBackgroundPrefetch() — called after render(); waits for D3 simulation
-    alpha < 0.1 (layout settled) before starting prefetch to avoid lag during
-    force-directed layout animation.
-  startBackgroundPrefetch() — fetches 1 device config every 3 seconds;
-    skips if pendingFetches has active requests (deduplication guard).
-    Updates status bar: "🔄 Background caching: DEVICE (N of total)"
-    Stops automatically once all device configs are cached.
-  stopBackgroundPrefetch() — clears the prefetch interval (called on re-render,
-    topology refresh, or when user navigates away).
+  Globals: prefetchQueue (uncached devices only), prefetchTotal (ALL Arista devices),
+    prefetchInterval (setInterval handle or null), prefetchStartTimer,
+    _prefetchHold (true while _autoRunBridge LLDP+devstatus scan is running),
+    _prefetchEverRan (true after first startBackgroundPrefetch() call).
+
+  scheduleBackgroundPrefetch(forceRestart) — smart scheduler; signature:
+    - If prefetchInterval !== null (already running): return — don't interrupt mid-run.
+    - If _prefetchEverRan && !forceRestart: return — skip smart-poll restarts when
+      nothing changed (avoids re-caching after all configs are warm).
+    - Waits for D3/holistic alpha < 0.1, isFetching=false, _prefetchHold=false,
+      then calls startBackgroundPrefetch().
+    Call sites:
+      - fetchData() success: scheduleBackgroundPrefetch(_invalidated !== 0)
+        (_invalidated = return value of _selectiveConfigInvalidate; 0=no change)
+      - saveIpConfig / saveTechSettings / saveGlobalConfig success: scheduleBackgroundPrefetch(true)
+        (force=true because save wipes configCache entirely)
+
+  startBackgroundPrefetch() — sets _prefetchEverRan=true; builds prefetchQueue from
+    uncached Arista devices; sets prefetchTotal = ALL Arista count (so counter reads
+    "6 of 10" when 4 were already cached, not "1 of 6"); fetches 1 config/3 seconds;
+    skips if pendingFetches active; updates status "Background caching: DEV (N of total)".
+
+  stopBackgroundPrefetch() — clears prefetchInterval; resets prefetchQueue/prefetchTotal.
+
+  _selectiveConfigInvalidate(oldDevs, newDevs) — returns invalidate.size (0=unchanged,
+    >0=N devices invalidated, -1=error/full clear). Return value used by fetchData to
+    decide whether to forceRestart the prefetcher.
+
+  _prefetchHold protocol:
+    _autoRunBridge() sets _prefetchHold=true at start; clears via _done() on
+    .then() and .catch() — prevents prefetch from starting during bridge scan.
 
 --------------------------------------------------------------------------------
 SECTION 20: DARK/LIGHT THEME
