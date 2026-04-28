@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.9 | 2026-04-28 09:38:11 -->
+<!-- TopoAssist v260428.11 | 2026-04-28 09:48:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.9";  // keep in sync with Code.gs
+const APP_VERSION = "260428.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -295,7 +295,8 @@ const APP_VERSION = "260428.9";  // keep in sync with Code.gs
   let prefetchInterval = null;
   let prefetchTotal = 0;
   let prefetchStartTimer = null;
-  let _prefetchHold = false; // true while _autoRunBridge is running — hold off prefetch start
+  let _prefetchHold = false;   // true while _autoRunBridge is running — hold off prefetch start
+  let _prefetchEverRan = false; // true after first startBackgroundPrefetch() — skip smart-poll restarts
   // CACHE GLOBAL
   let configCache = {};
   // ZOOM & PAN GLOBALS
@@ -8979,8 +8980,15 @@ function saveGroupRects() {
 * Smart Scheduler: Waits for the topology physics to "cool down" and
 * become steady before kicking off the background network requests.
 */
-function scheduleBackgroundPrefetch() {
+function scheduleBackgroundPrefetch(forceRestart) {
   if (prefetchStartTimer) clearTimeout(prefetchStartTimer);
+
+  // If the prefetcher is already running, let it finish — don't interrupt mid-run
+  if (prefetchInterval !== null) return;
+
+  // After the initial run, skip smart-poll restarts unless data was actually invalidated
+  // (forceRestart=true means config cache was wiped or devices changed — always re-run)
+  if (_prefetchEverRan && !forceRestart) return;
 
   const checkSteadyState = () => {
     let isMoving = false;
@@ -9011,6 +9019,8 @@ function scheduleBackgroundPrefetch() {
 }
 
 function startBackgroundPrefetch() {
+  _prefetchEverRan = true; // mark as ran so smart-poll won't restart unless forceRestart=true
+
   // 1. Clear any running loops
   stopBackgroundPrefetch();
 
@@ -9119,10 +9129,12 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
     } else {
       dbg('Config cache: all devices unchanged.');
     }
+    return invalidate.size; // callers use this to decide whether to restart background prefetch
   } catch (e) {
     // Safety net — full clear on any unexpected error
     console.warn('_selectiveConfigInvalidate failed, falling back to full clear:', e);
     configCache = {};
+    return -1; // unknown — treat as invalidated
   }
 }
 
