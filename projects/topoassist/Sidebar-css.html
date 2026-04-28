@@ -1,4 +1,4 @@
-<!-- TopoAssist v260428.24 | 2026-04-28 10:52:15 -->
+<!-- TopoAssist v260428.25 | 2026-04-28 10:54:26 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -161,6 +161,15 @@
   body.mode-reorder .reorder-header,
   body.mode-view_custom .modal-header {
     border-radius: 0 !important;
+  }
+
+  /* Full-screen mode containers are 100vh — higher-specificity override so
+     .modal-minimized height:auto wins. JS toggleModalMinimize() also calls
+     google.script.host.setHeight() to shrink the GAS dialog window itself. */
+  body.mode-schema #schemaContainer.modal-minimized,
+  body.mode-reorder #reorderModal.modal-minimized,
+  body.mode-view_custom #viewCustomContainer.modal-minimized {
+    height: auto !important;
   }
 
   /* =================================================================

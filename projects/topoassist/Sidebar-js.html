@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.24 | 2026-04-28 10:53:00 -->
+<!-- TopoAssist v260428.25 | 2026-04-28 10:54:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.24";  // keep in sync with Code.gs
+const APP_VERSION = "260428.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12012,6 +12012,20 @@ function toggleModalMinimize(modalId) {
       ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       : '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     btn.title = isMin ? 'Restore' : 'Minimize';
+  }
+  // In full-screen dialog modes (schema, reorder, view_custom) the container is
+  // 100vh — CSS alone can't collapse the GAS dialog window. Resize it via host API.
+  if (typeof google !== 'undefined' && google.script && google.script.host) {
+    if (document.body.classList.contains('mode-schema') ||
+        document.body.classList.contains('mode-reorder') ||
+        document.body.classList.contains('mode-view_custom')) {
+      if (isMin) {
+        const hdr = modal.querySelector('.modal-header');
+        google.script.host.setHeight(hdr ? hdr.offsetHeight + 2 : 50);
+      } else {
+        google.script.host.setHeight(800);
+      }
+    }
   }
 }
 
