@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.2 | 2026-04-28 08:58:52 -->
+<!-- TopoAssist v260428.5 | 2026-04-28 09:06:21 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.2";  // keep in sync with Code.gs
+const APP_VERSION = "260428.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3025,7 +3025,8 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
       fetchQueue[deviceName].forEach(cb => cb('timeout'));
       delete fetchQueue[deviceName];
     }
-    if (customSuccessMsg) setStatus("Config fetch timed out for " + deviceName, "status-error");
+    _updateStripFetchError(deviceName, 'Timed out — re-select to retry');
+    setStatus("Config fetch timed out for " + deviceName + " — re-select to retry", "status-error");
   }, 20000);
 
   // 4. Server Call
@@ -3035,7 +3036,6 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
       pendingFetches.delete(deviceName);
 
       if (res.error) {
-        console.error("Fetch Error:", res.error);
         if (selectedDeviceId === deviceName) {
           const btn = document.getElementById("btnDevice");
           if (btn) {
@@ -3044,6 +3044,7 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
             btn.style.background = "var(--error-bg)";
           }
         }
+        _updateStripFetchError(deviceName, 'Fetch failed — re-select to retry');
       }
       else {
         configCache[deviceName] = { data: res.config };
@@ -3079,6 +3080,7 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
         fetchQueue[deviceName].forEach(cb => cb(err));
         delete fetchQueue[deviceName];
       }
+      _updateStripFetchError(deviceName, 'Fetch failed — re-select to retry');
     })
     .getDeviceConfig(deviceName);
 }
@@ -6121,6 +6123,29 @@ function selectPortOrLink(portId) {
       triggerButtonFlash("btnLeft");
     }
     requestAnimationFrame(redrawLinks);
+  }
+}
+
+// Updates the currently selected device/link strips to an error state.
+// Called when fetchFullConfig hits a server error, GAS framework timeout, or failure.
+// Turns the strip red and re-enables buttons so the user can retry by re-selecting.
+function _updateStripFetchError(deviceName, label) {
+  const sheetId = (allDevicesData[deviceName] && allDevicesData[deviceName].sheetIndex) || "-";
+  const errLabel = `[${sheetId}] ${deviceName} — ${label}`;
+  const errColor = "#ef4444";
+  if (selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
+    setSplitBtnState("splitDevice", errLabel, errColor, false);
+  }
+  if (selectedLineId) {
+    const link = linkMap[selectedLineId];
+    if (link) {
+      if (link.u.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
+        setSplitBtnState("splitLeft", errLabel, errColor, false);
+      }
+      if (link.v.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
+        setSplitBtnState("splitRight", errLabel, errColor, false);
+      }
+    }
   }
 }
 
