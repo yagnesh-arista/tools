@@ -715,6 +715,20 @@ When any of these are violated, visible bugs result immediately.
    It is cleared at the start of render() and rebuilt from the server payload.
    Do not persist cross-render state in allNodesData — it will be lost.
 
+9. selectedLineId IS A RENDERING VARIABLE — NEVER READ IN ASYNC CALLBACKS
+   selectedLineId is cleared by two render-pipeline paths without hiding the strip UI:
+     a. redrawLinks() — clears selectedLineId when link.coords=null (node hidden/zoom)
+     b. filterTopology() — always clears selectedLineId on any search input change
+   By the time a GAS withSuccessHandler or fetchQueue callback fires (seconds later),
+   selectedLineId is often null even though the link strip is still visible.
+   RULE: any async callback or click handler needing the selected link's device/port
+   must use _pushLeftDev/_pushRightDev/_pushLeftPort/_pushRightPort — set by selectLine()
+   and only changed by an explicit new selection. Never use selectedLineId for this.
+   selectedDeviceId is stable (not cleared by render pipeline) — safe in async callbacks.
+   Root cause of the "strip stays amber / View button gives 'select a device or link
+   first'" bug: openConfigFromButton and processDeviceConfig CASE 2 both read
+   selectedLineId at async time. Fixed 2026-04-28 to use _pushLeftDev/_pushRightDev.
+
 --------------------------------------------------------------------------------
 SECTION 0B: CRITICAL CALL CHAINS (Order matters — do not reorder)
 --------------------------------------------------------------------------------
