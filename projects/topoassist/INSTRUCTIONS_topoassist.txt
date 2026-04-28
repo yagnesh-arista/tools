@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-28 (fetchData guard: "try again" → "retrying…" + auto-retry after 5s (smart poll alone won't re-fetch without a version change). Files: Sidebar-js.html)
+  Last updated: 2026-04-28 (renamed _pushLeftDev/_pushRightDev/_pushLeftPort/_pushRightPort → _leftDev/_rightDev/_leftPort/_rightPort; removed dead processInterfaceConfig. Files: Sidebar-js.html)
+  Previous: 2026-04-28 (fetchData guard: "try again" → "retrying…" + auto-retry after 5s (smart poll alone won't re-fetch without a version change). Files: Sidebar-js.html)
   Previous: 2026-04-28 (fetchData guard: timeout 20s→30s (matches GAS execution limit); added _fetchGuardFired flag — late GAS response after guard fires is discarded (prevents silent render overwriting the error status). Files: Sidebar-js.html)
   Previous: 2026-04-28 (Prefetch status fixes: (1) "🚀 Requesting Topology Data" gated behind isFirstLoad — smart-poll/save/refresh messages no longer overwritten; (2) scheduleBackgroundPrefetch(forceRestart=true) now calls stopBackgroundPrefetch() if prefetch is mid-run — rebuilds queue with newly-invalidated devices instead of orphaning them. Files: Sidebar-js.html)
   Previous: 2026-04-28 (Background prefetch restart fix: scheduleBackgroundPrefetch(forceRestart) — skips re-run when _prefetchEverRan&&!forceRestart; _prefetchEverRan set in startBackgroundPrefetch(); _selectiveConfigInvalidate returns invalidated count; fetchData passes _invalidated!==0; save handlers pass true. Files: Sidebar-js.html)
