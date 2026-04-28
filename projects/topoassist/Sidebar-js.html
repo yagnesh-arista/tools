@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.47 | 2026-04-28 14:43:38 -->
+<!-- TopoAssist v260428.48 | 2026-04-28 14:54:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.47";  // keep in sync with Code.gs
+const APP_VERSION = "260428.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2987,6 +2987,7 @@ function runValidation(logIssues) {
   Object.values(validationErrors).forEach(msgs => {
     msgs.forEach(msg => {
       const clean = msg.replace(/^\[FAIL\]\s*/, '');
+      if (clean.startsWith('LLDP')) return; // live bridge check covers LLDP detail via _auditIssues live section
       if (!_runSeen.has(clean)) {
         _runSeen.add(clean);
         _auditIssues.push({ msg: '[Audit - Design] ' + clean, cls: 'status-error', src: 'design' });
