@@ -608,6 +608,33 @@ For each strip where buttons are conditionally hidden:
 
 ---
 
+## Check 27 — Non-EOS Strip EOS Guard + actionsDisabled
+
+Non-EOS device strips must always stay grey. Two rules enforce this:
+
+**Rule A — `_isEosDev` guard in `processDeviceConfig`**: Both CASE 1 (device strip) and CASE 2 (link strips) must check `_isEosDev` before calling `setSplitBtnState(..., "#10b981", ...)`. Without this, any edge-case call to `processDeviceConfig` for a non-EOS device turns the strip green.
+
+**Rule B — `actionsDisabled=true` for non-EOS `setSplitBtnState` calls**: Non-EOS strips are static indicators. Passing `false` enables hidden buttons and triggers the "ready" flash animation spuriously.
+
+```bash
+# Check _isEosDev guards CASE 1 and CASE 2
+grep -A3 "_isEosDev" ~/claude/projects/topoassist/Sidebar-js.html | grep -E "CASE|setSplitBtn|#10b981"
+
+# Verify non-EOS setSplitBtnState calls pass actionsDisabled=true (not false)
+grep -n "Non-EOS.*#64748b" ~/claude/projects/topoassist/Sidebar-js.html
+```
+
+For each `setSplitBtnState(..., "#10b981", ...)` call in `processDeviceConfig`:
+- Must be preceded by `_isEosDev &&` in the same condition
+
+For each `setSplitBtnState(..., "— Non-EOS", "#64748b", ...)` call:
+- 4th argument must be `true` (actionsDisabled), never `false`
+
+✗ FAIL if any `setSplitBtnState(..., "#10b981", ...)` in `processDeviceConfig` lacks `_isEosDev &&`
+✗ FAIL if any non-EOS strip `setSplitBtnState` call passes `actionsDisabled=false`
+
+---
+
 ## Output Format
 
 ```
