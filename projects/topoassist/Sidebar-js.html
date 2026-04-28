@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.5 | 2026-04-28 09:06:21 -->
+<!-- TopoAssist v260428.6 | 2026-04-28 09:20:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.5";  // keep in sync with Code.gs
+const APP_VERSION = "260428.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -295,6 +295,7 @@ const APP_VERSION = "260428.5";  // keep in sync with Code.gs
   let prefetchInterval = null;
   let prefetchTotal = 0;
   let prefetchStartTimer = null;
+  let _prefetchHold = false; // true while _autoRunBridge is running — hold off prefetch start
   // CACHE GLOBAL
   let configCache = {};
   // ZOOM & PAN GLOBALS
@@ -8975,13 +8976,15 @@ function scheduleBackgroundPrefetch() {
     if (typeof holisticSimulation !== 'undefined' && holisticSimulation && holisticSimulation.alpha() > 0.1) {
       isMoving = true;
     }
+    // Wait for any in-flight fetchData (smart poll, auto-verify) and bridge scan to finish
+    if (isFetching || _prefetchHold) {
+      isMoving = true;
+    }
 
     if (isMoving) {
-      // Cabling is still settling. Check again in 1 second.
-      dbg("Waiting for topology layout to stabilize...");
+      dbg("Waiting for topology to stabilize (physics=" + (typeof d3Simulation !== 'undefined' && d3Simulation ? d3Simulation.alpha().toFixed(2) : 'n/a') + " fetch=" + isFetching + " bridgeScan=" + _prefetchHold + ")...");
       prefetchStartTimer = setTimeout(checkSteadyState, 1000);
     } else {
-      // Setup is completely steady! Start caching.
       startBackgroundPrefetch();
     }
   };
@@ -10729,12 +10732,13 @@ function _autoRunBridge() {
   }
   const autoIps = _getLldpMgmtIps();
   dbg('Auto-Bridge: triggered — running LLDP + device status check');
+  _prefetchHold = true; // block background prefetch until bridge scan completes
   const st  = document.getElementById('status');
   const btn = document.getElementById('btnBridgeToolbar');
   setStatus('Running Bridge check\u2026', 'status-info');
   if (btn) { btn.classList.add('bridge-scanning'); }
   _lastBridgeLinkSig = _getLinkSig(); // snapshot cabling — next config-only fetchData won't re-trigger
-  const _done = () => { if (btn) btn.classList.remove('bridge-scanning'); };
+  const _done = () => { if (btn) btn.classList.remove('bridge-scanning'); _prefetchHold = false; };
   const devices = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   const ipMap = {};
   devices.forEach(n => {
