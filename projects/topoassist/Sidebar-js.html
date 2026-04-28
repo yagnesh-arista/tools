@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.14 | 2026-04-28 10:12:22 -->
+<!-- TopoAssist v260428.15 | 2026-04-28 10:17:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.14";  // keep in sync with Code.gs
+const APP_VERSION = "260428.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6031,10 +6031,10 @@ function selectLine(id) {
     const sheetId1 = allDevicesData[dev1]?.sheetIndex || "-";
     const sheetId2 = allDevicesData[dev2]?.sheetIndex || "-";
 
-    _pushLeftDev   = dev1;
-    _pushRightDev  = dev2;
-    _pushLeftPort  = port1;  // single-interface push when clicked from link strip
-    _pushRightPort = port2;
+    _leftDev   = dev1;
+    _rightDev  = dev2;
+    _leftPort  = port1;  // single-interface push when clicked from link strip
+    _rightPort = port2;
     // Hide copy/view/push for non-EOS link sides — no EOS config to show or push
     const nonEos1 = allDevicesData[dev1] && allDevicesData[dev1].type === 'non-arista';
     const nonEos2 = allDevicesData[dev2] && allDevicesData[dev2].type === 'non-arista';
@@ -6121,10 +6121,10 @@ function selectPortOrLink(portId) {
     let myData = allNodesData[portId];
     if (myData) {
       currentLeftConfig = myData.details.config || "";
-      _pushLeftDev   = portId.split(':')[0];
-      _pushRightDev  = null;
-      _pushLeftPort  = null;  // device-level push — no port filter
-      _pushRightPort = null;
+      _leftDev   = portId.split(':')[0];
+      _rightDev  = null;
+      _leftPort  = null;  // device-level push — no port filter
+      _rightPort = null;
       document.getElementById("copyGroup").style.display = "flex";
 
       const btnLeft = document.getElementById("btnLeft");
@@ -6207,52 +6207,25 @@ function processDeviceConfig(deviceName, configData) {
       if (!wasAlreadyLoaded) triggerButtonFlash("btnDevice");
     }
 
-    // CASE 2: CURRENTLY SELECTED LINK — use _pushLeftDev/_pushRightDev (stable across
+    // CASE 2: CURRENTLY SELECTED LINK — use _leftDev/_rightDev (stable across
     // redrawLinks/filterTopology which can clear selectedLineId while strip stays visible).
     const splitLeftEl  = document.getElementById("splitLeft");
     const splitRightEl = document.getElementById("splitRight");
-    if (_pushLeftDev && _pushLeftDev.toLowerCase() === deviceName.toLowerCase()
+    if (_leftDev && _leftDev.toLowerCase() === deviceName.toLowerCase()
         && splitLeftEl && splitLeftEl.style.display !== "none") {
-      const portL = _pushLeftPort || "";
+      const portL = _leftPort || "";
       currentLeftConfig = allNodesData[deviceName + ":" + portL]?.details?.config;
       setSplitBtnState("splitLeft", `[${sheetId}] ${deviceName}:Config:${portL} [${ageLabel}]`, "#10b981", false);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnLeft");
     }
-    if (_pushRightDev && _pushRightDev.toLowerCase() === deviceName.toLowerCase()
+    if (_rightDev && _rightDev.toLowerCase() === deviceName.toLowerCase()
         && splitRightEl && splitRightEl.style.display !== "none") {
-      const portR = _pushRightPort || "";
+      const portR = _rightPort || "";
       currentRightConfig = allNodesData[deviceName + ":" + portR]?.details?.config;
       setSplitBtnState("splitRight", `[${sheetId}] ${deviceName}:Config:${portR} [${ageLabel}]`, "#10b981", false);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnRight");
     }
   }
-}
-
-/**
-* Updates the Copy button visuals while maintaining identity and tooltips.
-* Old Name: updateCopyButtonVisuals
-*/
-function processInterfaceConfig(btnId, deviceName, time) {
-  const isLeft = (btnId === "btnLeft");
-  const splitId = isLeft ? "splitLeft" : "splitRight";
-  const wrapper = document.getElementById(splitId);
-  if (!wrapper || wrapper.style.display === 'none') return;
-
-  // Anti-flicker: stop if already green
-  if (wrapper.style.background === "rgb(16, 185, 129)" || wrapper.style.background === "#10b981") return;
-
-  const link = linkMap[selectedLineId];
-  if (!link) return;
-
-  const fullId = isLeft ? link.u : link.v;
-  const dev = fullId.split(":")[0];
-  const port = fullId.split(":")[1] || "";
-  const devData = allDevicesData[dev];
-  const sheetId = (devData && devData.sheetIndex) ? devData.sheetIndex : "-";
-
-  const ageStr = devData && devData.fetchEpoch ? formatAgeLabel(devData.fetchEpoch) : time;
-  setSplitBtnState(splitId, `[${sheetId}] ${dev}:Config:${port} [${ageStr}]`, "#10b981", false);
-  triggerButtonFlash(btnId);
 }
 
 /**
@@ -9235,17 +9208,23 @@ function fetchData(force, autoVerify, silent) {
 
     // --- CALL SERVER ---
     // Guard: GAS framework failures (auth expiry, quota) fire neither handler — overlay sticks forever without this.
+    // 30s matches GAS's own function execution limit — 20s fired on legitimate slow fetches.
+    let _fetchGuardFired = false;
     const _fetchGuard = setTimeout(() => {
+      _fetchGuardFired = true;
       hideGlobalLoading();
       isFetching = false;
       isTopologyLoading = false;
       clearInterval(progressTimer);
       if (btn) { btn.disabled = false; btn.style.cursor = "pointer"; }
       setStatus("Topology fetch timed out — try again", "status-error");
-    }, 20000);
+    }, 30000);
 
     google.script.run.withSuccessHandler(function (data) {
       clearTimeout(_fetchGuard);
+      // Guard already fired — late GAS response after 30s timeout. State already cleaned
+      // up; rendering now would silently overwrite the error and confuse the user.
+      if (_fetchGuardFired) return;
       hideGlobalLoading();
 
       isTopologyLoading = false;
@@ -9495,10 +9474,10 @@ let deviceMetadata = {};        // devName → {model: "", rack: ""} — persist
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _snakeTrafficFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeTrafficWarning()
-let _pushLeftDev   = null; // device name for the left split-btn push action
-let _pushRightDev  = null; // device name for the right split-btn push action
-let _pushLeftPort  = null; // interface name for left push (link selection → single-interface push)
-let _pushRightPort = null; // interface name for right push (link selection → single-interface push)
+let _leftDev   = null; // device name for the left link strip (used by Copy, View, Push)
+let _rightDev  = null; // device name for the right link strip (used by Copy, View, Push)
+let _leftPort  = null; // interface name for left strip (null = device-level push, no port filter)
+let _rightPort = null; // interface name for right strip (null = device-level push, no port filter)
 let _pendingPush        = null; // {deviceName, ip, config, btnId, origText, label} — awaiting confirm modal
 let _commitInFlight     = false; // true while Phase 2 commit fetch is in flight
 let _lastIdShiftResult  = null; // cached result of last checkDeviceIdShift() — {shifted, isFirstRun}
@@ -12118,8 +12097,8 @@ function closePushConfirmModal() {
 }
 
 function pushLinkSide(side) {
-  const dev   = side === 'left' ? _pushLeftDev   : _pushRightDev;
-  const port  = side === 'left' ? _pushLeftPort  : _pushRightPort;
+  const dev   = side === 'left' ? _leftDev   : _rightDev;
+  const port  = side === 'left' ? _leftPort  : _rightPort;
   const btnId = side === 'left' ? 'btnPushLeft'  : 'btnPushRight';
   if (dev) pushDeviceConfig(dev, btnId, port);
 }
@@ -13736,13 +13715,13 @@ function openConfigFromButton(target) {
     return;
   }
 
-  // CASE 2: Interface Link — use _pushLeftDev/_pushRightDev (stable).
+  // CASE 2: Interface Link — use _leftDev/_rightDev (stable).
   // selectedLineId is cleared by redrawLinks() and filterTopology() while the strip stays
   // visible — reading it here causes false CASE 3 "nothing selected" errors.
-  // _pushLeftDev/_pushRightDev are set in selectLine() and only change on a new selection.
-  if (target === 'left' && _pushLeftDev) {
-    const devNameL = _pushLeftDev;
-    const portL    = _pushLeftPort || null;
+  // _leftDev/_rightDev are set in selectLine() and only change on a new selection.
+  if (target === 'left' && _leftDev) {
+    const devNameL = _leftDev;
+    const portL    = _leftPort || null;
     _configViewContext = { deviceName: devNameL, portFilter: portL };
     _setCfgModalPushBtns('interface');
     const _showLeft = () => {
@@ -13762,9 +13741,9 @@ function openConfigFromButton(target) {
     return;
   }
 
-  if (target === 'right' && _pushRightDev) {
-    const devNameR = _pushRightDev;
-    const portR    = _pushRightPort || null;
+  if (target === 'right' && _rightDev) {
+    const devNameR = _rightDev;
+    const portR    = _rightPort || null;
     _configViewContext = { deviceName: devNameR, portFilter: portR };
     _setCfgModalPushBtns('interface');
     const _showRight = () => {
