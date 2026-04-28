@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-28 (Check 25 added: full-screen dialog minimize — height:100vh override + google.script.host.setHeight() guard) -->
+<!-- rules-synced: 2026-04-28 (Check 26 added: split-action-divider must be hidden alongside buttons for non-EOS strips) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
