@@ -1,10 +1,10 @@
-// TopoAssist v260428.36 | 2026-04-28 12:02:43
+// TopoAssist v260428.37 | 2026-04-28 12:10:35
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260428.36";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260428.37";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4115,14 +4115,17 @@ function compressVlanRanges(numberSet) {
 function _parseSviVlans(sviVlanVal, vlans) {
   const v = String(sviVlanVal || "").trim().toLowerCase();
   if (!v) return [];
-  const arr = Array.isArray(vlans) ? vlans : Array.from(vlans);
+  const raw = Array.isArray(vlans) ? vlans : Array.from(vlans);
+  // Guard: EOS only supports SVIs for VLAN IDs 1-4094; silently drop anything outside
+  // this range (e.g. 8888 used for L3-et/po-int sub-interface config must not become an SVI).
+  const arr = raw.filter(x => { const n = parseInt(x, 10); return n >= 1 && n <= 4094; });
   if (v === 'all') return arr;
   const requested = new Set(
     String(sviVlanVal).split(',').map(function(s) {
       s = s.trim();
       const nv = s.match(/^nv(\d+)$/i);  // nv<N> → VLAN N
       return nv ? parseInt(nv[1], 10) : parseInt(s, 10);
-    }).filter(function(n) { return !isNaN(n); })
+    }).filter(function(n) { return !isNaN(n) && n >= 1 && n <= 4094; })
   );
   return arr.filter(x => requested.has(parseInt(x, 10)));
 }

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.36 | 2026-04-28 12:04:01 -->
+<!-- TopoAssist v260428.37 | 2026-04-28 12:10:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.36";  // keep in sync with Code.gs
+const APP_VERSION = "260428.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -30,6 +30,8 @@ const APP_VERSION = "260428.36";  // keep in sync with Code.gs
   let statusLog = [];
   let _statusLogType = ''; // active type tab: '' | 'error' | 'audit' | 'bridge' | 'config' | 'push'
   let _loggedAuditErrors = new Set(); // session dedup: prevents re-logging same error on auto-revalidate
+  let _lastBridgeResults = null;      // last bridge check results — replayed by runValidation()
+  let _lastBridgeOrphans = [];        // last bridge check orphans — replayed by runValidation()
 
   function _inferLogType(msg) {
     const m = msg.toLowerCase();
@@ -2978,6 +2980,9 @@ function runValidation(logIssues) {
         });
       });
     }
+    // Replay [Audit - Live] from last bridge check — same logIssues gating as [Audit - Design].
+    // No dsData (null) so [Bridge] cmd failures are not replayed here — only on bridge check runs.
+    _logBridgeIssuesToStatusLog(_lastBridgeResults, _lastBridgeOrphans, null, logIssues);
     setStatus(portErrorCount === 0 ? "Audit Clean." : `Audit: ${portErrorCount} Issues Found`, portErrorCount > 0 ? "status-error" : "");
   }
 
@@ -10788,7 +10793,7 @@ function _autoRunBridge() {
       const { results, orphans } = _compareBridgeData(bridgeResult.value);
       _autoOrphanCount = orphans.length;
       _renderLldpResults(results, orphans);
-      _logBridgeIssuesToStatusLog(results, orphans, devResult.status === 'fulfilled' ? devResult.value : null);
+      _logBridgeIssuesToStatusLog(results, orphans, devResult.status === 'fulfilled' ? devResult.value : null, true);
       applyLldpIndicators();
     } else {
       dbg('Auto-Bridge: LLDP fetch failed —', bridgeResult.reason);
@@ -11098,7 +11103,7 @@ function runBridgeCheck() {
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
         _renderLldpResults(results, orphans);
-        _logBridgeIssuesToStatusLog(results, orphans, dsData);
+        _logBridgeIssuesToStatusLog(results, orphans, dsData, true);
         applyLldpIndicators();
         _manualOrphanCount = orphans.length;
       }
@@ -12565,24 +12570,46 @@ function _compareBridgeData(bridgeData) {
 // [Audit - Live] for real LLDP mismatches (wrong neighbor) and extra cables.
 // [Bridge] for SSH/cmd failures (operational, not audit findings).
 // dsData: devstatus response map (may be null if devstatus fetch failed).
-function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
+// logIssues: when true, forces re-log even if already in _loggedAuditErrors (explicit audit press).
+//   Bridge check callers pass true (first-time results). runValidation() passes its own logIssues.
+//   [Bridge] cmd failures are never deduped — they only emit when dsData is provided (not replayed).
+function _logBridgeIssuesToStatusLog(results, orphans, dsData, logIssues) {
+  // Store for replay by runValidation() (dsData excluded — [Bridge] msgs not replayed)
+  _lastBridgeResults = results || null;
+  _lastBridgeOrphans = orphans || [];
+
   if (results) {
     results.filter(r => r.status === 'mismatch').forEach(r => {
       const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
       if (noNeighbor) {
-        if (bridgeAuditFlagMissing)
-          setStatus(`[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
+        if (bridgeAuditFlagMissing) {
+          const key = `[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v}`;
+          if (logIssues || !_loggedAuditErrors.has(key)) {
+            _loggedAuditErrors.add(key);
+            setStatus(`[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
+          }
+        }
       } else {
-        if (bridgeAuditFlagMismatch)
-          setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+        if (bridgeAuditFlagMismatch) {
+          const key = `[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}`;
+          if (logIssues || !_loggedAuditErrors.has(key)) {
+            _loggedAuditErrors.add(key);
+            setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+          }
+        }
       }
     });
   }
   if (orphans && orphans.length && bridgeAuditFlagMismatch) {
     orphans.forEach(o => {
-      setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
+      const key = `[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`;
+      if (logIssues || !_loggedAuditErrors.has(key)) {
+        _loggedAuditErrors.add(key);
+        setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
+      }
     });
   }
+  // [Bridge] cmd failures: operational, not replayed — only emit when dsData provided
   if (dsData) {
     Object.entries(dsData).forEach(([devId, ds]) => {
       if (ds && ds.ok && ds.cmdErrors) {
