@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.32 | 2026-04-28 11:42:14 -->
+<!-- TopoAssist v260428.33 | 2026-04-28 11:46:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.32";  // keep in sync with Code.gs
+const APP_VERSION = "260428.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12565,7 +12565,14 @@ function _compareBridgeData(bridgeData) {
 function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
   if (results) {
     results.filter(r => r.status === 'mismatch').forEach(r => {
-      setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+      const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
+      if (noNeighbor) {
+        if (bridgeAuditFlagMissing)
+          setStatus(`[Audit - Live] No neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
+      } else {
+        if (bridgeAuditFlagMismatch)
+          setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+      }
     });
   }
   if (orphans && orphans.length) {
