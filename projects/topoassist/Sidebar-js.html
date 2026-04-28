@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.42 | 2026-04-28 12:24:00 -->
+<!-- TopoAssist v260428.43 | 2026-04-28 12:29:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.42";  // keep in sync with Code.gs
+const APP_VERSION = "260428.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12566,6 +12566,11 @@ function _compareBridgeData(bridgeData) {
       orphans.push({ localDev, localIf, remDev, remIf });
   });
 
+  // Keep _lastBridgeResults/_lastBridgeOrphans in sync with bridgePortStatus — both come from here.
+  // runValidation() reads bridgePortStatus for port counts and replays _lastBridgeResults for log detail.
+  _lastBridgeResults = results;
+  _lastBridgeOrphans = orphans;
+
   return { results, orphans };
 }
 
@@ -12577,10 +12582,7 @@ function _compareBridgeData(bridgeData) {
 //   Bridge check callers pass true (first-time results). runValidation() passes its own logIssues.
 //   [Bridge] cmd failures are never deduped — they only emit when dsData is provided (not replayed).
 function _logBridgeIssuesToStatusLog(results, orphans, dsData, logIssues) {
-  // Store for replay by runValidation() (dsData excluded — [Bridge] msgs not replayed)
-  _lastBridgeResults = results || null;
-  _lastBridgeOrphans = orphans || [];
-
+  // _lastBridgeResults/_lastBridgeOrphans already stored by _compareBridgeData — no re-store here.
   if (results) {
     results.filter(r => r.status === 'mismatch').forEach(r => {
       const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
