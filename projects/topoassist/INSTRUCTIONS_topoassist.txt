@@ -2485,8 +2485,16 @@ BACKGROUND PREFETCH SYSTEM:
     _prefetchHold (true while _autoRunBridge LLDP+devstatus scan is running),
     _prefetchEverRan (true after first startBackgroundPrefetch() call).
 
+  fetchData() status message rules:
+    - Cold start (isFirstLoad=true): shows "🚀 Requesting Topology Data.. no local cache"
+    - All subsequent calls (isFirstLoad=false): message is NOT overwritten — calling
+      code (smart poll, save handlers, Device Manager etc.) already set a specific status
+      before calling fetchData (e.g. "Sheet changed — refreshing topology…").
+    - isFirstLoad is set false in the fetchData success handler after first successful fetch.
+    - Guard: _fetchGuard fires at 30s (GAS execution limit) → "retrying…" + auto-retry
+      after 5s. _fetchGuardFired flag discards late GAS responses after guard fires.
+
   scheduleBackgroundPrefetch(forceRestart) — smart scheduler; signature:
-    - If prefetchInterval !== null (already running): return — don't interrupt mid-run.
     - If _prefetchEverRan && !forceRestart: return — skip smart-poll restarts when
       nothing changed (avoids re-caching after all configs are warm).
     - Waits for D3/holistic alpha < 0.1, isFetching=false, _prefetchHold=false,
