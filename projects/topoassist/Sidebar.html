@@ -1,4 +1,4 @@
-<!-- TopoAssist v260428.6 | 2026-04-28 09:19:23 -->
+<!-- TopoAssist v260428.7 | 2026-04-28 09:29:42 -->
 <!DOCTYPE html>
 <html>
 
@@ -1520,6 +1520,16 @@
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagUndeclaredMlag" onchange="toggleAuditCheck('auditFlagUndeclaredMlag',this.checked)"><span>MLAG device not declared</span></label>
         <span class="audit-issue-ind" id="auditDot_auditFlagUndeclaredMlag"></span>
+      </div>
+
+      <div class="audit-cat-hdr">Snake / IXIA</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagSnakeIpType" onchange="toggleAuditCheck('auditFlagSnakeIpType',this.checked)"><span>Snake loopback port not p2p</span></label>
+        <span class="audit-issue-ind" id="auditDot_auditFlagSnakeIpType"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagIxiaIpType" onchange="toggleAuditCheck('auditFlagIxiaIpType',this.checked)"><span>IXIA EP port not p2p</span></label>
+        <span class="audit-issue-ind" id="auditDot_auditFlagIxiaIpType"></span>
       </div>
 
     </div>
