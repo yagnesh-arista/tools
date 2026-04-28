@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.20 | 2026-04-28 10:33:25 -->
+<!-- TopoAssist v260428.21 | 2026-04-28 10:36:12 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.20";  // keep in sync with Code.gs
+const APP_VERSION = "260428.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2939,12 +2939,13 @@ function runValidation(logIssues) {
   // Bridge CHECKS (populated by runBridgeCheck — empty if not yet run)
   // =========================================================
   Object.entries(bridgePortStatus).forEach(([portId, status]) => {
+    const [_bDev, _bPort] = portId.split(':');
     if (status === 'mismatch') {
       auditCheckHadIssue.bridgeAuditFlagMismatch = (auditCheckHadIssue.bridgeAuditFlagMismatch || 0) + 1;
-      if (bridgeAuditFlagMismatch) flagErrorOnPort(portId, 'LLDP mismatch — wrong neighbor/port detected');
+      if (bridgeAuditFlagMismatch) flagErrorOnPort(portId, `LLDP mismatch — ${_bDev} ${_bPort}: wrong neighbor/port detected`);
     } else if (status === 'missing') {
       auditCheckHadIssue.bridgeAuditFlagMissing = (auditCheckHadIssue.bridgeAuditFlagMissing || 0) + 1;
-      if (bridgeAuditFlagMissing) flagErrorOnPort(portId, 'LLDP — no neighbor seen on this port');
+      if (bridgeAuditFlagMissing) flagErrorOnPort(portId, `LLDP — ${_bDev} ${_bPort}: no neighbor seen on this port`);
     }
   });
 
