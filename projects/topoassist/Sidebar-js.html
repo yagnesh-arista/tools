@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.11 | 2026-04-28 09:48:35 -->
+<!-- TopoAssist v260428.12 | 2026-04-28 09:50:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.11";  // keep in sync with Code.gs
+const APP_VERSION = "260428.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4727,8 +4727,8 @@ function saveIpConfig() {
       alert("✓ IP Preferences Saved.\n\nConfigurations have been updated.");
     }, 50);
 
-    // Use smart scheduler instead of setTimeout
-    if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
+    // Use smart scheduler instead of setTimeout; force=true because save wiped configCache
+    if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch(true);
   })
     .withFailureHandler(err => {
       clearTimeout(_guard);
@@ -5261,7 +5261,7 @@ function saveGlobalCfgFromSidebar() {
         }
       }
 
-      if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
+      if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch(true);
     })
     .withFailureHandler(function(err) {
       btn.disabled = false;
@@ -5351,7 +5351,7 @@ function saveTechSettings() {
         }
       }
 
-      if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch();
+      if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch(true);
     })
     .withFailureHandler(err => {
       clearTimeout(_guard);
@@ -9342,7 +9342,8 @@ function fetchData(force, autoVerify, silent) {
 
       // Selective config cache invalidation — preserve cache for unchanged devices,
       // delete only devices whose config-relevant data changed since last render.
-      _selectiveConfigInvalidate(_prevDevSnap, allDevicesData);
+      // Returns: 0 = nothing changed, >0 = N devices invalidated, -1 = error/full clear.
+      const _invalidated = _selectiveConfigInvalidate(_prevDevSnap, allDevicesData);
 
       // Auto-verify: if this render came from GAS cache, fire a forced refresh
       // to confirm cache == actual sheet state. Runs after render so UI is instant.
@@ -9352,9 +9353,11 @@ function fetchData(force, autoVerify, silent) {
       }
 
       // --- START BACKGROUND FETCH ---
-      // Uses the smart scheduler to wait until physics settle before fetching
+      // Uses the smart scheduler to wait until physics settle before fetching.
+      // forceRestart only when something was actually invalidated — avoids restarting
+      // the prefetcher on every smart-poll cycle when nothing changed.
       if (typeof scheduleBackgroundPrefetch === 'function') {
-        scheduleBackgroundPrefetch();
+        scheduleBackgroundPrefetch(_invalidated !== 0);
       }
 
       // Auto bridge health check after topology loads (if integration enabled).
