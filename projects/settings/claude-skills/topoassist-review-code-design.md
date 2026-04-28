@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-28 (Check 26 added: split-action-divider must be hidden alongside buttons for non-EOS strips) -->
+<!-- rules-synced: 2026-04-28 (Check 27 added: processDeviceConfig _isEosDev guard + non-EOS actionsDisabled=true) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
