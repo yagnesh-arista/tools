@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.45 | 2026-04-28 12:53:07 -->
+<!-- TopoAssist v260428.46 | 2026-04-28 13:04:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.45";  // keep in sync with Code.gs
+const APP_VERSION = "260428.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -52,6 +52,7 @@ const APP_VERSION = "260428.45";  // keep in sync with Code.gs
     statusLog.push({ ts: Date.now(), msg: logMsg, cls, type: _inferLogType(logMsg) });
     if (statusLog.length > STATUS_LOG_MAX) statusLog.shift();
     _updateStatusLogCount();
+    if (_statusLogOpen) renderStatusLog(); // live-refresh open drawer
     const el = document.getElementById('status');
     if (!el) return;
     el.style.color = rawColor;
