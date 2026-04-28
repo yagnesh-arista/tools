@@ -1,10 +1,10 @@
-// TopoAssist v260428.16 | 2026-04-28 10:18:50
+// TopoAssist v260428.19 | 2026-04-28 10:23:43
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260428.16";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260428.19";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1907,17 +1907,16 @@ function buildConditionalRules(sheet, headers, lastRow) {
 
     // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
 
-    // A7 — sp_mode_ empty but int_ is filled (mode is required)
+    // A7 — sp_mode_ empty but int_ is filled (mode is required; Vx1 rows have no mode — excluded)
     rules.push(SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied(`=AND($${iC}3<>"",$${mC}3="")`)
+      .whenFormulaSatisfied(`=AND($${iC}3<>"",NOT(REGEXMATCH($${iC}3,"^Vx")),$${mC}3="")`)
       .setBackground("#fef3c7").setFontColor("#92400e")
       .setRanges([sheet.getRange(3, modeIdx, lastRow - 2, 1)]).build());
 
-    // A8 — vlan_ empty but mode is l3-et or l3-po (vlan_ required for IP derivation)
+    // A8 — vlan_ empty but int_ is filled and mode is set (vlan_ required for all modes)
     if (vlanIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vlanIdx)}3=""` +
-          `,REGEXMATCH($${mC}3,"^l3-(et|po)"))`)
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",$${mC}3<>"",$${getColLet(vlanIdx)}3="")`)
         .setBackground("#fef3c7").setFontColor("#92400e")
         .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
     }
@@ -1964,11 +1963,12 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
 
-    // N/A-4 — REMOVED: vlan_ is needed for all l3 modes (IP derivation on l3-et/l3-po,
-    //         dot1q tag on sub-int). A4 (RED) still catches 2+ VLANs on pure l3.
+    // N/A-4 — REMOVED: vlan_ is needed for all modes (A8 covers all; A4 catches multi-VLAN on l3).
 
-    // N/A-5 — transceiver columns gray for Po modes (no physical transceiver on Po)
-    const xcvrNaFormula = `=REGEXMATCH($${mC}3,"^l[23]-po")`;
+    // N/A-5 — transceiver/speed/FEC columns gray for Vx1 (virtual VTEP port, no physical transceiver)
+    // Condition is int_-based (^Vx), not mode-based — these fields depend on the physical interface,
+    // not the EOS mode. Et rows are always applicable regardless of mode (l3-po-int member ports included).
+    const xcvrNaFormula = `=REGEXMATCH($${iC}3,"^Vx")`;
     [[etSpeedIdx],[xcvrSpeedIdx],[xcvrTypeIdx],[encodingIdx]]
       .forEach(([idx]) => {
         if (idx > 0) {
@@ -1979,6 +1979,17 @@ function buildConditionalRules(sheet, headers, lastRow) {
         }
       });
 
+    // N/A-Vx — additional columns gray for Vx1 rows (sp_mode_, po_, ip_type_ not applicable to VTEP port)
+    const vxFormula = `=REGEXMATCH($${iC}3,"^Vx")`;
+    [[modeIdx],[poIdx],[ipIdx]].forEach(([idx]) => {
+      if (idx > 0) {
+        rules.push(SpreadsheetApp.newConditionalFormatRule()
+          .whenFormulaSatisfied(vxFormula)
+          .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+          .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+      }
+    });
+
     // N/A-6 — vrf_ gray for L2 without SVI
     if (vrfIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
@@ -1988,16 +1999,6 @@ function buildConditionalRules(sheet, headers, lastRow) {
     }
 
     // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
-
-    // W1 — xcvr_speed_ amber when et_speed == xcvr_speed (both filled — possible breakout mismatch)
-    if (etSpeedIdx > 0 && xcvrSpeedIdx > 0) {
-      const etC = getColLet(etSpeedIdx);
-      const xsC = getColLet(xcvrSpeedIdx);
-      rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND($${etC}3<>"",$${xsC}3<>"",$${etC}3=$${xsC}3)`)
-        .setBackground("#fef08a")
-        .setRanges([sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1)]).build());
-    }
 
     // W2 — xcvr_speed_ pale-orange when empty + xcvr_type implies different speed (fill for breakout)
     if (etSpeedIdx > 0 && xcvrSpeedIdx > 0 && xcvrTypeIdx > 0) {
