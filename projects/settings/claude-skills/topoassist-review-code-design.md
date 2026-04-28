@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-27 (Rule 26 added: label-column alignment — fixed-width label + flex:1 options for tabular row alignment; nested sub-labels same width; wrap label+icon in one span; Check 24 added) -->
+<!-- rules-synced: 2026-04-28 (Check 25 added: full-screen dialog minimize — height:100vh override + google.script.host.setHeight() guard) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
