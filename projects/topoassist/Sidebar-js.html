@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.12 | 2026-04-28 09:50:00 -->
+<!-- TopoAssist v260428.14 | 2026-04-28 10:12:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.12";  // keep in sync with Code.gs
+const APP_VERSION = "260428.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8983,12 +8983,14 @@ function saveGroupRects() {
 function scheduleBackgroundPrefetch(forceRestart) {
   if (prefetchStartTimer) clearTimeout(prefetchStartTimer);
 
-  // If the prefetcher is already running, let it finish — don't interrupt mid-run
-  if (prefetchInterval !== null) return;
-
   // After the initial run, skip smart-poll restarts unless data was actually invalidated
   // (forceRestart=true means config cache was wiped or devices changed — always re-run)
   if (_prefetchEverRan && !forceRestart) return;
+
+  // forceRestart=true: stop any in-progress prefetch so we rebuild the queue with
+  // newly-invalidated devices (leaving it running would orphan those devices — they
+  // were deleted from configCache but are not in the running queue).
+  if (prefetchInterval !== null) stopBackgroundPrefetch();
 
   const checkSteadyState = () => {
     let isMoving = false;
@@ -9177,7 +9179,11 @@ function fetchData(force, autoVerify, silent) {
     if (btn) { btn.disabled = true; btn.style.cursor = "not-allowed"; }
     _topologyReady = false; // block auto-Bridge until fresh data arrives
 
-    if (!silent && !savedSelectionId && !selectedDeviceId && statusEl) {
+    // Only show the cold-start message on first load — subsequent fetchData calls
+    // (smart poll, manual refresh, save handlers) each set their own status message
+    // before calling fetchData; overwriting it here would hide e.g. "Sheet changed —
+    // refreshing topology…" before the user can read it.
+    if (isFirstLoad && !silent && !savedSelectionId && !selectedDeviceId && statusEl) {
       setStatus("🚀 Requesting Topology Data.. no local cache");
       document.getElementById("status").classList.remove("highlighted");
     }
