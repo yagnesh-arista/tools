@@ -1,7 +1,7 @@
-<!-- TopoAssist v260427.48 | 2026-04-27 22:08:58 -->
+<!-- TopoAssist v260428.2 | 2026-04-28 08:58:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260427.48";  // keep in sync with Code.gs
+const APP_VERSION = "260428.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8969,15 +8969,14 @@ function startBackgroundPrefetch() {
   // 1. Clear any running loops
   stopBackgroundPrefetch();
 
-  // 2. Build the queue: Find all Arista switches not yet in cache
-  prefetchQueue = Object.keys(allDevicesData).filter(dev => {
-    return allDevicesData[dev].type === 'full' && !configCache[dev];
-  });
+  // 2. Build the queue: uncached Arista devices only; total = all Arista so the counter
+  //    reads "6 of 10" when 5 were already cached, not a misleading "1 of 5".
+  const _allAristaDevs = Object.keys(allDevicesData).filter(dev => allDevicesData[dev].type === 'full');
+  prefetchQueue = _allAristaDevs.filter(dev => !configCache[dev]);
 
-  prefetchTotal = prefetchQueue.length;
-
-  if (prefetchTotal === 0) return;
-  dbg(`Starting background pre-fetch for ${prefetchTotal} devices...`);
+  if (prefetchQueue.length === 0) return;
+  prefetchTotal = _allAristaDevs.length;
+  dbg(`Starting background pre-fetch for ${prefetchQueue.length} devices (${prefetchTotal} total)...`);
 
   let st = document.getElementById("status");
 
