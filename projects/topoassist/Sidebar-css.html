@@ -1,4 +1,4 @@
-<!-- TopoAssist v260428.22 | 2026-04-28 10:37:13 -->
+<!-- TopoAssist v260428.23 | 2026-04-28 10:50:06 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -161,13 +161,6 @@
   body.mode-reorder .reorder-header,
   body.mode-view_custom .modal-header {
     border-radius: 0 !important;
-  }
-
-  /* Schema mode: GAS dialog chrome already has a close button — hide ours.
-     The injector still finds it in DOM and inserts [−] before it, so only
-     the minimize button is visible (correct [−] positioning via margin-left:auto). */
-  body.mode-schema #schemaContainer .btn-modal-close {
-    display: none !important;
   }
 
   /* =================================================================
