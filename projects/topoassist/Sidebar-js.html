@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.33 | 2026-04-29 14:59:29 -->
+<!-- TopoAssist v260429.34 | 2026-04-29 16:23:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.33";  // keep in sync with Code.gs
+const APP_VERSION = "260429.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11716,11 +11716,13 @@ async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
       btn.textContent = 'Reconcile';
       _resetStopReconBtn();
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      const total = Object.values(results).reduce((s, r) => s + (r && r.ok
+      const vals = Object.values(results);
+      const anyFailed = vals.some(r => !r || !r.ok);
+      const total = vals.reduce((s, r) => s + (r && r.ok
         ? (r.orphans || []).length + (r.bgp_orphans || []).length +
           (r.vlan_orphans || []).length + (r.vrf_orphans || []).length
         : 0), 0);
-      if (total === 0) {
+      if (!anyFailed && total === 0) {
         reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All #TA config accounted for — no stale interfaces, BGP neighbors, VLANs, or VRFs.</div>';
       } else {
         _renderReconcileResults(results, ipMap, reconBody);
