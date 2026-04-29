@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.1 | 2026-04-29 09:11:48 -->
+<!-- TopoAssist v260429.4 | 2026-04-29 11:24:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.1";  // keep in sync with Code.gs
+const APP_VERSION = "260429.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10542,7 +10542,8 @@ const _ALL_AUDIT_FLAGS = [
   'auditFlagModeIncompat', 'auditFlagSpeedMismatch',
   'auditFlagStaleSvi', 'auditFlagStaleVlan', 'auditFlagStaleVrf', 'auditFlagStaleXcvrSpeed',
   'auditFlagMissingVlan',
-  'auditFlagMlagPeerLink', 'auditFlagUndeclaredMlag'
+  'auditFlagMlagPeerLink', 'auditFlagUndeclaredMlag',
+  'auditFlagSnakeIpType', 'auditFlagIxiaIpType'
 ];
 
 function _getAuditFlag(name) {
@@ -10576,6 +10577,8 @@ function _getAuditFlag(name) {
     case 'bridgeAuditFlagMismatch':     return bridgeAuditFlagMismatch;
     case 'bridgeAuditFlagMissing':      return bridgeAuditFlagMissing;
     case 'bridgeAuditFlagInternalVlan': return bridgeAuditFlagInternalVlan;
+    case 'auditFlagSnakeIpType':        return auditFlagSnakeIpType;
+    case 'auditFlagIxiaIpType':         return auditFlagIxiaIpType;
     default: return true;
   }
 }
@@ -10612,6 +10615,8 @@ function _setAuditFlag(name, val) {
     case 'bridgeAuditFlagMismatch':     bridgeAuditFlagMismatch = val; break;
     case 'bridgeAuditFlagMissing':      bridgeAuditFlagMissing = val; break;
     case 'bridgeAuditFlagInternalVlan': bridgeAuditFlagInternalVlan = val; break;
+    case 'auditFlagSnakeIpType':        auditFlagSnakeIpType = val; break;
+    case 'auditFlagIxiaIpType':         auditFlagIxiaIpType = val; break;
   }
 }
 
