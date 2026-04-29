@@ -8,14 +8,13 @@
 
 **Section 8 (post-plugin overrides) MUST appear AFTER `run tpm`.** These overrides must win over what plugins set. Moving them before `run tpm` silently loses all mouse binding fixes.
 
-**`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. Use external scripts (tmux_click.sh) for DoubleClick/TripleClick instead.
+**`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. DoubleClick/TripleClick use inline `copy-mode \; send-keys -X select-word/line` — no external script.
 
-**6 deployable files** — hook auto-deploys each individually when edited:
+**5 deployable files** — hook auto-deploys each individually when edited:
 - `tmux.conf` → `~/.tmux/tmux.conf` + `tmux source-file` (reload)
 - `themes/light.conf` → `~/.tmux/themes/light.conf`
 - `themes/dark.conf` → `~/.tmux/themes/dark.conf`
 - `tmux_broadcast.sh` → `~/.tmux/tmux_broadcast.sh` (chmod +x)
-- `tmux_click.sh` → `~/.tmux/tmux_click.sh` (chmod +x)
 - `tmux_ai_spend.sh` → `~/.tmux/tmux_ai_spend.sh` (chmod +x)
 
 ## After Every Change
