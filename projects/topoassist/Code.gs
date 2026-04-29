@@ -1,10 +1,10 @@
-// TopoAssist v260429.34 | 2026-04-29 16:23:59
+// TopoAssist v260429.35 | 2026-04-29 16:28:34
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260429.34";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260429.35";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4803,7 +4803,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
       validVlans.forEach(v => {
         const paddedId = String(v).padStart(4, '0');
         lines.push(`vlan ${v}`);
-        lines.push(` name VLAN${paddedId} #TA`);
+        lines.push(` name VLAN${paddedId}_#TA`);
         lines.push(`!`);
       });
     }
@@ -5694,11 +5694,11 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
 
   // FIXED: Changed 'description' to 'name' for VLAN context
   mlagLines.push("vlan 4093");
-  mlagLines.push(" name MLAG_L3_UNDERLAY_PEERING #TA");
+  mlagLines.push(" name MLAG_L3_UNDERLAY_PEERING_#TA");
   mlagLines.push(" trunk group MLAG_PEER");
   mlagLines.push("!");
   mlagLines.push("vlan 4094");
-  mlagLines.push(" name MLAG_CONTROL_PLANE #TA");
+  mlagLines.push(" name MLAG_CONTROL_PLANE_#TA");
   mlagLines.push(" trunk group MLAG_PEER");
   mlagLines.push("!");
 
