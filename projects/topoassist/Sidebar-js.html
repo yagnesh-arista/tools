@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.10 | 2026-04-29 11:48:40 -->
+<!-- TopoAssist v260429.11 | 2026-04-29 11:52:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.10";  // keep in sync with Code.gs
+const APP_VERSION = "260429.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11684,6 +11684,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     // Empty diff + eos_errors = nothing staged (false "already in sync") → show as error.
     // Non-empty diff + eos_errors = partial staging → show diff with rejection banner.
     const _p1EosErrs = _eosErrors(res);
+    const _p1EosWarns = _eosWarnings(res);
     if (_p1EosErrs && (!res.diff || !res.diff.trim())) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       if (res.session_name) {
@@ -11711,6 +11712,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
     _showPushConfirmModal(label, res.diff);
     if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
+    if (_p1EosWarns) _injectEosWarningBanner(_p1EosWarns);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
     // Guard: auto-abort the open EOS session if user doesn't commit within 5 minutes
     if (res.session_name) {
@@ -11936,10 +11938,17 @@ async function commitPushConfig() {
           const rem = (vRes.diff || '').split('\n')
             .filter(l => l.startsWith('+') || l.startsWith('-')).length;
           if (rem === 0 && !_v3EosErrs) {
-            _ptSet('pt3', '#10b981', 'verified — in sync');
+            const _v3EosWarns = _eosWarnings(vRes);
+            const warnNote = _v3EosWarns ? ` · ${_v3EosWarns.length} note${_v3EosWarns.length !== 1 ? 's' : ''}` : '';
+            _ptSet('pt3', '#10b981', `verified — in sync${warnNote}`);
             if (titleEl) titleEl.textContent = 'Push Successful';
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
               `<span style="color:#10b981;font-weight:600;">Committed — in sync</span>`);
+            if (_v3EosWarns) {
+              _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#92400e;padding:4px 0;">` +
+                `<b>EOS notes (non-fatal):</b><br>` +
+                _v3EosWarns.map(w => `<span style="display:block;">${escapeHtml(w)}</span>`).join('') + `</div>`);
+            }
             if (btn) {
               btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified';
               setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3500);
@@ -12333,8 +12342,8 @@ async function pushAllConfigs() {
   const summaryEl = document.getElementById('genAllPushSummary');
 
   // Helper: build and set a result row (replaces element by id via outerHTML)
-  // diff: colored diff block (push remaining diff); details: plain error text block
-  function _setResultRow(rowId, safeName, color, label, diff, details) {
+  // diff: colored diff block; details: red error text; warnDetails: amber note text
+  function _setResultRow(rowId, safeName, color, label, diff, details, warnDetails) {
     let html =
       `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;` +
       `margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">` +
@@ -12357,6 +12366,12 @@ async function pushAllConfigs() {
       html +=
         `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f87171;` +
         `background:#0f172a;border-radius:3px;padding:5px 8px;margin:0 0 6px;white-space:pre-wrap;">${safeDetails}</div>`;
+    }
+    if (warnDetails) {
+      const safeWarn = escapeHtml(warnDetails);
+      html +=
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#92400e;` +
+        `background:#fffbeb;border-radius:3px;padding:5px 8px;margin:0 0 6px;white-space:pre-wrap;">${safeWarn}</div>`;
     }
     const rowEl = document.getElementById(rowId);
     if (rowEl) rowEl.outerHTML = html;
@@ -12489,6 +12504,7 @@ async function pushAllConfigs() {
 
       // EOS rejected commands during push — nothing staged means nothing committed
       const _pushEosErrs = _eosErrors(res);
+      const _pushEosWarns = _eosWarnings(res);
       if (_pushEosErrs && (!res.diff || !res.diff.trim())) {
         completed++;
         _updateSummary();
@@ -12542,11 +12558,14 @@ async function pushAllConfigs() {
         if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
+          const warnSuffix = _pushEosWarns ? ` · ${_pushEosWarns.length} note${_pushEosWarns.length !== 1 ? 's' : ''}` : '';
           const lbl = _pushEosErrs
             ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected`
-            : `Committed (+${added} / -${removed})`;
+            : `Committed (+${added} / -${removed})${warnSuffix}`;
           const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
-          _setResultRow(rowId, safeName, clr, lbl, pushDiff, _pushEosErrs ? _formatEosErrors(_pushEosErrs) : null);
+          _setResultRow(rowId, safeName, clr, lbl, pushDiff,
+            _pushEosErrs ? _formatEosErrors(_pushEosErrs) : null,
+            _pushEosWarns && !_pushEosErrs ? _pushEosWarns.join('\n') : null);
         } else {
           _setResultRow(rowId, safeName, '#64748b', 'Already in sync', null);
         }
@@ -14017,6 +14036,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     }
     // EOS command rejections with empty diff — false "already in sync"
     const _ptEosErrs = _eosErrors(res);
+    const _ptEosWarns = _eosWarnings(res);
     if (_ptEosErrs && (!res.diff || !res.diff.trim())) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _updatePushPreviewError('EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_ptEosErrs));
@@ -14031,6 +14051,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     _pendingPush = { deviceName, ip, config, btnId, origText, label };
     _showPushConfirmModal(label, res.diff);
     if (_ptEosErrs) _injectEosRejectionBanner(_ptEosErrs);
+    if (_ptEosWarns) _injectEosWarningBanner(_ptEosWarns);
     // ASN injected first (afterbegin) so id-shift banner ends up above it when both present.
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
     if (_lastIdShiftResult && !_lastIdShiftResult.isFirstRun && _lastIdShiftResult.shifted.length > 0) {
