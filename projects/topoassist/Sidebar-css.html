@@ -1,4 +1,4 @@
-<!-- TopoAssist v260429.15 | 2026-04-29 12:17:23 -->
+<!-- TopoAssist v260429.16 | 2026-04-29 12:19:32 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5598,6 +5598,49 @@
   .bridge-disc-check   { cursor:pointer; accent-color:#7c3aed; flex-shrink:0; }
   .bridge-disc-cable   { color:var(--text-main); flex:1; }
   .bridge-disc-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+
+  /* ── Bridge grouped result sections ──────────────────────────────────── */
+  .br-sec { margin-top: 8px; }
+  .br-sec:first-child { margin-top: 4px; }
+  .br-sec-hdr {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 4px 3px 2px; cursor: pointer; border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+    user-select: none; -webkit-user-select: none;
+  }
+  .br-sec-hdr:hover { color: var(--text-main); background: rgba(0,0,0,0.03); }
+  .br-sec-title { flex: 1; }
+  .br-chev { display: flex; align-items: center; color: var(--text-muted); transition: transform 0.15s; flex-shrink: 0; }
+  .br-chev.collapsed { transform: rotate(-90deg); }
+  .br-sec-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px;
+  }
+  .br-sec-badge-red   { background: #fee2e2; color: #b91c1c; }
+  .br-sec-badge-green { background: #dcfce7; color: #15803d; }
+  .br-sec-badge-gray  { background: var(--bg-secondary); color: var(--text-muted); }
+  .br-sec-body { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 0 8px; }
+  .br-sec-body.collapsed { display: none; }
+  .br-sub { margin-bottom: 6px; }
+  .br-sub-hdr {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 0 2px; border-bottom: 1px solid var(--border-light);
+    margin-bottom: 3px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    color: var(--text-muted); user-select: none; -webkit-user-select: none;
+  }
+  .br-sub-label { flex: 1; }
+  .br-sub-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    background: var(--bg-secondary); color: var(--text-muted);
+    padding: 0 5px; border-radius: 8px;
+  }
+  .br-sub-list { display: flex; flex-direction: column; gap: 2px; }
+  .br-empty-msg {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--text-muted); font-style: italic; padding: 6px 2px;
+  }
 
   /* ── Reconcile results ────────────────────────────────────────────────── */
   .bridge-recon-dev {

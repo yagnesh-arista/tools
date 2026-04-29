@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Status bar: spend widget uses ▌▐ half-block borders (no background) — amber colour172 for borders and ◆ icon, spend in colour-coded fg, /budget in colour245.)
+  Last updated: 2026-04-29 (Status bar: spend widget adds token estimate — Sonnet 4.6 pricing ($3/M input, $15/M output, ~80/20 split → $5.4/M avg). Displayed as ~3.5M or ~900K beside spend. Format: ▌◆ $17.68/75 ~3.5M▐)
+  Previous: 2026-04-29 (Status bar: spend widget uses ▌▐ half-block borders (no background) — amber colour172 for borders and ◆ icon, spend in colour-coded fg, /budget in colour245.)
   Previous: 2026-04-29 (Status bar: extracted AI spend widget to tmux_ai_spend.sh (6th deployable file). Script handles: session-scoped claude check; async cache refresh on every 60s tmux tick (independent of bash prompts — fixes stale data during long claude sessions); display via heredoc python. status-right is now a clean one-liner calling the script.)
   Previous: 2026-04-29 (Status bar: AI spend widget now session-scoped — uses tmux list-panes -s -t '#{session_name}' -F '##{pane_current_command}' | grep -qx claude so widget only shows in the tmux session that has a claude pane; other sessions show nothing. #{session_name} is expanded by tmux before #() runs; ## escapes the inner format string from outer expansion.)
   Previous: 2026-04-29 (Status bar: added status-interval 60; increased status-right-length to 90; added #(python3 ...) AI spend widget that reads ~/.cache/ai-spend.json — shows 💳 $spend/$budget with color coding: green <30%, yellow <60%, colour214 <90%, red ≥90%. Cache refreshed by _ai_spend_ps1() in .bashrc every 60s. Widget is silent when no cache file exists.)

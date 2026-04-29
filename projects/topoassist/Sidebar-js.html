@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.15 | 2026-04-29 12:18:19 -->
+<!-- TopoAssist v260429.16 | 2026-04-29 12:21:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.15";  // keep in sync with Code.gs
+const APP_VERSION = "260429.16";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10486,8 +10486,8 @@ function openBridgeModal() {
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
   // Preserve results from a previous run — only hide if no results exist yet
-  const _rl = document.getElementById('bridgeResultList');
-  if (!_rl || !_rl.children.length) document.getElementById('bridgeResults').style.display = 'none';
+  const _rs = document.getElementById('bridgeResultSections');
+  if (!_rs || !_rs.children.length) document.getElementById('bridgeResults').style.display = 'none';
   document.getElementById('bridgeRunStatus').style.display = 'none';
   document.getElementById('btnRunBridge').disabled = true;
   _syncBridgeEnableCheckbox();
@@ -12739,81 +12739,109 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
 }
 
 function _renderLldpResults(results, orphans) {
-  const container = document.getElementById('bridgeResults');
-  const list = document.getElementById('bridgeResultList');
-  const badge = document.getElementById('bridgeSummaryBadge');
+  const container  = document.getElementById('bridgeResults');
+  const sectionsEl = document.getElementById('bridgeResultSections');
 
-  const matched   = results.filter(r => r.status === 'match').length;
-  const mismatched = results.filter(r => r.status === 'mismatch').length;
-  const partial   = results.filter(r => r.status === 'partial').length;
-  const unknown   = results.filter(r => r.status === 'unknown').length;
-  const skipped   = results.filter(r => r.status === 'skip').length;
-  const checkable = results.length - skipped;
+  // ── SVG icons ─────────────────────────────────────────────────────────
+  const svgCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const svgX     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const svgNoNbr = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+  const svgPart  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  const svgUnk   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
+  const svgSkip  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const svgChev  = `<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-  badge.textContent = matched + '/' + checkable + ' matched';
-  badge.className = 'bridge-summary-badge ' + (mismatched > 0 ? 'badge-fail' : 'badge-ok');
-
-  // Sort: extra cables (orphans, shown in separate section above), then by status sub-type.
-  // Within mismatch: wrong-neighbor first, then no-neighbor (no LLDP at all).
-  const _mismatchOrder = r => r.msg && r.msg.includes('no LLDP neighbor') ? 1 : 0;
-  const _statusOrder   = { mismatch: 0, partial: 2, unknown: 3, match: 4, skip: 5 };
-  const sorted = [...results].sort((a, b) => {
-    const oa = a.status === 'mismatch' ? _mismatchOrder(a) : (_statusOrder[a.status] ?? 9);
-    const ob = b.status === 'mismatch' ? _mismatchOrder(b) : (_statusOrder[b.status] ?? 9);
-    return oa - ob;
+  // ── Classify by bridgePortStatus (enum) — never by r.msg content ──────
+  const mismatchR = [], noNbrR = [], okR = [], noeosR = [];
+  results.forEach(r => {
+    if (r.status === 'match') { okR.push(r); return; }
+    if (r.status === 'partial' || r.status === 'unknown' || r.status === 'skip') { noeosR.push(r); return; }
+    if (r.status === 'mismatch') {
+      const uSt = bridgePortStatus[r.u], vSt = bridgePortStatus[r.v];
+      if (uSt === 'mismatch' || vSt === 'mismatch') mismatchR.push(r);
+      else noNbrR.push(r);
+    }
   });
 
-  // Icons: check=ok, X=mismatch(wrong), minus-circle=no-neighbor, orange?=partial, dashed=unknown, dash=skip
-  const svgCheck  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const svgX      = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-  const svgNoNbr  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
-  const svgPart   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-  const svgUnk    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
-  const svgSkip   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const orphanCount = orphans ? orphans.length : 0;
+  const issueCount  = orphanCount + mismatchR.length + noNbrR.length;
+  const skipCount   = results.filter(r => r.status === 'skip').length;
+  const checkable   = results.length - skipCount;
 
-  list.innerHTML = sorted.map(r => {
-    let icon, cls, detail = '', rowTitle = '';
-    if (r.status === 'match') {
-      icon = svgCheck; cls = 'bridge-row-ok'; rowTitle = 'Click to select this link in topology';
-    } else if (r.status === 'mismatch') {
-      const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
-      icon = noNeighbor ? svgNoNbr : svgX;
-      cls = 'bridge-row-fail';
-      detail = r.msg;
-      rowTitle = noNeighbor ? 'No LLDP neighbor — click to select link' : 'LLDP mismatch — click to select link';
-    } else if (r.status === 'partial')  { icon = svgPart;  cls = 'bridge-row-part'; detail = 'SSH failed — ' + r.msg; rowTitle = 'Partial: one or both sides unreachable via SSH'; }
-    else if (r.status === 'unknown')  { icon = svgUnk;   cls = 'bridge-row-unk';  detail = 'Not queried — no IP configured for either device'; rowTitle = 'Neither device was included in the bridge check (no IP set)'; }
-    else                              { icon = svgSkip;  cls = 'bridge-row-skip'; detail = r.msg; }
+  // ── Row renderer ───────────────────────────────────────────────────────
+  function rowHtml(r, icon, cls, detail, rowTitle) {
     const clickable = r.status !== 'skip' && r.status !== 'unknown';
-    const clickAttr = clickable ? ` onclick="_selectBridgeLink('${r.u}','${r.v}')" title="${rowTitle}"` : (rowTitle ? ` title="${rowTitle}"` : '');
-    return `<div class="bridge-result-row ${cls}"${clickAttr}>
-      <span class="bridge-row-icon">${icon}</span>
-      <span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>
-      ${detail ? `<span class="bridge-row-detail">${detail}</span>` : ''}
-    </div>`;
-  }).join('');
-
-  // Discovered links section
-  const discEl   = document.getElementById('bridgeDiscovered');
-  const discList = document.getElementById('bridgeDiscoveredList');
-  if (orphans && orphans.length) {
-    const svgPlus = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-    discList.innerHTML = orphans.map((o, i) =>
-      `<label class="bridge-disc-row">
-        <input type="checkbox" class="bridge-disc-check" id="disc_${i}"
-               data-pair="${encodeURIComponent(JSON.stringify(o))}">
-        <span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span>
-      </label>`
-    ).join('');
-    document.getElementById('bridgeDiscHdr').innerHTML =
-      `Discovered — not in sheet <span class="bridge-summary-badge" style="background:#ede9fe;color:#6d28d9;">${orphans.length} link${orphans.length !== 1 ? 's' : ''}</span>`;
-    discEl.style.display = 'block';
-  } else {
-    discEl.style.display = 'none';
+    const attrs = clickable
+      ? ` onclick="_selectBridgeLink('${r.u}','${r.v}')" title="${rowTitle}"`
+      : (rowTitle ? ` title="${rowTitle}"` : '');
+    return `<div class="bridge-result-row ${cls}"${attrs}><span class="bridge-row-icon">${icon}</span><span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>${detail ? `<span class="bridge-row-detail">${detail}</span>` : ''}</div>`;
   }
 
+  // ── Sub-section builder ────────────────────────────────────────────────
+  function subHtml(label, count, bodyHtml) {
+    return `<div class="br-sub"><div class="br-sub-hdr"><span class="br-sub-label">${label}</span><span class="br-sub-count">${count}</span></div><div class="br-sub-list">${bodyHtml}</div></div>`;
+  }
+
+  // ── Section builder ────────────────────────────────────────────────────
+  function isCollapsed(key) {
+    try { const v = localStorage.getItem('bridgeSec_' + key); if (v !== null) return v === '0'; } catch(e) {}
+    return key !== 'issues'; // Issues open by default; OK and No EOS collapsed
+  }
+  function secHtml(key, title, badgeCls, badgeText, bodyHtml, hidden) {
+    const col = isCollapsed(key);
+    return `<div class="br-sec"${hidden ? ' style="display:none"' : ''}><div class="br-sec-hdr" onclick="_toggleBrSec('${key}')"><span class="br-chev${col ? ' collapsed' : ''}" id="brChev_${key}">${svgChev}</span><span class="br-sec-title">${title}</span><span class="br-sec-badge ${badgeCls}">${badgeText}</span></div><div class="br-sec-body${col ? ' collapsed' : ''}" id="brSecBody_${key}">${bodyHtml}</div></div>`;
+  }
+
+  // ── Issues section body ────────────────────────────────────────────────
+  const issueParts = [];
+  if (orphanCount) {
+    const rows = orphans.map((o, i) =>
+      `<label class="bridge-disc-row"><input type="checkbox" class="bridge-disc-check" id="disc_${i}" data-pair="${encodeURIComponent(JSON.stringify(o))}"><span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span></label>`
+    ).join('');
+    issueParts.push(
+      subHtml('New link', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
+      `<div class="bridge-disc-actions"><button id="btnAddDiscovered" class="btn-mono" onclick="addSelectedDiscovered()">Add Selected</button></div>`
+    );
+  }
+  if (mismatchR.length) {
+    issueParts.push(subHtml('Mismatch', mismatchR.length,
+      mismatchR.map(r => rowHtml(r, svgX, 'bridge-row-fail', r.msg, 'LLDP mismatch — click to select link')).join('')));
+  }
+  if (noNbrR.length) {
+    issueParts.push(subHtml('No neighbour', noNbrR.length,
+      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — click to select link')).join('')));
+  }
+  const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
+  const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
+
+  // ── OK section body ────────────────────────────────────────────────────
+  const okBody = okR.map(r => rowHtml(r, svgCheck, 'bridge-row-ok', '', 'Click to select this link in topology')).join('')
+    || `<div class="br-empty-msg">No matched links</div>`;
+
+  // ── No EOS section body ────────────────────────────────────────────────
+  const noeosBody = noeosR.map(r => {
+    if (r.status === 'partial') return rowHtml(r, svgPart, 'bridge-row-part', 'SSH failed — ' + r.msg, 'Partial: one or both sides unreachable via SSH');
+    if (r.status === 'unknown') return rowHtml(r, svgUnk, 'bridge-row-unk', 'Not queried — no IP configured for either device', 'Neither device was included in the bridge check (no IP set)');
+    return rowHtml(r, svgSkip, 'bridge-row-skip', r.msg, '');
+  }).join('') || `<div class="br-empty-msg">No skipped links</div>`;
+
+  // ── Assemble all sections ──────────────────────────────────────────────
+  sectionsEl.innerHTML =
+    secHtml('issues', 'Issues', issueBadge[0], issueBadge[1], issueBody, false) +
+    secHtml('ok',     'OK',     'br-sec-badge-green', `${okR.length}/${checkable}`, okBody, false) +
+    secHtml('noeos',  'No EOS', 'br-sec-badge-gray',  String(noeosR.length), noeosBody, noeosR.length === 0);
+
   container.style.display = 'block';
-  _setBridgeOrphanBadge(orphans ? orphans.length : 0);
+  _setBridgeOrphanBadge(orphanCount);
+}
+
+function _toggleBrSec(key) {
+  const body = document.getElementById('brSecBody_' + key);
+  const chev = document.getElementById('brChev_' + key);
+  if (!body) return;
+  const nowCollapsed = body.classList.toggle('collapsed');
+  chev.classList.toggle('collapsed', nowCollapsed);
+  try { localStorage.setItem('bridgeSec_' + key, nowCollapsed ? '0' : '1'); } catch(e) {}
 }
 
 function addSelectedDiscovered() {
