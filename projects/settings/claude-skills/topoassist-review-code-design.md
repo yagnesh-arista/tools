@@ -284,14 +284,24 @@ For each call site that shows `showGlobalLoading` or `showModalLoading`:
 - For modal-open handlers: `hideGlobalLoading()` must come before any DOM assignments
 - For callback-queue callers (`fetchFullConfig`): `_guard` must flush the queue on timeout
 
-Timeout values: 15s for read/save ops, 20s for `fetchFullConfig`, 60s for sync/schema ops.
+**Timeout tier table:**
 
-Exempt: `saveSchemaChanges()` uses `schemaLockTimer` (30s `clearInterval`+`hideGlobalLoading`) — this is the approved alternative pattern.
+| Tier | Timeout | Operations |
+|---|---|---|
+| Read / modal open | 15s | `openTechModal`, `openIpConfigModal`, `getNetworkSettings` |
+| Save settings | 15s | `saveTechSettings`, `saveAutoIpConfig`, simple saves |
+| Config fetch | 20s | `getDeviceConfig`, `fetchFullConfig` (also clears fetchQueue) |
+| Full data load | 60s | `getTopologyData` — cold GAS start adds 10-15s; use `_fetchGuardFired` bool to discard late arrivals |
+| Force sync / schema | 60s | `forceSyncColumnOrder`, `syncSchemaPreservingOrder`, sheet rebuild — also `clearInterval(pollTimer)` |
+
+Exempt: `saveSchemaChanges()` uses `schemaLockTimer` (30s `clearInterval`+`hideGlobalLoading`) — approved alternative pattern.
 
 ✗ FAIL for each `showGlobalLoading()` site missing a `_guard` timeout.
 ✗ FAIL if `clearTimeout(_guard)` is NOT the first statement in a handler.
 ✗ FAIL if `hideGlobalLoading()` is missing from either handler.
 ✗ FAIL if a modal-open handler calls `hideGlobalLoading()` after DOM field assignments.
+✗ FAIL if `getTopologyData` guard is not 60s (was 30s — fires legitimately on cold start + large topology).
+✗ FAIL if a sync/schema op guard is not 60s or is missing entirely (e.g. `syncSchemaPreservingOrder` without `_colSyncGuard`).
 
 ---
 
