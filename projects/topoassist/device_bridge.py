@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.27 | 2026-04-29 14:37:26
+# topoassist v260429.28 | 2026-04-29 14:49:09
 """
 TopoAssist Device Bridge
 ========================
@@ -536,12 +536,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
             def run_reconcile(dev, entry):
                 ip             = (entry.get("ip") or "").strip()
                 expected_ports = entry.get("ports", [])
+                config_text    = entry.get("config_text") or None
                 if not ip:
                     with lock: results[dev] = {"ok": False, "error": "No IP configured"}
                     return
                 with sem:
                     try:
-                        res = self._reconcile_device(ip, expected_ports, all_device_names=all_device_names)
+                        res = self._reconcile_device(ip, expected_ports,
+                                                     all_device_names=all_device_names,
+                                                     config_text=config_text)
                         with lock: results[dev] = res
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
@@ -1269,17 +1272,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
-    def _reconcile_device(self, ip, expected_ports, all_device_names=None):
-        """SSH to device, find #TA-tagged interfaces not in expected_ports,
-        and BGP neighbors with #TA descriptions referencing devices not in the topology.
+    def _reconcile_device(self, ip, expected_ports, all_device_names=None, config_text=None):
+        """SSH to device, find ALL stale #TA config not in the expected/generated set.
 
         Returns:
           { ok, ta_total, matched,
             orphans:     [{name, description, linkStatus, protocol}],
-            bgp_orphans: [{neighbor, description}] }
+            bgp_orphans: [{neighbor, description}],
+            vlan_orphans: [{vid, name}],
+            vrf_orphans:  [{name}] }
 
-        Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094
-        (these are device-level, not per-link, and are never #TA-tagged by generateConfig).
+        Interface check: #TA-tagged interfaces not in expected_ports.
+        BGP check: neighbors with #TA desc referencing device not in all_device_names.
+        VLAN check: #TA-named VLANs not in config_text (requires config_text).
+        VRF check: #TA-described VRFs not in config_text (requires config_text).
+        Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094.
+        All checks are best-effort — failure returns empty list for that section.
         """
         _SKIP_RE = re.compile(
             r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$',
@@ -1288,7 +1296,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         (raw,), _ = self._run_cmds(ip, "show interfaces description")
         lines = raw.get("interfaceDescriptions", {})
-        # EOS returns a dict keyed by interface name
         ta_ifaces = []
         for name, info in lines.items():
             if _SKIP_RE.match(name):
@@ -1303,16 +1310,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "protocol":    info.get("lineProtocolStatus", ""),
             })
 
-        # Normalise expected ports to abbreviated lowercase for comparison
         expected_set = {_norm_iface(p) for p in expected_ports}
-
         orphans = [
             iface for iface in ta_ifaces
             if _norm_iface(iface["name"]) not in expected_set
         ]
 
-        # BGP neighbor orphan check — find neighbors whose #TA description references
-        # a device name not in the current topology.  Non-fatal: failure returns empty list.
+        # BGP neighbor orphan check
         bgp_orphans = []
         if all_device_names:
             known_devs = {d.lower() for d in all_device_names}
@@ -1330,7 +1334,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     exec_cmd, timeout=TIMEOUT, text=True,
                     stderr=subprocess.DEVNULL, env=_SSH_ENV,
                 )
-                # Match: neighbor <IP-or-peer-group> description ... #TA ...
                 _NEIGH_DESC_RE = re.compile(
                     r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
                     re.MULTILINE,
@@ -1343,14 +1346,71 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     if dev_m and dev_m.group(1).lower() not in known_devs:
                         bgp_orphans.append({"neighbor": neighbor, "description": desc})
             except Exception:
-                pass  # BGP check is non-fatal; interface results still returned
+                pass
+
+        # VLAN orphan check — requires config_text to know expected VLANs
+        vlan_orphans = []
+        if config_text:
+            expected_vlans = set()
+            for line in config_text.split('\n'):
+                vm = re.match(r'^vlan\s+(\d+)\s*$', line, re.IGNORECASE)
+                if vm:
+                    expected_vlans.add(int(vm.group(1)))
+            try:
+                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+                for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
+                    try:
+                        vid = int(vid_str)
+                    except ValueError:
+                        continue
+                    if vid in (4093, 4094):
+                        continue
+                    if '#TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                        vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
+            except Exception:
+                pass
+
+        # VRF orphan check — requires config_text to know expected VRFs
+        vrf_orphans = []
+        if config_text:
+            expected_vrfs = set()
+            for line in config_text.split('\n'):
+                vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
+                if vm:
+                    expected_vrfs.add(vm.group(1).lower())
+            try:
+                eos_cmd = "show running-config | section vrf instance"
+                base = _ssh_base()
+                exec_cmd = (
+                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                    if JUMP_HOST else
+                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
+                )
+                if VERBOSE:
+                    print(f"  [vrf-recon] {ip}: {eos_cmd}", flush=True)
+                vrf_text = subprocess.check_output(
+                    exec_cmd, timeout=TIMEOUT, text=True,
+                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
+                )
+                _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
+                _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
+                for vm in _VRF_INST_RE.finditer(vrf_text):
+                    vrf_name = vm.group(1)
+                    next_m = _VRF_INST_RE.search(vrf_text, vm.end())
+                    block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
+                    if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
+                        vrf_orphans.append({"name": vrf_name})
+            except Exception:
+                pass
 
         return {
-            "ok":          True,
-            "ta_total":    len(ta_ifaces),
-            "matched":     len(ta_ifaces) - len(orphans),
-            "orphans":     orphans,
-            "bgp_orphans": bgp_orphans,
+            "ok":           True,
+            "ta_total":     len(ta_ifaces),
+            "matched":      len(ta_ifaces) - len(orphans),
+            "orphans":      orphans,
+            "bgp_orphans":  bgp_orphans,
+            "vlan_orphans": vlan_orphans,
+            "vrf_orphans":  vrf_orphans,
         }
 
     # ── Parallel runner ───────────────────────────────────────────────────────
