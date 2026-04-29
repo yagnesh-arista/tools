@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (DoubleClick/TripleClick simplified: removed tmux_click.sh (shell spawn + 2x sleep was causing flash). Root bindings now inline: copy-mode \; send-keys -X select-word/line \; run -d0.05 \; send-keys -X copy-selection-and-cancel. 6→5 deployable files. copy-mode-vi DoubleClick/TripleClick also switched to copy-selection-and-cancel for consistency.)
+  Last updated: 2026-04-29 (Reverted WheelUpPane/WheelDownPane copy-mode-vi scroll inversion — broke scroll entirely; removed both bindings so default tmux scroll behavior applies.)
+  Previous: 2026-04-29 (DoubleClick/TripleClick simplified: removed tmux_click.sh (shell spawn + 2x sleep was causing flash). Root bindings now inline: copy-mode \; send-keys -X select-word/line \; run -d0.05 \; send-keys -X copy-selection-and-cancel. 6→5 deployable files. copy-mode-vi DoubleClick/TripleClick also switched to copy-selection-and-cancel for consistency.)
   Previous: 2026-04-29 (Copy mode: two fixes in Section 8 post-plugin — (1) override yank plugin's y→xclip binding back to copy-selection-and-cancel (xclip requires X11, unavailable over SSH on bus-home); (2) invert WheelUpPane/WheelDownPane in copy-mode-vi to match macOS natural scrolling direction.)
   Previous: 2026-04-29 (Status bar: spend widget adds token estimate — Sonnet 4.6 pricing ($3/M input, $15/M output, ~80/20 split → $5.4/M avg). Displayed as ~3.5M or ~900K beside spend. Format: ▌◆ $17.68/75 ~3.5M▐)
   Previous: 2026-04-29 (Status bar: spend widget uses ▌▐ half-block borders (no background) — amber colour172 for borders and ◆ icon, spend in colour-coded fg, /budget in colour245.)

@@ -4,6 +4,12 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-04-29 | tmux.conf | non-git edit
+**Reverted WheelUpPane/WheelDownPane copy-mode-vi scroll inversion. The bindings (`WheelUpPane → scroll-down`, `WheelDownPane → scroll-up`) were added to fix inverted natural scroll direction but broke scrolling entirely. Removed both bindings so tmux default scroll behavior applies.**
+Files: projects/tmux.conf/tmux.conf
+
+---
+
 ## 2026-04-28 | topoassist | non-git
 **Reverted CSS hide of .btn-modal-close in body.mode-schema**
 Reason: hiding our [×] separated [−] and [×] into different UI layers — [−] in modal-header below, [×] in GAS dialog chrome above. Design language requires [−][×] paired in modal-header. GAS showModelessDialog chrome [×] is unavoidable OS-level dialog frame (like browser window close) — not a duplicate we can eliminate.
