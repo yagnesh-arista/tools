@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.35 | 2026-04-29 16:28:15 -->
+<!-- TopoAssist v260429.36 | 2026-04-29 16:43:12 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.35";  // keep in sync with Code.gs
+const APP_VERSION = "260429.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9721,7 +9721,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260429.5"
+VERSION = "260429.6"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -9913,7 +9913,7 @@ def _extract_eos_errors(text):
             break
         if s.startswith("%"):
             errors.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
-        elif s.startswith("!") and len(s) > 1:
+        elif s.startswith("!") and len(s) > 1 and not ("#" in s and "(config" in s):
             warnings.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
         elif "#" in s and "(config" in s:
             cmd = s.split("#", 1)[-1].strip()
@@ -11623,19 +11623,10 @@ function runReconcile() {
   }
 
   btn.disabled = true;
-  btn.textContent = 'Checking bridge…';
+  btn.textContent = 'Reconciling…';
   reconPanel.style.display = 'none';
 
-  fetch(BRIDGE_URL + '/health', { signal: AbortSignal.timeout(4000) })
-    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(() => _doRunReconcile(btn, reconPanel, reconBody, devices))
-    .catch(() => {
-      btn.disabled = false;
-      btn.textContent = 'Reconcile';
-      reconPanel.style.display = 'block';
-      reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">' +
-        'Device Bridge is not running or unreachable. Start it from the Device Bridge panel and try again.</div>';
-    });
+  _doRunReconcile(btn, reconPanel, reconBody, devices);
 }
 
 async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
@@ -11688,7 +11679,8 @@ async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const inp = document.getElementById('bridgeIp_' + safeId);
-    const ip  = (inp ? inp.value.trim() : '') || mgmtIps[n.id] || '';
+    let ip  = (inp ? inp.value.trim() : '') || mgmtIps[n.id] || '';
+    if (!ip) ip = n.id;  // hostname fallback — device_bridge.py resolves via DNS
     ipMap[n.id] = { ip, ports: portsPerDev[n.id] || [], config_text: configMap[n.id] || '' };
   });
 

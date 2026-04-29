@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.31 | 2026-04-29 14:58:20
+# topoassist v260429.36 | 2026-04-29 16:42:58
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260429.5"
+VERSION           = "260429.6"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -403,8 +403,10 @@ def _extract_eos_errors(text):
             # in the same block don't re-inject the context line.
             if _BLOCK_CMD_RE.match(prev_cmd):
                 last_block_in_errors = current_block
-        elif s.startswith('!') and len(s) > 1:
+        elif s.startswith('!') and len(s) > 1 and not ('#' in s and '(config' in s):
             # EOS informational note — command was accepted, just a caveat.
+            # Exclude PTY prompt-echo lines (!HOSTNAME(config-s-...)#cmd) — those are
+            # echoed commands, not warnings, and were being misclassified.
             warnings.append(f'{prev_cmd} \u2192 {s}' if prev_cmd else s)
         elif '#' in s and '(config' in s:
             # PTY prompt echo: 'HOSTNAME(config-s-...)#the command' → 'the command'
