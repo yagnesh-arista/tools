@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-25 (Section 7: added fix-path alias — sources ~/.bashrc to repair PATH in old tmux panes that predate bashrc changes. Old panes retain their creation-time environment; fix-path is the one-command recovery.)
+Last updated: 2026-04-29 (Section 10: added _ai_spend_ps1() — AI proxy spend right-aligned in prompt via PROMPT_COMMAND; reads ~/.cache/ai-spend.json, refreshes in background every 60s via curl to https://ai-proxy.infra.corp.arista.io/key/info; color-coded green/yellow/orange/red by utilization %; uses terminal cursor save/restore (\\e[s/\\e[u) for right-alignment; stat -c %Y (GNU/Linux); disown to detach background curl)
+Previous: 2026-04-25 (Section 7: added fix-path alias — sources ~/.bashrc to repair PATH in old tmux panes that predate bashrc changes. Old panes retain their creation-time environment; fix-path is the one-command recovery.)
 Previous: 2026-04-25 (Section 11 NVM: fixed lts/* alias resolution — old code prepended lts/ to a value already containing lts/ (e.g. lts/* → alias/lts/lts/* which doesn't exist). Fixed with a while loop that strips lts/ prefix each hop: lts/* → lts/krypton → v24.14.1. This was silently failing and leaving clasp/node out of PATH.)
 Previous: 2026-04-25 (Section 0: stricter ble.sh guard — checks $TERM != dumb/unknown to block loading during Python SSH automation. Added early exit guard (case $-) after section 0 to stop non-interactive shells from loading nvm/fzf/atuin — fixes CliTimeout in Python SSH scripts. Section 7: eod alias wrapped in subshell (no cd - noise); added fix-ssh alias to repair dead SSH_AUTH_SOCK in tmux. Section 10: __git_ps1 guard to prevent "command not found" spam if git completion missing.)
 Previous: 2026-04-24 (Section 2a: added stty -ixon to disable XON/XOFF flow control so C-s reaches tmux as prefix key)
@@ -56,6 +57,13 @@ CURRENT .bashrc SECTIONS
 9.  History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
     PROMPT_COMMAND: guarded with [[ != *history -a* ]] to prevent stacking on re-source
 10. Prompt (PS1): green user@host, blue cwd, git branch via __git_ps1 (with fallback if missing)
+    _ai_spend_ps1(): right-aligned AI spend via PROMPT_COMMAND
+      Cache: ~/.cache/ai-spend.json (refreshed in background every 60s, disown'd)
+      API: https://ai-proxy.infra.corp.arista.io/key/info, Bearer from ~/.ai-proxy-api-key
+      Response: .info.spend, .info.max_budget
+      Colors: green <30%, yellow <60%, orange (38;5;214) <90%, red >=90%
+      Right-align: \e[s save cursor, \e[0;COL H move to column, print, \e[u restore
+      stat -c %Y (GNU/Linux — NOT BSD -f %m)
 11. NVM setup
 12. Atuin: eval "$(atuin init bash --disable-up-arrow --disable-ctrl-r)"
     Provides ghost-text autosuggestions via ble.sh integration; fzf/ble-bind own Ctrl+R and up arrow

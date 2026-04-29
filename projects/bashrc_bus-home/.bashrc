@@ -1,4 +1,4 @@
-# bashrc_bus-home v260425.3 | 2026-04-25 11:52:56
+# bashrc_bus-home v260429.1 | 2026-04-29 10:38:12
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -97,12 +97,50 @@ export HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
 [[ "$PROMPT_COMMAND" != *"history -a"* ]] && PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
-# 10. Prompt (with git branch fallback if __git_ps1 missing)
+# 10. Prompt (with git branch + AI spend in right-aligned RPROMPT via PROMPT_COMMAND)
+_ai_spend_ps1() {
+    local cache="$HOME/.cache/ai-spend.json"
+    local key_file="$HOME/.ai-proxy-api-key"
+    local api_url="https://ai-proxy.infra.corp.arista.io/key/info"
+
+    # Refresh cache in background if missing or older than 60s
+    if [[ ! -f "$cache" ]] || \
+       (( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) > 60 )); then
+        mkdir -p "$HOME/.cache"
+        ( curl -sf --max-time 5 \
+            -H "Authorization: Bearer $(cat "$key_file" 2>/dev/null)" \
+            "$api_url" 2>/dev/null \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({'spend':d['info']['spend'],'max_budget':d['info']['max_budget']}))" \
+          > "${cache}.tmp" 2>/dev/null && mv "${cache}.tmp" "$cache" ) &
+        disown
+    fi
+
+    [[ -f "$cache" ]] || return
+
+    local spend limit pct color reset="\e[0m"
+    spend=$(python3 -c "import json; d=json.load(open('$cache')); print(f\"{d['spend']:.2f}\")" 2>/dev/null)
+    limit=$(python3 -c "import json; d=json.load(open('$cache')); print(int(d['max_budget']))" 2>/dev/null)
+    [[ -z "$spend" || -z "$limit" || "$limit" == "0" ]] && return
+
+    pct=$(python3 -c "print(int(float('$spend')/float('$limit')*100))" 2>/dev/null)
+    if   (( pct < 30 )); then color="\e[32m"    # green
+    elif (( pct < 60 )); then color="\e[33m"    # yellow
+    elif (( pct < 90 )); then color="\e[38;5;214m"  # orange
+    else                      color="\e[31m"    # red
+    fi
+
+    # Print right-aligned spend (cursor to column = COLUMNS - length of spend string)
+    local spend_str="💳 \$${spend}/\$${limit}"
+    local spend_len=$(( ${#spend_str} - 2 ))  # -2 for emoji width offset
+    printf "\e[s\e[0;%dH${color}${spend_str}${reset}\e[u" "$(( COLUMNS - spend_len - 2 ))"
+}
+
 if type __git_ps1 >/dev/null 2>&1; then
     PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$(__git_ps1 " (%s)")\$ '
 else
     PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
 fi
+[[ "$PROMPT_COMMAND" != *"_ai_spend_ps1"* ]] && PROMPT_COMMAND="_ai_spend_ps1${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
 # 11. NVM
 export NVM_DIR="$HOME/.nvm"
