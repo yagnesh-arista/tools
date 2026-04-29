@@ -1,7 +1,7 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Status bar: AI spend widget now guarded by pgrep -x claude — widget only appears when a claude process is running; silent (empty) otherwise. pgrep check via os.popen in python3 one-liner; sys.exit() on no match.)
+  Last updated: 2026-04-29 (Status bar: AI spend widget now session-scoped — uses tmux list-panes -s -t '#{session_name}' -F '##{pane_current_command}' | grep -qx claude so widget only shows in the tmux session that has a claude pane; other sessions show nothing. #{session_name} is expanded by tmux before #() runs; ## escapes the inner format string from outer expansion.)
   Previous: 2026-04-29 (Status bar: added status-interval 60; increased status-right-length to 90; added #(python3 ...) AI spend widget that reads ~/.cache/ai-spend.json — shows 💳 $spend/$budget with color coding: green <30%, yellow <60%, colour214 <90%, red ≥90%. Cache refreshed by _ai_spend_ps1() in .bashrc every 60s. Widget is silent when no cache file exists.)
   Previous: 2026-04-25 (Removed Vim-Tmux-Navigator smart pane switching (C-h/j/k/l) — was causing backspace conflict. Added explicit unbind-key -n C-h/C-j/C-k/C-l to purge stale bindings from tmux memory on reload.)
   Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
@@ -368,13 +368,17 @@ Layout: [session] | windows centered | 💳 spend sync-status online-status [hos
   status-right-length: 90
 
   AI spend widget (#(python3 ...)):
-    Guard: pgrep -x claude — widget only appears when a claude process is running.
+    Guard: session-scoped — `tmux list-panes -s -t '#{session_name}' -F '#{pane_current_command}' | grep -qx claude`
+    Widget only appears in sessions that have a pane actively running claude.
+    `#{session_name}` expands before #() runs; `##` in the .conf escapes to `#` so the
+    inner format string reaches list-panes intact (not expanded by the outer format pass).
     Reads ~/.cache/ai-spend.json (written by _ai_spend_ps1() in .bashrc).
     Format: 💳 $<spend>/<budget>  (e.g. 💳 $12.34/$50)
     Colors: green <30% · yellow <60% · colour214 <90% · red ≥90%
-    Silent (no output) if claude not running, cache missing, or max_budget is 0.
-    Cache refresh: handled by .bashrc _ai_spend_ps1() via PROMPT_COMMAND; tmux
-    status-interval re-runs the #() command every 60s to pick up the updated file.
+    Silent (no output) if no claude pane, cache missing, or max_budget is 0.
+    Cache refresh: handled by .bashrc _ai_spend_ps1() via PROMPT_COMMAND (triggers on
+    each bash prompt, but API is only called when cache is >60s old).
+    Display refresh: tmux status-interval 60 re-runs #() every 60s.
 
   window-status-separator: ' | '
   status justified: centre (windows centered)
