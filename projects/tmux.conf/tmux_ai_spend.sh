@@ -1,5 +1,5 @@
 #!/bin/bash
-# tmux.conf v260429.4 | 2026-04-29 11:36:38
+# tmux.conf v260429.5 | 2026-04-29 11:41:40
 # tmux_ai_spend.sh — AI spend widget for tmux status bar
 # Called by status-right: #(~/.tmux/tmux_ai_spend.sh '#{session_name}')
 # Refreshes cache on every tmux tick (every 60s via status-interval),
@@ -37,7 +37,7 @@ try:
     if not m: sys.exit()
     p = int(s / m * 100)
     c = 'green' if p < 30 else 'yellow' if p < 60 else 'colour214' if p < 90 else 'red'
-    print(f'#[fg={c}]💳 ${s:.2f}/${int(m)}#[fg=default]')
+    print(f'#[bg=colour235 fg=colour172] ◆ #[fg={c}]${s:.2f}#[fg=colour245]/${int(m)} #[bg=default fg=default]')
 except:
     pass
 PYEOF
