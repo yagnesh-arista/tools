@@ -8,7 +8,9 @@ Run the following checks in order:
 
 3. **hasKey() usage**: Grep for `.has(` in Code.gs. Flag any usage where the Set/Map contains device names (those should use hasKey() instead). hasKey() is case-insensitive; .has() is not — device names in Sets are lowercase but sheet names are original-cased.
 
-4. **VERSION sync**: Grep for the VERSION constant in device_bridge.py and the downloadBridgeScript() template block in Sidebar-js.html. Confirm they match. Also check the /health endpoint docstring line matches the same version.
+4. **device_bridge.py ↔ embedded template logic sync**: For every function that exists in `device_bridge.py` that is also present in the embedded template inside `downloadBridgeScript()` in `Sidebar-js.html` (e.g. `_extract_eos_errors`, `_push_config`, `_abort_stale_sessions`), confirm the function bodies are equivalent. If this session changed any such function in one file, check that the same change was applied to the other. Flag any divergence.
+
+5. **VERSION sync**: Grep for the VERSION constant in device_bridge.py and the downloadBridgeScript() template block in Sidebar-js.html. Confirm they match. Also check the /health endpoint docstring line matches the same version.
 
 5. **MLAG explicit only**: Grep for any >= 4 threshold checks or "poGlobalCount" logic in Code.gs that might re-introduce the old heuristic. MLAG pairs must be declared exclusively via DEVICE_MLAG_PEERS — no count-based detection.
 
