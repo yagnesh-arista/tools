@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-04-29 (Section 10: fixed _ai_spend_ps1() — double-fork pattern ( ( ... ) & ) suppresses [N] PID job noise; PID-unique tmp file ${cache}.tmp.$$ prevents mv race when prompts fire quickly; output printed on own line above PS1 (simpler/reliable vs cursor right-alignment); || rm -f tmp cleanup on failure)
+Last updated: 2026-04-29 (Section 10: _ai_spend_ps1() now only refreshes the cache — display moved to tmux status bar (status-right #(python3 ...) in tmux.conf reads ~/.cache/ai-spend.json). Function body stripped to cache-refresh only; printf removed.)
+Previous: 2026-04-29 (Section 10: fixed _ai_spend_ps1() — double-fork pattern ( ( ... ) & ) suppresses [N] PID job noise; PID-unique tmp file ${cache}.tmp.$$ prevents mv race when prompts fire quickly; output printed on own line above PS1 (simpler/reliable vs cursor right-alignment); || rm -f tmp cleanup on failure)
 Previous: 2026-04-25 (Section 7: added fix-path alias — sources ~/.bashrc to repair PATH in old tmux panes that predate bashrc changes. Old panes retain their creation-time environment; fix-path is the one-command recovery.)
 Previous: 2026-04-25 (Section 11 NVM: fixed lts/* alias resolution — old code prepended lts/ to a value already containing lts/ (e.g. lts/* → alias/lts/lts/* which doesn't exist). Fixed with a while loop that strips lts/ prefix each hop: lts/* → lts/krypton → v24.14.1. This was silently failing and leaving clasp/node out of PATH.)
 Previous: 2026-04-25 (Section 0: stricter ble.sh guard — checks $TERM != dumb/unknown to block loading during Python SSH automation. Added early exit guard (case $-) after section 0 to stop non-interactive shells from loading nvm/fzf/atuin — fixes CliTimeout in Python SSH scripts. Section 7: eod alias wrapped in subshell (no cd - noise); added fix-ssh alias to repair dead SSH_AUTH_SOCK in tmux. Section 10: __git_ps1 guard to prevent "command not found" spam if git completion missing.)
@@ -57,15 +58,14 @@ CURRENT .bashrc SECTIONS
 9.  History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
     PROMPT_COMMAND: guarded with [[ != *history -a* ]] to prevent stacking on re-source
 10. Prompt (PS1): green user@host, blue cwd, git branch via __git_ps1 (with fallback if missing)
-    _ai_spend_ps1(): AI spend printed on own line above PS1 via PROMPT_COMMAND
-      Cache: ~/.cache/ai-spend.json (refreshed in background every 60s)
+    _ai_spend_ps1(): cache-refresh only — NO display output. Runs via PROMPT_COMMAND.
+      Refreshes ~/.cache/ai-spend.json in background every 60s if stale.
       API: https://ai-proxy.infra.corp.arista.io/key/info, Bearer from ~/.ai-proxy-api-key
-      Response: .info.spend, .info.max_budget
-      Colors: green <30%, yellow <60%, orange (38;5;214) <90%, red >=90%
+      Response fields: .info.spend, .info.max_budget
       stat -c %Y (GNU/Linux — NOT BSD -f %m)
       INVARIANT: use double-fork ( ( ... ) & ) to suppress [N] PID job noise
       INVARIANT: use ${cache}.tmp.$$ (PID-unique) to prevent mv race on rapid prompts
-      INVARIANT: print on own line (printf "...\n") — do NOT use cursor positioning tricks
+      Display: handled by tmux status bar (#(python3 ...) in tmux.conf reads the cache file)
 11. NVM setup
 12. Atuin: eval "$(atuin init bash --disable-up-arrow --disable-ctrl-r)"
     Provides ghost-text autosuggestions via ble.sh integration; fzf/ble-bind own Ctrl+R and up arrow

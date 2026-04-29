@@ -1,4 +1,4 @@
-# bashrc_bus-home v260429.2 | 2026-04-29 10:48:07
+# bashrc_bus-home v260429.3 | 2026-04-29 10:55:39
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -116,22 +116,7 @@ _ai_spend_ps1() {
           ) &>/dev/null & ) 2>/dev/null
     fi
 
-    [[ -f "$cache" ]] || return
-
-    local spend limit pct color
-    spend=$(python3 -c "import json; d=json.load(open('$cache')); print(f\"{d['spend']:.2f}\")" 2>/dev/null)
-    limit=$(python3 -c "import json; d=json.load(open('$cache')); print(int(d['max_budget']))" 2>/dev/null)
-    [[ -z "$spend" || -z "$limit" || "$limit" == "0" ]] && return
-
-    pct=$(python3 -c "print(int(float('$spend')/float('$limit')*100))" 2>/dev/null)
-    if   (( pct < 30 )); then color="\e[32m"        # green
-    elif (( pct < 60 )); then color="\e[33m"        # yellow
-    elif (( pct < 90 )); then color="\e[38;5;214m"  # orange
-    else                      color="\e[31m"        # red
-    fi
-
-    # Print on its own line above PS1 — simpler and more reliable than right-alignment tricks
-    printf "${color}💳 \$${spend}/\$${limit}\e[0m\n"
+    # Display is handled by tmux status bar — this function only refreshes the cache
 }
 
 if type __git_ps1 >/dev/null 2>&1; then
