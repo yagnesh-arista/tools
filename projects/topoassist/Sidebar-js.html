@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.22 | 2026-04-29 13:42:06 -->
+<!-- TopoAssist v260429.23 | 2026-04-29 14:01:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.22";  // keep in sync with Code.gs
+const APP_VERSION = "260429.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9721,7 +9721,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260429.2"
+VERSION = "260429.3"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -10160,7 +10160,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None):
         lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
@@ -10169,7 +10169,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             pass
         if all_ifaces and not dry_run:
-            orphan_cmds = self._find_ta_orphans(ip, config_text)
+            orphan_cmds = self._find_ta_orphans(ip, config_text, all_device_names=all_device_names)
             if orphan_cmds:
                 lines = orphan_cmds + lines
         asn_changed = None
@@ -10282,9 +10282,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
 
     # -- Orphan detection ------------------------------------------------------
-    def _find_ta_orphans(self, ip, config_text):
-        """Return EOS cleanup commands for #TA-tagged interfaces on the device
-        not present in config_text. Best-effort — returns [] on any failure."""
+    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
+        """Return EOS cleanup commands for stale #TA config not in config_text.
+
+        Interface orphans (physical/PO): default interface X
+        Interface orphans (sub-int/SVI): no interface X
+        BGP neighbor orphans (global context): router bgp ASN / no neighbor X
+          — only when all_device_names provided; orphan = referenced device gone.
+        Best-effort — returns [] on any failure."""
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
@@ -10307,6 +10312,39 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 cleanup.append(f"no interface {name}")
             else:
                 cleanup.append(f"default interface {name}")
+        if all_device_names:
+            asn_m = re.search(r"^router bgp\s+(\d+)", config_text, re.MULTILINE | re.IGNORECASE)
+            if asn_m:
+                asn = asn_m.group(1)
+                try:
+                    eos_cmd = "show running-config | section router bgp"
+                    base = _ssh_base()
+                    exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                                if JUMP_HOST else
+                                [*base, f"{SSH_USER}@{ip}", eos_cmd])
+                    if VERBOSE:
+                        print(f"  [bgp-orphan] {ip}: {eos_cmd}", flush=True)
+                    bgp_text = subprocess.check_output(
+                        exec_cmd, timeout=TIMEOUT, text=True,
+                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
+                    global_bgp = re.split(r"\\n\\s+vrf\\s+", bgp_text, maxsplit=1)[0]
+                    known_devs = {d.lower() for d in all_device_names}
+                    _NEIGH_DESC_RE = re.compile(
+                        r"^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?#TA\\S*.*)",
+                        re.MULTILINE)
+                    _DEV_RE = re.compile(r"(?:Overlay to|To)\\s+(\\S+)", re.IGNORECASE)
+                    stale = []
+                    for m in _NEIGH_DESC_RE.finditer(global_bgp):
+                        dev_m = _DEV_RE.search(m.group(2).strip())
+                        if dev_m and dev_m.group(1).lower() not in known_devs:
+                            stale.append(m.group(1))
+                    if stale:
+                        cleanup.append(f"router bgp {asn}")
+                        for neigh in stale:
+                            cleanup.append(f"   no neighbor {neigh}")
+                        cleanup.append("!")
+                except Exception:
+                    pass
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
@@ -11695,7 +11733,8 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter }),
+      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter,
+        allDeviceNames: currentData && currentData.nodes ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id) : [] }),
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
@@ -12325,14 +12364,16 @@ async function pushAllConfigs() {
   const body = document.getElementById('generateAllRight');
   body.style.display = '';  // reveal right pane
 
-  // Device list: EOS devices in current topology, filtered by Push Targets checklist (all selected by default)
-  const deviceNames = (currentData && currentData.nodes || [])
+  // All Arista devices in topology — used for BGP #TA orphan cleanup during push
+  const _allArista = (currentData && currentData.nodes || [])
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
-    .map(n => n.id)
-    .filter(name => {
-      const cb = document.getElementById('genAllDev_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
-      return !cb || cb.checked;
-    });
+    .map(n => n.id);
+
+  // Device list: EOS devices in current topology, filtered by Push Targets checklist (all selected by default)
+  const deviceNames = _allArista.filter(name => {
+    const cb = document.getElementById('genAllDev_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    return !cb || cb.checked;
+  });
 
   if (!deviceNames.length) {
     body.insertAdjacentHTML('beforeend',
@@ -12499,7 +12540,7 @@ async function pushAllConfigs() {
           const resp = await fetch(BRIDGE_URL + '/pushconfig', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ipMap: { [name]: { ip, config } }, all_ifaces: true }),
+            body:    JSON.stringify({ ipMap: { [name]: { ip, config } }, all_ifaces: true, allDeviceNames: _allArista }),
           });
           if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
           const data = await resp.json();

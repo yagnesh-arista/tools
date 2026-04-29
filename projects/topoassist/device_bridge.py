@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.22 | 2026-04-29 13:41:52
+# topoassist v260429.23 | 2026-04-29 14:01:19
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260429.2"
+VERSION           = "260429.3"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -505,10 +505,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             self._json(400, {"error": "invalid JSON body"})
             return
-        ip_map       = body.get("ipMap", {})
-        dry_run      = bool(body.get("dry_run", False))
-        open_session = bool(body.get("open_session", False))
-        all_ifaces   = bool(body.get("all_ifaces", False))
+        ip_map           = body.get("ipMap", {})
+        dry_run          = bool(body.get("dry_run", False))
+        open_session     = bool(body.get("open_session", False))
+        all_ifaces       = bool(body.get("all_ifaces", False))
+        all_device_names = body.get("allDeviceNames")  # for BGP #TA neighbor cleanup
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
         if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -591,7 +592,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         try:
                             res = self._push_config(ip, config, dry_run=dry_run,
                                                     open_only=open_session,
-                                                    all_ifaces=all_ifaces)
+                                                    all_ifaces=all_ifaces,
+                                                    all_device_names=all_device_names)
                             with lock: results[dev] = res
                             break
                         except subprocess.TimeoutExpired:
@@ -844,7 +846,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     # ── Config push via configure session ────────────────────────────────────
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None):
         """Push config_text to device using a uniquely-named EOS configure session.
 
         Modes:
@@ -888,7 +890,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Prepend cleanup for orphan #TA interfaces not present in this push.
         # Best-effort — failures are silently ignored so a query error never blocks push.
         if all_ifaces and not dry_run:
-            orphan_cmds = self._find_ta_orphans(ip, config_text)
+            orphan_cmds = self._find_ta_orphans(ip, config_text, all_device_names=all_device_names)
             if orphan_cmds:
                 lines = orphan_cmds + lines
 
@@ -1087,14 +1089,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
         raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
 
     # ── Orphan detection ──────────────────────────────────────────────────────
-    def _find_ta_orphans(self, ip, config_text):
-        """Return EOS cleanup commands for #TA-tagged interfaces on the device
-        that are NOT present in config_text.  Called before a full-device push
-        so orphans are cleaned up in the same configure session.
+    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
+        """Return EOS cleanup commands for stale #TA config not in config_text.
 
-        Physical/PO orphans → `default interface X`
-        Sub-interface / SVI orphans → `no interface X`
-        Skips: Loopback, Management, Vxlan, Vlan4093/4094 (system interfaces).
+        Interface orphans (physical/PO) → `default interface X`
+        Interface orphans (sub-int/SVI) → `no interface X`
+        BGP neighbor orphans (global context only) → `router bgp ASN / no neighbor X`
+          — only when all_device_names is provided; orphan = referenced device name
+            is not in all_device_names.  VRF BGP neighbors are skipped (global only).
+
+        Skips Loopback, Management, Vxlan, Vlan4093/4094 for interface check.
         Returns [] on any query failure — orphan cleanup is best-effort.
         """
         try:
@@ -1122,6 +1126,51 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 cleanup.append(f'no interface {name}')
             else:
                 cleanup.append(f'default interface {name}')
+
+        # BGP neighbor orphan cleanup — find neighbors whose #TA description
+        # references a device no longer in the topology and remove them.
+        # Only runs when all_device_names is provided (requires caller to pass it).
+        if all_device_names:
+            asn_m = re.search(r'^router bgp\s+(\d+)', config_text, re.MULTILINE | re.IGNORECASE)
+            if asn_m:
+                asn = asn_m.group(1)
+                try:
+                    eos_cmd = "show running-config | section router bgp"
+                    base = _ssh_base()
+                    exec_cmd = (
+                        [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                        if JUMP_HOST else
+                        [*base, f"{SSH_USER}@{ip}", eos_cmd]
+                    )
+                    if VERBOSE:
+                        print(f"  [bgp-orphan] {ip}: {eos_cmd}", flush=True)
+                    bgp_text = subprocess.check_output(
+                        exec_cmd, timeout=TIMEOUT, text=True,
+                        stderr=subprocess.DEVNULL, env=_SSH_ENV,
+                    )
+                    # Only scan global BGP context — stop before first VRF sub-context.
+                    global_bgp = re.split(r'\n\s+vrf\s+', bgp_text, maxsplit=1)[0]
+                    known_devs = {d.lower() for d in all_device_names}
+                    _NEIGH_DESC_RE = re.compile(
+                        r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
+                        re.MULTILINE,
+                    )
+                    _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
+                    stale_neighbors = []
+                    for m in _NEIGH_DESC_RE.finditer(global_bgp):
+                        neighbor = m.group(1)
+                        desc     = m.group(2).strip()
+                        dev_m    = _DEV_RE.search(desc)
+                        if dev_m and dev_m.group(1).lower() not in known_devs:
+                            stale_neighbors.append(neighbor)
+                    if stale_neighbors:
+                        cleanup.append(f'router bgp {asn}')
+                        for neigh in stale_neighbors:
+                            cleanup.append(f'   no neighbor {neigh}')
+                        cleanup.append('!')
+                except Exception:
+                    pass  # BGP cleanup is best-effort
+
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
@@ -1234,7 +1283,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
                     re.MULTILINE,
                 )
-                _DEV_RE = re.compile(r'Overlay to (\S+)\s+#TA', re.IGNORECASE)
+                _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
                 for m in _NEIGH_DESC_RE.finditer(bgp_text):
                     neighbor = m.group(1)
                     desc     = m.group(2).strip()
