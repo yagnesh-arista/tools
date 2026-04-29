@@ -4,9 +4,9 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
-## 2026-04-29 | tmux.conf | non-git edit
-**Reverted WheelUpPane/WheelDownPane copy-mode-vi scroll inversion. The bindings (`WheelUpPane → scroll-down`, `WheelDownPane → scroll-up`) were added to fix inverted natural scroll direction but broke scrolling entirely. Removed both bindings so tmux default scroll behavior applies.**
-Files: projects/tmux.conf/tmux.conf
+## 2026-04-29 | tmux.conf | non-git edit (full rollback to 696aea5)
+**Rolled back entire tmux.conf + tmux_click.sh to yesterday's state (commit 696aea5). Multiple attempts to fix scroll direction (WheelUpPane/WheelDownPane) all failed — broke scroll entirely. Reverted to working baseline to be revisited later. Lost today's changes: DoubleClick inline simplification, AI spend widget, xclip→OSC52 y-key fix.**
+Files: projects/tmux.conf/tmux.conf, projects/tmux.conf/tmux_click.sh
 
 ---
 
