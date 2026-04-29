@@ -1,7 +1,7 @@
-<!-- TopoAssist v260428.48 | 2026-04-28 14:54:30 -->
+<!-- TopoAssist v260429.1 | 2026-04-29 09:11:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260428.48";  // keep in sync with Code.gs
+const APP_VERSION = "260429.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2963,11 +2963,22 @@ function runValidation(logIssues) {
   // =========================================================
   // Bridge CHECKS (populated by runBridgeCheck — empty if not yet run)
   // =========================================================
+  // Build port→result lookup for detail messages (reused in _auditIssues section below).
+  // Keyed by port ID (r.u / r.v) — gives full detail msg for link strip and audit log.
+  const _portToResult = {};
+  if (_lastBridgeResults) {
+    _lastBridgeResults.forEach(r => {
+      if (r.status === 'mismatch') { _portToResult[r.u] = r; _portToResult[r.v] = r; }
+    });
+  }
   Object.entries(bridgePortStatus).forEach(([portId, status]) => {
     const [_bDev, _bPort] = portId.split(':');
     if (status === 'mismatch') {
       auditCheckHadIssue.bridgeAuditFlagMismatch = (auditCheckHadIssue.bridgeAuditFlagMismatch || 0) + 1;
-      if (bridgeAuditFlagMismatch) flagErrorOnPort(portId, `LLDP mismatch`);
+      if (bridgeAuditFlagMismatch) {
+        const _br = _portToResult[portId];
+        flagErrorOnPort(portId, _br && _br.msg ? `LLDP mismatch: ${_br.msg}` : `LLDP mismatch`);
+      }
     } else if (status === 'missing') {
       auditCheckHadIssue.bridgeAuditFlagMissing = (auditCheckHadIssue.bridgeAuditFlagMissing || 0) + 1;
       if (bridgeAuditFlagMissing) flagErrorOnPort(portId, `LLDP missing`);
@@ -2995,17 +3006,34 @@ function runValidation(logIssues) {
     });
   });
 
-  // Live issues → _auditIssues (from last bridge check state — no replay via setStatus)
-  if (_lastBridgeResults) {
-    _lastBridgeResults.filter(r => r.status === 'mismatch').forEach(r => {
-      const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
-      if (noNeighbor && bridgeAuditFlagMissing) {
-        _auditIssues.push({ msg: `[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, cls: 'status-error', src: 'live' });
-      } else if (!noNeighbor && bridgeAuditFlagMismatch) {
-        _auditIssues.push({ msg: `[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, cls: 'status-error', src: 'live' });
+  // Live issues → _auditIssues from bridgePortStatus (same source as link coloring & audit count).
+  // Classification follows bridgePortStatus value, NOT r.msg content — this avoids misrouting
+  // mixed-case links (wrong neighbor on one end, no neighbor on other) to the wrong audit flag.
+  // _portToResult (built in Bridge CHECKS section above) provides full detail messages.
+  // Dedup by link pair: a link with both ends in bridgePortStatus must not create two entries.
+  const _bridgeAuditSeen = new Set();
+  Object.entries(bridgePortStatus).forEach(([portId, status]) => {
+    const _br = _portToResult[portId];
+    if (status === 'mismatch' && bridgeAuditFlagMismatch) {
+      if (_br) {
+        const _pk = [_br.u, _br.v].sort().join('||');
+        if (!_bridgeAuditSeen.has(_pk)) {
+          _bridgeAuditSeen.add(_pk);
+          _auditIssues.push({ msg: `[Audit - Live] LLDP mismatch: ${_br.u} \u2194 ${_br.v}${_br.msg ? ' \u2014 ' + _br.msg : ''}`, cls: 'status-error', src: 'live' });
+        }
+      } else {
+        _auditIssues.push({ msg: `[Audit - Live] LLDP mismatch: ${portId}`, cls: 'status-error', src: 'live' });
       }
-    });
-  }
+    } else if (status === 'missing' && bridgeAuditFlagMissing) {
+      if (_br) {
+        const _pk = [_br.u, _br.v].sort().join('||');
+        if (!_bridgeAuditSeen.has(_pk)) {
+          _bridgeAuditSeen.add(_pk);
+          _auditIssues.push({ msg: `[Audit - Live] Missing LLDP neighbor: ${_br.u} \u2194 ${_br.v} \u2014 ${_br.msg}`, cls: 'status-error', src: 'live' });
+        }
+      }
+    }
+  });
   if (_lastBridgeOrphans && _lastBridgeOrphans.length && bridgeAuditFlagMismatch) {
     _lastBridgeOrphans.forEach(o => {
       _auditIssues.push({ msg: `[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, cls: 'status-error', src: 'live' });
@@ -12671,17 +12699,20 @@ function _compareBridgeData(bridgeData) {
 
 // Log bridge check results to statusLog for All/Errors/Bridge tabs.
 // [Audit - Live] emitted unconditionally — no dedup (each bridge check is a distinct event).
-//   runValidation() rebuilds _auditIssues from _lastBridgeResults for the Audit tab separately.
+//   runValidation() rebuilds _auditIssues from bridgePortStatus for the Audit tab separately.
 // [Bridge] for SSH/cmd failures (operational) — only when dsData is provided, never replayed.
-// logIssues param retained for call-site compat but ignored — no dedup logic remains.
+// Classification uses bridgePortStatus (same source as link coloring), NOT r.msg content —
+// avoids misrouting mixed-case links (wrong neighbor one end, no neighbor other end).
 function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
   if (results) {
     results.filter(r => r.status === 'mismatch').forEach(r => {
-      const noNeighbor = r.msg && r.msg.includes('no LLDP neighbor');
-      if (noNeighbor && bridgeAuditFlagMissing) {
-        setStatus(`[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
-      } else if (!noNeighbor && bridgeAuditFlagMismatch) {
+      const uStatus = bridgePortStatus[r.u];
+      const vStatus = bridgePortStatus[r.v];
+      const hasMismatch = uStatus === 'mismatch' || vStatus === 'mismatch';
+      if (hasMismatch && bridgeAuditFlagMismatch) {
         setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
+      } else if (!hasMismatch && bridgeAuditFlagMissing) {
+        setStatus(`[Audit - Live] Missing LLDP neighbor: ${r.u} \u2194 ${r.v} \u2014 ${r.msg}`, 'status-error');
       }
     });
   }
