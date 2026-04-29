@@ -64,3 +64,7 @@ Files: ROLLBACKS.md,projects/topoassist/Code.gs,projects/topoassist/SheetAssistP
 **revert: remove compactSheet; keep Force Sync buffer +5→+2**  
 Files: projects/topoassist/Code.gs,projects/topoassist/SheetAssistPanel.html,projects/topoassist/Sidebar-css.html,projects/topoassist/Sidebar-js.html,projects/topoassist/Sidebar.html,projects/topoassist/Tests.gs,projects/topoassist/UserGuide.html
 
+## 2026-04-29 | tmux.conf | b768dcd
+**revert: remove WheelUpPane/WheelDownPane scroll inversion — broke scroll entirely**  
+Files: ROLLBACKS.md,projects/tmux.conf/tmux.conf
+
