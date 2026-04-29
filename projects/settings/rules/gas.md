@@ -37,7 +37,12 @@ google.script.run
 | Modal open / read ops | 15s | `openTechModal`, `openIpConfigModal`, etc. |
 | Save settings ops | 15s | `saveTechSettings`, `saveIpConfig`, etc. |
 | Config fetch (`fetchFullConfig`) | 20s | Flushes `fetchQueue` callbacks on timeout |
-| Force sync / schema ops | 60s | Also clears `syncPollTimer` with `clearInterval` |
+| Full data load | 60s | `getTopologyData` — cold GAS start + large topology processing |
+| Force sync / schema ops | 60s | Also clears `syncPollTimer`/poll timers with `clearInterval` |
+
+**Full data load (60s)** — `getTopologyData` is in this tier because GAS cold starts add
+10–15s overhead on top of full sheet traversal. 30s fires legitimately on large topologies.
+Use a `_fetchGuardFired` boolean to discard late responses that arrive after the guard fires.
 
 ### `hideGlobalLoading` position in success handler
 

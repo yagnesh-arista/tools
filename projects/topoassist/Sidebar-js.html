@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.18 | 2026-04-29 13:10:11 -->
+<!-- TopoAssist v260429.20 | 2026-04-29 13:19:18 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.18";  // keep in sync with Code.gs
+const APP_VERSION = "260429.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1829,10 +1829,18 @@ function saveSchemaChanges() {
                 if (msgEl) msgEl.innerText = msg;
               }).getSyncStatus();
             }, 600);
+            // 60s guard: schema op tier — GAS framework failure fires neither handler
+            const _colSyncGuard = setTimeout(() => {
+              clearInterval(syncPollTimer);
+              hideGlobalLoading();
+              btn.innerText = origText;
+              btn.disabled = false;
+              setStatus('Column sync timed out — try again', 'status-error');
+            }, 60000);
             // Full Sync: Add/Remove columns, Apply Formatting
             google.script.run
-              .withSuccessHandler(() => { clearInterval(syncPollTimer); hideGlobalLoading(); onComplete(); })
-              .withFailureHandler(err => { clearInterval(syncPollTimer); hideGlobalLoading(); onFailure(err); })
+              .withSuccessHandler(() => { clearTimeout(_colSyncGuard); clearInterval(syncPollTimer); hideGlobalLoading(); onComplete(); })
+              .withFailureHandler(err => { clearTimeout(_colSyncGuard); clearInterval(syncPollTimer); hideGlobalLoading(); onFailure(err); })
               .syncSchemaPreservingOrder(cleanList, applyFormatting, deleteOrphans);
           })
           .withFailureHandler(err => { onFailure(err); })
@@ -9318,7 +9326,7 @@ function fetchData(force, autoVerify, silent) {
 
     // --- CALL SERVER ---
     // Guard: GAS framework failures (auth expiry, quota) fire neither handler — overlay sticks forever without this.
-    // 30s matches GAS's own function execution limit — 20s fired on legitimate slow fetches.
+    // 60s: full data load tier — cold GAS start (~10-15s) + large topology processing can exceed 30s legitimately.
     let _fetchGuardFired = false;
     const _fetchGuard = setTimeout(() => {
       _fetchGuardFired = true;
@@ -9330,7 +9338,7 @@ function fetchData(force, autoVerify, silent) {
       setStatus("Topology fetch timed out — retrying\u2026", "status-error");
       // Auto-retry after 5s — smart poll alone won't re-fetch unless sheet version changes
       setTimeout(() => { if (!isFetching) fetchData(false); }, 5000);
-    }, 30000);
+    }, 60000);
 
     google.script.run.withSuccessHandler(function (data) {
       clearTimeout(_fetchGuard);
