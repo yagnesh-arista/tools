@@ -1,4 +1,4 @@
-# topoassist v260427.35 | 2026-04-27 15:00:31
+# topoassist v260429.12 | 2026-04-29 12:04:10
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -14,12 +14,24 @@ import device_bridge as db
 # ── _extract_eos_errors ────────────────────────────────────────────────────────
 
 class TestExtractEosErrors:
+    # Helper: extract only errors (first element of the returned tuple)
+    @staticmethod
+    def _errs(text):
+        errors, _ = db._extract_eos_errors(text)
+        return errors
+
+    @staticmethod
+    def _warns(text):
+        _, warnings = db._extract_eos_errors(text)
+        return warnings
+
     def test_empty_string(self):
-        assert db._extract_eos_errors("") == []
+        errors, warns = db._extract_eos_errors("")
+        assert errors == [] and warns == []
 
     def test_no_percent_lines(self):
         output = "Arista(config-s-topoas)#router bgp 65001\nArista(config-s-topoas)#commit\n"
-        assert db._extract_eos_errors(output) == []
+        assert self._errs(output) == []
 
     def test_single_rejection_before_diff(self):
         output = (
@@ -29,7 +41,7 @@ class TestExtractEosErrors:
             "+++ session:/topoassist-session-config\n"
             "Arista(config-s-1)#commit\n"
         )
-        assert db._extract_eos_errors(output) == ["router bgp 1 \u2192 % BGP is already running with AS number 65002"]
+        assert self._errs(output) == ["router bgp 1 \u2192 % BGP is already running with AS number 65002"]
 
     def test_multiple_rejections(self):
         output = (
@@ -37,19 +49,18 @@ class TestExtractEosErrors:
             "% BGP is already running with AS number 65002\n"
             "--- system:/running-config\n"
         )
-        result = db._extract_eos_errors(output)
+        result = self._errs(output)
         assert len(result) == 2
         assert "% Invalid input (at token 2: 'bgp')" in result
         assert "% BGP is already running with AS number 65002" in result
 
     def test_percent_after_diff_header_ignored(self):
-        # % line appearing after --- should NOT be captured (it would be inside diff content)
         output = (
             "--- system:/running-config\n"
             "+++ session:/topoassist-session-config\n"
             "% This would be unusual but must not be captured\n"
         )
-        assert db._extract_eos_errors(output) == []
+        assert self._errs(output) == []
 
     def test_stops_at_plus_plus_plus_header(self):
         output = (
@@ -57,11 +68,9 @@ class TestExtractEosErrors:
             "+++ session:/topoassist-session-config\n"
             "% Should not be captured\n"
         )
-        result = db._extract_eos_errors(output)
-        assert result == ["% BGP is already running with AS number 65002"]
+        assert self._errs(output) == ["% BGP is already running with AS number 65002"]
 
     def test_eapi_joined_results(self):
-        # Simulates '\n'.join(eapi_results) — % errors in config cmds, diff at end
         output = (
             "output of session open\n"
             "% BGP is already running with AS number 65002\n"
@@ -69,7 +78,7 @@ class TestExtractEosErrors:
             "--- system:/running-config\n"
             "+++ session:/topoassist-session-config\n"
         )
-        assert db._extract_eos_errors(output) == ["% BGP is already running with AS number 65002"]
+        assert self._errs(output) == ["% BGP is already running with AS number 65002"]
 
     def test_no_errors_clean_push(self):
         output = (
@@ -81,41 +90,32 @@ class TestExtractEosErrors:
             "+   description spine\n"
             "Arista(config-s-topoas)#commit\n"
         )
-        assert db._extract_eos_errors(output) == []
+        assert self._errs(output) == []
 
     def test_stops_at_exec_mode_prompt(self):
-        # PTY mode: EOS emits bare HOSTNAME# after 'end' exits the configure session.
-        # % lines after this exec-mode prompt are from re-entry/show-diffs phase,
-        # not config commands — must NOT be captured.
         output = (
             "% BGP is already running with AS number 65002\n"
-            "Arista#\n"                              # bare exec-mode prompt after 'end'
+            "Arista#\n"
             "% Should not be captured (re-entry phase)\n"
             "--- system:/running-config\n"
         )
-        result = db._extract_eos_errors(output)
-        assert result == ["% BGP is already running with AS number 65002"]
+        assert self._errs(output) == ["% BGP is already running with AS number 65002"]
 
     def test_exec_mode_prompt_with_config_context_not_a_stop(self):
-        # A prompt that contains '(config' is a session/configure context — must NOT
-        # stop the scan; the following % line is captured with command context.
         output = (
-            "Arista(config-s-topoas-mst)#router bgp 65002\n"  # real cmd, not 'end'
+            "Arista(config-s-topoas-mst)#router bgp 65002\n"
             "% BGP is already running with AS number 65002\n"
-            "Arista#\n"                              # now exec mode — stop here
+            "Arista#\n"
             "% Should not be captured\n"
         )
-        result = db._extract_eos_errors(output)
-        assert result == ["router bgp 65002 \u2192 % BGP is already running with AS number 65002"]
+        assert self._errs(output) == ["router bgp 65002 \u2192 % BGP is already running with AS number 65002"]
 
     def test_spanning_tree_submode_scenario(self):
-        # Full PTY output for a spanning-tree MST push: % errors from config phase only,
-        # exec-mode prompt stops capture before re-entry, diff captured separately.
         output = (
             "Arista(config-s-topoas)#spanning-tree mst configuration\n"
             "Arista(config-s-topoas-mst)#instance 2 vlan 2001-4001\n"
             "Arista(config-s-topoas-mst)#end\n"
-            "Arista#\n"                              # exec-mode prompt — stop
+            "Arista#\n"
             "Arista#configure session topoassist_1234\n"
             "Arista(config-s-topoas)#show session-config diffs\n"
             "--- system:/running-config\n"
@@ -124,34 +124,70 @@ class TestExtractEosErrors:
             "-   instance 2 vlan 2001-4000\n"
             "+   instance 2 vlan 2001-4001\n"
         )
-        assert db._extract_eos_errors(output) == []
+        assert self._errs(output) == []
 
     def test_invalid_input_in_session_submode(self):
-        # EOS rejects a command inside a configure-session interface sub-mode with
-        # '% Invalid input'. The sub-mode prompt ending in '#' must NOT trigger the
-        # exec-mode stop because it contains '(config'.
         output = (
             "DUT(config-s-topoas-if-Et4.4019)#channel-group 4003 mode active\n"
             "% Invalid input\n"
-            "DUT(config-s-topoas-if-Et4.4019)#\n"   # sub-mode prompt — NOT a stop
+            "DUT(config-s-topoas-if-Et4.4019)#\n"
             "DUT(config-s-topoas)#end\n"
-            "DUT#\n"                                  # exec-mode — stop
+            "DUT#\n"
             "--- system:/running-config\n"
         )
-        assert db._extract_eos_errors(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
+        assert self._errs(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
 
     def test_timestamped_prompt_submode_not_a_stop_exec_is(self):
-        # EOS can embed a clock in the prompt (e.g. 'clock format %H:%M:%S').
-        # Sub-mode timestamped prompt contains '(config' — NOT a stop condition.
-        # Bare exec-mode timestamped prompt has no '(config' — IS a stop condition.
         output = (
             "DUT.02:03:38(config-s-topoas-if-Et4.4019)#channel-group 4003 mode active\n"
             "% Invalid input\n"
-            "DUT.02:03:43(config-s-topoas-if-Et4.4019)#\n"  # timestamped sub-mode — NOT a stop
-            "DUT.02:03:50#\n"                                 # timestamped exec-mode — STOP
+            "DUT.02:03:43(config-s-topoas-if-Et4.4019)#\n"
+            "DUT.02:03:50#\n"
             "% Should not be captured\n"
         )
-        assert db._extract_eos_errors(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
+        assert self._errs(output) == ["channel-group 4003 mode active \u2192 % Invalid input"]
+
+    # ── warnings (! lines) ──────────────────────────────────────────────────────
+
+    def test_bang_warning_no_errors(self):
+        # ! line = informational note, command was accepted — captured as warning, not error
+        output = (
+            "DUT(config-s-topoas-if-Et22)#speed 25g\n"
+            "! Transceiver for interface Et22/1 is not present. Cannot verify compatibility of speed and duplex settings.\n"
+            "--- system:/running-config\n"
+        )
+        assert self._errs(output) == []
+        assert self._warns(output) == [
+            "speed 25g \u2192 ! Transceiver for interface Et22/1 is not present. Cannot verify compatibility of speed and duplex settings."
+        ]
+
+    def test_bang_and_percent_together(self):
+        # Both ! (warning) and % (error) in same session — each goes to its own list
+        output = (
+            "DUT(config-s-topoas-if-Et22)#speed 25g\n"
+            "! Transceiver for interface Et22/1 is not present.\n"
+            "DUT(config-s-topoas)#router bgp 1\n"
+            "% BGP is already running with AS number 65002\n"
+            "--- system:/running-config\n"
+        )
+        assert self._errs(output) == ["router bgp 1 \u2192 % BGP is already running with AS number 65002"]
+        assert self._warns(output) == ["speed 25g \u2192 ! Transceiver for interface Et22/1 is not present."]
+
+    def test_bare_bang_not_captured(self):
+        # Bare '!' (EOS config comment separator) must NOT be captured as a warning
+        output = (
+            "DUT(config-s-topoas)#interface Ethernet1\n"
+            "!\n"
+            "--- system:/running-config\n"
+        )
+        assert self._warns(output) == []
+
+    def test_bang_after_diff_header_ignored(self):
+        output = (
+            "--- system:/running-config\n"
+            "! This is inside diff output — must not be captured\n"
+        )
+        assert self._warns(output) == []
 
 
 # ── _extract_session_diff ──────────────────────────────────────────────────────

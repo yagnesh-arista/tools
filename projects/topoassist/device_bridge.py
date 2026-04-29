@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260427.43 | 2026-04-27 16:51:48
+# topoassist v260429.12 | 2026-04-29 12:04:27
 """
 TopoAssist Device Bridge
 ========================
@@ -375,9 +375,12 @@ def _extract_eos_errors(text):
     before the first sub-command error.  This lets the caller insert '!' separators
     between distinct config blocks even when the block-entry command produced no error.
 
-    Returns a list of strings: 'cmd → % error' when context is available, '% error'
-    otherwise.  Empty list if no % lines found."""
+    Returns (errors, warnings) — both lists of strings.
+    errors: '% error' lines (command rejected), with block context and separators.
+    warnings: '! text' lines (command accepted with informational note, e.g. transceiver absent).
+    Both lists are empty if no matching lines are found."""
     errors = []
+    warnings = []
     prev_cmd = ''
     current_block = ''        # most recent block-entering command seen
     last_block_in_errors = '' # last block whose context line was injected into errors
@@ -400,6 +403,9 @@ def _extract_eos_errors(text):
             # in the same block don't re-inject the context line.
             if _BLOCK_CMD_RE.match(prev_cmd):
                 last_block_in_errors = current_block
+        elif s.startswith('!') and len(s) > 1:
+            # EOS informational note — command was accepted, just a caveat.
+            warnings.append(f'{prev_cmd} \u2192 {s}' if prev_cmd else s)
         elif '#' in s and '(config' in s:
             # PTY prompt echo: 'HOSTNAME(config-s-...)#the command' → 'the command'
             cmd = s.split('#', 1)[-1].strip()
@@ -407,7 +413,7 @@ def _extract_eos_errors(text):
                 prev_cmd = cmd
                 if _BLOCK_CMD_RE.match(cmd):
                     current_block = cmd
-    return errors
+    return errors, warnings
 
 
 # ── Section-level cleaners for idempotent push ────────────────────────────────
@@ -867,17 +873,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
-        # Pre-cleanup stale sessions when committing or opening (both leave/left sessions
-        # pending). Skip on dry_run — session is aborted immediately, can't become stale.
-        if not dry_run:
-            def _safe_abort():
-                try:
-                    self._abort_stale_sessions(ip)
-                except Exception as e:
-                    if VERBOSE: print(f"  [cleanup] {ip}: stale-session cleanup failed — {e}")
-            _ct = threading.Thread(target=_safe_abort, daemon=True)
-            _ct.start()
-            _ct.join(timeout=TIMEOUT)
+        # Pre-cleanup stale sessions before every push type (real, open_only, dry_run verify).
+        # Dry_run sessions are aborted immediately but prior crashed sessions can still linger.
+        def _safe_abort():
+            try:
+                self._abort_stale_sessions(ip)
+            except Exception as e:
+                if VERBOSE: print(f"  [cleanup] {ip}: stale-session cleanup failed — {e}")
+        _ct = threading.Thread(target=_safe_abort, daemon=True)
+        _ct.start()
+        _ct.join(timeout=TIMEOUT)
 
         # Prepend cleanup for orphan #TA interfaces not present in this push.
         # Best-effort — failures are silently ignored so a query error never blocks push.
