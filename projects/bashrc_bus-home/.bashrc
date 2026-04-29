@@ -1,4 +1,4 @@
-# bashrc_bus-home v260429.1 | 2026-04-29 10:38:12
+# bashrc_bus-home v260429.2 | 2026-04-29 10:48:07
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -103,36 +103,35 @@ _ai_spend_ps1() {
     local key_file="$HOME/.ai-proxy-api-key"
     local api_url="https://ai-proxy.infra.corp.arista.io/key/info"
 
-    # Refresh cache in background if missing or older than 60s
+    # Refresh cache in background — double-fork suppresses [N] PID noise; PID-unique tmp avoids mv race
     if [[ ! -f "$cache" ]] || \
        (( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) > 60 )); then
         mkdir -p "$HOME/.cache"
-        ( curl -sf --max-time 5 \
-            -H "Authorization: Bearer $(cat "$key_file" 2>/dev/null)" \
-            "$api_url" 2>/dev/null \
-          | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({'spend':d['info']['spend'],'max_budget':d['info']['max_budget']}))" \
-          > "${cache}.tmp" 2>/dev/null && mv "${cache}.tmp" "$cache" ) &
-        disown
+        local tmp="${cache}.tmp.$$"
+        ( ( curl -sf --max-time 5 \
+              -H "Authorization: Bearer $(cat "$key_file" 2>/dev/null)" \
+              "$api_url" 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({'spend':d['info']['spend'],'max_budget':d['info']['max_budget']}))" \
+            > "$tmp" && mv "$tmp" "$cache" || rm -f "$tmp"
+          ) &>/dev/null & ) 2>/dev/null
     fi
 
     [[ -f "$cache" ]] || return
 
-    local spend limit pct color reset="\e[0m"
+    local spend limit pct color
     spend=$(python3 -c "import json; d=json.load(open('$cache')); print(f\"{d['spend']:.2f}\")" 2>/dev/null)
     limit=$(python3 -c "import json; d=json.load(open('$cache')); print(int(d['max_budget']))" 2>/dev/null)
     [[ -z "$spend" || -z "$limit" || "$limit" == "0" ]] && return
 
     pct=$(python3 -c "print(int(float('$spend')/float('$limit')*100))" 2>/dev/null)
-    if   (( pct < 30 )); then color="\e[32m"    # green
-    elif (( pct < 60 )); then color="\e[33m"    # yellow
+    if   (( pct < 30 )); then color="\e[32m"        # green
+    elif (( pct < 60 )); then color="\e[33m"        # yellow
     elif (( pct < 90 )); then color="\e[38;5;214m"  # orange
-    else                      color="\e[31m"    # red
+    else                      color="\e[31m"        # red
     fi
 
-    # Print right-aligned spend (cursor to column = COLUMNS - length of spend string)
-    local spend_str="💳 \$${spend}/\$${limit}"
-    local spend_len=$(( ${#spend_str} - 2 ))  # -2 for emoji width offset
-    printf "\e[s\e[0;%dH${color}${spend_str}${reset}\e[u" "$(( COLUMNS - spend_len - 2 ))"
+    # Print on its own line above PS1 — simpler and more reliable than right-alignment tricks
+    printf "${color}💳 \$${spend}/\$${limit}\e[0m\n"
 }
 
 if type __git_ps1 >/dev/null 2>&1; then
