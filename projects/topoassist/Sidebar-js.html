@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.31 | 2026-04-29 14:58:28 -->
+<!-- TopoAssist v260429.33 | 2026-04-29 14:59:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.31";  // keep in sync with Code.gs
+const APP_VERSION = "260429.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11793,7 +11793,7 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '</div>' +
                     '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>' +
                     '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureBgpOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.neighbor) + ',this)">' +
+                    'onclick="unconfigureBgpOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.neighbor) + ',' + JSON.stringify(o.asn) + ',this)">' +
                     'Remove</button>' +
                     '</div>';
           });
@@ -11916,9 +11916,14 @@ function _pushOrphanConfig(dev, ip, config, btn, label) {
     .catch(err => { btn.disabled = false; btn.textContent = origText; alert('Network error: ' + err.message); });
 }
 
-function unconfigureBgpOrphan(dev, ip, neighbor, btn) {
-  // Needs ASN — read from last reconcile result; fall back to EOS-side removal hint
-  alert('BGP neighbor ' + neighbor + ' on ' + dev + ':\n\nRun "push" to auto-clean, or remove manually:\n  configure\n  router bgp <ASN>\n  no neighbor ' + neighbor);
+function unconfigureBgpOrphan(dev, ip, neighbor, asn, btn) {
+  if (!asn) {
+    alert('Cannot remove BGP neighbor ' + neighbor + ' on ' + dev + ' — ASN unknown.\nRun Push to auto-clean instead.');
+    return;
+  }
+  const config = 'router bgp ' + asn + '\n no neighbor ' + neighbor + '\n!\n';
+  _pushOrphanConfig(dev, ip, config, btn,
+    'Remove BGP neighbor ' + neighbor + ' from router bgp ' + asn);
 }
 
 function unconfigureVlanOrphan(dev, ip, vid, btn) {
