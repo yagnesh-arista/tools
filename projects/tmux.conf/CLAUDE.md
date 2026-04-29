@@ -19,6 +19,28 @@
 - `tmux_broadcast.sh` → `~/.tmux/tmux_broadcast.sh` (chmod +x)
 - `tmux_ai_spend.sh` → `~/.tmux/tmux_ai_spend.sh` (chmod +x)
 
+## What Works (Confirmed) — Do Not Regress
+
+**Scroll:** Root `WheelUpPane` uses `if-shell -F "#{mouse_any_flag}" "send-keys -M" "if -Ft= '#{pane_in_mode}' 'send-keys -M' 'copy-mode -e; send-keys -M'"`. `send-keys -M` re-dispatches the event into `copy-mode-vi` where default scroll bindings fire. `WheelDownPane` same pattern without `copy-mode -e`.
+
+**Double/Triple click copy:** Root bindings: `copy-mode \; send-keys -X select-word \; run -d 0.3 \; send-keys -X copy-selection-and-cancel`. The `run -d 0.3` delay (300ms) lets the highlight render visibly before copy fires — without it nothing gets copied (race condition). `copy-mode-vi` table bindings handle same clicks when already in copy mode.
+
+**Drag/lift copy:** `bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-selection-and-cancel` + `MouseUp1Pane if -F '#{selection_active}'` guard.
+
+**y key:** `bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel` in both Section 5 and Section 8 (Section 8 wins over yank plugin).
+
+## What Broke — Do Not Retry
+
+**`copy-mode -M` and `copy-mode -H`:** Unsupported in tmux 3.2a. Print "usage: copy-mode ..." error string into the pane. macOS trackpad sends drag events during scroll, triggering these errors on every scroll. Never use these flags.
+
+**`mode-keys vi` without explicit root WheelUpPane/WheelDownPane bindings:** tmux-sensible only adds wheel bindings to the `copy-mode` (emacs) table. With vi mode and no explicit root wheel bindings, scroll is completely dead.
+
+**`run-shell 'sleep 0.05'` in DoubleClick/TripleClick:** Spawns a shell process, causes a visible flash on each double-click. Use `run -d N` (tmux built-in delay) instead.
+
+**tmux_click.sh external script for DoubleClick/TripleClick:** Shell spawn + two `sleep` calls caused a visible screen flash on every double-click. Removed. All click handling is now inline.
+
+**Unbind-only approach for WheelUpPane/WheelDownPane:** After removing stale bindings, scroll died because there were no bindings left. tmux built-ins only exist in copy-mode tables; root needs explicit bindings or re-dispatch.
+
 ## After Every Change
 - Check if any removed binding needs an explicit `unbind` (source-file won't remove it automatically)
 - Use `/deploy` to see the full deploy commands if hook didn't fire
