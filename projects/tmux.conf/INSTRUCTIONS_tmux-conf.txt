@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Copy mode: two fixes in Section 8 post-plugin — (1) override yank plugin's y→xclip binding back to copy-selection-and-cancel (xclip requires X11, unavailable over SSH on bus-home); (2) invert WheelUpPane/WheelDownPane in copy-mode-vi to match macOS natural scrolling direction.)
+  Last updated: 2026-04-29 (DoubleClick/TripleClick simplified: removed tmux_click.sh (shell spawn + 2x sleep was causing flash). Root bindings now inline: copy-mode \; send-keys -X select-word/line \; run -d0.05 \; send-keys -X copy-selection-and-cancel. 6→5 deployable files. copy-mode-vi DoubleClick/TripleClick also switched to copy-selection-and-cancel for consistency.)
+  Previous: 2026-04-29 (Copy mode: two fixes in Section 8 post-plugin — (1) override yank plugin's y→xclip binding back to copy-selection-and-cancel (xclip requires X11, unavailable over SSH on bus-home); (2) invert WheelUpPane/WheelDownPane in copy-mode-vi to match macOS natural scrolling direction.)
   Previous: 2026-04-29 (Status bar: spend widget adds token estimate — Sonnet 4.6 pricing ($3/M input, $15/M output, ~80/20 split → $5.4/M avg). Displayed as ~3.5M or ~900K beside spend. Format: ▌◆ $17.68/75 ~3.5M▐)
   Previous: 2026-04-29 (Status bar: spend widget uses ▌▐ half-block borders (no background) — amber colour172 for borders and ◆ icon, spend in colour-coded fg, /budget in colour245.)
   Previous: 2026-04-29 (Status bar: extracted AI spend widget to tmux_ai_spend.sh (6th deployable file). Script handles: session-scoped claude check; async cache refresh on every 60s tmux tick (independent of bash prompts — fixes stale data during long claude sessions); display via heredoc python. status-right is now a clean one-liner calling the script.)
@@ -120,12 +121,11 @@ Project source: ~/claude/projects/tmux.conf/
   themes/light.conf      — Light theme. Deploy to ~/.tmux/themes/light.conf
   themes/dark.conf       — Dark theme. Deploy to ~/.tmux/themes/dark.conf
   tmux_broadcast.sh      — Broadcast script. Deploy to ~/.tmux/tmux_broadcast.sh
-  tmux_click.sh          — DoubleClick/TripleClick copy-mode script. Deploy to ~/.tmux/tmux_click.sh
   tmux_ai_spend.sh       — AI spend status widget. Deploy to ~/.tmux/tmux_ai_spend.sh
   INSTRUCTIONS_tmux-conf.txt  — This file.
   CLAUDE.md              — Auto-loaded constraints summary (critical rules, deploy note).
   .claude/commands/
-    deploy.md            — /deploy: show all 5 deploy commands + unbind reminder
+    deploy.md            — /deploy: show all deploy commands + unbind reminder
 
 Stub file (not versioned — single line, never changes):
   ~/.tmux.conf           — Contains only: source-file ~/.tmux/tmux.conf
@@ -144,8 +144,6 @@ Deploy commands:
   cp ~/claude/projects/tmux.conf/themes/dark.conf ~/.tmux/themes/dark.conf
   cp ~/claude/projects/tmux.conf/tmux_broadcast.sh ~/.tmux/tmux_broadcast.sh
   chmod +x ~/.tmux/tmux_broadcast.sh
-  cp ~/claude/projects/tmux.conf/tmux_click.sh ~/.tmux/tmux_click.sh
-  chmod +x ~/.tmux/tmux_click.sh
   # Stub (one-time setup, only if ~/.tmux.conf doesn't exist as stub):
   echo 'source-file ~/.tmux/tmux.conf' > ~/.tmux.conf
   # Reload inside tmux:
@@ -254,22 +252,13 @@ SECTION 3: KEY DESIGN DECISIONS
    fired on the first click of a double-click, exiting copy mode prematurely. Changed
    to empty string (no-op) so double-click works while scrolled up. Use q or Escape
    to exit copy mode manually when no selection is active.
-   DoubleClick1Pane (root): overrides plugin default. Same pane_in_mode guard; delay
-   reduced from 300ms to 50ms (run -d0.05) to suppress mustard flash that iTerm2
-   triggers post-drag. Selects word and copies via copy-pipe-and-cancel.
-   NOTE: root binding delegates to ~/.tmux/tmux_click.sh (NOT inline run-shell).
-   `-H` and `-M` both print usage errors in 3.2a when called inside an if-F branch chain.
-   Plain `copy-mode` enters at end-of-buffer so select-word hits the wrong position.
-   Separate tmux IPC calls in inline run-shell had ordering races causing "wrong location".
-   Fix: tmux_click.sh batches ALL navigation into a SINGLE `tmux send-keys` invocation:
-     tmux send-keys -X top-line \; send-keys -X -N $MY cursor-down \; send-keys -X -N $MX cursor-right \; send-keys -X select-word
-   Script also adds sleep 0.02 after copy-mode to let mode settle. #{mouse_y/x} are
-   expanded to numbers by tmux before the shell runs (no escaping needed in script).
-   TripleClick1Pane (root): same but select-line (no cursor-right needed for lines).
-   DoubleClick1Pane (copy-mode-vi): handles double-click when already in copy mode
-   (e.g. scrolled up). Root binding hits send-keys -M when pane_in_mode=1 but
-   copy-mode-vi had no handler so double-click did nothing. Now selects word + copies.
-   TripleClick1Pane (copy-mode-vi): same — selects line + copies when scrolled up.
+   DoubleClick1Pane (root): inline — copy-mode \; send-keys -X select-word \; run -d0.05
+   \; send-keys -X copy-selection-and-cancel. Passes through (send-keys -M) if already
+   in a mode or pane handles mouse. No external script; no sleep; no flash.
+   Note: `-H` and `-M` both error in tmux 3.2a inside if-F branch chains — don't use them.
+   TripleClick1Pane (root): same pattern but select-line.
+   DoubleClick1Pane / TripleClick1Pane (copy-mode-vi): same inline pattern for when
+   already scrolled up in copy mode.
 
 9. SSH INTEGRATION
    Prefix + P: respawn current pane and SSH to the window name (admin@<window>).
