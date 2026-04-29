@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-04-29 (showTooltip section comments renumbered 1–6: duplicate "--- 1." label fixed; CONFIG FETCH LOGIC is now 2, UI HELPER 3, BUILD LEFT PANE 4, BUILD RIGHT PANE 5, RENDER TO DOM 6. File: Sidebar-js.html)
+  Last updated: 2026-04-29 (Device Bridge panel redesigned to grouped collapsible sections: Issues (New link / Mismatch / No neighbour) / OK / No EOS. _renderLldpResults() rewrites #bridgeResultSections via secHtml/subHtml helpers. Classification uses bridgePortStatus enum (not r.msg parsing). _toggleBrSec(key) handles collapse/expand with localStorage persistence (bridgeSec_issues/ok/noeos). Issues open by default; OK and No EOS collapsed. HTML: #bridgeDiscovered + #bridgeResultList + #bridgeSummaryBadge removed, replaced with #bridgeResultSections. CSS: .br-sec-*, .br-sub-*, .br-chev, .br-empty-msg added. Files: Sidebar.html, Sidebar-css.html, Sidebar-js.html)
   Previous: 2026-04-29 (device_bridge.py synced with Sidebar-js.html embedded template — same _extract_eos_errors tuple return, eos_warnings in both call sites, unconditional _abort_stale_sessions, VERSION bumped to 260429.1 in both device_bridge.py and embedded template. Tests updated: TestExtractEosErrors uses _errs/_warns helpers; 4 new warning tests added. Files: device_bridge.py, Sidebar-js.html, tests/test_device_bridge.py)
   Previous: 2026-04-29 (EOS ! vs % differentiation + session cleanup: (1) _extract_eos_errors() now returns (errors, warnings) tuple — % lines → eos_errors (command rejected); ! lines with len>1 → eos_warnings (command accepted with note, e.g. transceiver not present). Both callers in _push_config (eAPI + SSH) unpack the tuple and set eos_warnings in response. (2) _abort_stale_sessions() guard removed — was only run when not dry_run; now runs unconditionally so verify passes also clean up stale sessions. (3) JS: _eosWarnings(res) mirrors _eosErrors(); _injectEosWarningBanner(warns) injects amber banner (beforeend, #fffbeb/#fcd34d/#92400e); _setResultRow() gets optional 7th warnDetails param rendered as amber box. Wired into: single-device Phase 1 (_p1EosWarns), push-from-tooltip Phase 1 (_ptEosWarns), single-device verify Phase 3 (step label + detail), Generate All success row (label suffix + warnDetails). File: Sidebar-js.html)
   Previous: 2026-04-29 (Push flow bug fixes — 3 issues: (1) Partial commit: after Phase 3 verify shows remaining diff, a "Recommit" button is now appended inside pt_detail using DOM createElement (closure captures deviceName/btnId before finally clears _pendingPush); clicking Recommit calls closePushConfirmModal()+pushDeviceConfig(). (2) Cancel slow: cancelPushConfig() now fire-and-forgets the EOS session abort (fetch+.catch(()=>{}) then immediately calls closePushConfirmModal()); removed the "Aborting session…" intermediate modal state that held the modal open until device round-trip. (3) Terminal-state Close button: all 7 terminal failure branches (timeout, EOS rejection, partial, verify-failed, verify-error, Phase2-failed, network-error) now set cancelFtr.onclick=closePushConfirmModal instead of relying on cancelPushConfig() (which has session-abort logic). closePushConfirmModal() resets cancelFtr.onclick=cancelPushConfig to restore for next open. File: Sidebar-js.html)
@@ -2247,15 +2247,20 @@ Client functions (Sidebar-js.html):
                             skips: non-Arista devices, non-Et interfaces (PO/Vx/Lo etc.);
                             statuses: match / mismatch (shows actual LLDP seen) /
                             partial (one side not queried) / unknown (neither queried)
-  _renderLldpResults(results) — sorts mismatch→partial/unknown→match→skip; renders lldp-result-row
-                            with inline SVG check/X/question/dash icons; summary badge (N/total)
+  _renderLldpResults(results, orphans) — renders #bridgeResultSections with grouped collapsible sections:
+                            Issues (New link / Mismatch / No neighbour), OK (N/checkable), No EOS.
+                            Classification by bridgePortStatus enum ('mismatch'/'missing') — NOT r.msg content.
+                            secHtml(key, title, badgeCls, badgeText, body, hidden) builds each section.
+                            subHtml(label, count, bodyHtml) builds each sub-section.
+                            Collapse state from localStorage 'bridgeSec_issues/ok/noeos'; Issues open by default.
+  _toggleBrSec(key) — toggles collapse on .br-sec-body + .br-chev; persists to localStorage
 
 Modal UI structure:
   Bridge bar: dot + status msg + Recheck button (lldp-bridge-bar)
   Bridge cmd box: shown only when bridge not running — yellow box with start command (lldp-bridge-cmd)
   Management IPs table: lldp-dev-row grid (device name | IP input | status dot); Arista only
   Status line: shown during fetch ("Bridge is querying devices via SSH…")
-  Results: summary badge + per-cable result list (sorted by severity)
+  Results: #bridgeResultSections with three collapsible sections (Issues / OK / No EOS)
   Per-device dot: dot-green=SSH OK, dot-red=error, dot-gray=no IP/not queried
 
 Result row statuses:
