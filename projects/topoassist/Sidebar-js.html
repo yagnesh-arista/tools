@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.13 | 2026-04-29 12:05:37 -->
+<!-- TopoAssist v260429.15 | 2026-04-29 12:18:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.13";  // keep in sync with Code.gs
+const APP_VERSION = "260429.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3642,7 +3642,7 @@ function showTooltip(e, portId, peerId) {
     if (activeTooltipPortId === portId) showTooltip(null, portId, peerId);
   };
 
-  // --- 1. CONFIG FETCH LOGIC ---
+  // --- 2. CONFIG FETCH LOGIC ---
   const _isNonEos = d => allDevicesData[d] && allDevicesData[d].type === 'non-arista';
   if (!myData.details.config && !_isNonEos(myData.device)) {
     if (configCache[myData.device]) {
@@ -3666,7 +3666,7 @@ function showTooltip(e, portId, peerId) {
   let myIdx = (myDev && myDev.sheetIndex) ? myDev.sheetIndex : "-";
   let peerIdx = (peerDev && peerDev.sheetIndex) ? peerDev.sheetIndex : "-";
 
-  // --- 2. UI HELPER: HEADER BOXES ---
+  // --- 3. UI HELPER: HEADER BOXES ---
   const buildBox = (idx, dev, port, isDim) => {
     if (isDim) return `<div class="tt-dev-box" style="color:#94a3b8; font-style:italic">Disconnected</div>`;
     return `<div class="tt-dev-box">
@@ -3675,7 +3675,7 @@ function showTooltip(e, portId, peerId) {
 </div>`;
   };
 
-  // --- 3. BUILD LEFT PANE: ATTRIBUTE GRID ---
+  // --- 4. BUILD LEFT PANE: ATTRIBUTE GRID ---
   let html = `<div class="tt-left-pane">
 <div class="tt-header">
 ${buildBox(myIdx, myData.device, escapeHtml(myData.name), false)}
@@ -3724,7 +3724,7 @@ ${peerData ? buildBox(peerIdx, peerData.device, peerData.name, false) : buildBox
 
   html += `</div></div>`;
 
-  // --- 4. BUILD RIGHT PANE: CONFIG SNIPPETS ---
+  // --- 5. BUILD RIGHT PANE: CONFIG SNIPPETS ---
   let localCfg = myData.details.config || "Loading...";
   let peerCfg = peerData ? (peerData.details.config || "Loading...") : "";
 
@@ -3740,7 +3740,7 @@ ${peerData ? buildBox(peerIdx, peerData.device, peerData.name, false) : `<div cl
 </div>
 </div>`;
 
-  // --- 5. RENDER TO DOM ---
+  // --- 6. RENDER TO DOM ---
   let tooltip = document.getElementById("tooltip");
   tooltip.innerHTML = html;
   tooltip.style.display = "flex";
