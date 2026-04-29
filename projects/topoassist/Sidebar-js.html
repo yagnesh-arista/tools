@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.27 | 2026-04-29 14:37:41 -->
+<!-- TopoAssist v260429.29 | 2026-04-29 14:53:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.27";  // keep in sync with Code.gs
+const APP_VERSION = "260429.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11427,6 +11427,17 @@ function _buildExpectedPortsPerDevice() {
   return result;
 }
 
+let _reconcileAbort = null;
+
+function _resetStopReconBtn() {
+  const b = document.getElementById('btnStopRecon');
+  if (!b) return;
+  b.disabled = true;
+  b.className = 'btn-mono genall-btn';
+  b.textContent = 'Stop';
+  b.onclick = null;
+}
+
 function runReconcile() {
   if (!currentData || !currentData.nodes) return;
   const btn        = document.getElementById('btnGenAllReconcile');
@@ -11434,8 +11445,16 @@ function runReconcile() {
   const reconBody  = document.getElementById('reconResultsBody');
   if (!btn || !reconPanel || !reconBody) return;
 
-  const devices = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
-  if (!devices.length) { setStatus('No Arista devices in topology', 'status-warn'); return; }
+  // Respect Push Targets checkboxes — same filter as Push All
+  const allArista = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
+  const devices   = allArista.filter(n => {
+    const cb = document.getElementById('genAllDev_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    return !cb || cb.checked;
+  });
+  if (!devices.length) {
+    setStatus('No devices selected — check Push Targets', 'status-warn');
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Checking bridge…';
@@ -11453,46 +11472,90 @@ function runReconcile() {
     });
 }
 
-function _doRunReconcile(btn, reconPanel, reconBody, devices) {
+async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
   const mgmtIps        = _getLldpMgmtIps();
   const portsPerDev    = _buildExpectedPortsPerDevice();
   const allDeviceNames = devices.map(n => n.id);
+
+  // Activate Stop button
+  const stopBtn = document.getElementById('btnStopRecon');
+  _reconcileAbort = new AbortController();
+  if (stopBtn) {
+    stopBtn.disabled = false;
+    stopBtn.className = 'btn-mono genall-btn stop-active';
+    stopBtn.textContent = 'Stop Reconcile';
+    stopBtn.onclick = () => {
+      if (_reconcileAbort) _reconcileAbort.abort();
+      _resetStopReconBtn();
+    };
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Fetching configs…';
+  reconPanel.style.display = 'block';
+  reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">' +
+    'Fetching configs for ' + devices.length + ' device' + (devices.length === 1 ? '' : 's') + '…</div>';
+
+  // Fetch generated config for each device (cache hit = instant) for VLAN/VRF expected sets
+  let configResults;
+  try {
+    configResults = await Promise.all(devices.map(n => _fetchConfigForPush(n.id)));
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Reconcile';
+    _resetStopReconBtn();
+    reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Config fetch failed: ' + _esc(e.message) + '</div>';
+    return;
+  }
+  if (_reconcileAbort && _reconcileAbort.signal.aborted) {
+    btn.disabled = false;
+    btn.textContent = 'Reconcile';
+    _resetStopReconBtn();
+    reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile stopped.</div>';
+    return;
+  }
+
+  const configMap = {};
+  configResults.forEach(({ deviceName, config }) => { configMap[deviceName] = config || ''; });
 
   const ipMap = {};
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const inp = document.getElementById('bridgeIp_' + safeId);
     const ip  = (inp ? inp.value.trim() : '') || mgmtIps[n.id] || '';
-    ipMap[n.id] = { ip, ports: portsPerDev[n.id] || [] };
+    ipMap[n.id] = { ip, ports: portsPerDev[n.id] || [], config_text: configMap[n.id] || '' };
   });
 
-  btn.disabled = true;
   btn.textContent = 'Reconciling…';
-  reconPanel.style.display = 'block';
   reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Querying ' +
     devices.length + ' device' + (devices.length === 1 ? '' : 's') + ' for stale #TA config…</div>';
 
   const _guard = setTimeout(() => {
     btn.disabled = false;
     btn.textContent = 'Reconcile';
+    _resetStopReconBtn();
     reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile timed out — try again.</div>';
-  }, 30000);
+  }, 60000);
 
   fetch(BRIDGE_URL + '/reconcile', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ ipMap, allDeviceNames }),
+    signal:  _reconcileAbort.signal,
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
       clearTimeout(_guard);
       btn.disabled = false;
       btn.textContent = 'Reconcile';
+      _resetStopReconBtn();
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      const totalOrphans = Object.values(results).reduce((s, r) => s + (r && r.ok ? (r.orphans || []).length : 0), 0);
-      const totalBgp     = Object.values(results).reduce((s, r) => s + (r && r.ok ? (r.bgp_orphans || []).length : 0), 0);
-      if (totalOrphans === 0 && totalBgp === 0) {
-        reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All #TA interfaces and BGP neighbors are accounted for.</div>';
+      const total = Object.values(results).reduce((s, r) => s + (r && r.ok
+        ? (r.orphans || []).length + (r.bgp_orphans || []).length +
+          (r.vlan_orphans || []).length + (r.vrf_orphans || []).length
+        : 0), 0);
+      if (total === 0) {
+        reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All #TA config accounted for — no stale interfaces, BGP neighbors, VLANs, or VRFs.</div>';
       } else {
         _renderReconcileResults(results, ipMap, reconBody);
       }
@@ -11501,7 +11564,12 @@ function _doRunReconcile(btn, reconPanel, reconBody, devices) {
       clearTimeout(_guard);
       btn.disabled = false;
       btn.textContent = 'Reconcile';
-      reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile error: ' + _esc(err.message) + '</div>';
+      _resetStopReconBtn();
+      if (err.name === 'AbortError') {
+        reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile stopped.</div>';
+      } else {
+        reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile error: ' + _esc(err.message) + '</div>';
+      }
     });
 }
 
@@ -11518,13 +11586,15 @@ function _renderReconcileResults(results, ipMap, reconBody) {
       const ip           = (ipMap[dev] && ipMap[dev].ip) || '';
       const ifaceOrphans = r.orphans || [];
       const bgpOrphans   = r.bgp_orphans || [];
-      const totalStale   = ifaceOrphans.length + bgpOrphans.length;
+      const vlanOrphans  = r.vlan_orphans || [];
+      const vrfOrphans   = r.vrf_orphans || [];
+      const totalStale   = ifaceOrphans.length + bgpOrphans.length + vlanOrphans.length + vrfOrphans.length;
       html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
               '<span class="bridge-recon-counts">' +
               (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
               '</span></div>';
 
-      if (ifaceOrphans.length === 0 && bgpOrphans.length === 0) {
+      if (totalStale === 0) {
         html += '<div class="bridge-recon-ok-msg">All #TA config accounted for.</div>';
       } else {
         if (ifaceOrphans.length) {
@@ -11533,16 +11603,15 @@ function _renderReconcileResults(results, ipMap, reconBody) {
           ifaceOrphans.forEach(o => {
             const proto = (o.linkStatus || o.protocol || '').toLowerCase();
             const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
-            const badgeTxt = proto || 'unk';
             html += '<div class="bridge-orphan-row">' +
                     '<div class="bridge-orphan-info">' +
                     '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
                     '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
                     '</div>' +
-                    '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(badgeTxt) + '</span>' +
+                    '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(proto || 'unk') + '</span>' +
                     '<button class="btn-unconfigure" ' +
                     'onclick="unconfigureOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
-                    'Unconfigure</button>' +
+                    'Remove</button>' +
                     '</div>';
           });
           html += '</div>';
@@ -11557,7 +11626,43 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
                     '</div>' +
                     '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>' +
-                    '<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-muted);flex-shrink:0;">Remove via EOS</span>' +
+                    '<button class="btn-unconfigure" ' +
+                    'onclick="unconfigureBgpOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.neighbor) + ',this)">' +
+                    'Remove</button>' +
+                    '</div>';
+          });
+          html += '</div>';
+        }
+        if (vlanOrphans.length) {
+          html += '<div class="bridge-recon-sub-hdr">Stale VLANs</div>';
+          html += '<div class="bridge-orphan-list">';
+          vlanOrphans.forEach(o => {
+            html += '<div class="bridge-orphan-row">' +
+                    '<div class="bridge-orphan-info">' +
+                    '<span class="bridge-orphan-name">VLAN ' + _esc(String(o.vid)) + '</span>' +
+                    '<span class="bridge-orphan-desc">' + _esc(o.name) + '</span>' +
+                    '</div>' +
+                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>' +
+                    '<button class="btn-unconfigure" ' +
+                    'onclick="unconfigureVlanOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + o.vid + ',this)">' +
+                    'Remove</button>' +
+                    '</div>';
+          });
+          html += '</div>';
+        }
+        if (vrfOrphans.length) {
+          html += '<div class="bridge-recon-sub-hdr">Stale VRFs</div>';
+          html += '<div class="bridge-orphan-list">';
+          vrfOrphans.forEach(o => {
+            html += '<div class="bridge-orphan-row">' +
+                    '<div class="bridge-orphan-info">' +
+                    '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+                    '<span class="bridge-orphan-desc">vrf instance ' + _esc(o.name) + ' #TA</span>' +
+                    '</div>' +
+                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>' +
+                    '<button class="btn-unconfigure" ' +
+                    'onclick="unconfigureVrfOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
+                    'Remove</button>' +
                     '</div>';
           });
           html += '</div>';
@@ -11615,6 +11720,49 @@ function unconfigureOrphan(dev, ip, portName, btn) {
       btn.textContent = origText;
       alert('Network error: ' + err.message);
     });
+}
+
+// Shared helper — push a raw EOS config string to a single device and handle row feedback.
+function _pushOrphanConfig(dev, ip, config, btn, label) {
+  if (!ip) { alert('No IP configured for ' + dev + ' — enter it in the Devices section.'); return; }
+  if (!confirm(label + ' on ' + dev + '\n\nProceed?')) return;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+  fetch(BRIDGE_URL + '/pushconfig', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ipMap: { [dev]: { ip, config } } }),
+  })
+    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
+    .then(results => {
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); btn.disabled = false; btn.textContent = origText; return; }
+      const res = results[dev];
+      if (res && res.ok) {
+        btn.closest('.bridge-orphan-row').style.opacity = '0.4';
+        btn.textContent = 'Done';
+      } else {
+        btn.disabled = false;
+        btn.textContent = origText;
+        alert('Error: ' + (res ? res.error : 'no response'));
+      }
+    })
+    .catch(err => { btn.disabled = false; btn.textContent = origText; alert('Network error: ' + err.message); });
+}
+
+function unconfigureBgpOrphan(dev, ip, neighbor, btn) {
+  // Needs ASN — read from last reconcile result; fall back to EOS-side removal hint
+  alert('BGP neighbor ' + neighbor + ' on ' + dev + ':\n\nRun "push" to auto-clean, or remove manually:\n  configure\n  router bgp <ASN>\n  no neighbor ' + neighbor);
+}
+
+function unconfigureVlanOrphan(dev, ip, vid, btn) {
+  _pushOrphanConfig(dev, ip, 'no vlan ' + vid + '\n', btn,
+    'Remove VLAN ' + vid + ' (no vlan ' + vid + ')');
+}
+
+function unconfigureVrfOrphan(dev, ip, vrfName, btn) {
+  _pushOrphanConfig(dev, ip, 'no vrf instance ' + vrfName + '\n', btn,
+    'Remove VRF ' + vrfName + ' (no vrf instance ' + vrfName + ')');
 }
 
 // Delete the sheet row AND unconfigure the interface on device via bridge.

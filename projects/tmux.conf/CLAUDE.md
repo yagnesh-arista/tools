@@ -10,7 +10,7 @@
 
 **`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. DoubleClick/TripleClick use inline `copy-mode \; send-keys -X select-word/line` — no external script.
 
-**`mode-keys` is emacs (default), NOT vi.** All copy-mode bindings use the `copy-mode` table. Do not use `copy-mode-vi` table — scroll and mouse bindings won't fire.
+**`mode-keys vi` is set.** All copy-mode bindings use the `copy-mode-vi` table. Root WheelUpPane/WheelDownPane use `send-keys -M` re-dispatch (NOT `copy-mode -M` which is unsupported) to enter copy-mode-vi and re-fire the wheel event.
 
 **5 deployable files** — hook auto-deploys each individually when edited:
 - `tmux.conf` → `~/.tmux/tmux.conf` + `tmux source-file` (reload)

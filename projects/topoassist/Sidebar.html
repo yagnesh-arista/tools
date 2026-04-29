@@ -1,4 +1,4 @@
-<!-- TopoAssist v260429.27 | 2026-04-29 14:36:47 -->
+<!-- TopoAssist v260429.29 | 2026-04-29 14:50:37 -->
 <!DOCTYPE html>
 <html>
 
@@ -1231,7 +1231,8 @@
       </div>
       <div class="genall-action-card">
         <button class="btn-mono genall-btn" id="btnGenAllReconcile" onclick="runReconcile()">Reconcile</button>
-        <span class="genall-desc">Find stale #TA interfaces &amp; BGP neighbors on all devices not in topology. Requires Device Bridge running.</span>
+        <button class="btn-mono genall-btn" id="btnStopRecon" disabled>Stop</button>
+        <span class="genall-desc">Find stale #TA config (interfaces, BGP neighbors, VLANs, VRFs) on Push Target devices. Respects Push Targets selection. Requires Device Bridge.</span>
       </div>
     </div>
     <!-- Push Targets device selection -->
