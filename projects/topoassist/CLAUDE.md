@@ -51,6 +51,27 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **SHEETNAME(dummy_cell) must not be removed**: the function is not called by the script — it is used directly by a formula in the IXIA tab of the Google Sheet.
 
+## Design Review — Single Source of Truth
+
+Before writing any logic that classifies, routes, or counts data:
+
+**Rule: structured data drives logic; display strings drive display only.**
+
+| ✓ Do | ✗ Never |
+|---|---|
+| Read `bridgePortStatus[portId]` (`'mismatch'`/`'missing'`) to classify | Parse `r.msg.includes('no LLDP neighbor')` to classify |
+| Use `_auditIssues.length` for count/badge | Filter `statusLog` by type for count |
+| Use `e.src === 'live'` / `e.cls` to route | Scan `e.msg` prefixes to route |
+| One array/map owns a state; readers are read-only | Two arrays tracking "the same thing" diverge under edge cases |
+
+**The mixed-case LLDP bug (2026-04-29) is the canonical example:** `r.msg` was a joined string of both link ends — one end's "no LLDP neighbor" substring caused wrong routing for the other end's 'mismatch' port status. Fix: use `bridgePortStatus[portId]` (enum value, per-port) not `r.msg` (display text, per-link, lossy join).
+
+**Checklist for any new routing/classification/count logic:**
+- [ ] Is the source a structured value (enum, boolean, Set, length)? If not, find one.
+- [ ] Does any display string combine multiple conditions into one field? Never parse it for routing.
+- [ ] Is the same state tracked in two places? Eliminate the secondary tracker or make it a strict read-only view.
+- [ ] Does count come from the same array that drives the UI? If not, they will diverge.
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
