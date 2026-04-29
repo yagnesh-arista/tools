@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.7 | 2026-04-29 11:42:52 -->
+<!-- TopoAssist v260429.10 | 2026-04-29 11:48:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.7";  // keep in sync with Code.gs
+const APP_VERSION = "260429.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9891,9 +9891,11 @@ def _extract_eos_errors(text):
     containing both '#' and '(config') -- plain eAPI result lines are not treated as
     command echoes, so eAPI mode falls back to bare % lines with no context.
 
-    Returns a list of strings: 'cmd -> % error' when context is available, '% error'
-    otherwise. Empty list if no % lines found."""
+    Returns (errors, warnings) — both lists of strings.
+    errors: '% error' lines (command rejected). warnings: '! text' lines (command accepted with note).
+    Both include preceding cmd context when available."""
     errors = []
+    warnings = []
     prev_cmd = ""
     for line in text.split("\\n"):
         s = line.strip()
@@ -9903,11 +9905,13 @@ def _extract_eos_errors(text):
             break
         if s.startswith("%"):
             errors.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
+        elif s.startswith("!") and len(s) > 1:
+            warnings.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
         elif "#" in s and "(config" in s:
             cmd = s.split("#", 1)[-1].strip()
             if cmd:
                 prev_cmd = cmd
-    return errors
+    return errors, warnings
 
 
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
@@ -10152,11 +10156,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
-        if not dry_run:
-            try:
-                self._abort_stale_sessions(ip)
-            except Exception:
-                pass
+        try:
+            self._abort_stale_sessions(ip)
+        except Exception:
+            pass
         if all_ifaces and not dry_run:
             orphan_cmds = self._find_ta_orphans(ip, config_text)
             if orphan_cmds:
@@ -10189,9 +10192,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-1].strip() if results else ""
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
-            eos_errs = _extract_eos_errors("\\n".join(results))
+            eos_errs, eos_warns = _extract_eos_errors("\\n".join(results))
             if eos_errs:
                 _asn_extra["eos_errors"] = eos_errs
+            if eos_warns:
+                _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
@@ -10208,9 +10213,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "EOS pending session limit reached -- Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
             diff = _extract_session_diff(output)
-            eos_errs = _extract_eos_errors(output)
+            eos_errs, eos_warns = _extract_eos_errors(output)
             if eos_errs:
                 _asn_extra["eos_errors"] = eos_errs
+            if eos_warns:
+                _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
@@ -14143,6 +14150,32 @@ function _injectEosRejectionBanner(errors) {
     'padding:8px 10px;margin-bottom:8px;color:#dc2626;line-height:1.5;">' +
     '<b>EOS rejected commands:</b><br>' + lines + '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+// Returns deduplicated eos_warnings from a bridge response, or null if absent/empty.
+function _eosWarnings(res) {
+  if (!res || !res.eos_warnings || !res.eos_warnings.length) return null;
+  const counts = Object.create(null);
+  res.eos_warnings.forEach(function(w) { counts[w] = (counts[w] || 0) + 1; });
+  return Object.entries(counts).map(function(pair) {
+    return pair[1] > 1 ? pair[0] + ' (\xd7' + pair[1] + ')' : pair[0];
+  });
+}
+
+// Injects an amber EOS informational-warning banner at the bottom of the push confirm modal body.
+// ! lines = command was accepted; EOS is noting a caveat (e.g. transceiver not present).
+function _injectEosWarningBanner(warns) {
+  const bodyEl = document.getElementById('pushConfirmBody');
+  if (!bodyEl) return;
+  const lines = warns.map(function(w) {
+    return '<span style="display:block;">' + escapeHtml(w) + '</span>';
+  }).join('');
+  const banner = '<div id="pushEosWarningBanner" style="' +
+    'font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'background:#fffbeb;border:1px solid #fcd34d;border-radius:4px;' +
+    'padding:8px 10px;margin-top:8px;color:#92400e;line-height:1.5;">' +
+    '<b>EOS notes (non-fatal):</b><br>' + lines + '</div>';
+  bodyEl.insertAdjacentHTML('beforeend', banner);
 }
 
 // Regenerate configs for all Arista devices in sequence, then save ID snapshot.
