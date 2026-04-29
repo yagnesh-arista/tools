@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Restored c3040e3 state: AI spend widget + OSC52 y-key + inline DoubleClick. Replaced broken WheelUpPane/WheelDownPane bindings with unbinds so tmux built-in scroll takes over.)
+  Last updated: 2026-04-29 (Scroll fix: tmux-sensible only sets wheel bindings for copy-mode (emacs), not copy-mode-vi. With mode-keys vi, must set copy-mode-vi WheelUpPane/WheelDownPane explicitly. Root WheelUpPane uses 'copy-mode -e \; send-keys -M' to enter copy mode then re-dispatch to copy-mode-vi table.)
+  Previous: 2026-04-29 (Restored c3040e3 state: AI spend widget + OSC52 y-key + inline DoubleClick. Replaced broken WheelUpPane/WheelDownPane bindings with unbinds so tmux built-in scroll takes over.)
   Previous: 2026-04-29 (Scroll fix v2: root uses 'copy-mode \; send-keys -M' to enter copy mode then RE-DISPATCH wheel event to copy-mode-vi table. Direct 'copy-mode \; send-keys -X scroll-up' in root chain is unreliable — timing issue. Re-dispatch pattern is correct: root enters copy mode, send-keys -M fires copy-mode-vi WheelDownPane/WheelUpPane where send-keys -X works.)
   Previous: 2026-04-29 (Scroll fix: finger-down → scroll-up (older content). Bind WheelDownPane→scroll-up and WheelUpPane→scroll-down in BOTH root and copy-mode-vi. Root handles copy-mode entry; copy-mode-vi handles in-mode scrolling. Previous attempt only bound copy-mode-vi which conflicted with root default.)
   Previous: 2026-04-29 (Reverted WheelUpPane/WheelDownPane copy-mode-vi scroll inversion — broke scroll entirely; removed both bindings so default tmux scroll behavior applies.)
