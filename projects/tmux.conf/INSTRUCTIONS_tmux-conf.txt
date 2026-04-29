@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Status bar: added status-interval 60; increased status-right-length to 90; added #(python3 ...) AI spend widget that reads ~/.cache/ai-spend.json — shows 💳 $spend/$budget with color coding: green <30%, yellow <60%, colour214 <90%, red ≥90%. Cache refreshed by _ai_spend_ps1() in .bashrc every 60s. Widget is silent when no cache file exists.)
+  Last updated: 2026-04-29 (Status bar: AI spend widget now guarded by pgrep -x claude — widget only appears when a claude process is running; silent (empty) otherwise. pgrep check via os.popen in python3 one-liner; sys.exit() on no match.)
+  Previous: 2026-04-29 (Status bar: added status-interval 60; increased status-right-length to 90; added #(python3 ...) AI spend widget that reads ~/.cache/ai-spend.json — shows 💳 $spend/$budget with color coding: green <30%, yellow <60%, colour214 <90%, red ≥90%. Cache refreshed by _ai_spend_ps1() in .bashrc every 60s. Widget is silent when no cache file exists.)
   Previous: 2026-04-25 (Removed Vim-Tmux-Navigator smart pane switching (C-h/j/k/l) — was causing backspace conflict. Added explicit unbind-key -n C-h/C-j/C-k/C-l to purge stale bindings from tmux memory on reload.)
   Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
   Previous: 2026-04-14 (Refactored DoubleClick1Pane/TripleClick1Pane root bindings
@@ -367,10 +368,11 @@ Layout: [session] | windows centered | 💳 spend sync-status online-status [hos
   status-right-length: 90
 
   AI spend widget (#(python3 ...)):
+    Guard: pgrep -x claude — widget only appears when a claude process is running.
     Reads ~/.cache/ai-spend.json (written by _ai_spend_ps1() in .bashrc).
     Format: 💳 $<spend>/<budget>  (e.g. 💳 $12.34/$50)
     Colors: green <30% · yellow <60% · colour214 <90% · red ≥90%
-    Silent (no output) if cache file missing or max_budget is 0.
+    Silent (no output) if claude not running, cache missing, or max_budget is 0.
     Cache refresh: handled by .bashrc _ai_spend_ps1() via PROMPT_COMMAND; tmux
     status-interval re-runs the #() command every 60s to pick up the updated file.
 
