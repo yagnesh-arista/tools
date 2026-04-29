@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.23 | 2026-04-29 14:01:19
+# topoassist v260429.25 | 2026-04-29 14:30:21
 """
 TopoAssist Device Bridge
 ========================
@@ -1170,6 +1170,58 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         cleanup.append('!')
                 except Exception:
                     pass  # BGP cleanup is best-effort
+
+        # VLAN orphan cleanup — find #TA-named VLANs on device not in config_text.
+        # Skips 4093/4094 (MLAG). Uses show vlan | json for structured VLAN names.
+        expected_vlans = set()
+        for line in config_text.split('\n'):
+            vm = re.match(r'^vlan\s+(\d+)\s*$', line, re.IGNORECASE)
+            if vm:
+                expected_vlans.add(int(vm.group(1)))
+        try:
+            (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+            for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
+                try:
+                    vid = int(vid_str)
+                except ValueError:
+                    continue
+                if vid in (4093, 4094):
+                    continue
+                if '#TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                    cleanup.append(f'no vlan {vid}')
+        except Exception:
+            pass  # VLAN cleanup is best-effort
+
+        # VRF orphan cleanup — find VRFs with '#TA' description not in config_text.
+        expected_vrfs = set()
+        for line in config_text.split('\n'):
+            vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
+            if vm:
+                expected_vrfs.add(vm.group(1).lower())
+        try:
+            eos_cmd = "show running-config | section vrf instance"
+            base = _ssh_base()
+            exec_cmd = (
+                [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                if JUMP_HOST else
+                [*base, f"{SSH_USER}@{ip}", eos_cmd]
+            )
+            if VERBOSE:
+                print(f"  [vrf-orphan] {ip}: {eos_cmd}", flush=True)
+            vrf_text = subprocess.check_output(
+                exec_cmd, timeout=TIMEOUT, text=True,
+                stderr=subprocess.DEVNULL, env=_SSH_ENV,
+            )
+            _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
+            _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
+            for vm in _VRF_INST_RE.finditer(vrf_text):
+                vrf_name = vm.group(1)
+                next_m = _VRF_INST_RE.search(vrf_text, vm.end())
+                block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
+                if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
+                    cleanup.append(f'no vrf instance {vrf_name}')
+        except Exception:
+            pass  # VRF cleanup is best-effort
 
         return cleanup
 
