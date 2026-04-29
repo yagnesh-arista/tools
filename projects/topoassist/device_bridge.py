@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.28 | 2026-04-29 14:49:09
+# topoassist v260429.29 | 2026-04-29 14:53:45
 """
 TopoAssist Device Bridge
 ========================
@@ -1334,6 +1334,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     exec_cmd, timeout=TIMEOUT, text=True,
                     stderr=subprocess.DEVNULL, env=_SSH_ENV,
                 )
+                asn_m = re.search(r'^router bgp\s+(\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
+                asn = asn_m.group(1) if asn_m else None
                 _NEIGH_DESC_RE = re.compile(
                     r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
                     re.MULTILINE,
@@ -1344,7 +1346,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     desc     = m.group(2).strip()
                     dev_m    = _DEV_RE.search(desc)
                     if dev_m and dev_m.group(1).lower() not in known_devs:
-                        bgp_orphans.append({"neighbor": neighbor, "description": desc})
+                        bgp_orphans.append({"neighbor": neighbor, "description": desc, "asn": asn})
             except Exception:
                 pass
 
