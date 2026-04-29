@@ -1,10 +1,10 @@
-// TopoAssist v260429.25 | 2026-04-29 14:32:07
+// TopoAssist v260429.27 | 2026-04-29 14:37:06
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260429.25";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260429.27";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4837,7 +4837,8 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
     // --- DESCRIPTION LOGIC (PHYSICAL) ---
     // Rule 1: Manual Override
     if (d.desc_ && d.desc_.trim() !== "") {
-      cfg += " description " + d.desc_.replace(/"/g, '') + " #TA\n";
+      const _d = d.desc_.replace(/"/g, '').trimEnd();
+      cfg += " description " + _d + (_d.includes('#TA') ? '' : ' #TA') + "\n";
     }
     else if (d.peerDev && d.peerPort) {
       let desc = "";
@@ -4892,7 +4893,8 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
       // --- DESCRIPTION LOGIC (PORT-CHANNEL) ---
       // Rule 1: Manual Override (Implicit for POs too)
       if (d.desc_ && d.desc_.trim() !== "") {
-        cfg += " description " + d.desc_ + " #TA\n";
+        const _d = d.desc_.trimEnd();
+        cfg += " description " + _d + (_d.includes('#TA') ? '' : ' #TA') + "\n";
       }
       else if (d.poGroup) {
         let finalDesc = "";
