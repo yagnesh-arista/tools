@@ -1,4 +1,4 @@
-<!-- TopoAssist v260429.20 | 2026-04-29 13:18:58 -->
+<!-- TopoAssist v260429.22 | 2026-04-29 13:33:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -896,11 +896,9 @@
         <div id="bridgeResultSections"></div>
         <div class="info-box info-box--dim" style="margin-top:8px;font-size:10px;">Audit icon in toolbar shows issue count — click to open audit details &amp; toggle checks</div>
       </div>
-      <div id="bridgeReconcileResults" style="display:none;"></div>
     </div>
     <div class="modal-actions right-align">
       <button class="btn-mono" onclick="downloadBridgeScript()">Download Bridge</button>
-      <button class="btn-mono" id="btnRunReconcile" onclick="runReconcile()" disabled>Reconcile</button>
       <button class="btn-primary-mono" id="btnRunBridge" onclick="runBridgeCheck()" disabled>Run Checks</button>
     </div>
   </div>
@@ -1231,6 +1229,10 @@
         <button class="btn-mono genall-btn" id="btnStopPush" disabled>Stop</button>
         <span class="genall-desc" style="color:#f59e0b;">&#9888; Commits directly — no per-device diff review. Use single Push to review before committing.</span>
       </div>
+      <div class="genall-action-card">
+        <button class="btn-mono genall-btn" id="btnGenAllReconcile" onclick="runReconcile()">Reconcile</button>
+        <span class="genall-desc">Find stale #TA interfaces &amp; BGP neighbors on all devices not in topology. Requires Device Bridge running.</span>
+      </div>
     </div>
     <!-- Push Targets device selection -->
     <div id="genallDeviceFilter" style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);">
@@ -1242,12 +1244,16 @@
       </div>
       <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 14px;"></div>
     </div>
-    <!-- Results section -->
+    <!-- Generate / Push results section -->
     <div style="display:flex;max-height:50vh;background:var(--bg-modal,#ffffff);">
       <div id="generateAllLeft" style="flex:1;padding:20px;overflow-y:auto;border-right:1px solid var(--border);">
         <div style="color:var(--text-muted);padding:20px 0;font-family:'JetBrains Mono',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>
       </div>
       <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;"></div>
+    </div>
+    <!-- Reconcile results section -->
+    <div id="reconResults" style="display:none;padding:12px 20px;border-top:1px solid var(--border);overflow-y:auto;max-height:45vh;background:var(--bg-modal,#ffffff);">
+      <div id="reconResultsBody"></div>
     </div>
   </div>
 

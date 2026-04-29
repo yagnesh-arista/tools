@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.13 | 2026-04-29 12:05:11
+# topoassist v260429.22 | 2026-04-29 13:41:52
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260429.1"
+VERSION           = "260429.2"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -528,6 +528,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
         elif self.path == "/reconcile":
             # ipMap values are {ip, ports:[...]} dicts
+            all_device_names = body.get("allDeviceNames")  # optional — all topology device names for BGP check
             results = {dev: None for dev in ip_map}
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
@@ -539,7 +540,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     return
                 with sem:
                     try:
-                        res = self._reconcile_device(ip, expected_ports)
+                        res = self._reconcile_device(ip, expected_ports, all_device_names=all_device_names)
                         with lock: results[dev] = res
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
@@ -1167,11 +1168,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
-    def _reconcile_device(self, ip, expected_ports):
-        """SSH to device, find #TA-tagged interfaces not in expected_ports.
+    def _reconcile_device(self, ip, expected_ports, all_device_names=None):
+        """SSH to device, find #TA-tagged interfaces not in expected_ports,
+        and BGP neighbors with #TA descriptions referencing devices not in the topology.
 
         Returns:
-          { ok, ta_total, matched, orphans: [{name, description, linkStatus, protocol}] }
+          { ok, ta_total, matched,
+            orphans:     [{name, description, linkStatus, protocol}],
+            bgp_orphans: [{neighbor, description}] }
 
         Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094
         (these are device-level, not per-link, and are never #TA-tagged by generateConfig).
@@ -1206,11 +1210,46 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if _norm_iface(iface["name"]) not in expected_set
         ]
 
+        # BGP neighbor orphan check — find neighbors whose #TA description references
+        # a device name not in the current topology.  Non-fatal: failure returns empty list.
+        bgp_orphans = []
+        if all_device_names:
+            known_devs = {d.lower() for d in all_device_names}
+            try:
+                eos_cmd = "show running-config | section router bgp"
+                base = _ssh_base()
+                exec_cmd = (
+                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+                    if JUMP_HOST else
+                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
+                )
+                if VERBOSE:
+                    print(f"  [bgp-recon] {ip}: {eos_cmd}", flush=True)
+                bgp_text = subprocess.check_output(
+                    exec_cmd, timeout=TIMEOUT, text=True,
+                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
+                )
+                # Match: neighbor <IP-or-peer-group> description ... #TA ...
+                _NEIGH_DESC_RE = re.compile(
+                    r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
+                    re.MULTILINE,
+                )
+                _DEV_RE = re.compile(r'Overlay to (\S+)\s+#TA', re.IGNORECASE)
+                for m in _NEIGH_DESC_RE.finditer(bgp_text):
+                    neighbor = m.group(1)
+                    desc     = m.group(2).strip()
+                    dev_m    = _DEV_RE.search(desc)
+                    if dev_m and dev_m.group(1).lower() not in known_devs:
+                        bgp_orphans.append({"neighbor": neighbor, "description": desc})
+            except Exception:
+                pass  # BGP check is non-fatal; interface results still returned
+
         return {
-            "ok":       True,
-            "ta_total": len(ta_ifaces),
-            "matched":  len(ta_ifaces) - len(orphans),
-            "orphans":  orphans,
+            "ok":          True,
+            "ta_total":    len(ta_ifaces),
+            "matched":     len(ta_ifaces) - len(orphans),
+            "orphans":     orphans,
+            "bgp_orphans": bgp_orphans,
         }
 
     # ── Parallel runner ───────────────────────────────────────────────────────

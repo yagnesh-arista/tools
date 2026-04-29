@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.20 | 2026-04-29 13:19:18 -->
+<!-- TopoAssist v260429.22 | 2026-04-29 13:42:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.20";  // keep in sync with Code.gs
+const APP_VERSION = "260429.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9721,7 +9721,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260429.1"
+VERSION = "260429.2"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -10700,8 +10700,6 @@ function _checkBridgeHealth() {
         msg.textContent = 'Running on port ' + (data.port || 8765);
         cmd.style.display = 'none';
         btn.disabled = false;
-        const reconBtn = document.getElementById('btnRunReconcile');
-        if (reconBtn) reconBtn.disabled = false;
         if (data.timeout) _bridgeDeviceTimeout = data.timeout;
         // auth field present only when METHOD=ssh + key-based auth (no sshpass)
         const authFailed = data.auth && data.auth.ok === false;
@@ -10721,8 +10719,6 @@ function _checkBridgeHealth() {
       cmd.innerHTML = 'Start the bridge: <code class="bridge-cmd-code">python3 device_bridge.py</code>';
       cmd.style.display = 'block';
       btn.disabled = true;
-      const _rb = document.getElementById('btnRunReconcile');
-      if (_rb) _rb.disabled = true;
       _updateBridgeToolbarIcon('down');
       // Auto-reconnect: schedule a re-check in 60s if preference is set
       if (localStorage.getItem('bridgeAutoReconnect') !== 'false') {
@@ -11348,17 +11344,35 @@ function _buildExpectedPortsPerDevice() {
 
 function runReconcile() {
   if (!currentData || !currentData.nodes) return;
-  const btn      = document.getElementById('btnRunReconcile');
-  const statusEl = document.getElementById('bridgeRunStatus');
-  const resPanel = document.getElementById('bridgeReconcileResults');
+  const btn        = document.getElementById('btnGenAllReconcile');
+  const reconPanel = document.getElementById('reconResults');
+  const reconBody  = document.getElementById('reconResultsBody');
+  if (!btn || !reconPanel || !reconBody) return;
 
-  const devices  = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
+  const devices = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   if (!devices.length) { setStatus('No Arista devices in topology', 'status-warn'); return; }
 
-  const mgmtIps    = _getLldpMgmtIps();
-  const portsPerDev = _buildExpectedPortsPerDevice();
+  btn.disabled = true;
+  btn.textContent = 'Checking bridge…';
+  reconPanel.style.display = 'none';
 
-  // Build ipMap: {devName: {ip, ports}}
+  fetch(BRIDGE_URL + '/health', { signal: AbortSignal.timeout(4000) })
+    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
+    .then(() => _doRunReconcile(btn, reconPanel, reconBody, devices))
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Reconcile';
+      reconPanel.style.display = 'block';
+      reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">' +
+        'Device Bridge is not running or unreachable. Start it from the Device Bridge panel and try again.</div>';
+    });
+}
+
+function _doRunReconcile(btn, reconPanel, reconBody, devices) {
+  const mgmtIps        = _getLldpMgmtIps();
+  const portsPerDev    = _buildExpectedPortsPerDevice();
+  const allDeviceNames = devices.map(n => n.id);
+
   const ipMap = {};
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -11369,22 +11383,20 @@ function runReconcile() {
 
   btn.disabled = true;
   btn.textContent = 'Reconciling…';
-  resPanel.style.display = 'none';
-  statusEl.style.display = 'block';
-  statusEl.style.color = '';
-  statusEl.textContent = 'Querying ' + devices.length + ' device' + (devices.length === 1 ? '' : 's') + ' for #TA interfaces…';
+  reconPanel.style.display = 'block';
+  reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Querying ' +
+    devices.length + ' device' + (devices.length === 1 ? '' : 's') + ' for stale #TA config…</div>';
 
   const _guard = setTimeout(() => {
     btn.disabled = false;
     btn.textContent = 'Reconcile';
-    statusEl.textContent = 'Reconcile timed out — try again';
-    statusEl.style.color = '#dc2626';
+    reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile timed out — try again.</div>';
   }, 30000);
 
   fetch(BRIDGE_URL + '/reconcile', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ ipMap }),
+    body:    JSON.stringify({ ipMap, allDeviceNames }),
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
@@ -11392,26 +11404,24 @@ function runReconcile() {
       btn.disabled = false;
       btn.textContent = 'Reconcile';
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      _renderReconcileResults(results, ipMap);
-      const totalOrphans = Object.values(results).reduce((s, r) => s + (r && r.ok ? r.orphans.length : 0), 0);
-      statusEl.style.color = totalOrphans ? '#d97706' : '#15803d';
-      statusEl.textContent = totalOrphans
-        ? 'Reconcile complete — ' + totalOrphans + ' orphan interface' + (totalOrphans === 1 ? '' : 's') + ' found'
-        : 'Reconcile complete — all #TA interfaces are in topology';
+      const totalOrphans = Object.values(results).reduce((s, r) => s + (r && r.ok ? (r.orphans || []).length : 0), 0);
+      const totalBgp     = Object.values(results).reduce((s, r) => s + (r && r.ok ? (r.bgp_orphans || []).length : 0), 0);
+      if (totalOrphans === 0 && totalBgp === 0) {
+        reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All #TA interfaces and BGP neighbors are accounted for.</div>';
+      } else {
+        _renderReconcileResults(results, ipMap, reconBody);
+      }
     })
     .catch(err => {
       clearTimeout(_guard);
       btn.disabled = false;
       btn.textContent = 'Reconcile';
-      statusEl.style.color = '#dc2626';
-      statusEl.textContent = 'Reconcile error: ' + err.message;
+      reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile error: ' + _esc(err.message) + '</div>';
     });
 }
 
-function _renderReconcileResults(results, ipMap) {
-  const panel = document.getElementById('bridgeReconcileResults');
-  if (!panel) return;
-  let html = '<div class="bridge-section-hdr" style="margin-top:12px;">Reconcile Results</div>';
+function _renderReconcileResults(results, ipMap, reconBody) {
+  let html = '';
 
   Object.entries(results).forEach(([dev, r]) => {
     html += '<div class="bridge-recon-dev">';
@@ -11420,36 +11430,59 @@ function _renderReconcileResults(results, ipMap) {
               '<span class="bridge-recon-counts" style="color:#dc2626;">' +
               _esc(r ? r.error : 'no response') + '</span></div>';
     } else {
-      const ip = (ipMap[dev] && ipMap[dev].ip) || '';
+      const ip           = (ipMap[dev] && ipMap[dev].ip) || '';
+      const ifaceOrphans = r.orphans || [];
+      const bgpOrphans   = r.bgp_orphans || [];
+      const totalStale   = ifaceOrphans.length + bgpOrphans.length;
       html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
-              '<span class="bridge-recon-counts">' + r.matched + '/' + r.ta_total + ' matched</span></div>';
-      if (!r.orphans.length) {
-        html += '<div class="bridge-recon-ok-msg">All #TA interfaces accounted for.</div>';
+              '<span class="bridge-recon-counts">' +
+              (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
+              '</span></div>';
+
+      if (ifaceOrphans.length === 0 && bgpOrphans.length === 0) {
+        html += '<div class="bridge-recon-ok-msg">All #TA config accounted for.</div>';
       } else {
-        html += '<div class="bridge-orphan-list">';
-        r.orphans.forEach(o => {
-          const proto = (o.linkStatus || o.protocol || '').toLowerCase();
-          const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
-          const badgeTxt = proto || 'unk';
-          html += '<div class="bridge-orphan-row">' +
-                  '<div class="bridge-orphan-info">' +
-                  '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
-                  '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
-                  '</div>' +
-                  '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(badgeTxt) + '</span>' +
-                  '<button class="btn-unconfigure" ' +
-                  'onclick="unconfigureOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
-                  'Unconfigure</button>' +
-                  '</div>';
-        });
-        html += '</div>';
+        if (ifaceOrphans.length) {
+          html += '<div class="bridge-recon-sub-hdr">Stale Interfaces</div>';
+          html += '<div class="bridge-orphan-list">';
+          ifaceOrphans.forEach(o => {
+            const proto = (o.linkStatus || o.protocol || '').toLowerCase();
+            const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
+            const badgeTxt = proto || 'unk';
+            html += '<div class="bridge-orphan-row">' +
+                    '<div class="bridge-orphan-info">' +
+                    '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+                    '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
+                    '</div>' +
+                    '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(badgeTxt) + '</span>' +
+                    '<button class="btn-unconfigure" ' +
+                    'onclick="unconfigureOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
+                    'Unconfigure</button>' +
+                    '</div>';
+          });
+          html += '</div>';
+        }
+        if (bgpOrphans.length) {
+          html += '<div class="bridge-recon-sub-hdr">Stale BGP Neighbors</div>';
+          html += '<div class="bridge-orphan-list">';
+          bgpOrphans.forEach(o => {
+            html += '<div class="bridge-orphan-row">' +
+                    '<div class="bridge-orphan-info">' +
+                    '<span class="bridge-orphan-name">' + _esc(o.neighbor) + '</span>' +
+                    '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
+                    '</div>' +
+                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>' +
+                    '<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-muted);flex-shrink:0;">Remove via EOS</span>' +
+                    '</div>';
+          });
+          html += '</div>';
+        }
       }
     }
     html += '</div>';
   });
 
-  panel.innerHTML = html;
-  panel.style.display = 'block';
+  reconBody.innerHTML = html || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No results.</div>';
 }
 
 // Determine the EOS cleanup command for an orphan interface.
@@ -12466,7 +12499,7 @@ async function pushAllConfigs() {
           const resp = await fetch(BRIDGE_URL + '/pushconfig', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ipMap: { [name]: { ip, config } } }),
+            body:    JSON.stringify({ ipMap: { [name]: { ip, config } }, all_ifaces: true }),
           });
           if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
           const data = await resp.json();
