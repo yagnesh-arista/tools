@@ -1,4 +1,4 @@
-# zshrc_macbook v260427.2 | 2026-04-27 10:18:16
+# zshrc_macbook v260429.1 | 2026-04-29 10:24:30
 # Managed via ~/claude/projects/zshrc_macbook/ on bus-home
 # Deploy: scp .zshrc yagnesh@<macbook>:~/.zshrc
 
@@ -291,6 +291,44 @@ setopt PROMPT_SUBST
 vcs_info_precmd() { vcs_info }
 precmd_functions+=(vcs_info_precmd)
 PROMPT='%F{green}%n@%m%f:%F{blue}%~%f${vcs_info_msg_0_}%# '
+
+# AI Spend in right prompt (reads ~/.cache/ai-spend.json; refreshes in background every 60s)
+_ai_spend_prompt() {
+    local cache="$HOME/.cache/ai-spend.json"
+    local key_file="$HOME/.ai-proxy-api-key"
+    local api_url="https://ai-proxy.infra.corp.arista.io/key/info"
+
+    # Refresh cache in background if missing or older than 60s (non-blocking)
+    if [[ ! -f "$cache" ]] || \
+       (( $(date +%s) - $(stat -f %m "$cache" 2>/dev/null || echo 0) > 60 )); then
+        mkdir -p "$HOME/.cache"
+        (curl -sf --max-time 5 \
+            -H "Authorization: Bearer $(cat $key_file 2>/dev/null)" \
+            "$api_url" 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({'spend':d['info']['spend'],'max_budget':d['info']['max_budget']}))" \
+            > "${cache}.tmp" 2>/dev/null && mv "${cache}.tmp" "$cache") &!
+    fi
+
+    [[ -f "$cache" ]] || return
+
+    local spend limit pct
+    spend=$(python3 -c "import json; d=json.load(open('$cache')); print(f\"{d['spend']:.2f}\")" 2>/dev/null)
+    limit=$(python3 -c "import json; d=json.load(open('$cache')); print(int(d['max_budget']))" 2>/dev/null)
+    [[ -z "$spend" || -z "$limit" || "$limit" == "0" ]] && return
+
+    pct=$(python3 -c "print(int(float('$spend')/float('$limit')*100))" 2>/dev/null)
+
+    # Color: green < 30%, yellow < 60%, orange < 90%, red >= 90%
+    local color
+    if   (( pct < 30 )); then color="%F{green}"
+    elif (( pct < 60 )); then color="%F{yellow}"
+    elif (( pct < 90 )); then color="%F{214}"    # orange
+    else                      color="%F{red}"
+    fi
+
+    echo "${color}💳 \$${spend}/\$${limit}%f"
+}
+RPROMPT='$(_ai_spend_prompt)'
 
 # ==============================================================================
 # 9. iTerm2 Shell Integration (macbook local sessions only; skips inside tmux)

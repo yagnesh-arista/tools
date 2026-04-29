@@ -1,5 +1,6 @@
 INSTRUCTIONS — zshrc_macbook project
-Last updated: 2026-04-27 (bus(): fixed parse error — apostrophe in comment ("don't") inside expect -c '...' block closed the zsh single-quoted string early, causing zsh to parse Tcl as shell code; replaced with "do not"; also: (1) removed -t from session-list fetch spawn to stop PTY escape sequences leaking into expect_out(buffer); (2) added regsub to strip non-digit chars from user_input, filtering ^[[O/[[I sequences iTerm2 sends in raw mode; (3) added \x1b filter in session loop to skip escape-containing lines)
+Last updated: 2026-04-29 (Added _ai_spend_prompt(): AI proxy spend in RPROMPT — reads ~/.cache/ai-spend.json, refreshes in background every 60s via curl to https://ai-proxy.infra.corp.arista.io/key/info, color-coded green/yellow/orange/red by utilization %; works in iTerm2 and Tabby)
+Previous: 2026-04-27 (bus(): fixed parse error — apostrophe in comment ("don't") inside expect -c '...' block closed the zsh single-quoted string early, causing zsh to parse Tcl as shell code; replaced with "do not"; also: (1) removed -t from session-list fetch spawn to stop PTY escape sequences leaking into expect_out(buffer); (2) added regsub to strip non-digit chars from user_input, filtering ^[[O/[[I sequences iTerm2 sends in raw mode; (3) added \x1b filter in session loop to skip escape-containing lines)
 Previous: 2026-04-21 (busclaude: wrap command in bash -l -c to source login profile so ~/.local/bin/claude is in PATH)
 Previous: 2026-04-21 (Added busclaude(): like bus0 but ssh -t bus-home 'cd ~/claude && ./lclaude')
 Previous: 2026-04-18 (Review fixes: bus0 title; ls GNU/BSD conditional; drop redundant HIST_IGNORE_DUPS + HIST_APPEND)
@@ -66,6 +67,12 @@ CURRENT .zshrc SECTIONS
 5. Aliases: ls/ll/la/lrtha use GNU --color=auto if available, else BSD -G (auto-detected at startup); grep --color=auto; .., ..., mkcd()
 6. Prompt: green user@host, blue cwd, git branch via vcs_info
    NOTE: uses precmd_functions+=(vcs_info_precmd) NOT precmd() directly — avoids conflict with iTerm2
+   RPROMPT: _ai_spend_prompt() — AI proxy spend display (💳 $4.32/$75), color-coded by utilization
+            Cache: ~/.cache/ai-spend.json (refreshed in background every 60s, non-blocking)
+            API: https://ai-proxy.infra.corp.arista.io/key/info, Bearer token from ~/.ai-proxy-api-key
+            Response fields: .info.spend, .info.max_budget
+            Colors: green <30%, yellow <60%, orange (214) <90%, red >=90%
+            Works in iTerm2 and Tabby — no VSCode dependency
 7. iTerm2 shell integration: sourced AFTER prompt so it appends to precmd_functions cleanly
    Skips itself automatically inside tmux ($TERM == tmux-256color)
 
