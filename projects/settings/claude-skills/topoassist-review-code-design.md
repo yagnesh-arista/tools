@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-28 (Check 27 added: processDeviceConfig _isEosDev guard + non-EOS actionsDisabled=true) -->
+<!-- rules-synced: 2026-04-29 (Check 28 added: configCache sole-truth — no fullConfig/configLoaded) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
