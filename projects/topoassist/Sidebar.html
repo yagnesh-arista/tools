@@ -1,4 +1,4 @@
-<!-- TopoAssist v260429.16 | 2026-04-29 12:19:32 -->
+<!-- TopoAssist v260429.18 | 2026-04-29 13:10:27 -->
 <!DOCTYPE html>
 <html>
 
@@ -884,19 +884,17 @@
           </label>
         </div>
       </div>
-      <!-- Devices: collapsible, preference saved in localStorage -->
-      <div class="bridge-section-hdr bridge-dev-hdr" style="margin-top:10px;" onclick="toggleBridgeDevSection()">
-        <span>Devices <span class="bridge-hint">IP defaults to device name via DNS — edit to override</span></span>
-        <button class="bridge-dev-toggle" id="btnBridgeDevToggle" title="Collapse/expand devices">
-          <svg id="svgBridgeDevChevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+      <!-- Device Login: collapsible, preference saved in localStorage -->
+      <div class="br-sec-hdr" style="margin-top:10px;" onclick="toggleBridgeDevSection()">
+        <span class="br-chev" id="svgBridgeDevChevron"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="br-sec-title">Device Login</span>
       </div>
       <div id="bridgeDevTable"></div>
+      <div class="info-box info-box--dim" style="margin-top:5px;font-size:10px;" id="bridgeDevHint">IP defaults to device name via DNS — edit to override</div>
       <div id="bridgeRunStatus" class="bridge-run-status" style="display:none;"></div>
       <div id="bridgeResults" style="display:none;">
         <div id="bridgeResultSections"></div>
+        <div class="info-box info-box--dim" style="margin-top:8px;font-size:10px;">Audit icon in toolbar shows issue count — click to open audit details &amp; toggle checks</div>
       </div>
       <div id="bridgeReconcileResults" style="display:none;"></div>
     </div>

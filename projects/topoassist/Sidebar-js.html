@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.16 | 2026-04-29 12:21:04 -->
+<!-- TopoAssist v260429.18 | 2026-04-29 13:10:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.16";  // keep in sync with Code.gs
+const APP_VERSION = "260429.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10499,9 +10499,11 @@ function openBridgeModal() {
 function _syncBridgeDevCollapse() {
   const collapsed = localStorage.getItem('bridgeDevCollapsed') === 'true';
   const table   = document.getElementById('bridgeDevTable');
+  const hint    = document.getElementById('bridgeDevHint');
   const chevron = document.getElementById('svgBridgeDevChevron');
   if (!table || !chevron) return;
   table.style.display   = collapsed ? 'none' : '';
+  if (hint) hint.style.display = collapsed ? 'none' : '';
   chevron.classList.toggle('collapsed', collapsed);
 }
 
