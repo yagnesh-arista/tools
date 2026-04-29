@@ -692,6 +692,7 @@ TOPOASSIST CODE REVIEW
 25 — Full-screen dialog min.  ✓ / ✗ / ⚠
 26 — Strip divider parity      ✓ / ✗ / ⚠
 27 — Non-EOS strip EOS guard   ✓ / ✗ / ⚠
+28 — configCache sole store    ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
