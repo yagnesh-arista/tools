@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.36 | 2026-04-29 16:42:58
+# topoassist v260429.37 | 2026-04-29 16:59:57
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260429.6"
+VERSION           = "260429.7"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1313,6 +1313,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
             })
 
         expected_set = {_norm_iface(p) for p in expected_ports}
+        # Also accept interfaces present in the generated config (SVIs from svi_vlan_,
+        # sub-interfaces, etc.) — they are not physical topology ports but are valid.
+        if config_text:
+            for _line in config_text.splitlines():
+                _m = re.match(r'^interface\s+(\S+)', _line, re.IGNORECASE)
+                if _m:
+                    expected_set.add(_norm_iface(_m.group(1)))
         orphans = [
             iface for iface in ta_ifaces
             if _norm_iface(iface["name"]) not in expected_set

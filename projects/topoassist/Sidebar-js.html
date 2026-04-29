@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.36 | 2026-04-29 16:43:12 -->
+<!-- TopoAssist v260429.37 | 2026-04-29 17:00:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.36";  // keep in sync with Code.gs
+const APP_VERSION = "260429.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9721,7 +9721,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260429.6"
+VERSION = "260429.7"
 PORT    = 8765
 _b        = _arg("-b")
 SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
@@ -10489,6 +10489,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             })
 
         expected_set = {_norm_iface(p) for p in expected_ports}
+        if config_text:
+            for _line in config_text.splitlines():
+                _m = re.match(r"^interface\\s+(\\S+)", _line, re.IGNORECASE)
+                if _m:
+                    expected_set.add(_norm_iface(_m.group(1)))
         orphans = [
             iface for iface in ta_ifaces
             if _norm_iface(iface["name"]) not in expected_set
@@ -11770,7 +11775,7 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '</div>' +
                     '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(proto || 'unk') + '</span>' +
                     '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
+                    'onclick="unconfigureOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.name)) + ',this)">' +
                     'Remove</button>' +
                     '</div>';
           });
@@ -11787,7 +11792,7 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '</div>' +
                     '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>' +
                     '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureBgpOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.neighbor) + ',' + JSON.stringify(o.asn) + ',this)">' +
+                    'onclick="unconfigureBgpOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.neighbor)) + ',' + _esc(JSON.stringify(o.asn)) + ',this)">' +
                     'Remove</button>' +
                     '</div>';
           });
@@ -11804,7 +11809,7 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '</div>' +
                     '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>' +
                     '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureVlanOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + o.vid + ',this)">' +
+                    'onclick="unconfigureVlanOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + o.vid + ',this)">' +
                     'Remove</button>' +
                     '</div>';
           });
@@ -11821,7 +11826,7 @@ function _renderReconcileResults(results, ipMap, reconBody) {
                     '</div>' +
                     '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>' +
                     '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureVrfOrphan(' + JSON.stringify(dev) + ',' + JSON.stringify(ip) + ',' + JSON.stringify(o.name) + ',this)">' +
+                    'onclick="unconfigureVrfOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.name)) + ',this)">' +
                     'Remove</button>' +
                     '</div>';
           });
