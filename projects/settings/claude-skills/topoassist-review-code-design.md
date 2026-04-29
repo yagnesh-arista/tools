@@ -635,6 +635,35 @@ For each `setSplitBtnState(..., "— Non-EOS", "#64748b", ...)` call:
 
 ---
 
+## Check 28 — configCache Is the Sole Config State Store
+
+`configCache[deviceName].data` is the only source of truth for device config.
+`allDevicesData[dev].fullConfig`, `allDevicesData[dev].configLoaded`, and
+`allNodesData[id].details.configLoaded` were removed in the 2026-04-29 refactor —
+any reintroduction silently defeats cache invalidation (eviction removes `configCache[dev]`
+but leaves stale `.fullConfig`/`.configLoaded`, so old config is shown as green/cached).
+
+```bash
+# Must return 0 — no fullConfig writes anywhere
+grep -n "\.fullConfig\s*=" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Must return 0 — no configLoaded writes on allDevicesData
+grep -n "allDevicesData\[.*\]\.configLoaded\s*=" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Must return 0 — no configLoaded writes on allNodesData
+grep -n "allNodesData\[.*\]\.details\.configLoaded\s*=" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Config-ready checks must use configCache, not .configLoaded
+grep -n "\.configLoaded" ~/claude/projects/topoassist/Sidebar-js.html
+```
+
+✗ FAIL if any `allDevicesData[dev].fullConfig =` write is found — cite line
+✗ FAIL if any `allDevicesData[dev].configLoaded =` write is found — cite line
+✗ FAIL if any `allNodesData[id].details.configLoaded =` write is found — cite line
+✗ FAIL if `.configLoaded` is read as a config-ready check (must be `!!configCache[dev]`) — cite line
+
+---
+
 ## Output Format
 
 ```
