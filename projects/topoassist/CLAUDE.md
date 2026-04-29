@@ -72,6 +72,20 @@ Before writing any logic that classifies, routes, or counts data:
 - [ ] Is the same state tracked in two places? Eliminate the secondary tracker or make it a strict read-only view.
 - [ ] Does count come from the same array that drives the UI? If not, they will diverge.
 
+## Config State — `configCache` Is the Only Store
+
+`configCache[deviceName].data` is the **sole source of truth** for device config. There are no secondary stores.
+
+| What you need | How to get it |
+|---|---|
+| Is config loaded? | `!!configCache[devName]` |
+| Full config string | `formatConfigText(configCache[devName].data)` |
+| Per-port config string | `allNodesData["Dev:Port"].details.config` (set by `processDeviceConfig`) |
+
+**Never introduce** `allDevicesData[dev].fullConfig`, `allDevicesData[dev].configLoaded`, or `allNodesData[id].details.configLoaded` — these were removed in the 2026-04-29 refactor because `_selectiveConfigInvalidate` only evicted `configCache` and left them stale, silently defeating cache invalidation.
+
+When `delete configCache[devName]` is called (eviction, clear), that is the complete invalidation — no other state needs to be cleared.
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
