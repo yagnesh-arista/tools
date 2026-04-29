@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.12 | 2026-04-29 12:04:27
+# topoassist v260429.13 | 2026-04-29 12:05:11
 """
 TopoAssist Device Bridge
 ========================
@@ -20,7 +20,7 @@ Transport options (set METHOD below):
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260426.70","port":8765}
+  GET  /health      → {"status":"ok","version":"260429.1","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260427.3"
+VERSION           = "260429.1"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -931,9 +931,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
-            eos_errs = _extract_eos_errors('\n'.join(results))
+            eos_errs, eos_warns = _extract_eos_errors('\n'.join(results))
             if eos_errs:
                 _asn_extra["eos_errors"] = eos_errs
+            if eos_warns:
+                _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
@@ -951,10 +953,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 raise RuntimeError(
                     "EOS pending session limit reached — Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
-            diff     = _extract_session_diff(output)
-            eos_errs = _extract_eos_errors(output)
+            diff                = _extract_session_diff(output)
+            eos_errs, eos_warns = _extract_eos_errors(output)
             if eos_errs:
                 _asn_extra["eos_errors"] = eos_errs
+            if eos_warns:
+                _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
                 if VERBOSE: print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)")
