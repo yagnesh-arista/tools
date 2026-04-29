@@ -10,12 +10,13 @@
 
 **`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. Use external scripts (tmux_click.sh) for DoubleClick/TripleClick instead.
 
-**5 deployable files** — hook auto-deploys each individually when edited:
+**6 deployable files** — hook auto-deploys each individually when edited:
 - `tmux.conf` → `~/.tmux/tmux.conf` + `tmux source-file` (reload)
 - `themes/light.conf` → `~/.tmux/themes/light.conf`
 - `themes/dark.conf` → `~/.tmux/themes/dark.conf`
 - `tmux_broadcast.sh` → `~/.tmux/tmux_broadcast.sh` (chmod +x)
 - `tmux_click.sh` → `~/.tmux/tmux_click.sh` (chmod +x)
+- `tmux_ai_spend.sh` → `~/.tmux/tmux_ai_spend.sh` (chmod +x)
 
 ## After Every Change
 - Check if any removed binding needs an explicit `unbind` (source-file won't remove it automatically)

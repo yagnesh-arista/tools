@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-29 (Status bar: AI spend widget now session-scoped — uses tmux list-panes -s -t '#{session_name}' -F '##{pane_current_command}' | grep -qx claude so widget only shows in the tmux session that has a claude pane; other sessions show nothing. #{session_name} is expanded by tmux before #() runs; ## escapes the inner format string from outer expansion.)
+  Last updated: 2026-04-29 (Status bar: extracted AI spend widget to tmux_ai_spend.sh (6th deployable file). Script handles: session-scoped claude check; async cache refresh on every 60s tmux tick (independent of bash prompts — fixes stale data during long claude sessions); display via heredoc python. status-right is now a clean one-liner calling the script.)
+  Previous: 2026-04-29 (Status bar: AI spend widget now session-scoped — uses tmux list-panes -s -t '#{session_name}' -F '##{pane_current_command}' | grep -qx claude so widget only shows in the tmux session that has a claude pane; other sessions show nothing. #{session_name} is expanded by tmux before #() runs; ## escapes the inner format string from outer expansion.)
   Previous: 2026-04-29 (Status bar: added status-interval 60; increased status-right-length to 90; added #(python3 ...) AI spend widget that reads ~/.cache/ai-spend.json — shows 💳 $spend/$budget with color coding: green <30%, yellow <60%, colour214 <90%, red ≥90%. Cache refreshed by _ai_spend_ps1() in .bashrc every 60s. Widget is silent when no cache file exists.)
   Previous: 2026-04-25 (Removed Vim-Tmux-Navigator smart pane switching (C-h/j/k/l) — was causing backspace conflict. Added explicit unbind-key -n C-h/C-j/C-k/C-l to purge stale bindings from tmux memory on reload.)
   Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/deploy.md (/deploy command); hook updated to deploy all 5 project files)
@@ -117,6 +118,7 @@ Project source: ~/claude/projects/tmux.conf/
   themes/dark.conf       — Dark theme. Deploy to ~/.tmux/themes/dark.conf
   tmux_broadcast.sh      — Broadcast script. Deploy to ~/.tmux/tmux_broadcast.sh
   tmux_click.sh          — DoubleClick/TripleClick copy-mode script. Deploy to ~/.tmux/tmux_click.sh
+  tmux_ai_spend.sh       — AI spend status widget. Deploy to ~/.tmux/tmux_ai_spend.sh
   INSTRUCTIONS_tmux-conf.txt  — This file.
   CLAUDE.md              — Auto-loaded constraints summary (critical rules, deploy note).
   .claude/commands/
@@ -367,18 +369,17 @@ Layout: [session] | windows centered | 💳 spend sync-status online-status [hos
   status-interval: 60 seconds
   status-right-length: 90
 
-  AI spend widget (#(python3 ...)):
-    Guard: session-scoped — `tmux list-panes -s -t '#{session_name}' -F '#{pane_current_command}' | grep -qx claude`
-    Widget only appears in sessions that have a pane actively running claude.
-    `#{session_name}` expands before #() runs; `##` in the .conf escapes to `#` so the
-    inner format string reaches list-panes intact (not expanded by the outer format pass).
-    Reads ~/.cache/ai-spend.json (written by _ai_spend_ps1() in .bashrc).
+  AI spend widget — delegates to ~/.tmux/tmux_ai_spend.sh '#{session_name}':
+    Guard: session-scoped — checks list-panes for a pane running claude; exits silently if none.
+    Cache refresh: script itself triggers async API refresh if cache is missing or >60s old.
+      This fires on every tmux 60s tick — independent of bash PROMPT_COMMAND.
+      Fixes stale data during long claude sessions where no bash prompts fire.
+    Display: python3 heredoc reads ~/.cache/ai-spend.json; shows cached value immediately;
+      next tick shows refreshed value (async refresh completes within the 60s window).
     Format: 💳 $<spend>/<budget>  (e.g. 💳 $12.34/$50)
     Colors: green <30% · yellow <60% · colour214 <90% · red ≥90%
-    Silent (no output) if no claude pane, cache missing, or max_budget is 0.
-    Cache refresh: handled by .bashrc _ai_spend_ps1() via PROMPT_COMMAND (triggers on
-    each bash prompt, but API is only called when cache is >60s old).
-    Display refresh: tmux status-interval 60 re-runs #() every 60s.
+    API: https://ai-proxy.infra.corp.arista.io/key/info · fields: .info.spend / .info.max_budget
+    Silent if no claude pane, cache missing, or max_budget is 0.
 
   window-status-separator: ' | '
   status justified: centre (windows centered)
