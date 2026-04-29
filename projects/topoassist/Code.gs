@@ -1,10 +1,10 @@
-// TopoAssist v260429.23 | 2026-04-29 13:58:09
+// TopoAssist v260429.24 | 2026-04-29 14:28:50
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260429.23";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260429.24";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4785,6 +4785,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
     // Filter undefined/null inside the array
     safeVrfs.filter(v => v).forEach(v => {
       lines.push(`vrf instance ${v}`);
+      lines.push(` description ${v} #TA`);
       lines.push(`ip routing vrf ${v}`);
       if (hasAnyIpv6 && !v.startsWith('SNAKE_')) lines.push(`ipv6 unicast-routing vrf ${v}`);
       lines.push(`!`);
@@ -4794,32 +4795,19 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   }
   lines.push(`!`);
 
-  // VLANs
-  lines.push(`! VLAN Configuration`);
-  lines.push(`default vlan 1-4094`);
-  lines.push(`!`);
-
+  // VLANs — individual named blocks; #TA tag allows orphan cleanup on push
   if (safeVlans.length > 0) {
-    // Filter valid numbers
     const validVlans = safeVlans.filter(v => !isNaN(v) && v > 0);
     if (validVlans.length > 0) {
-      // Sort and compact
       validVlans.sort((a, b) => a - b);
-      let ranges = [];
-      let start = validVlans[0];
-      let prev = start;
-      for (let i = 1; i < validVlans.length; i++) {
-        if (validVlans[i] !== prev + 1) {
-          ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
-          start = validVlans[i];
-        }
-        prev = validVlans[i];
-      }
-      ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
-      lines.push(`vlan ${ranges.join(",")}`);
+      validVlans.forEach(v => {
+        const paddedId = String(v).padStart(4, '0');
+        lines.push(`vlan ${v}`);
+        lines.push(` name VLAN${paddedId} #TA`);
+        lines.push(`!`);
+      });
     }
   }
-  lines.push(`!`);
 
   return { lo0: lo0Lines.join('\n'), system: lines.join('\n') };
 }
@@ -5704,11 +5692,11 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
 
   // FIXED: Changed 'description' to 'name' for VLAN context
   mlagLines.push("vlan 4093");
-  mlagLines.push(" name MLAG_L3_UNDERLAY_PEERING");
+  mlagLines.push(" name MLAG_L3_UNDERLAY_PEERING #TA");
   mlagLines.push(" trunk group MLAG_PEER");
   mlagLines.push("!");
   mlagLines.push("vlan 4094");
-  mlagLines.push(" name MLAG_CONTROL_PLANE");
+  mlagLines.push(" name MLAG_CONTROL_PLANE #TA");
   mlagLines.push(" trunk group MLAG_PEER");
   mlagLines.push("!");
 
