@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.64 | 2026-04-30 17:50:34
+# topoassist v260430.69 | 2026-04-30 18:01:36
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.46"
+VERSION           = "260430.47"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -900,10 +900,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         specific % reason that EOS emits on a PTY (e.g. '% Virtual IP address is
         already configured').  This function opens a topoassist_<epoch> configure
         session via SSH, replays each failed command in its block context, captures
-        the % reason from the PTY output, then aborts — nothing is ever committed.
+        all % lines from the PTY output, then aborts — nothing is ever committed.
 
-        Returns eos_errs with 'could not run command' replaced by the specific %
-        reason.  If SSH is unavailable or times out, returns eos_errs unchanged.
+        % line extraction is index-based (not prompt-based): consecutive % lines
+        between non-% output lines form one group; groups are paired to failed
+        commands in order.  This avoids EOS prompt-format sensitivity.
+
+        Returns eos_errs with 'could not run command' replaced by the % reason(s).
+        If SSH is unavailable or no % lines found, returns eos_errs unchanged.
         """
         try:
             # Collect deduplicated (block_cmd, failed_cmd) pairs in order
@@ -929,41 +933,44 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if not pairs:
                 return eos_errs
 
-            # Build the diagnostic configure session — always aborted at the end
+            # Build the diagnostic configure session.
+            # Use end + re-enter + abort (same pattern as real push) to ensure clean
+            # teardown from any sub-mode depth.  The session is always aborted.
             session   = f"topoassist_{int(time.time())}"
             diag_cmds = [f"configure session {session}"]
             for block_cmd, failed_cmd in pairs:
                 if block_cmd:
                     diag_cmds.append(block_cmd)
                 diag_cmds.append(failed_cmd)
-            diag_cmds.append("abort")
+            diag_cmds.extend(["end", f"configure session {session}", "abort"])
 
             if VERBOSE:
                 print(f"  [diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
             out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
 
-            # Parse % lines from PTY output.
-            # EOS echoes: HOSTNAME(config-s-<name>[-if-...])#<cmd>  then % reason on next line.
-            percent_map = {}   # (block_cmd, failed_cmd) -> "% reason"
-            prev_block  = ''
-            prev_cmd    = ''
+            # Collect consecutive % groups from PTY output — index-aligned with pairs.
+            # Each group (one or more consecutive % lines) corresponds to one failed
+            # command.  Prompt format is irrelevant: non-% lines flush the current group.
+            groups  = []
+            current = []
             for line in out.splitlines():
                 s = line.strip()
-                if '#' in s and '(config' in s:
-                    cmd = s.split('#', 1)[-1].strip()
-                    if _BLOCK_CMD_RE.match(cmd):
-                        prev_block = cmd
-                        prev_cmd   = ''
-                    else:
-                        prev_cmd = cmd
-                elif s.startswith('%'):
-                    key = (prev_block, prev_cmd)
-                    if key not in percent_map:
-                        percent_map[key] = s
-            if not percent_map:
+                if s.startswith('%'):
+                    current.append(s)
+                elif current:
+                    groups.append('\n'.join(current))
+                    current = []
+            if current:
+                groups.append('\n'.join(current))
+            if not groups:
                 return eos_errs
 
-            # Replace 'could not run command' with the specific % reason
+            # Map (block_cmd, failed_cmd) → reason by position
+            reasons = {key: groups[i] for i, key in enumerate(pairs) if i < len(groups)}
+            if not reasons:
+                return eos_errs
+
+            # Replace 'could not run command' with the specific % reason(s)
             result = list(eos_errs)
             for i, err in enumerate(result):
                 m = _EAPI_FAILED_CMD_RE.search(err)
@@ -978,7 +985,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                 block_cmd = lines[j].strip()
                                 break
                         break
-                reason = percent_map.get((block_cmd, failed_cmd))
+                reason = reasons.get((block_cmd, failed_cmd))
                 if reason:
                     result[i] = re.sub(
                         r':\s*could not run command\s*$',
