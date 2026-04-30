@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.65 | 2026-04-30 17:51:24 -->
+<!-- TopoAssist v260430.66 | 2026-04-30 17:51:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.65";  // keep in sync with Code.gs
+const APP_VERSION = "260430.66";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14738,6 +14738,19 @@ function showConfigModal(deviceName, configText) {
     if (!rawTerm) {
       body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
       matchBadge.classList.add("hidden");
+      return;
+    }
+
+    // Line number jump: :N  (e.g. ":12314")
+    const lineJump = rawTerm.match(/^:(\d+)$/);
+    if (lineJump) {
+      const targetLine = parseInt(lineJump[1], 10);
+      const allLines = currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1}));
+      body.innerHTML = _renderWithLineNums(allLines, targetLine);
+      matchBadge.innerText = `Line ${targetLine}`;
+      matchBadge.classList.remove("hidden");
+      const hlEl = body.querySelector('.cfg-line-hl');
+      if (hlEl) hlEl.scrollIntoView({block: 'center'});
       return;
     }
 
