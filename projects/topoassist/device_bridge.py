@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.71 | 2026-04-30 18:08:46
+# topoassist v260430.76 | 2026-04-30 18:29:41
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.48"
+VERSION           = "260430.49"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -873,11 +873,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
     # ── Transport: eAPI (text format — for config push) ───────────────────────
     def _eapi_push(self, ip, *cmds):
         """Run EOS commands via eAPI with format=text (for configure session).
-        Returns list of raw text output strings, one per command."""
+
+        stopOnError=False causes EOS to continue executing remaining commands
+        after a failure, embedding % error text in each command's output instead
+        of aborting and returning a single top-level error.  _extract_eos_errors
+        then finds ALL % lines across the full result set in one call.
+
+        Returns list of raw text output strings, one per command.
+        """
         url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
         payload = json.dumps({
             "jsonrpc": "2.0", "method": "runCmds",
-            "params":  {"version": 1, "cmds": list(cmds), "format": "text"},
+            "params":  {"version": 1, "cmds": list(cmds), "format": "text",
+                        "stopOnError": False},
             "id":      1,
         }).encode()
         creds = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()

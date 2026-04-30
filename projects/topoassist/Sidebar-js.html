@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.75 | 2026-04-30 18:21:38 -->
+<!-- TopoAssist v260430.76 | 2026-04-30 18:29:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.75";  // keep in sync with Code.gs
+const APP_VERSION = "260430.76";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9764,7 +9764,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.48"
+VERSION    = "260430.49"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10399,7 +10399,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _eapi_push(self, ip, *cmds):
         url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
-        payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"text"},"id":1}).encode()
+        payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"text","stopOnError":False},"id":1}).encode()
         creds   = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
         req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
         with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
