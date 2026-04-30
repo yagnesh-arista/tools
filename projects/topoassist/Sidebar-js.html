@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.3 | 2026-04-30 09:59:26 -->
+<!-- TopoAssist v260430.4 | 2026-04-30 10:04:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.3";  // keep in sync with Code.gs
+const APP_VERSION = "260430.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10124,7 +10124,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return resp["result"]
 
     def _eapi_push(self, ip, *cmds):
-        url     = f"https://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
         payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"text"},"id":1}).encode()
         creds   = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
         req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
@@ -10133,6 +10133,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if "error" in resp:
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
         return [r.get("output", "") if isinstance(r, dict) else str(r) for r in resp["result"]]
+
+    def _text_cmd(self, ip, cmd):
+        if VERBOSE:
+            print(f"  [text-cmd/{METHOD}] {ip}: {cmd}", flush=True)
+        if METHOD == "eapi":
+            result = self._eapi_push(ip, cmd)
+            return result[0] if result else ""
+        base     = _ssh_base()
+        exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", cmd]
+                    if JUMP_HOST else [*base, f"{SSH_USER}@{ip}", cmd])
+        return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
+                                       stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
     def _ssh_stdin(self, ip, *cmds, force_tty=False):
         cmds_list = list(cmds)
@@ -10348,16 +10360,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if asn_m:
                 asn = asn_m.group(1)
                 try:
-                    eos_cmd = "show running-config | section router bgp"
-                    base = _ssh_base()
-                    exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                                if JUMP_HOST else
-                                [*base, f"{SSH_USER}@{ip}", eos_cmd])
-                    if VERBOSE:
-                        print(f"  [bgp-orphan] {ip}: {eos_cmd}", flush=True)
-                    bgp_text = subprocess.check_output(
-                        exec_cmd, timeout=TIMEOUT, text=True,
-                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
+                    bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
                     global_bgp = re.split(r"\\n\\s+vrf\\s+", bgp_text, maxsplit=1)[0]
                     known_devs = {d.lower() for d in all_device_names}
                     _NEIGH_DESC_RE = re.compile(
@@ -10403,16 +10406,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if vm:
                 expected_vrfs.add(vm.group(1).lower())
         try:
-            eos_cmd = "show running-config | section vrf instance"
-            base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
-            if VERBOSE:
-                print(f"  [vrf-orphan] {ip}: {eos_cmd}", flush=True)
-            vrf_text = subprocess.check_output(
-                exec_cmd, timeout=TIMEOUT, text=True,
-                stderr=subprocess.DEVNULL, env=_SSH_ENV)
+            vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
             _VRF_INST_RE = re.compile(r"^vrf instance\s+(\S+)", re.MULTILINE | re.IGNORECASE)
             _VRF_DESC_TA_RE = re.compile(r"^\s+description\s+\S+\s+#TA", re.MULTILINE)
             for vm in _VRF_INST_RE.finditer(vrf_text):
@@ -10435,17 +10429,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return [], None
         new_asn = int(m.group(1))
         try:
-            eos_cmd = "show running-config | include router bgp"
-            base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
-            if VERBOSE:
-                print(f"  [show] {ip}: {eos_cmd}", flush=True)
-            out = subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
-                                          stderr=subprocess.DEVNULL, env=_SSH_ENV)
-            if VERBOSE:
-                print(f"  [show] {ip}: {eos_cmd} → ok", flush=True)
+            out = self._text_cmd(ip, "show running-config | include router bgp")
         except Exception:
             return [], None
         m2 = re.search(r"^router bgp\s+(\d+)", out, re.MULTILINE | re.IGNORECASE)
@@ -10505,19 +10489,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if all_device_names:
             known_devs = {d.lower() for d in all_device_names}
             try:
-                eos_cmd = "show running-config | section router bgp"
-                base = _ssh_base()
-                exec_cmd = (
-                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                    if JUMP_HOST else
-                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
-                )
-                if VERBOSE:
-                    print(f"  [bgp-recon] {ip}: {eos_cmd}", flush=True)
-                bgp_text = subprocess.check_output(
-                    exec_cmd, timeout=TIMEOUT, text=True,
-                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
-                )
+                bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
                 asn_m = re.search(r'^router bgp\\s+(\\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
                 asn = asn_m.group(1) if asn_m else None
                 _NEIGH_DESC_RE = re.compile(
@@ -10565,19 +10537,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if vm:
                     expected_vrfs.add(vm.group(1).lower())
             try:
-                eos_cmd = "show running-config | section vrf instance"
-                base = _ssh_base()
-                exec_cmd = (
-                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                    if JUMP_HOST else
-                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
-                )
-                if VERBOSE:
-                    print(f"  [vrf-recon] {ip}: {eos_cmd}", flush=True)
-                vrf_text = subprocess.check_output(
-                    exec_cmd, timeout=TIMEOUT, text=True,
-                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
-                )
+                vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
                 _VRF_INST_RE = re.compile(r'^vrf instance\\s+(\\S+)', re.MULTILINE | re.IGNORECASE)
                 _VRF_DESC_TA_RE = re.compile(r'^\\s+description\\s+\\S+\\s+#TA', re.MULTILINE)
                 for vm in _VRF_INST_RE.finditer(vrf_text):
