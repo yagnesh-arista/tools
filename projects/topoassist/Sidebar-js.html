@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.82 | 2026-04-30 20:43:02 -->
+<!-- TopoAssist v260430.83 | 2026-04-30 20:43:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.82";  // keep in sync with Code.gs
+const APP_VERSION = "260430.83";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11088,7 +11088,7 @@ const _ALL_AUDIT_FLAGS = [
   'auditFlagMissingVlan',
   'auditFlagMlagPeerLink', 'auditFlagUndeclaredMlag',
   'auditFlagSnakeIpType', 'auditFlagIxiaIpType',
-  'auditFlagPoNoPeerPo', 'auditFlagPoNoPeer'
+  'auditFlagPoNoPeer'
 ];
 
 function _getAuditFlag(name) {
@@ -11097,7 +11097,6 @@ function _getAuditFlag(name) {
     case 'auditFlagPoAsymmetry':        return auditFlagPoAsymmetry;
     case 'auditFlagMissingPo':          return auditFlagMissingPo;
     case 'auditFlagStalePo':            return auditFlagStalePo;
-    case 'auditFlagPoNoPeerPo':         return auditFlagPoNoPeerPo;
     case 'auditFlagPoNoPeer':           return auditFlagPoNoPeer;
     case 'auditFlagUnsupportedInt':     return auditFlagUnsupportedInt;
     case 'auditFlagDuplicateInt':       return auditFlagDuplicateInt;
@@ -11137,7 +11136,6 @@ function _setAuditFlag(name, val) {
     case 'auditFlagPoAsymmetry':        auditFlagPoAsymmetry = val; break;
     case 'auditFlagMissingPo':          auditFlagMissingPo = val; break;
     case 'auditFlagStalePo':            auditFlagStalePo = val; break;
-    case 'auditFlagPoNoPeerPo':         auditFlagPoNoPeerPo = val; break;
     case 'auditFlagPoNoPeer':           auditFlagPoNoPeer = val; break;
     case 'auditFlagUnsupportedInt':     auditFlagUnsupportedInt = val; break;
     case 'auditFlagDuplicateInt':       auditFlagDuplicateInt = val; break;
