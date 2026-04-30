@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.4 | 2026-04-30 10:02:10 -->
+<!-- TopoAssist v260430.5 | 2026-04-30 10:05:51 -->
 <!DOCTYPE html>
 <html>
 
@@ -882,6 +882,44 @@
             <input type="checkbox" id="chkBridgeAutoReconnect" onchange="setBridgeAutoReconnect(this.checked)">
             Auto-reconnect on disconnect
           </label>
+        </div>
+      </div>
+      <!-- Transport settings card -->
+      <div class="bridge-settings-card" style="margin-top:8px;">
+        <div class="bridge-audit-header">
+          <span class="bridge-audit-section">Transport</span>
+        </div>
+        <div class="bridge-audit-flags-grid">
+          <span class="bridge-audit-cat">MODE</span>
+          <div style="display:flex;gap:14px;align-items:center;">
+            <label class="bridge-chk-label">
+              <input type="radio" name="bridgeTransport" id="rbTransportSsh" value="ssh" onchange="onBridgeTransportChange()" checked> SSH
+            </label>
+            <label class="bridge-chk-label">
+              <input type="radio" name="bridgeTransport" id="rbTransportEapi" value="eapi" onchange="onBridgeTransportChange()"> eAPI
+            </label>
+          </div>
+        </div>
+        <!-- eAPI fields — hidden when SSH is selected -->
+        <div id="bridgeEapiFields" style="display:none;">
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+            <span class="bridge-audit-cat">USER</span>
+            <input type="text" id="bridgeEapiUser" placeholder="admin" value="admin" onchange="_saveBridgeTransportPrefs()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+          </div>
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+            <span class="bridge-audit-cat">PASS</span>
+            <input type="password" id="bridgeEapiPass" placeholder="(empty)" onchange="_saveBridgeTransportPrefs()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+          </div>
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;gap:10px;">
+            <span class="bridge-audit-cat">PORT</span>
+            <input type="number" id="bridgeEapiPort" placeholder="80" value="80" min="1" max="65535" onchange="_saveBridgeTransportPrefs()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:70px;">
+            <label class="bridge-chk-label" title="Use HTTP instead of HTTPS (lab devices without TLS)">
+              <input type="checkbox" id="chkEapiHttp" onchange="_saveBridgeTransportPrefs()" checked> HTTP
+            </label>
+          </div>
         </div>
       </div>
       <!-- Device Login: collapsible, preference saved in localStorage -->
