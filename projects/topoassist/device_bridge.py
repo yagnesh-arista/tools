@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.28 | 2026-04-30 15:10:41
+# topoassist v260430.35 | 2026-04-30 15:46:59
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.28"
+VERSION           = "260430.36"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -579,10 +579,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if changed:
                 new_transport = _cfg.get("transport")
                 if old_transport != new_transport:
-                    print(f"Transport CHANGE: {old_transport} → {new_transport}", flush=True)
+                    _u = _cfg["ssh_user"] if new_transport == "ssh" else _cfg.get("eapi_user", "")
+                    _u_label = "SSH user" if new_transport == "ssh" else "eAPI user"
+                    print(f"Transport → {new_transport.upper()}  ({_u_label}: {_u})", flush=True)
                 for k, old_v, new_v in changed:
                     if k != "transport" and k not in ("ssh_pass", "eapi_pass"):
-                        print(f"{k} CHANGE: {old_v} → {new_v}", flush=True)
+                        print(f"{k}: {old_v!r} → {new_v!r}", flush=True)
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
         ip_map           = body.get("ipMap", {})
@@ -1457,34 +1459,35 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   ─────────────────────────────────────
-  Usage: python device_bridge.py [-m MODE] [options] [-v] [-h]
+  Usage: python device_bridge.py [-b JUMP_HOST] [-t TIMEOUT] [-p PUSH_TIMEOUT] [-v] [-h]
 
-  Transport:
-    -m MODE       Transport mode: ssh | eapi         default: ssh
-
-  SSH options (_cfg['transport']=ssh):
-    -u USER       SSH username                        default: admin
-    -b JUMP_HOST  Jump host for SSH                   default: bus-home
+  Options:
+    -b JUMP_HOST  Jump host for SSH     default: bus-home
                   Use -b "" for direct SSH (no jump host)
-
-  eAPI options (_cfg['transport']=eapi):
-    -eu USER      eAPI username                       default: admin
-    -ep PASS      eAPI password                       default: (empty)
-    --eapi-port N eAPI port                           default: 443
-    --eapi-http   Use plain HTTP instead of HTTPS     default: HTTPS
-                  Example: -m eapi --eapi-http --eapi-port 80
-
-  Shared options:
-    -t TIMEOUT    Query timeout                       default: 15  (seconds)
-    -p TIMEOUT    Push timeout                        default: max(-t*4, 300)
-    -v            Verbose logging
+    -t TIMEOUT    Per-device timeout    default: 15  (seconds)
+                  Used for show/LLDP/devstatus queries. Keep small so
+                  unreachable devices fail fast.
+    -p TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
+                  Used for configure-session pushes (>5 cmds). Increase
+                  for large configs (10k+ lines). Example: -p 600
+    -v            Verbose — print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
+  Transport and credentials are configured in the sidebar UI and applied
+  live via POST /settings — no restart required.
+
+  Legacy (override initial values before sidebar connects):
+    -m ssh|eapi   Transport mode        default: eapi
+    -u USER       SSH username          default: admin
+    -eu USER      eAPI username         default: admin
+    -ep PASS      eAPI password         default: (empty)
+    --eapi-port N eAPI port             default: 443
+    --eapi-http   Use HTTP instead of HTTPS
+
   Examples:
-    python device_bridge.py                                   # SSH via bus-home
-    python device_bridge.py -m eapi --eapi-http              # eAPI HTTP port 80
-    python device_bridge.py -m eapi -eu admin -ep mypass     # eAPI HTTPS
-    python device_bridge.py -u root -b ""                    # SSH direct, no jump
+    python device_bridge.py -b jumphost -t 30 -v
+    python device_bridge.py -b ""                    # direct SSH, no jump
+    python device_bridge.py -t 30 -p 600             # large-config push headroom
 """)
         sys.exit(0)
 
@@ -1512,8 +1515,6 @@ if __name__ == "__main__":
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
-    print(f"  Options   : -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (credentials via sidebar UI)")
-    print(f"  Legacy    : -m ssh|eapi  -u USER  -eu USER  -ep PASS  --eapi-port N  --eapi-http  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
