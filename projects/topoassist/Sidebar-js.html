@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.56 | 2026-04-30 17:33:40 -->
+<!-- TopoAssist v260430.59 | 2026-04-30 17:39:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.56";  // keep in sync with Code.gs
+const APP_VERSION = "260430.59";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9737,7 +9737,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.43"
+VERSION    = "260430.44"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10009,6 +10009,101 @@ def _annotate_eapi_errors(errors, lines):
                 last_injected_block = block_cmd
         result.append(err)
     return result
+
+
+def _diagnose_eapi_errors(self, ip, lines, eos_errs):
+    """Open a throwaway SSH configure session to capture % reasons for eAPI errors.
+
+    eAPI 'CLI command N of M cmd failed: could not run command' suppresses the
+    specific % reason that EOS emits on a PTY (e.g. '% Virtual IP address is
+    already configured').  This function opens a topoassist_<epoch> configure
+    session via SSH, replays each failed command in its block context, captures
+    the % reason from the PTY output, then aborts -- nothing is ever committed.
+
+    Returns eos_errs with 'could not run command' replaced by the specific %
+    reason.  If SSH is unavailable or times out, returns eos_errs unchanged.
+    """
+    try:
+        # Collect deduplicated (block_cmd, failed_cmd) pairs in order
+        seen  = set()
+        pairs = []
+        for err in eos_errs:
+            m = _EAPI_FAILED_CMD_RE.search(err)
+            if not m:
+                continue
+            failed_cmd = m.group(1).strip()
+            block_cmd  = ''
+            for i, line in enumerate(lines):
+                if line.strip() == failed_cmd:
+                    for j in range(i - 1, -1, -1):
+                        if _BLOCK_CMD_RE.match(lines[j].strip()):
+                            block_cmd = lines[j].strip()
+                            break
+                    break
+            key = (block_cmd, failed_cmd)
+            if key not in seen:
+                seen.add(key)
+                pairs.append(key)
+        if not pairs:
+            return eos_errs
+
+        # Build the diagnostic configure session -- always aborted at the end
+        session   = f"topoassist_{int(time.time())}"
+        diag_cmds = [f"configure session {session}"]
+        for block_cmd, failed_cmd in pairs:
+            if block_cmd:
+                diag_cmds.append(block_cmd)
+            diag_cmds.append(failed_cmd)
+        diag_cmds.append("abort")
+
+        out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
+
+        # Parse % lines from PTY output.
+        # EOS echoes: HOSTNAME(config-s-<name>[-if-...])#<cmd>  then % reason on next line.
+        percent_map = {}   # (block_cmd, failed_cmd) -> "% reason"
+        prev_block  = ''
+        prev_cmd    = ''
+        for line in out.splitlines():
+            s = line.strip()
+            if '#' in s and '(config' in s:
+                cmd = s.split('#', 1)[-1].strip()
+                if _BLOCK_CMD_RE.match(cmd):
+                    prev_block = cmd
+                    prev_cmd   = ''
+                else:
+                    prev_cmd = cmd
+            elif s.startswith('%'):
+                key = (prev_block, prev_cmd)
+                if key not in percent_map:
+                    percent_map[key] = s
+        if not percent_map:
+            return eos_errs
+
+        # Replace 'could not run command' with the specific % reason
+        result = list(eos_errs)
+        for i, err in enumerate(result):
+            m = _EAPI_FAILED_CMD_RE.search(err)
+            if not m:
+                continue
+            failed_cmd = m.group(1).strip()
+            block_cmd  = ''
+            for li, line in enumerate(lines):
+                if line.strip() == failed_cmd:
+                    for j in range(li - 1, -1, -1):
+                        if _BLOCK_CMD_RE.match(lines[j].strip()):
+                            block_cmd = lines[j].strip()
+                            break
+                    break
+            reason = percent_map.get((block_cmd, failed_cmd))
+            if reason:
+                result[i] = re.sub(
+                    r':\\s*could not run command\\s*$',
+                    ': ' + reason,
+                    err, flags=re.IGNORECASE,
+                )
+        return result
+    except Exception:
+        return eos_errs   # SSH unavailable or timed out -- keep original errors
 
 
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
@@ -10398,6 +10493,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             eos_errs, eos_warns = _extract_eos_errors("\\n".join(results))
             if eos_errs:
                 eos_errs = _annotate_eapi_errors(eos_errs, lines)
+                eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
                 _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
