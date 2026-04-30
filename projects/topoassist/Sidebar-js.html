@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.60 | 2026-04-30 17:44:15 -->
+<!-- TopoAssist v260430.61 | 2026-04-30 17:45:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.60";  // keep in sync with Code.gs
+const APP_VERSION = "260430.61";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7078,6 +7078,7 @@ function redrawLinks() {
 
   const visibleNodes = document.querySelectorAll(".node:not(.dimmed)");
   visibleNodes.forEach(node => {
+    if (hiddenDevices.has(node.dataset.id)) return; // DevVis-hidden: display:none but no .dimmed
     const x = node.offsetLeft;
     const y = node.offsetTop;
     const w = node.offsetWidth;
@@ -16988,11 +16989,20 @@ function applyDeviceVisibility() {
     const id = node.dataset.id;
     if (hiddenDevices.has(id)) {
       node.style.display = 'none';
-    } else if (!node.classList.contains('dimmed')) {
+    } else {
+      // Always clear DevVis-hidden state unconditionally — stale .dimmed from a
+      // prior search run while this node was hidden would otherwise block display:''.
+      // If search is active, filterTopology() below will re-dim non-matching nodes.
+      node.classList.remove('dimmed');
       node.style.display = '';
     }
   });
-  requestAnimationFrame(redrawLinks);
+  const searchInput = document.getElementById('searchInp');
+  if (searchInput && searchInput.value.trim()) {
+    filterTopology(); // re-applies search dimming; calls requestAnimationFrame(redrawLinks) internally
+  } else {
+    requestAnimationFrame(redrawLinks);
+  }
 }
 
 
