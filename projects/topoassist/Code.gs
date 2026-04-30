@@ -1,10 +1,10 @@
-// TopoAssist v260430.78 | 2026-04-30 19:16:15
+// TopoAssist v260430.79 | 2026-04-30 19:26:14
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.78";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.79";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4926,7 +4926,7 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
 
         if (finalDesc) cfg += ` description -> ${finalDesc} __TA\n`;
       } else if (d.remoteMlagPair) {
-        cfg += ` description -> ${d.remoteMlagPair} __TA\n`;
+        cfg += ` description -> ${d.remoteMlagPair}-${poVal} __TA\n`;
       } else {
         // Rule 11: No group info — mark ownership only
         cfg += " description __TA\n";
