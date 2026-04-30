@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.24 | 2026-04-30 15:03:28
+# topoassist v260430.27 | 2026-04-30 15:07:53
 """
 TopoAssist Device Bridge
 ========================
@@ -990,10 +990,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         # Prepend cleanup for orphan __TA interfaces not present in this push.
         # Best-effort — failures are silently ignored so a query error never blocks push.
+        # orphans_cleaned is included in the response so the UI can show a dedicated
+        # "Auto-removed N orphan(s)" banner alongside the diff.
         if all_ifaces and not dry_run:
-            orphan_cmds = self._find_ta_orphans(ip, config_text, all_device_names=all_device_names)
-            if orphan_cmds:
-                lines = orphan_cmds + lines
+            try:
+                orphans = self._detect_orphans(ip, config_text=config_text,
+                                               all_device_names=all_device_names)
+                if orphans.get('ok'):
+                    orphan_cmds = _orphans_to_cmds(orphans)
+                    if orphan_cmds:
+                        lines = orphan_cmds + lines
+                        _asn_extra["orphans_cleaned"] = {
+                            "interfaces": orphans.get("interfaces", []),
+                            "bgp":        orphans.get("bgp", []),
+                            "vlans":      orphans.get("vlans", []),
+                            "vrfs":       orphans.get("vrfs", []),
+                            "ospf":       orphans.get("ospf", []),
+                        }
+            except Exception:
+                pass  # orphan cleanup failure must never block push
 
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
@@ -1344,20 +1359,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
             'vrfs':       vrf_orphans,
             'ospf':       ospf_orphans,
         }
-
-    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
-        """Return EOS cleanup commands for stale __TA config not in config_text.
-        Thin wrapper around _detect_orphans + _orphans_to_cmds.
-        Returns [] on any failure — orphan cleanup is best-effort.
-        """
-        try:
-            orphans = self._detect_orphans(ip, config_text=config_text,
-                                           all_device_names=all_device_names)
-            if not orphans.get('ok'):
-                return []
-            return _orphans_to_cmds(orphans)
-        except Exception:
-            return []
 
     def _find_bgp_asn_change(self, ip, config_text):
         """Return (cmds, asn_info) where cmds=['no router bgp <old>'] and
