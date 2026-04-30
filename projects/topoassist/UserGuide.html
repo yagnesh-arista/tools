@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.85 | 2026-04-30 21:07:01 -->
+<!-- TopoAssist v260430.86 | 2026-04-30 21:09:45 -->
 <!DOCTYPE html>
 <html>
 
@@ -1052,11 +1052,11 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Unsupported Interface</b> — <code>int_</code> value does not start with <code>Et</code> (Ethernet) or <code>Vx</code> (VTEP). All Arista physical ports use the <code>Et</code> prefix regardless of speed; <code>Vx1</code> is the only valid VTEP entry. Other types (<code>Po</code>, <code>Lo</code>, <code>Ma</code>, etc.) do not belong in <code>int_</code>.</li>
       <li><b>Po Mismatch</b> — both sides of a cable have <code>po_</code> set but to different Port-Channel numbers. Both ports are flagged.</li>
       <li><b>Po Asymmetry</b> — one side of a cable has <code>po_</code> set and the peer does not. Both ports are flagged.</li>
-      <li><b>MLAG Destination Conflict</b> — the same Po number points to different remote device names across links.</li>
       <li><b>VLAN Mismatch</b> — the <code>vlan_</code> values differ across a cable (Arista-only links).</li>
       <li><b>Mode Incompatible</b> — the <code>sp_mode_</code> pair across a cable is not a supported combination.</li>
       <li><b>Missing Po for Port-Channel mode</b> — interface mode is po-based but <code>po_</code> is blank.</li>
       <li><b>Stale Po value on Ethernet mode</b> — interface mode is et-based but <code>po_</code> has a value.</li>
+      <li><b>Orphan Po (Arista only)</b> — an Arista device port is in Po mode with a <code>po_</code> value but no peer device appears on the same row. Indicates a single-device row design error — Po members must have a connected peer.</li>
       <li><b>Duplicate Interface</b> — the same <code>int_</code> name appears more than once for the same device.</li>
       <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
       <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
