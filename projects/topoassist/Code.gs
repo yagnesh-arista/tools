@@ -1,10 +1,10 @@
-// TopoAssist v260430.43 | 2026-04-30 16:47:38
+// TopoAssist v260430.44 | 2026-04-30 16:50:24
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.43";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.44";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6803,6 +6803,11 @@ function writeConfigsToSheet(configs) {
     (cfg.text || "").split('\n').forEach(line => rows.push(["", line]));
     rows.push(["", ""]);
   });
+
+  const curRows = sheet.getMaxRows();
+  const curCols = sheet.getMaxColumns();
+  if (curRows > rows.length) sheet.deleteRows(rows.length + 1, curRows - rows.length);
+  if (curCols > 2) sheet.deleteColumns(3, curCols - 2);
 
   const range = sheet.getRange(1, 1, rows.length, 2);
   range.setValues(rows);
