@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.9 | 2026-04-30 10:10:45 -->
+<!-- TopoAssist v260430.10 | 2026-04-30 10:17:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.9";  // keep in sync with Code.gs
+const APP_VERSION = "260430.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5309,13 +5309,13 @@ function globalCfgSearchUpdate() {
     pos = idx + 1;
   }
   if (_gcfgMatches.length > 0) {
-    _gcfgJumpTo(0, true);  // restoreFocus=true: keep typing in search input
+    _gcfgJumpTo(0);
   } else {
     if (count) count.textContent = q ? 'no match' : '';
   }
 }
 
-function _gcfgJumpTo(idx, restoreFocus) {
+function _gcfgJumpTo(idx) {
   var ta    = document.getElementById('globalCfgTextarea');
   var count = document.getElementById('globalCfgSearchCount');
   var inp   = document.getElementById('globalCfgSearch');
@@ -5329,8 +5329,8 @@ function _gcfgJumpTo(idx, restoreFocus) {
   var lineHeight  = parseFloat(getComputedStyle(ta).lineHeight) || 19.2;
   ta.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
   if (count) count.textContent = (_gcfgMatchIdx + 1) + ' / ' + _gcfgMatches.length;
-  // Restore focus so user can keep typing without interruption
-  if (restoreFocus && inp) inp.focus();
+  // Always keep focus in the find bar (Ctrl+F bar behaviour — never leave focus in content)
+  if (inp) inp.focus();
 }
 
 function globalCfgSearchNext() { _gcfgJumpTo(_gcfgMatchIdx + 1); }
