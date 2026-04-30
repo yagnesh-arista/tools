@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.93 | 2026-04-30 21:39:46 -->
+<!-- TopoAssist v260430.94 | 2026-04-30 21:49:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.93";  // keep in sync with Code.gs
+const APP_VERSION = "260430.94";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -243,10 +243,10 @@ const APP_VERSION = "260430.93";  // keep in sync with Code.gs
 
   // Topology window size cycling — mirrors TOPOLOGY_SIZES in Code.gs
   const TOPOLOGY_SIZES = [
-    { label: 'S',  w: 1100, h: 650  },
-    { label: 'M',  w: 1400, h: 800  },
-    { label: 'L',  w: 1600, h: 900  },
-    { label: 'XL', w: 1920, h: 1060 }
+    { label: 'S',  w: 800,  h: 550  },
+    { label: 'M',  w: 1100, h: 680  },
+    { label: 'L',  w: 1400, h: 800  },
+    { label: 'XL', w: 1700, h: 920  }
   ];
   let _topologySizeIdx = 2; // default L; updated async by _loadSizePreference()
   let globalSchema = [];

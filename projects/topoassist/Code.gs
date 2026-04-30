@@ -1,10 +1,10 @@
-// TopoAssist v260430.93 | 2026-04-30 21:39:11
+// TopoAssist v260430.94 | 2026-04-30 21:49:22
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.93";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.94";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -732,10 +732,10 @@ function saveNetworkSettings(settings) {
 * -------------------
 */
 const TOPOLOGY_SIZES = [
-  { label: 'S',  w: 1100, h: 650  },
-  { label: 'M',  w: 1400, h: 800  },
-  { label: 'L',  w: 1600, h: 900  },
-  { label: 'XL', w: 1920, h: 1060 }
+  { label: 'S',  w: 800,  h: 550  },
+  { label: 'M',  w: 1100, h: 680  },
+  { label: 'L',  w: 1400, h: 800  },
+  { label: 'XL', w: 1700, h: 920  }
 ];
 const TOPOLOGY_SIZE_KEY = 'TOPOLOGY_SIZE_IDX';
 
