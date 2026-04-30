@@ -1,10 +1,10 @@
-// TopoAssist v260430.87 | 2026-04-30 21:10:05
+// TopoAssist v260430.88 | 2026-04-30 21:10:58
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.87";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.88";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5301,12 +5301,12 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     const rawPort = row[targetColIndex];
     if (isValidPort(rawPort)) {
       analyzeRow(row, indices);
-      // Vx1 rows declare AP VLANs — always add to gwVlans for VNI mapping,
-      // regardless of ip_type_ (which is not used for vx1 rows).
+      // Vx1 rows declare AP VLANs — add to both allVlans (generates vlan N/name stanza)
+      // and gwVlans (VNI mapping). ip_type_ is not used for Vx1 rows.
       if (canonicalizeInterface(rawPort) === "Vx1") {
         const details = extractDetails(row, indices);
         if (details.vlan_) {
-          expandVlanString(String(details.vlan_)).forEach(v => gwVlans.add(v));
+          expandVlanString(String(details.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); });
         }
       }
     }
@@ -5314,11 +5314,11 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     if (myMlagPeer && isValidPort(row[peerIntIdx])) {
       analyzeRow(row, peerIndices);
       // Mirror the Vx1 explicit handling for the MLAG peer — ip_type_ is not used for
-      // AP VLAN rows, so analyzeRow alone won't add them to gwVlans.
+      // AP VLAN rows, so analyzeRow alone won't add them to allVlans/gwVlans.
       if (canonicalizeInterface(row[peerIntIdx]) === "Vx1") {
         const peerDetails = extractDetails(row, peerIndices);
         if (peerDetails.vlan_) {
-          expandVlanString(String(peerDetails.vlan_)).forEach(v => gwVlans.add(v));
+          expandVlanString(String(peerDetails.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); });
         }
       }
     }
