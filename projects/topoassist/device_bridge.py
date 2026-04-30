@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.21 | 2026-04-30 12:49:29
+# topoassist v260430.22 | 2026-04-30 13:07:51
 """
 TopoAssist Device Bridge
 ========================
@@ -537,10 +537,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if changed:
                 new_transport = _cfg.get("transport")
                 if old_transport != new_transport:
-                    print(f"[settings] Transport: {old_transport} → {new_transport}", flush=True)
+                    print(f"Transport CHANGE: {old_transport} → {new_transport}", flush=True)
                 for k, old_v, new_v in changed:
                     if k != "transport" and k not in ("ssh_pass", "eapi_pass"):
-                        print(f"[settings] {k}: {old_v} → {new_v}", flush=True)
+                        print(f"{k} CHANGE: {old_v} → {new_v}", flush=True)
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
         ip_map           = body.get("ipMap", {})
