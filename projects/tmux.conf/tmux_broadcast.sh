@@ -1,4 +1,5 @@
 #!/bin/sh
+# tmux.conf v260430.5 | 2026-04-30 19:01:05
 # Broadcast a command to tmux panes.
 # The command is read from the TMUX_BROADCAST_CMD global environment variable,
 # which must be set before calling this script via:
@@ -26,5 +27,7 @@ if [ "$ACTIVE_ONLY" = "1" ]; then
 fi
 
 echo "$PANES" | grep -oE '%[0-9]+' | while IFS= read -r p; do
+    tmux send-keys -t "$p" C-c
+    sleep 0.1
     tmux send-keys -t "$p" "$CMD" Enter
 done
