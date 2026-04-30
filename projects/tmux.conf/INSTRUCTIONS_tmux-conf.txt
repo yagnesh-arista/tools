@@ -1,7 +1,8 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-04-30 (tmux_broadcast.sh: prepend C-c + 0.1s sleep before each command so --More-- pager or stuck prompts are cleared before the broadcast command lands.)
+  Last updated: 2026-04-30 (Prefix+F now fixes ALL windows in the session — list-windows | xargs resize-window -A + select-layout -E per window; refresh-client -C still runs once at client level.)
+  Previous: 2026-04-30 (tmux_broadcast.sh: prepend C-c + 0.1s sleep before each command so --More-- pager or stuck prompts are cleared before the broadcast command lands.)
   Previous: 2026-04-30 (default-terminal changed xterm-256color → tmux-256color: fixes Claude CLI space character not rendering until next keystroke inside tmux. xterm-256color is not the native tmux TERM and causes input flush issues with some TUI apps.)
   Previous: 2026-04-30 (Prefix+F: uses stty size < #{client_tty} to read actual PTY dimensions and push them into tmux via refresh-client -C WxH before resize-window -A. run-shell has no controlling TTY itself so must read from the device path explicitly via #{client_tty}. Fixes display-switch resize failure where Prefix+F previously had no effect.)
   Previous: 2026-04-30 (aggressive-resize off — two clients at different sizes (claude 184x55, VESPA 239x70) caused pane size jumps on window switch.)
