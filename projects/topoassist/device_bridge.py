@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.60 | 2026-04-30 17:44:04
+# topoassist v260430.62 | 2026-04-30 17:50:06
 """
 TopoAssist Device Bridge
 ========================
@@ -1199,7 +1199,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
             )
 
         if _cfg['transport'] == "eapi":
-            results = self._eapi_push(ip, *core_cmds)
+            try:
+                results = self._eapi_push(ip, *core_cmds)
+            except RuntimeError as e:
+                # eAPI returns a top-level JSON-RPC "error" for configure session
+                # failures — _eapi_push raises RuntimeError with the message text.
+                # "CLI command N of M 'cmd' failed" is in this path; enrich it.
+                raw_msg = str(e)
+                if _EAPI_FAILED_CMD_RE.search(raw_msg):
+                    eos_errs = _annotate_eapi_errors([raw_msg], lines)
+                    eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
+                    return {"ok": False, "error": '\n'.join(eos_errs)}
+                raise
             if open_only:
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
