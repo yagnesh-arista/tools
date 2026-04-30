@@ -1,10 +1,10 @@
-// TopoAssist v260430.46 | 2026-04-30 16:53:19
+// TopoAssist v260430.47 | 2026-04-30 16:55:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.46";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.47";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6797,30 +6797,37 @@ function writeConfigsToSheet(configs) {
   sheet.setTabColor("#6366f1");
   if (!configs.length) return sheetName;
 
-  const rows = [];
-  configs.forEach(cfg => {
-    rows.push(["! === " + cfg.name + " ===", ""]);
-    (cfg.text || "").split('\n').forEach(line => rows.push(["", line]));
-    rows.push(["", ""]);
+  // Build per-device line arrays, then transpose into row-major matrix.
+  // Layout: row 0 = device names, rows 1..maxLines = config lines (one device per column).
+  const deviceLines = configs.map(cfg => (cfg.text || "").split('\n'));
+  const numDevices  = configs.length;
+  const maxLines    = Math.max(...deviceLines.map(l => l.length));
+  const numRows     = maxLines + 1; // +1 for the header row
+
+  const matrix = Array.from({ length: numRows }, () => Array(numDevices).fill(""));
+  configs.forEach((cfg, col) => {
+    matrix[0][col] = cfg.name;
+    deviceLines[col].forEach((line, r) => { matrix[r + 1][col] = line; });
   });
 
+  // Trim sheet dimensions to exactly numRows × numDevices to stay under 10M cell limit.
   const curRows = sheet.getMaxRows();
   const curCols = sheet.getMaxColumns();
-  if (curRows > rows.length) sheet.deleteRows(rows.length + 1, curRows - rows.length);
-  if (curCols > 2) sheet.deleteColumns(3, curCols - 2);
+  if (curRows > numRows)     sheet.deleteRows(numRows + 1, curRows - numRows);
+  if (curCols > numDevices)  sheet.deleteColumns(numDevices + 1, curCols - numDevices);
 
-  const range = sheet.getRange(1, 1, rows.length, 2);
-  range.setValues(rows);
+  const range = sheet.getRange(1, 1, numRows, numDevices);
+  range.setValues(matrix);
   range.setFontFamily("Consolas").setFontSize(10).setHorizontalAlignment("left").setVerticalAlignment("middle");
 
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i][0] && rows[i][0].startsWith("! ===")) {
-      sheet.getRange(i + 1, 1, 1, 2)
-        .setFontWeight("bold").setBackground("#1e1b4b").setFontColor("#e0e7ff");
-    }
-  }
-  sheet.setColumnWidth(1, 220);
-  sheet.setColumnWidth(2, 600);
+  // Header row: bold + dark background per device column.
+  sheet.getRange(1, 1, 1, numDevices)
+    .setFontWeight("bold").setBackground("#1e1b4b").setFontColor("#e0e7ff");
+
+  // Freeze header row and set uniform column widths.
+  sheet.setFrozenRows(1);
+  for (let c = 1; c <= numDevices; c++) sheet.setColumnWidth(c, 500);
+
   return sheetName;
 }
 
