@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.24 | 2026-04-30 15:04:15 -->
+<!-- TopoAssist v260430.25 | 2026-04-30 15:04:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.24";  // keep in sync with Code.gs
+const APP_VERSION = "260430.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15137,7 +15137,7 @@ function closeAllModals() {
   const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'bridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+    if (el && !el.classList.contains('modal-minimized')) el.style.display = 'none';
   });
   const overlay = document.getElementById('editOverlay');
   if (overlay) overlay.style.display = 'none';
