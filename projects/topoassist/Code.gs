@@ -1,10 +1,10 @@
-// TopoAssist v260430.54 | 2026-04-30 17:28:20
+// TopoAssist v260430.56 | 2026-04-30 17:33:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.54";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.56";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5108,9 +5108,11 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     // octet) — same value the operator set for the virtual/anycast IP, applied as a plain address.
     else if (ipType.includes("gw")) {
       if (netSettings && netSettings.deviceRole !== 'LEAF') {
-        // Non-LEAF: plain routed IP — no virtual or virtual-router address
-        if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${gwLastV4}${cfg.gw_v4_mask}`);
-        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${gwLastV6}${cfg.gw_v6_mask}`); }
+        // Non-LEAF: plain routed IP — no virtual or virtual-router address.
+        // Explicit no-commands clean up any stale ip address virtual / ipv6 address virtual
+        // left from a previous LEAF config (EOS is additive for virtual addresses).
+        if (gwHasIpv4) { lines.push(` no ip address virtual`); lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${gwLastV4}${cfg.gw_v4_mask}`); }
+        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` no ipv6 address virtual`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${gwLastV6}${cfg.gw_v6_mask}`); }
       } else {
       // Description: ANYCAST_GW_<vrf>_<vlan> when EVPN active and VRF set, else ANYCAST_GW_<vlan>
       if (isEvpnActive) {
