@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.17 | 2026-04-30 12:36:51 -->
+<!-- TopoAssist v260430.18 | 2026-04-30 12:43:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -893,10 +893,10 @@
           <span class="bridge-audit-cat">MODE</span>
           <div style="display:flex;gap:14px;align-items:center;">
             <label class="bridge-chk-label">
-              <input type="radio" name="bridgeTransport" id="rbTransportSsh" value="ssh" onchange="onBridgeTransportChange()" checked> SSH
+              <input type="radio" name="bridgeTransport" id="rbTransportSsh" value="ssh" onchange="onBridgeTransportChange()"> SSH
             </label>
             <label class="bridge-chk-label">
-              <input type="radio" name="bridgeTransport" id="rbTransportEapi" value="eapi" onchange="onBridgeTransportChange()"> eAPI
+              <input type="radio" name="bridgeTransport" id="rbTransportEapi" value="eapi" onchange="onBridgeTransportChange()" checked> eAPI
             </label>
           </div>
         </div>
@@ -917,6 +917,25 @@
             <input type="number" id="bridgeSshPort" placeholder="22" value="22" min="1" max="65535" onchange="_applyBridgeSettings()"
               style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:70px;">
           </div>
+          <!-- Jump host — optional proxy, not enabled by default -->
+          <div class="bridge-audit-flags-grid" style="margin-top:6px;align-items:center;">
+            <span class="bridge-audit-cat">JUMP</span>
+            <label class="bridge-chk-label">
+              <input type="checkbox" id="chkJumpHost" onchange="onJumpHostToggle()"> Use jump host
+            </label>
+          </div>
+          <div id="bridgeJumpFields" style="display:none;">
+            <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+              <span class="bridge-audit-cat">HOST</span>
+              <input type="text" id="bridgeJumpHost" placeholder="bus-home" value="bus-home" onchange="_applyBridgeSettings()"
+                style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+            </div>
+            <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+              <span class="bridge-audit-cat">USER</span>
+              <input type="text" id="bridgeJumpUser" placeholder="(local user)" value="" onchange="_applyBridgeSettings()"
+                style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+            </div>
+          </div>
         </div>
         <!-- eAPI fields — shown when eAPI selected -->
         <div id="bridgeEapiFields" style="display:none;">
@@ -933,15 +952,15 @@
           <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;gap:10px;">
             <span class="bridge-audit-cat">PROTO</span>
             <label class="bridge-chk-label">
-              <input type="radio" name="eapiProto" id="rbEapiHttp" value="http" onchange="onEapiProtoChange()" checked> HTTP
+              <input type="radio" name="eapiProto" id="rbEapiHttp" value="http" onchange="onEapiProtoChange()"> HTTP
             </label>
             <label class="bridge-chk-label">
-              <input type="radio" name="eapiProto" id="rbEapiHttps" value="https" onchange="onEapiProtoChange()"> HTTPS
+              <input type="radio" name="eapiProto" id="rbEapiHttps" value="https" onchange="onEapiProtoChange()" checked> HTTPS
             </label>
           </div>
           <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
             <span class="bridge-audit-cat">PORT</span>
-            <input type="number" id="bridgeEapiPort" placeholder="80" value="80" min="1" max="65535" onchange="_applyBridgeSettings()"
+            <input type="number" id="bridgeEapiPort" placeholder="443" value="443" min="1" max="65535" onchange="_applyBridgeSettings()"
               style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:70px;">
           </div>
         </div>
