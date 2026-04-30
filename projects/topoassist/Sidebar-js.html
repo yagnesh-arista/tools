@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.39 | 2026-04-30 16:32:51 -->
+<!-- TopoAssist v260430.40 | 2026-04-30 16:42:20 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.39";  // keep in sync with Code.gs
+const APP_VERSION = "260430.40";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13006,7 +13006,7 @@ async function pushAllConfigs() {
 
   // Helper: build and set a result row (replaces element by id via outerHTML)
   // diff: colored diff block; details: red error text; warnDetails: amber note text
-  function _setResultRow(rowId, safeName, color, label, diff, details, warnDetails) {
+  function _setResultRow(rowId, safeName, color, label, diff, details, warnDetails, infoDetails) {
     let html =
       `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;` +
       `margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">` +
@@ -13035,6 +13035,12 @@ async function pushAllConfigs() {
       html +=
         `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#92400e;` +
         `background:#fffbeb;border-radius:3px;padding:5px 8px;margin:0 0 6px;white-space:pre-wrap;">${safeWarn}</div>`;
+    }
+    if (infoDetails) {
+      const safeInfo = escapeHtml(infoDetails);
+      html +=
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#0c4a6e;` +
+        `background:#f0f9ff;border-radius:3px;padding:5px 8px;margin:0 0 6px;white-space:pre-wrap;">${safeInfo}</div>`;
     }
     const rowEl = document.getElementById(rowId);
     if (rowEl) rowEl.outerHTML = html;
@@ -13194,8 +13200,9 @@ async function pushAllConfigs() {
       const pushRowEl = document.getElementById(rowId);
       if (pushRowEl) pushRowEl.outerHTML = verifyPlaceholder;
 
-      let vDiff  = null;   // null = verify failed; '' = clean; non-empty = partial
-      let vError = null;   // captured error message when verify fails
+      let vDiff      = null;   // null = verify failed; '' = clean; non-empty = partial
+      let vError     = null;   // captured error message when verify fails
+      let _vEosWarns = null;   // warnings from the dry-run verify pass
       try {
         const vResp = await fetch(BRIDGE_URL + '/pushconfig', {
           method:  'POST',
@@ -13208,6 +13215,7 @@ async function pushAllConfigs() {
         if (!vRes) { vError = 'No response from bridge for verify step'; }
         else if (vRes.ok) {
           const _vEosErrs = _eosErrors(vRes);
+          _vEosWarns = _eosWarnings(vRes);
           if (_vEosErrs && !(vRes.diff || '').trim()) {
             vError = _formatEosErrors(_vEosErrs);
           } else {
@@ -13221,28 +13229,37 @@ async function pushAllConfigs() {
       if (vDiff === '') okCount++;   // only count as success if verify confirms clean
       _updateSummary();
 
+      // Combine Phase 2 push warnings + Phase 3 verify warnings into one amber block.
+      const allWarns = [...(_pushEosWarns || []), ...(_vEosWarns || [])];
+      const combinedWarnText = allWarns.length ? allWarns.join('\n') : null;
+      // Build teal orphan detail line (shown in all non-skip outcomes when orphans were removed).
+      const orphanInfoText = _orphanDetailText(pushOrphans);
+
       if (vDiff === null) {
-        _setResultRow(rowId, safeName, '#f59e0b', 'Committed — verify failed', null, vError);
+        _setResultRow(rowId, safeName, '#f59e0b', 'Committed — verify failed', null, vError, combinedWarnText, orphanInfoText);
       } else if (vDiff === '') {
         if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
-          const warnSuffix   = _pushEosWarns ? ` · ${_pushEosWarns.length} note${_pushEosWarns.length !== 1 ? 's' : ''}` : '';
+          const allWarnCount = allWarns.length;
+          const warnSuffix   = allWarnCount > 0 ? ` · ${allWarnCount} note${allWarnCount !== 1 ? 's' : ''}` : '';
           const orphanSuffix = _orphanTotal > 0 ? ` · ${_orphanTotal} orphan${_orphanTotal !== 1 ? 's' : ''} removed` : '';
           const lbl = _pushEosErrs
-            ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected${orphanSuffix}`
+            ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected${warnSuffix}${orphanSuffix}`
             : `Committed (+${added} / -${removed})${warnSuffix}${orphanSuffix}`;
           const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
           _setResultRow(rowId, safeName, clr, lbl, pushDiff,
             _pushEosErrs ? _formatEosErrors(_pushEosErrs) : null,
-            _pushEosWarns && !_pushEosErrs ? _pushEosWarns.join('\n') : null);
+            combinedWarnText,
+            orphanInfoText);
         } else {
           _setResultRow(rowId, safeName, '#64748b', 'Already in sync', null);
         }
       } else {
         const remLines = vDiff.split('\n').filter(l => l.startsWith('+') || l.startsWith('-')).length;
         _setResultRow(rowId, safeName, '#f59e0b',
-          `Committed — ${remLines} line${remLines !== 1 ? 's' : ''} still differ`, vDiff);
+          `Committed — ${remLines} line${remLines !== 1 ? 's' : ''} still differ`, vDiff,
+          null, combinedWarnText, orphanInfoText);
       }
     } finally {
       _semRelease();  // always release slot so next queued device can start
@@ -14557,8 +14574,8 @@ function showConfigModal(deviceName, configText) {
   clearBtn.classList.add("hidden");
   matchBadge.classList.add("hidden");
 
-  // Show Full Config initially
-  body.innerHTML = highlightEosConfig(configText);
+  // Show Full Config initially (with line numbers for error correlation)
+  body.innerHTML = _renderWithLineNums(configText.split('\n').map((text, i) => ({text, lineNum: i + 1})));
 
   // Display Modal
   overlay.style.display = "block";
@@ -14587,7 +14604,7 @@ function showConfigModal(deviceName, configText) {
     else clearBtn.classList.add("hidden");
 
     if (!rawTerm) {
-      body.innerHTML = highlightEosConfig(currentRawConfig);
+      body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
       matchBadge.classList.add("hidden");
       return;
     }
@@ -14945,6 +14962,20 @@ function _injectEosRejectionBanner(errors) {
     'padding:8px 10px;margin-bottom:8px;color:#dc2626;line-height:1.5;">' +
     '<b>EOS rejected commands:</b><br>' + lines + '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+// Returns a plain-text summary of orphans removed during push for the teal infoDetails box.
+// Format: "Auto-removed orphans: Et1, BGP 10.0.0.1, VLAN 100, VRF BLUE, OSPF Et2"
+function _orphanDetailText(orphans) {
+  if (!orphans) return null;
+  const parts = [];
+  (orphans.interfaces || []).forEach(o => parts.push(o.name));
+  (orphans.bgp        || []).forEach(o => parts.push('BGP ' + o.neighbor));
+  (orphans.vlans      || []).forEach(o => parts.push('VLAN ' + o.vid));
+  (orphans.vrfs       || []).forEach(o => parts.push('VRF ' + o.name));
+  (orphans.ospf       || []).forEach(o => parts.push('OSPF ' + o.iface));
+  if (!parts.length) return null;
+  return 'Auto-removed orphans: ' + parts.join(', ');
 }
 
 // Returns deduplicated eos_warnings from a bridge response, or null if absent/empty.
