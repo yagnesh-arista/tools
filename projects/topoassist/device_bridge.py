@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.59 | 2026-04-30 17:38:07
+# topoassist v260430.60 | 2026-04-30 17:44:04
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.44"
+VERSION           = "260430.45"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -938,6 +938,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diag_cmds.append(failed_cmd)
             diag_cmds.append("abort")
 
+            if VERBOSE:
+                print(f"  [diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
             out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
 
             # Parse % lines from PTY output.

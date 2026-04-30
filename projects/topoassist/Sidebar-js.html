@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.59 | 2026-04-30 17:39:09 -->
+<!-- TopoAssist v260430.60 | 2026-04-30 17:44:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.59";  // keep in sync with Code.gs
+const APP_VERSION = "260430.60";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9737,7 +9737,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.44"
+VERSION    = "260430.45"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10056,6 +10056,8 @@ def _diagnose_eapi_errors(self, ip, lines, eos_errs):
             diag_cmds.append(failed_cmd)
         diag_cmds.append("abort")
 
+        if VERBOSE:
+            print(f"  [diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
         out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
 
         # Parse % lines from PTY output.
