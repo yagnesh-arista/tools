@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.13 | 2026-04-30 11:01:13
+# topoassist v260430.16 | 2026-04-30 12:21:01
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.11"
+VERSION           = "260430.14"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -514,9 +514,21 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if self.path == "/settings":
             allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
                        "eapi_user", "eapi_pass", "eapi_port", "eapi_proto"}
+            old_transport = _cfg.get("transport")
+            changed = []
             for k, v in body.items():
                 if k in allowed:
-                    _cfg[k] = int(v) if k in ("ssh_port", "eapi_port") else v
+                    new_v = int(v) if k in ("ssh_port", "eapi_port") else v
+                    if _cfg.get(k) != new_v:
+                        changed.append((k, _cfg.get(k), new_v))
+                    _cfg[k] = new_v
+            if changed:
+                new_transport = _cfg.get("transport")
+                if old_transport != new_transport:
+                    print(f"[settings] Transport: {old_transport} → {new_transport}", flush=True)
+                for k, old_v, new_v in changed:
+                    if k != "transport" and k not in ("ssh_pass", "eapi_pass"):
+                        print(f"[settings] {k}: {old_v} → {new_v}", flush=True)
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
         ip_map           = body.get("ipMap", {})
