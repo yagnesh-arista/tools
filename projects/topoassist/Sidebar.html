@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.12 | 2026-04-30 10:40:58 -->
+<!-- TopoAssist v260430.13 | 2026-04-30 11:01:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -900,24 +900,42 @@
             </label>
           </div>
         </div>
-        <!-- eAPI fields — hidden when SSH is selected -->
-        <div id="bridgeEapiFields" style="display:none;">
+        <!-- SSH fields — shown when SSH selected -->
+        <div id="bridgeSshFields" style="display:none;">
           <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
             <span class="bridge-audit-cat">USER</span>
-            <input type="text" id="bridgeEapiUser" placeholder="admin" value="admin" onchange="_saveBridgeTransportPrefs()"
+            <input type="text" id="bridgeSshUser" placeholder="admin" value="admin" onchange="_applyBridgeSettings()"
               style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
           </div>
           <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
             <span class="bridge-audit-cat">PASS</span>
-            <input type="password" id="bridgeEapiPass" placeholder="(empty)" onchange="_saveBridgeTransportPrefs()"
+            <input type="password" id="bridgeSshPass" placeholder="(empty)" onchange="_applyBridgeSettings()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+          </div>
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+            <span class="bridge-audit-cat">PORT</span>
+            <input type="number" id="bridgeSshPort" placeholder="22" value="22" min="1" max="65535" onchange="_applyBridgeSettings()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:70px;">
+          </div>
+        </div>
+        <!-- eAPI fields — shown when eAPI selected -->
+        <div id="bridgeEapiFields" style="display:none;">
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+            <span class="bridge-audit-cat">USER</span>
+            <input type="text" id="bridgeEapiUser" placeholder="admin" value="admin" onchange="_applyBridgeSettings()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
+          </div>
+          <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;">
+            <span class="bridge-audit-cat">PASS</span>
+            <input type="password" id="bridgeEapiPass" placeholder="(empty)" onchange="_applyBridgeSettings()"
               style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:110px;">
           </div>
           <div class="bridge-audit-flags-grid" style="margin-top:4px;align-items:center;gap:10px;">
             <span class="bridge-audit-cat">PORT</span>
-            <input type="number" id="bridgeEapiPort" placeholder="80" value="80" min="1" max="65535" onchange="_saveBridgeTransportPrefs()"
+            <input type="number" id="bridgeEapiPort" placeholder="80" value="80" min="1" max="65535" onchange="_applyBridgeSettings()"
               style="font-family:'JetBrains Mono',monospace;font-size:12px;height:22px;padding:0 6px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:70px;">
             <label class="bridge-chk-label" title="Use HTTP instead of HTTPS (lab devices without TLS)">
-              <input type="checkbox" id="chkEapiHttp" onchange="_saveBridgeTransportPrefs()" checked> HTTP
+              <input type="checkbox" id="chkEapiHttp" onchange="_applyBridgeSettings()" checked> HTTP
             </label>
           </div>
         </div>

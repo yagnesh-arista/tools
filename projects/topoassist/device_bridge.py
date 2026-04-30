@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.12 | 2026-04-30 10:40:44
+# topoassist v260430.13 | 2026-04-30 11:01:13
 """
 TopoAssist Device Bridge
 ========================
@@ -13,7 +13,7 @@ Usage:
 Keep this terminal open while using Device Bridge in the sidebar.
 Ctrl+C to stop.
 
-Transport options (set METHOD below):
+Transport options (set _cfg['transport'] below):
   ssh   — SSH via jump host or direct (default; stdlib only)
   eapi  — Arista eAPI JSON-RPC over HTTPS (stdlib only)
   rest  — RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
@@ -66,16 +66,19 @@ def _ssh_base(force_tty=False):
     force_tty=True: use -tt (force PTY) so EOS assigns a named VTY instead of
     showing 'UnknownTty' in 'show users' and syslog. Used by _ssh_stdin for
     configure-session pushes. _ssh_cmds (show | json path) always uses -T."""
-    tty = "-tt" if force_tty else "-T"
+    tty      = "-tt" if force_tty else "-T"
+    ssh_pass = _cfg.get("ssh_pass", "")
+    ssh_port = int(_cfg.get("ssh_port", 22))
+    port_arg = ["-p", str(ssh_port)] if ssh_port != 22 else []
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh", tty,
+        return [_SSHPASS_BIN, "-p", ssh_pass, "ssh", tty, *port_arg,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh", tty,
+        return ["ssh", tty, *port_arg,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
@@ -83,7 +86,7 @@ def _ssh_base(force_tty=False):
                 "-o", "NumberOfPasswordPrompts=1",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh", tty,
+    return ["ssh", tty, *port_arg,
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
             "-o", "LogLevel=ERROR",
@@ -133,10 +136,9 @@ VERBOSE = "-v" in sys.argv
 
 VERSION           = "260430.11"
 PORT              = 8765
-# CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
+# CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
-SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
-JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+JUMP_HOST = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
 TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 # PUSH_TIMEOUT: separate ceiling for large configure-session pushes.
 # TIMEOUT (-t) is for read queries (show, lldp, etc.) and should stay small.
@@ -147,29 +149,26 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 
-# ── Active transport ───────────────────────────────────────────────────────────
-# -m flag | BRIDGE_METHOD env | default ssh
-METHOD     = _arg("-m") or os.environ.get("BRIDGE_METHOD", "ssh")
+# _cfg: active transport settings — initialized from CLI/env, overridable at runtime
+# via POST /settings so the sidebar can switch transport without restarting the bridge.
+_cfg = {
+    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "ssh"),
+    "ssh_user":   _arg("-u")  or os.environ.get("BRIDGE_SSH_USER",  "admin"),
+    "ssh_pass":                  os.environ.get("BRIDGE_SSH_PASS",  ""),
+    "ssh_port":   int(            os.environ.get("BRIDGE_SSH_PORT",  "22")),
+    "eapi_user":  _arg("-eu") or os.environ.get("BRIDGE_EAPI_USER", "admin"),
+    "eapi_pass":  _arg("-ep") or os.environ.get("BRIDGE_EAPI_PASS", ""),
+    "eapi_port":  int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT", "443")),
+    "eapi_proto": "http" if "--eapi-http" in sys.argv else "https",
+}
 
-# ── SSH config (METHOD = "ssh") ───────────────────────────────────────────────
-
-# ── eAPI config (METHOD = "eapi") ─────────────────────────────────────────────
-# Arista eAPI — JSON-RPC over HTTPS; returns same EOS JSON as SSH show | json
-# Enable with:  management api http-commands
-#               no shutdown
-# -eu / -ep / --eapi-port / --eapi-http override these defaults.
-EAPI_USER  = _arg("-eu")        or os.environ.get("BRIDGE_EAPI_USER",  "admin")
-EAPI_PASS  = _arg("-ep")        or os.environ.get("BRIDGE_EAPI_PASS",  "")
-EAPI_PORT  = int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT",  "443"))
-EAPI_PROTO = "http" if "--eapi-http" in sys.argv else "https"
-
-# ── RESTCONF config (METHOD = "rest") ─────────────────────────────────────────
+# ── RESTCONF config (_cfg['transport'] = "rest") ─────────────────────────────────────────
 # OpenConfig YANG over HTTPS; EOS 4.22+; enable with: management api restconf
 REST_USER = "admin"
 REST_PASS = ""
 REST_PORT = 443
 
-# ── gNMI config (METHOD = "gnmi") ─────────────────────────────────────────────
+# ── gNMI config (_cfg['transport'] = "gnmi") ─────────────────────────────────────────────
 # gRPC/gNMI; enable with: management api gnmi; requires: pip install pygnmi
 GNMI_USER = "admin"
 GNMI_PASS = ""
@@ -479,11 +478,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
-                      "port": PORT, "method": METHOD, "timeout": TIMEOUT}
+                      "port": PORT, "method": _cfg['transport'], "timeout": TIMEOUT}
             # Only check arista-ssh credentials for pure key-based auth.
             # Password-based modes (sshpass or SSH_ASKPASS shim) don't use
             # arista-ssh certs, so the check is irrelevant.
-            if METHOD == "ssh":
+            if _cfg['transport'] == "ssh":
                 if not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
                     # Key-based auth: proactively check arista-ssh cert validity.
                     auth = _check_ssh_agent()
@@ -503,7 +502,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path not in ("/lldp", "/devstatus", "/pushconfig",
-                              "/pushconfig/finalize", "/reconcile"):
+                              "/pushconfig/finalize", "/reconcile", "/settings"):
             self._json(404, {"error": "not found"})
             return
         try:
@@ -512,6 +511,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             self._json(400, {"error": "invalid JSON body"})
             return
+        if self.path == "/settings":
+            allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
+                       "eapi_user", "eapi_pass", "eapi_port", "eapi_proto"}
+            for k, v in body.items():
+                if k in allowed:
+                    _cfg[k] = int(v) if k in ("ssh_port", "eapi_port") else v
+            self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
+            return
         ip_map           = body.get("ipMap", {})
         dry_run          = bool(body.get("dry_run", False))
         open_session     = bool(body.get("open_session", False))
@@ -519,7 +526,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         all_device_names = body.get("allDeviceNames")  # for BGP #TA neighbor cleanup
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
-        if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+        if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
             if not _ssh_auth["ok"]:
                 self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]})
                 return
@@ -661,9 +668,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+            exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", eos_cmd]
                         if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
+                        [*base, f"{_cfg['ssh_user']}@{ip}", eos_cmd])
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
@@ -713,13 +720,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _eapi_cmds(self, ip, *cmds):
         """Run EOS show commands via eAPI JSON-RPC. Returns list of parsed JSON dicts.
         All commands are sent in a single HTTPS request (more efficient than SSH)."""
-        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
         payload = json.dumps({
             "jsonrpc": "2.0", "method": "runCmds",
             "params":  {"version": 1, "cmds": list(cmds), "format": "json"},
             "id":      1,
         }).encode()
-        creds = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
+        creds = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
         req   = urllib.request.Request(url, data=payload, headers={
             "Content-Type":  "application/json",
             "Authorization": f"Basic {creds}",
@@ -746,13 +753,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _eapi_push(self, ip, *cmds):
         """Run EOS commands via eAPI with format=text (for configure session).
         Returns list of raw text output strings, one per command."""
-        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
         payload = json.dumps({
             "jsonrpc": "2.0", "method": "runCmds",
             "params":  {"version": 1, "cmds": list(cmds), "format": "text"},
             "id":      1,
         }).encode()
-        creds = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
+        creds = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
         req   = urllib.request.Request(url, data=payload, headers={
             "Content-Type":  "application/json",
             "Authorization": f"Basic {creds}",
@@ -768,7 +775,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _text_cmd(self, ip, cmd):
         """Run a single show command and return its text output.
 
-        Dispatches by METHOD so callers (BGP/VRF orphan detection, ASN check)
+        Dispatches by _cfg['transport'] so callers (BGP/VRF orphan detection, ASN check)
         work identically in ssh and eapi mode without any per-caller branching.
 
         SSH:  subprocess via jump host (or direct) — same path as _ssh_cmds
@@ -776,14 +783,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         eAPI: reuses _eapi_push (format=text) and returns result[0].
         """
         if VERBOSE:
-            print(f"  [text-cmd/{METHOD}] {ip}: {cmd}", flush=True)
-        if METHOD == "eapi":
+            print(f"  [text-cmd/{_cfg['transport']}] {ip}: {cmd}", flush=True)
+        if _cfg['transport'] == "eapi":
             result = self._eapi_push(ip, cmd)
             return result[0] if result else ""
         # SSH path
         base     = _ssh_base()
-        exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", cmd]
-                    if JUMP_HOST else [*base, f"{SSH_USER}@{ip}", cmd])
+        exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", cmd]
+                    if JUMP_HOST else [*base, f"{_cfg['ssh_user']}@{ip}", cmd])
         return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
                                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
@@ -822,9 +829,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
         base = _ssh_base(force_tty=force_tty)
-        cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
+        cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}"]
                if JUMP_HOST else
-               [*base, f"{SSH_USER}@{ip}"])
+               [*base, f"{_cfg['ssh_user']}@{ip}"])
         with subprocess.Popen(cmd,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, env=_SSH_ENV) as proc:
@@ -851,10 +858,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         """Abort all pending topoassist_* configure sessions on the device.
         EOS allows max 5 pending sessions; leftover sessions from aborted pushes
         fill this limit and block new ones. Returns list of aborted names."""
-        if METHOD not in ("ssh", "eapi"):
+        if _cfg['transport'] not in ("ssh", "eapi"):
             return []
         # Get current session list
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions",
                                      force_tty=True)
         else:
@@ -872,7 +879,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         abort_cmds = []
         for name in stale:
             abort_cmds += [f"configure session {name}", "abort"]
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             self._ssh_stdin(ip, *abort_cmds, force_tty=True)
         else:
             self._eapi_push(ip, *abort_cmds)
@@ -961,7 +968,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
 
-        if METHOD == "eapi":
+        if _cfg['transport'] == "eapi":
             results = self._eapi_push(ip, *core_cmds)
             if open_only:
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
@@ -976,7 +983,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
                                                force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
@@ -1005,7 +1012,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         raise NotImplementedError(
-            f"Config push not supported for METHOD={METHOD!r} — use ssh or eapi")
+            f"Config push not supported for _cfg['transport']={_cfg['transport']!r} — use ssh or eapi")
 
     def _finalize_session(self, ip, session_name, action):
         """Commit or abort an existing named configure session on the device.
@@ -1019,7 +1026,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if action not in ("commit", "abort"):
             raise ValueError(f"Invalid finalize action: {action!r}")
 
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(
                 ip, "terminal length 0",
                 f"configure session {session_name}", action,
@@ -1038,7 +1045,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed")
             return {"ok": True, "action": action}
 
-        if METHOD == "eapi":
+        if _cfg['transport'] == "eapi":
             # Verify session still exists before committing: eAPI creates an empty session
             # for unknown names, so we'd silently commit nothing without this check.
             check = self._eapi_push(ip, "show configuration sessions")
@@ -1052,36 +1059,36 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return {"ok": True, "action": action}
 
         raise NotImplementedError(
-            f"Finalize not supported for METHOD={METHOD!r} — use ssh or eapi")
+            f"Finalize not supported for _cfg['transport']={_cfg['transport']!r} — use ssh or eapi")
 
-    # ── Dispatch: run EOS show commands via active METHOD ─────────────────────
+    # ── Dispatch: run EOS show commands via active _cfg['transport'] ─────────────────────
     def _run_cmds(self, ip, *cmds):
         # _ssh_cmds returns (results, cmd_errors); _eapi_cmds raises on failure
         # so wrap it to match the same tuple signature.
-        if METHOD == "ssh":  return self._ssh_cmds(ip, *cmds)
-        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds), {}
-        raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
+        if _cfg['transport'] == "ssh":  return self._ssh_cmds(ip, *cmds)
+        if _cfg['transport'] == "eapi": return self._eapi_cmds(ip, *cmds), {}
+        raise NotImplementedError(f"_run_cmds not supported for _cfg['transport']={_cfg['transport']!r}")
 
     # ── Per-device checks ─────────────────────────────────────────────────────
     def _check_lldp(self, ip):
-        if METHOD in ("ssh", "eapi"):
+        if _cfg['transport'] in ("ssh", "eapi"):
             (data,), cmd_errors = self._run_cmds(ip, "show lldp neighbors detail")
             if cmd_errors:
                 raise list(cmd_errors.values())[0]   # partial LLDP is unusable — re-raise
             return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
 
-        if METHOD == "rest":
+        if _cfg['transport'] == "rest":
             raw = self._rest_get(ip, "openconfig-lldp:lldp/interfaces")
             return {"ok": True, "neighbors": _oc_lldp_to_eos(raw)}
 
-        if METHOD == "gnmi":
+        if _cfg['transport'] == "gnmi":
             raw = _gnmi_val(self._gnmi_get(ip, "openconfig-lldp:lldp")[0])
             return {"ok": True, "neighbors": _oc_lldp_to_eos(raw)}
 
-        raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+        raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     def _check_devstatus(self, ip):
-        if METHOD in ("ssh", "eapi"):
+        if _cfg['transport'] in ("ssh", "eapi"):
             (ver, ifs, ivlans), cmd_errors = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
@@ -1096,7 +1103,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 result["cmdErrors"] = {cmd: _fmt(exc) for cmd, exc in cmd_errors.items()}
             return result
 
-        if METHOD == "rest":
+        if _cfg['transport'] == "rest":
             plat_raw  = self._rest_get(ip, "openconfig-platform:components")
             iface_raw = self._rest_get(ip, "openconfig-interfaces:interfaces")
             return {
@@ -1106,7 +1113,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "interfaces": _oc_iface_status(iface_raw),
             }
 
-        if METHOD == "gnmi":
+        if _cfg['transport'] == "gnmi":
             plat_r, iface_r = self._gnmi_get(
                 ip,
                 "openconfig-platform:components",
@@ -1119,7 +1126,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "interfaces": _oc_iface_status(_gnmi_val(iface_r)),
             }
 
-        raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+        raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     # ── Orphan detection ──────────────────────────────────────────────────────
     def _find_ta_orphans(self, ip, config_text, all_device_names=None):
@@ -1463,12 +1470,12 @@ if __name__ == "__main__":
   Transport:
     -m MODE       Transport mode: ssh | eapi         default: ssh
 
-  SSH options (METHOD=ssh):
+  SSH options (_cfg['transport']=ssh):
     -u USER       SSH username                        default: admin
     -b JUMP_HOST  Jump host for SSH                   default: bus-home
                   Use -b "" for direct SSH (no jump host)
 
-  eAPI options (METHOD=eapi):
+  eAPI options (_cfg['transport']=eapi):
     -eu USER      eAPI username                       default: admin
     -ep PASS      eAPI password                       default: (empty)
     --eapi-port N eAPI port                           default: 443
@@ -1495,24 +1502,25 @@ if __name__ == "__main__":
     print(f"\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  ─────────────────────────────────────")
     print(f"  Listening : http://localhost:{PORT}")
-    print(f"  Transport : {METHOD.upper()}")
-    if METHOD == "ssh":
+    print(f"  Transport : {_cfg['transport'].upper()}")
+    if _cfg['transport'] == "ssh":
         _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
                       "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
                       "key-based (arista-ssh)")
-        print(f"  SSH user  : {SSH_USER}  auth: {_auth_mode}")
+        print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}")
         print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")
-    elif METHOD == "eapi":
-        print(f"  eAPI user : {EAPI_USER}  port: {EAPI_PORT}  proto: {EAPI_PROTO}")
-    elif METHOD == "rest":
+    elif _cfg['transport'] == "eapi":
+        print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}  proto: {_cfg['eapi_proto']}")
+    elif _cfg['transport'] == "rest":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
-    elif METHOD == "gnmi":
+    elif _cfg['transport'] == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
-    print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
-    print(f"  Options   : -m ssh|eapi  -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
+    print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
+    print(f"  Options   : -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (credentials via sidebar UI)")
+    print(f"  Legacy    : -m ssh|eapi  -u USER  -eu USER  -ep PASS  --eapi-port N  --eapi-http  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")

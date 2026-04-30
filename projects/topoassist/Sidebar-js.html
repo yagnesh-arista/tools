@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.12 | 2026-04-30 10:40:58 -->
+<!-- TopoAssist v260430.13 | 2026-04-30 11:04:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.12";  // keep in sync with Code.gs
+const APP_VERSION = "260430.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9642,7 +9642,7 @@ Usage:
 Keep this terminal open while using Device Bridge in the sidebar.
 Ctrl+C to stop.
 
-Transport options (set METHOD below):
+Transport options (set _cfg['transport'] below):
   ssh   -- SSH via jump host or direct (default; stdlib only)
   eapi  -- Arista eAPI JSON-RPC over HTTPS (stdlib only)
   rest  -- RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
@@ -9704,16 +9704,19 @@ def _ssh_base(force_tty=False):
     showing 'UnknownTty' in 'show users' and syslog. Used by _ssh_stdin for
     configure-session pushes. Show/JSON commands use the default -T (no PTY).
     """
-    tty = "-tt" if force_tty else "-T"
+    tty      = "-tt" if force_tty else "-T"
+    ssh_pass = _cfg.get("ssh_pass", "")
+    ssh_port = int(_cfg.get("ssh_port", 22))
+    port_arg = ["-p", str(ssh_port)] if ssh_port != 22 else []
     if _SSHPASS_BIN:
-        return [_SSHPASS_BIN, "-p", "", "ssh", tty,
+        return [_SSHPASS_BIN, "-p", ssh_pass, "ssh", tty, *port_arg,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "PasswordAuthentication=yes",
                 "-o", "PubkeyAuthentication=no",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
     if _ASKPASS_SCRIPT:
-        return ["ssh", tty,
+        return ["ssh", tty, *port_arg,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=no",
                 "-o", "PasswordAuthentication=yes",
@@ -9721,7 +9724,7 @@ def _ssh_base(force_tty=False):
                 "-o", "NumberOfPasswordPrompts=1",
                 "-o", "LogLevel=ERROR",
                 "-o", "ConnectTimeout=8"]
-    return ["ssh", tty,
+    return ["ssh", tty, *port_arg,
             "-o", "StrictHostKeyChecking=no",
             "-o", "BatchMode=yes",
             "-o", "LogLevel=ERROR",
@@ -9734,32 +9737,31 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.11"
+VERSION    = "260430.13"
 PORT       = 8765
 _b         = _arg("-b")
-SSH_USER   = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
-JUMP_HOST  = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
 TIMEOUT    = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
-PUSH_TIMEOUT = int(_arg("-P") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
+PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                   str(max(TIMEOUT * 4, 300))))
 
-# -- Active transport -----------------------------------------------------------
-METHOD     = _arg("-m") or os.environ.get("BRIDGE_METHOD", "ssh")
+_cfg = {
+    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "ssh"),
+    "ssh_user":   _arg("-u")  or os.environ.get("BRIDGE_SSH_USER",  "admin"),
+    "ssh_pass":                  os.environ.get("BRIDGE_SSH_PASS",  ""),
+    "ssh_port":   int(            os.environ.get("BRIDGE_SSH_PORT",  "22")),
+    "eapi_user":  _arg("-eu") or os.environ.get("BRIDGE_EAPI_USER", "admin"),
+    "eapi_pass":  _arg("-ep") or os.environ.get("BRIDGE_EAPI_PASS", ""),
+    "eapi_port":  int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT", "443")),
+    "eapi_proto": "http" if "--eapi-http" in sys.argv else "https",
+}
 
-# -- SSH config (METHOD = "ssh") -----------------------------------------------
-
-# -- eAPI config (METHOD = "eapi") ---------------------------------------------
-EAPI_USER  = _arg("-eu")         or os.environ.get("BRIDGE_EAPI_USER",  "admin")
-EAPI_PASS  = _arg("-ep")         or os.environ.get("BRIDGE_EAPI_PASS",  "")
-EAPI_PORT  = int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT",  "443"))
-EAPI_PROTO = "http" if "--eapi-http" in sys.argv else "https"
-
-# -- RESTCONF config (METHOD = "rest") -----------------------------------------
+# -- RESTCONF config (_cfg['transport'] = "rest") -----------------------------------------
 REST_USER = "admin"
 REST_PASS = ""
 REST_PORT = 443
 
-# -- gNMI config (METHOD = "gnmi") ---------------------------------------------
+# -- gNMI config (_cfg['transport'] = "gnmi") ---------------------------------------------
 GNMI_USER = "admin"
 GNMI_PASS = ""
 GNMI_PORT = 6030
@@ -9967,8 +9969,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
-                      "port": PORT, "method": METHOD, "timeout": TIMEOUT}
-            if METHOD == "ssh":
+                      "port": PORT, "method": _cfg['transport'], "timeout": TIMEOUT}
+            if _cfg['transport'] == "ssh":
                 if not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
                     auth = _check_ssh_agent()
                     if auth["ok"]:
@@ -9984,20 +9986,29 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/pushconfig/finalize", "/reconcile"):
+        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/pushconfig/finalize",
+                              "/reconcile", "/settings"):
             self._json(404, {"error": "not found"}); return
         try:
             length = int(self.headers.get("Content-Length", 0))
             body   = json.loads(self.rfile.read(length))
         except Exception:
             self._json(400, {"error": "invalid JSON body"}); return
+        if self.path == "/settings":
+            allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
+                       "eapi_user", "eapi_pass", "eapi_port", "eapi_proto"}
+            for k, v in body.items():
+                if k in allowed:
+                    _cfg[k] = int(v) if k in ("ssh_port", "eapi_port") else v
+            self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
+            return
         ip_map       = body.get("ipMap", {})
         dry_run      = bool(body.get("dry_run", False))
         open_session = bool(body.get("open_session", False))
         all_ifaces   = bool(body.get("all_ifaces", False))
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30-120s of per-device SSH timeouts when arista-ssh cert has expired.
-        if METHOD == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+        if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
             if not _ssh_auth["ok"]:
                 self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]}); return
             auth = _check_ssh_agent()
@@ -10087,9 +10098,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
+            exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", eos_cmd]
                         if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
+                        [*base, f"{_cfg['ssh_user']}@{ip}", eos_cmd])
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
@@ -10126,9 +10137,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return results
 
     def _eapi_cmds(self, ip, *cmds):
-        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
         payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"json"},"id":1}).encode()
-        creds   = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
+        creds   = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
         req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
         with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
@@ -10137,9 +10148,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return resp["result"]
 
     def _eapi_push(self, ip, *cmds):
-        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
         payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"text"},"id":1}).encode()
-        creds   = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
+        creds   = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
         req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
         with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
@@ -10149,13 +10160,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _text_cmd(self, ip, cmd):
         if VERBOSE:
-            print(f"  [text-cmd/{METHOD}] {ip}: {cmd}", flush=True)
-        if METHOD == "eapi":
+            print(f"  [text-cmd/{_cfg['transport']}] {ip}: {cmd}", flush=True)
+        if _cfg['transport'] == "eapi":
             result = self._eapi_push(ip, cmd)
             return result[0] if result else ""
         base     = _ssh_base()
-        exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", cmd]
-                    if JUMP_HOST else [*base, f"{SSH_USER}@{ip}", cmd])
+        exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", cmd]
+                    if JUMP_HOST else [*base, f"{_cfg['ssh_user']}@{ip}", cmd])
         return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
                                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
@@ -10168,9 +10179,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
         base = _ssh_base(force_tty=force_tty)
-        cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}"]
+        cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}"]
                if JUMP_HOST else
-               [*base, f"{SSH_USER}@{ip}"])
+               [*base, f"{_cfg['ssh_user']}@{ip}"])
         proc = subprocess.Popen(cmd,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, env=_SSH_ENV)
@@ -10193,9 +10204,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return out_text, err_text
 
     def _abort_stale_sessions(self, ip):
-        if METHOD not in ("ssh", "eapi"):
+        if _cfg['transport'] not in ("ssh", "eapi"):
             return []
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions",
                                      force_tty=True)
         else:
@@ -10210,7 +10221,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         abort_cmds = []
         for name in stale:
             abort_cmds += [f"configure session {name}", "abort"]
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             self._ssh_stdin(ip, *abort_cmds, force_tty=True)
         else:
             self._eapi_push(ip, *abort_cmds)
@@ -10250,7 +10261,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + lines
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
-        if METHOD == "eapi":
+        if _cfg['transport'] == "eapi":
             results = self._eapi_push(ip, *core_cmds)
             if open_only:
                 diff = results[-1].strip() if results else ""
@@ -10264,7 +10275,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
                                                force_tty=True)
             _auth_errs = ("permission denied", "authentication failed",
@@ -10285,12 +10296,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
-        raise NotImplementedError(f"Config push not supported for METHOD={METHOD!r} -- use ssh or eapi")
+        raise NotImplementedError(f"Config push not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
 
     def _finalize_session(self, ip, session_name, action):
         if action not in ("commit", "abort"):
             raise ValueError(f"Invalid finalize action: {action!r}")
-        if METHOD == "ssh":
+        if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(
                 ip, "terminal length 0",
                 f"configure session {session_name}", action,
@@ -10306,7 +10317,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     f"Configure session '{session_name}' not found -- "
                     "it may have timed out. Push again.")
             return {"ok": True, "action": action}
-        if METHOD == "eapi":
+        if _cfg['transport'] == "eapi":
             # Verify session still exists before committing: enter then check output.
             # eAPI creates an empty session if the name is unknown -- check for that.
             check = self._eapi_push(ip, "show configuration sessions")
@@ -10317,7 +10328,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "it may have timed out. Push again.")
             self._eapi_push(ip, f"configure session {session_name}", action)
             return {"ok": True, "action": action}
-        raise NotImplementedError(f"Finalize not supported for METHOD={METHOD!r} -- use ssh or eapi")
+        raise NotImplementedError(f"Finalize not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
 
     def _rest_get(self, ip, path):
         url   = f"https://{ip}:{REST_PORT}/restconf/data/{path}"
@@ -10333,9 +10344,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return [gc.get(path=[p]) for p in paths]
 
     def _run_cmds(self, ip, *cmds):
-        if METHOD == "ssh":  return self._ssh_cmds(ip, *cmds)
-        if METHOD == "eapi": return self._eapi_cmds(ip, *cmds), {}
-        raise NotImplementedError(f"_run_cmds not supported for METHOD={METHOD!r}")
+        if _cfg['transport'] == "ssh":  return self._ssh_cmds(ip, *cmds)
+        if _cfg['transport'] == "eapi": return self._eapi_cmds(ip, *cmds), {}
+        raise NotImplementedError(f"_run_cmds not supported for _cfg['transport']={_cfg['transport']!r}")
 
     # -- Orphan detection ------------------------------------------------------
     def _find_ta_orphans(self, ip, config_text, all_device_names=None):
@@ -10574,19 +10585,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
-        if METHOD in ("ssh", "eapi"):
+        if _cfg['transport'] in ("ssh", "eapi"):
             (data,), cmd_errors = self._run_cmds(ip, "show lldp neighbors detail")
             if cmd_errors:
                 raise list(cmd_errors.values())[0]
             return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
-        if METHOD == "rest":
+        if _cfg['transport'] == "rest":
             return {"ok": True, "neighbors": _oc_lldp_to_eos(self._rest_get(ip, "openconfig-lldp:lldp/interfaces"))}
-        if METHOD == "gnmi":
+        if _cfg['transport'] == "gnmi":
             return {"ok": True, "neighbors": _oc_lldp_to_eos(_gnmi_val(self._gnmi_get(ip, "openconfig-lldp:lldp")[0]))}
-        raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+        raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     def _check_devstatus(self, ip):
-        if METHOD in ("ssh", "eapi"):
+        if _cfg['transport'] in ("ssh", "eapi"):
             (ver, ifs, ivlans), cmd_errors = self._run_cmds(
                 ip, "show version", "show interfaces status", "show vlan internal usage"
             )
@@ -10598,15 +10609,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     return str(e)[:80]
                 result["cmdErrors"] = {cmd: _fmt(exc) for cmd, exc in cmd_errors.items()}
             return result
-        if METHOD == "rest":
+        if _cfg['transport'] == "rest":
             plat  = self._rest_get(ip, "openconfig-platform:components")
             iface = self._rest_get(ip, "openconfig-interfaces:interfaces")
             return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface)}
-        if METHOD == "gnmi":
+        if _cfg['transport'] == "gnmi":
             plat_r, iface_r = self._gnmi_get(ip, "openconfig-platform:components", "openconfig-interfaces:interfaces")
             plat = _gnmi_val(plat_r); iface = _gnmi_val(iface_r)
             return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface)}
-        raise RuntimeError(f"Unknown METHOD: {METHOD!r}")
+        raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     # -- Parallel runner -------------------------------------------------------
     def _run_parallel(self, ip_map, check_fn):
@@ -10679,24 +10690,25 @@ if __name__ == "__main__":
     print(f"\\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  -----------------------------------------")
     print(f"  Listening : http://localhost:{PORT}")
-    print(f"  Transport : {METHOD.upper()}")
-    if METHOD == "ssh":
+    print(f"  Transport : {_cfg['transport'].upper()}")
+    if _cfg['transport'] == "ssh":
         _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
                       "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
                       "key-based (arista-ssh)")
-        print(f"  SSH user  : {SSH_USER}  auth: {_auth_mode}")
+        print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}")
         print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")
-    elif METHOD == "eapi":
-        print(f"  eAPI user : {EAPI_USER}  port: {EAPI_PORT}")
-    elif METHOD == "rest":
+    elif _cfg['transport'] == "eapi":
+        print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}")
+    elif _cfg['transport'] == "rest":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
-    elif METHOD == "gnmi":
+    elif _cfg['transport'] == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-P)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
-    print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
-    print(f"  Options   : -m ssh|eapi  -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
+    print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
+    print(f"  Options   : -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (credentials via sidebar UI)")
+    print(f"  Legacy    : -m ssh|eapi  -u USER  -eu USER  -ep PASS  --eapi-port N  --eapi-http")
     print(f"  -----------------------------------------")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
@@ -10736,52 +10748,63 @@ function openBridgeModal() {
 }
 
 function _getBridgeCmdLine() {
-  const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
-  const mode = rb ? rb.value : 'ssh';
-  if (mode !== 'eapi') return 'python3 device_bridge.py';
-  const user  = (document.getElementById('bridgeEapiUser') || {}).value || 'admin';
-  const pass  = (document.getElementById('bridgeEapiPass') || {}).value || '';
-  const port  = (document.getElementById('bridgeEapiPort') || {}).value || '80';
-  const http  = document.getElementById('chkEapiHttp');
-  const proto = (http && http.checked) ? ' --eapi-http' : '';
-  let cmd = `python3 device_bridge.py -m eapi -eu ${user} --eapi-port ${port}${proto}`;
-  if (pass) cmd += ` -ep ${pass}`;
-  return cmd;
+  // Credentials are now configured in the sidebar and applied via POST /settings.
+  // The start command is always just `python3 device_bridge.py` — no credential flags needed.
+  return 'python3 device_bridge.py';
 }
 
 function onBridgeTransportChange() {
   const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
   const mode = rb ? rb.value : 'ssh';
+  const sf   = document.getElementById('bridgeSshFields');
   const ef   = document.getElementById('bridgeEapiFields');
+  if (sf) sf.style.display = (mode === 'ssh')  ? '' : 'none';
   if (ef) ef.style.display = (mode === 'eapi') ? '' : 'none';
-  _saveBridgeTransportPrefs();
+  _applyBridgeSettings();
 }
 
-function _saveBridgeTransportPrefs() {
-  const rb = document.querySelector('input[name="bridgeTransport"]:checked');
-  localStorage.setItem('bridgeTransportMode', rb ? rb.value : 'ssh');
-  localStorage.setItem('bridgeEapiUser', (document.getElementById('bridgeEapiUser') || {}).value || 'admin');
-  localStorage.setItem('bridgeEapiPass', (document.getElementById('bridgeEapiPass') || {}).value || '');
-  localStorage.setItem('bridgeEapiPort', (document.getElementById('bridgeEapiPort') || {}).value || '80');
+function _applyBridgeSettings() {
+  const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
+  const mode = rb ? rb.value : 'ssh';
+  const _v   = id => (document.getElementById(id) || {}).value || '';
   const http = document.getElementById('chkEapiHttp');
-  localStorage.setItem('bridgeEapiHttp', (http && http.checked) ? '1' : '0');
+  const cfg  = {
+    transport:  mode,
+    ssh_user:   _v('bridgeSshUser')  || 'admin',
+    ssh_pass:   _v('bridgeSshPass'),
+    ssh_port:   parseInt(_v('bridgeSshPort')  || '22'),
+    eapi_user:  _v('bridgeEapiUser') || 'admin',
+    eapi_pass:  _v('bridgeEapiPass'),
+    eapi_port:  parseInt(_v('bridgeEapiPort') || '80'),
+    eapi_proto: (http && http.checked) ? 'http' : 'https',
+  };
+  // Persist to localStorage so prefs survive page refresh
+  Object.entries(cfg).forEach(([k, v]) => localStorage.setItem('bridgeCfg_' + k, v));
+  // Apply to running bridge (fire-and-forget — bridge may not be up yet)
+  fetch(BRIDGE_URL + '/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(cfg),
+  }).catch(() => {});
 }
 
 function _loadBridgeTransportPrefs() {
-  const mode  = localStorage.getItem('bridgeTransportMode') || 'ssh';
-  const rbSsh = document.getElementById('rbTransportSsh');
+  const get  = (k, def) => localStorage.getItem('bridgeCfg_' + k) ?? def;
+  const mode = get('transport', 'ssh');
+  const rbSsh  = document.getElementById('rbTransportSsh');
   const rbEapi = document.getElementById('rbTransportEapi');
   if (rbSsh)  rbSsh.checked  = (mode !== 'eapi');
   if (rbEapi) rbEapi.checked = (mode === 'eapi');
-  const uEl   = document.getElementById('bridgeEapiUser');
-  const pEl   = document.getElementById('bridgeEapiPass');
-  const portEl = document.getElementById('bridgeEapiPort');
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  set('bridgeSshUser',  get('ssh_user',  'admin'));
+  set('bridgeSshPass',  get('ssh_pass',  ''));
+  set('bridgeSshPort',  get('ssh_port',  '22'));
+  set('bridgeEapiUser', get('eapi_user', 'admin'));
+  set('bridgeEapiPass', get('eapi_pass', ''));
+  set('bridgeEapiPort', get('eapi_port', '80'));
   const httpEl = document.getElementById('chkEapiHttp');
-  if (uEl)   uEl.value    = localStorage.getItem('bridgeEapiUser') || 'admin';
-  if (pEl)   pEl.value    = localStorage.getItem('bridgeEapiPass') || '';
-  if (portEl) portEl.value = localStorage.getItem('bridgeEapiPort') || '80';
-  if (httpEl) httpEl.checked = localStorage.getItem('bridgeEapiHttp') !== '0';
-  onBridgeTransportChange();
+  if (httpEl) httpEl.checked = get('eapi_proto', 'http') === 'http';
+  onBridgeTransportChange(); // shows/hides fields + calls _applyBridgeSettings
 }
 
 function _syncBridgeDevCollapse() {
@@ -10981,7 +11004,7 @@ function _checkBridgeHealth() {
         cmd.style.display = 'none';
         btn.disabled = false;
         if (data.timeout) _bridgeDeviceTimeout = data.timeout;
-        // auth field present only when METHOD=ssh + key-based auth (no sshpass)
+        // auth field present only when _cfg['transport']=ssh + key-based auth (no sshpass)
         const authFailed = data.auth && data.auth.ok === false;
         if (authFailed && authWarn) {
           authWarn.textContent = '\u26a0 ' + data.auth.msg;
@@ -11097,7 +11120,7 @@ function _silentBridgeCheck() {
       .then(data => {
         if (data.timeout) _bridgeDeviceTimeout = data.timeout;
         if (data.status === 'ok') {
-          // auth field present only when METHOD=ssh + key-based auth (no sshpass)
+          // auth field present only when _cfg['transport']=ssh + key-based auth (no sshpass)
           const authFailed = data.auth && data.auth.ok === false;
           _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
         } else {
