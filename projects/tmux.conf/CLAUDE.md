@@ -8,6 +8,8 @@
 
 **Section 8 (post-plugin overrides) MUST appear AFTER `run tpm`.** These overrides must win over what plugins set. Moving them before `run tpm` silently loses all mouse binding fixes.
 
+**`default-terminal` is `tmux-256color`** (not `xterm-256color`). `xterm-256color` caused space characters typed in Claude CLI to not render until the next keystroke. `tmux-256color` is the correct native TERM for tmux. True color still works via `terminal-overrides ',*:Tc'`.
+
 **`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. DoubleClick/TripleClick use inline `copy-mode \; send-keys -X select-word/line` — no external script.
 
 **`mode-keys vi` is set.** All copy-mode bindings use the `copy-mode-vi` table. Root WheelUpPane/WheelDownPane use `send-keys -M` re-dispatch (NOT `copy-mode -M` which is unsupported) to enter copy-mode-vi and re-fire the wheel event.
