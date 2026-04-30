@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.92 | 2026-04-30 21:35:26 -->
+<!-- TopoAssist v260430.93 | 2026-04-30 21:39:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.92";  // keep in sync with Code.gs
+const APP_VERSION = "260430.93";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -248,7 +248,7 @@ const APP_VERSION = "260430.92";  // keep in sync with Code.gs
     { label: 'L',  w: 1600, h: 900  },
     { label: 'XL', w: 1920, h: 1060 }
   ];
-  let _topologySizeIdx = <?= defaultSizeIdx ?>;
+  let _topologySizeIdx = 2; // default L; updated async by _loadSizePreference()
   let globalSchema = [];
   const fetchQueue = {};
   let isGridSnapEnabled = false;
@@ -502,7 +502,16 @@ function initApp() {
   initTheme();
   syncToolbarTooltips();
   _injectMinimizeButtons();   // add minimize button to all modals that lack one
-  _updateSizeButtons();       // set initial size label + button states
+  _updateSizeButtons();       // set initial size label + button states (default L)
+  // Async: fetch saved size preference and update buttons once GAS responds
+  google.script.run
+    .withSuccessHandler(function(idx) {
+      if (idx !== null && idx !== undefined && idx !== _topologySizeIdx) {
+        _topologySizeIdx = idx;
+        _updateSizeButtons();
+      }
+    })
+    .getTopologySizeIdx();
   applyValidationState();
   applyBoldTextPref();
   dbg("Initializing App in mode:", currentMode);
