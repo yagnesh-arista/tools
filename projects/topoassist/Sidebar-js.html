@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.38 | 2026-04-30 15:54:35 -->
+<!-- TopoAssist v260430.39 | 2026-04-30 16:32:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.38";  // keep in sync with Code.gs
+const APP_VERSION = "260430.39";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10756,7 +10756,7 @@ if __name__ == "__main__":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
     elif _cfg['transport'] == "gnmi":
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
-    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-P)")
+    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
     print(f"  -----------------------------------------")
