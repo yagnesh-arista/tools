@@ -1,10 +1,10 @@
-// TopoAssist v260430.91 | 2026-04-30 21:26:17
+// TopoAssist v260430.92 | 2026-04-30 21:35:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.91";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.92";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -231,6 +231,7 @@ function showCustomViewUi() {
   template.defaultTop = settings.top;
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
+  template.defaultSizeIdx = getTopologySizeIdx();
 
   const html = template.evaluate().setWidth(500).setHeight(600).setTitle('Sheet Custom View Managers');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet Custom View Managers');
@@ -784,6 +785,7 @@ function showDeviceManagerUi() {
   template.defaultTop = settings.top;
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
+  template.defaultSizeIdx = getTopologySizeIdx();
 
   const html = template.evaluate().setWidth(1000).setHeight(1000).setTitle('Device Manager');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Device Manager');
@@ -802,6 +804,7 @@ function showDeviceDataUi() {
   template.defaultTop = settings.top;
   template.defaultRefresh = settings.refresh;
   template.defaultAuto = settings.auto;
+  template.defaultSizeIdx = getTopologySizeIdx();
 
   const html = template.evaluate()
     .setWidth(700)
