@@ -1,4 +1,4 @@
-# bashrc_bus-home v260429.3 | 2026-04-29 10:55:39
+# bashrc_bus-home v260430.1 | 2026-04-30 11:57:04
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -70,7 +70,13 @@ export IGNOREEOF=10  # Press Ctrl+D 10 times to close
 
 # 7. Aliases
 alias ta='tmux attach -d'
-alias fix-tmux='tmux resize-window -x $(tput cols) -y $(tput lines)'
+fix-tmux() {
+  # Push actual PTY size into tmux — works after display switch when iTerm2 doesn't propagate SIGWINCH
+  local size; size=$(stty size)          # "rows cols" from PTY (never stale)
+  local rows=${size% *} cols=${size#* }
+  tmux refresh-client -C "${cols}x${rows}"
+  tmux resize-window -A
+}
 alias tmux-studio="python3 ~/.tmux-studio/tmux_studio.py"
 alias ll='ls -lhF --color=auto'
 alias la='ls -lAhF --color=auto'
