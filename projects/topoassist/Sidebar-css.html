@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.52 | 2026-04-30 17:11:46 -->
+<!-- TopoAssist v260430.53 | 2026-04-30 17:14:07 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5453,6 +5453,21 @@
   #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.9s ease-in-out infinite; }
   /* Generate/Push toolbar icon — flashes while generate or push is running */
   #btnGenerateAllToolbar.is-active    { animation: bridge-scan 0.9s ease-in-out infinite; }
+  /* Signal dot on generate/push toolbar button */
+  #btnGenerateAllToolbar { position: relative; }
+  #genToolbarDot {
+    position: absolute; top: 2px; right: 2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    display: none;
+  }
+  #genToolbarDot.gen-sig-running {
+    display: block; background: #f97316;
+    animation: gen-dot-pulse 0.8s ease-in-out infinite;
+  }
+  #genToolbarDot.gen-sig-ok  { display: block; background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,0.7); }
+  #genToolbarDot.gen-sig-warn { display: block; background: #f97316; box-shadow: 0 0 4px rgba(249,115,22,0.7); }
+  #genToolbarDot.gen-sig-err  { display: block; background: #ef4444; box-shadow: 0 0 4px rgba(239,68,68,0.7); }
+  @keyframes gen-dot-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
 
   /* ================= 13. BRIDGE MODAL ================= */
   .bridge-settings-card {

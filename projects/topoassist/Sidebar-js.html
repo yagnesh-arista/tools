@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.52 | 2026-04-30 17:12:33 -->
+<!-- TopoAssist v260430.53 | 2026-04-30 17:17:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.52";  // keep in sync with Code.gs
+const APP_VERSION = "260430.53";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12993,7 +12993,7 @@ async function pushAllConfigs() {
   stopPushBtn.textContent = 'Stop Push';
   stopPushBtn.onclick = function() {
     _pushAllStopped = true;
-    _setGenToolbarActive(false);
+    _setGenToolbarActive(false, 'warn');
     _resetStopPushBtn();
   };
 
@@ -13027,6 +13027,8 @@ async function pushAllConfigs() {
   // Helper: build and set a result row (replaces element by id via outerHTML)
   // diff: colored diff block; details: red error text; warnDetails: amber note text
   function _setResultRow(rowId, safeName, color, label, diff, details, warnDetails, infoDetails) {
+    if (color === '#ef4444' || color === '#f87171') { _genSignalState = 'err'; }
+    else if (color === '#f59e0b' && _genSignalState !== 'err') { _genSignalState = 'warn'; }
     let html =
       `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;` +
       `margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">` +
@@ -13289,7 +13291,7 @@ async function pushAllConfigs() {
   _pushAllActive = false;
   btn.disabled = false;
   btn.textContent = 'Push Targets';
-  _setGenToolbarActive(false);
+  _setGenToolbarActive(false, _genSignalState);
   _resetStopPushBtn();
 }
 
@@ -15441,10 +15443,28 @@ function toggleIpExample() {
 let _generateAllAborted = false;
 let _pushAllStopped     = false;
 let _pushAllActive      = false;
+let _genSignalState     = 'idle';
+let _genDotTimer        = null;
 
-function _setGenToolbarActive(on) {
+function _setGenToolbarSignal(state) {
+  clearTimeout(_genDotTimer);
+  const dot = document.getElementById('genToolbarDot');
+  if (!dot) return;
+  dot.className = (state === 'idle') ? '' : ('gen-sig-' + state);
+  if (state !== 'running' && state !== 'idle') {
+    _genDotTimer = setTimeout(function() { dot.className = ''; }, 5000);
+  }
+}
+
+function _setGenToolbarActive(on, signalState) {
   const tb = document.getElementById('btnGenerateAllToolbar');
   if (tb) tb.classList.toggle('is-active', on);
+  if (on) {
+    _genSignalState = 'ok';
+    _setGenToolbarSignal('running');
+  } else if (signalState !== undefined) {
+    _setGenToolbarSignal(signalState);
+  }
 }
 function _resetStopGenerateBtn() {
   const b = document.getElementById('btnStopGenerate');
@@ -15544,7 +15564,7 @@ function runGenerateAll() {
   stopBtn.textContent = 'Stop Generate';
   stopBtn.onclick = function() {
     _generateAllAborted = true;
-    _setGenToolbarActive(false);
+    _setGenToolbarActive(false, 'warn');
     _resetStopGenerateBtn();
     btn.disabled = false;
     btn.innerText = 'Generate Configs';
@@ -15560,7 +15580,7 @@ function runGenerateAll() {
   google.script.run
     .withSuccessHandler(function(result) {
       if (_generateAllAborted) return;
-      _setGenToolbarActive(false);
+      _setGenToolbarActive(false, result.error ? 'err' : 'ok');
       btn.disabled = false;
       btn.innerText = 'Re-Generate Configs';
       if (result.error) {
@@ -15595,7 +15615,7 @@ function runGenerateAll() {
     })
     .withFailureHandler(function(err) {
       if (_generateAllAborted) return;
-      _setGenToolbarActive(false);
+      _setGenToolbarActive(false, 'err');
       _resetStopGenerateBtn();
       btn.disabled = false;
       btn.innerText = 'Retry';
