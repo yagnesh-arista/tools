@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.49 | 2026-04-30 17:01:21
+# topoassist v260430.50 | 2026-04-30 17:03:07
 """
 TopoAssist Device Bridge
 ========================
@@ -1560,8 +1560,8 @@ if __name__ == "__main__":
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
     print(f"  Ctrl+C to stop.")
-    _print_transport_status()
     print()
+    _print_transport_status()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
