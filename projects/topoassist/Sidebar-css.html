@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.69 | 2026-04-30 18:01:23 -->
+<!-- TopoAssist v260430.70 | 2026-04-30 18:04:13 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3347,6 +3347,29 @@
   #configBody .cfg-neighbor  { color: #0369a1; }
   #configBody .cfg-shutdown  { color: #dc2626; }
   #configBody .cfg-desc      { color: #94a3b8; font-style: italic; }
+  .cfg-search-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-style: italic;
+    color: #94a3b8;
+    border-left: 3px solid var(--border, #334155);
+    padding: 4px 10px;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .cfg-search-hint code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg-body, #0f172a);
+    border: 1px solid var(--border-light, #334155);
+    border-radius: 3px;
+    padding: 1px 4px;
+    color: var(--text-main, #e2e8f0);
+    font-style: normal;
+    user-select: text;
+    -webkit-user-select: text;
+  }
   /* Line-number gutter shown in filtered view */
   #configBody .cfg-lno {
     color: #94a3b8;

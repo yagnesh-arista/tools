@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.69 | 2026-04-30 18:01:23 -->
+<!-- TopoAssist v260430.70 | 2026-04-30 18:03:55 -->
 <!DOCTYPE html>
 <html>
 
@@ -1279,7 +1279,7 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="configSearch" placeholder="Filter…" autocomplete="off">
+          <input type="text" id="configSearch" placeholder="Filter… or :N to jump to line" autocomplete="off">
           <button id="configSearchClear" class="btn-clear hidden" onclick="clearConfigSearch()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <span id="configMatchCount" class="match-badge hidden">0 matches</span>
@@ -1291,6 +1291,7 @@
         <button class="btn-mono btn-sm" id="btnCfgPushAll" onclick="cfgModalPushAll()" title="Push full config via Device Bridge" style="display:none;">Push All</button>
       </div>
     </div>
+    <div class="cfg-search-hint">Filter by keyword (interface, IP, vlan, description…) &middot; Type <code>:N</code> to jump to line N</div>
     <pre id="configBody"></pre>
     <div id="cfgPushStatus" class="cfg-push-status-bar" style="display:none;"></div>
   </div>
