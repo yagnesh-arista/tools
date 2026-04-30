@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.27 | 2026-04-30 15:08:28 -->
+<!-- TopoAssist v260430.28 | 2026-04-30 15:09:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.27";  // keep in sync with Code.gs
+const APP_VERSION = "260430.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12267,6 +12267,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     // Store pending push details + session_name, show confirm modal (button stays disabled)
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
     _showPushConfirmModal(label, res.diff);
+    if (res.orphans_cleaned) _injectOrphanCleanedBanner(res.orphans_cleaned);
     if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
     if (_p1EosWarns) _injectEosWarningBanner(_p1EosWarns);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
@@ -13070,8 +13071,14 @@ async function pushAllConfigs() {
         return;
       }
 
-      // Capture committed diff for summary display in Phase 3 success row
-      const pushDiff = (res.diff || '').trim();
+      // Capture committed diff and orphan metadata for summary display in Phase 3 success row
+      const pushDiff    = (res.diff || '').trim();
+      const pushOrphans = res.orphans_cleaned || null;
+      const _orphanTotal = pushOrphans
+        ? (pushOrphans.interfaces||[]).length + (pushOrphans.bgp||[]).length +
+          (pushOrphans.vlans||[]).length + (pushOrphans.vrfs||[]).length +
+          (pushOrphans.ospf||[]).length
+        : 0;
 
       // ── Phase 3: dry-run verify (confirm nothing remains after commit) ────────
       // Show "verifying…" state — keep the row id so Phase 3 can replace it
@@ -13116,10 +13123,11 @@ async function pushAllConfigs() {
         if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
-          const warnSuffix = _pushEosWarns ? ` · ${_pushEosWarns.length} note${_pushEosWarns.length !== 1 ? 's' : ''}` : '';
+          const warnSuffix   = _pushEosWarns ? ` · ${_pushEosWarns.length} note${_pushEosWarns.length !== 1 ? 's' : ''}` : '';
+          const orphanSuffix = _orphanTotal > 0 ? ` · ${_orphanTotal} orphan${_orphanTotal !== 1 ? 's' : ''} removed` : '';
           const lbl = _pushEosErrs
-            ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected`
-            : `Committed (+${added} / -${removed})${warnSuffix}`;
+            ? `Committed (+${added} / -${removed}) · ${_pushEosErrs.length} rejected${orphanSuffix}`
+            : `Committed (+${added} / -${removed})${warnSuffix}${orphanSuffix}`;
           const clr = _pushEosErrs ? '#f59e0b' : '#10b981';
           _setResultRow(rowId, safeName, clr, lbl, pushDiff,
             _pushEosErrs ? _formatEosErrors(_pushEosErrs) : null,
@@ -14708,6 +14716,41 @@ function _injectPushAsnChangeWarning(asnChanged) {
     ' is included in the diff above. BGP will reconverge after commit.' +
     '</div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+// Injects a teal info banner listing auto-removed orphans from this push.
+// orphans: {interfaces:[{name}], bgp:[{asn,neighbor}], vlans:[{vid}], vrfs:[{name}], ospf:[{context,iface}]}
+// Inserted AFTER the diff so user reads the diff first, then sees what was auto-cleaned below.
+function _injectOrphanCleanedBanner(orphans) {
+  const bodyEl = document.getElementById('pushConfirmBody');
+  if (!orphans || !bodyEl) return;
+  const ifaces  = (orphans.interfaces || []);
+  const bgps    = (orphans.bgp        || []);
+  const vlans   = (orphans.vlans      || []);
+  const vrfs    = (orphans.vrfs       || []);
+  const ospfs   = (orphans.ospf       || []);
+  const total   = ifaces.length + bgps.length + vlans.length + vrfs.length + ospfs.length;
+  if (!total) return;
+  const uid = 'orphan-detail-' + Date.now();
+  let detail = '';
+  if (ifaces.length)  detail += ifaces.map(o => escapeHtml(o.name)).join(', ');
+  if (bgps.length)    detail += (detail ? ' · ' : '') + bgps.map(o => 'BGP ' + escapeHtml(o.neighbor)).join(', ');
+  if (vlans.length)   detail += (detail ? ' · ' : '') + vlans.map(o => 'VLAN ' + escapeHtml(String(o.vid))).join(', ');
+  if (vrfs.length)    detail += (detail ? ' · ' : '') + vrfs.map(o => 'VRF ' + escapeHtml(o.name)).join(', ');
+  if (ospfs.length)   detail += (detail ? ' · ' : '') + ospfs.map(o => 'OSPF ' + escapeHtml(o.iface)).join(', ');
+  const banner =
+    '<div id="pushOrphanCleanedBanner" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'background:#f0f9ff;border:1px solid #7dd3fc;border-radius:4px;' +
+    'padding:8px 10px;margin-top:8px;color:#0c4a6e;line-height:1.5;">' +
+    '<span style="user-select:none;-webkit-user-select:none;">' +
+    '<b>Auto-removed ' + total + ' orphan' + (total !== 1 ? 's' : '') + ':</b> ' +
+    '</span>' +
+    '<span style="user-select:text;-webkit-user-select:text;">' + detail + '</span>' +
+    '<div style="font-size:10px;color:#0369a1;margin-top:3px;user-select:none;-webkit-user-select:none;">' +
+    'These __TA-tagged items are in the diff above (- lines). Included in this push session.' +
+    '</div>' +
+    '</div>';
+  bodyEl.insertAdjacentHTML('beforeend', banner);
 }
 
 // Returns deduplicated eos_errors from a bridge response, or null if absent/empty.

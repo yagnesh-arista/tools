@@ -1,10 +1,10 @@
-// TopoAssist v260430.27 | 2026-04-30 15:08:10
+// TopoAssist v260430.28 | 2026-04-30 15:09:46
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.27";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.28";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5235,7 +5235,9 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
 
   const analyzeRow = (row, idxObj) => {
     const details = extractDetails(row, idxObj);
-    const ipType = (details.ip_type_ || "").toLowerCase();
+    const ipType  = (details.ip_type_ || "").toLowerCase();
+    const spMode  = (details.sp_mode_ || "").toLowerCase();
+    const isL2    = spMode.includes('l2'); // l2-et-access/trunk, l2-po-access/trunk
 
     // 1. Collect VRFs
     if (details.vrf_) vrfs.add(details.vrf_);
@@ -5245,11 +5247,12 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
       p2pCount++;
     }
 
-    // 3. Collect VLANs
-    if (details.vlan_) {
+    // 3. Collect VLANs — L2 ports only (l2-et-* and l2-po-*)
+    // L3 ports (l3-et-int, l3-et-sub-int, l3-po-int, l3-po-sub-int) use vlan_ for
+    // encapsulation dot1q only — no system VLAN table entry needed.
+    if (details.vlan_ && isL2) {
       const rowVlans = expandVlanString(String(details.vlan_));
       rowVlans.forEach(v => {
-        // Always add to "All VLANs" (so they exist in config)
         allVlans.add(v);
 
         // Only add to "GW VLANs" if ip_type is Gateway
@@ -5259,9 +5262,11 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
       });
     }
 
-    // Native VLAN encoded as nv<N> token inside vlan_ — add to 'all' just in case
-    const _nv = parseVlanWithNative(details.vlan_).native;
-    if (_nv) allVlans.add(parseInt(_nv));
+    // Native VLAN encoded as nv<N> token inside vlan_ — L2 trunk only
+    if (isL2) {
+      const _nv = parseVlanWithNative(details.vlan_).native;
+      if (_nv) allVlans.add(parseInt(_nv));
+    }
   };
 
   rows.forEach(row => {
