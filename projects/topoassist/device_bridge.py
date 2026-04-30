@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.42 | 2026-04-30 16:44:18
+# topoassist v260430.48 | 2026-04-30 16:56:56
 """
 TopoAssist Device Bridge
 ========================
@@ -1553,7 +1553,6 @@ if __name__ == "__main__":
     print(f"\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  ─────────────────────────────────────")
     print(f"  Listening : http://localhost:{PORT}")
-    _print_transport_status()
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
