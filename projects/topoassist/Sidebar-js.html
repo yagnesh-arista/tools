@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.19 | 2026-04-30 12:48:16 -->
+<!-- TopoAssist v260430.20 | 2026-04-30 12:49:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.19";  // keep in sync with Code.gs
+const APP_VERSION = "260430.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10460,6 +10460,42 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     cleanup.append(f"no vrf instance {vrf_name}")
         except Exception:
             pass  # VRF cleanup is best-effort
+        # OSPF/OSPFv3 cleanup — stale 'no passive-interface X' in router ospf/ospf3.
+        # EOS configure sessions are additive: a fresh OSPF block does NOT remove
+        # pre-existing 'no passive-interface' sub-commands — must negate them explicitly.
+        if cleanup:
+            orphan_ifaces = set()
+            for cmd in cleanup:
+                om = re.match(r"(?:default|no)\\s+interface\\s+(\\S+)", cmd)
+                if om:
+                    orphan_ifaces.add(_norm_iface(om.group(1)))
+            if orphan_ifaces:
+                for ospf_kw in ("ospf", "ospf3"):
+                    try:
+                        ospf_text = self._text_cmd(
+                            ip, f"show running-config | section router {ospf_kw}")
+                        _CTX_RE = re.compile(
+                            rf"^(router {ospf_kw}\\s+\\d+(?:\\s+vrf\\s+\\S+)?)",
+                            re.MULTILINE)
+                        _NO_PASS_RE = re.compile(
+                            r"^\\s+no\\s+passive-interface\\s+(\\S+)", re.MULTILINE)
+                        for ctx_m in _CTX_RE.finditer(ospf_text):
+                            ctx_header = ctx_m.group(1)
+                            next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
+                            block      = ospf_text[
+                                ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
+                            stale = [
+                                npm.group(1)
+                                for npm in _NO_PASS_RE.finditer(block)
+                                if _norm_iface(npm.group(1)) in orphan_ifaces
+                            ]
+                            if stale:
+                                cleanup.append(ctx_header)
+                                for iface in stale:
+                                    cleanup.append(f"   passive-interface {iface}")
+                                cleanup.append("!")
+                    except Exception:
+                        pass  # OSPF cleanup is best-effort
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
