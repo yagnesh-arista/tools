@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.86 | 2026-04-30 21:09:45 -->
+<!-- TopoAssist v260430.87 | 2026-04-30 21:10:05 -->
 <!DOCTYPE html>
 <html>
 
@@ -1075,13 +1075,14 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
 
     <h3>Audit Check Settings</h3>
-    <p style="font-size:13px;">Click the <b>gear icon</b> next to the Audit badge in the toolbar to open the <b>Audit Checks</b> modal. All 24 checks are listed and can be individually enabled or disabled. Settings are saved in browser localStorage and persist across sessions.</p>
+    <p style="font-size:13px;">Click the <b>gear icon</b> next to the Audit badge in the toolbar to open the <b>Audit Checks</b> modal. Each check can be individually enabled or disabled. Settings are saved in browser localStorage and persist across sessions.</p>
     <table>
       <tr><th>Category</th><th>Check</th><th>Description</th></tr>
-      <tr><td rowspan="4"><b>Port-Channel</b></td><td>PO ID mismatch</td><td>Both sides of a cable declare different Port-Channel numbers.</td></tr>
+      <tr><td rowspan="5"><b>Port-Channel</b></td><td>PO ID mismatch</td><td>Both sides of a cable declare different Port-Channel numbers.</td></tr>
       <tr><td>PO asymmetry</td><td>Only one side of a cable has a <code>po_</code> value.</td></tr>
       <tr><td>Missing PO row</td><td>An interface is a Po member but no matching Port-Channel row exists.</td></tr>
       <tr><td>Stale PO row</td><td>A Port-Channel row exists but no member interfaces reference it.</td></tr>
+      <tr><td>Orphan Po (Arista only)</td><td>An Arista Po-mode port has no peer device on its row — single-device row design error.</td></tr>
       <tr><td rowspan="3"><b>Interface</b></td><td>Unsupported interface type</td><td><code>int_</code> does not start with <code>Et</code> or <code>Vx</code>.</td></tr>
       <tr><td>Duplicate interface</td><td>The same interface name appears more than once on a device.</td></tr>
       <tr><td>L3 port in MLAG group</td><td>A routed (L3) port is assigned to an MLAG Port-Channel (not supported by EOS).</td></tr>
