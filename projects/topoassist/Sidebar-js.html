@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.83 | 2026-04-30 20:43:58 -->
+<!-- TopoAssist v260430.84 | 2026-04-30 20:50:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.83";  // keep in sync with Code.gs
+const APP_VERSION = "260430.84";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4222,7 +4222,7 @@ function focusView(x, y, w, h) {
   let vpH = vp.clientHeight;
 
   // 1. Padding (Keep results away from the edges)
-  let padding = 100;
+  let padding = 60;
 
   // 2. Calculate Required Scale to fit content
   // Prevent division by zero if width/height is 0 (single node)
@@ -4236,8 +4236,7 @@ function focusView(x, y, w, h) {
   let newScale = Math.min(scaleX, scaleY);
 
   // 3. Clamp Zoom Levels
-  // Max 1.2 (Don't get too close), Min 0.2 (Don't get too far)
-  if (newScale > 1.2) newScale = 1.2;
+  if (newScale > 1.5) newScale = 1.5;
   if (newScale < 0.2) newScale = 0.2;
 
   // 4. Calculate Center of Content
