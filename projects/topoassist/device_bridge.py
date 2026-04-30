@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.17 | 2026-04-30 12:37:22
+# topoassist v260430.19 | 2026-04-30 12:48:32
 """
 TopoAssist Device Bridge
 ========================
@@ -152,15 +152,26 @@ PUSH_RETRY_DELAY  = 4   # seconds between retries
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
 _cfg = {
-    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "ssh"),
+    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "eapi"),
     "ssh_user":   _arg("-u")  or os.environ.get("BRIDGE_SSH_USER",  "admin"),
     "ssh_pass":                  os.environ.get("BRIDGE_SSH_PASS",  ""),
     "ssh_port":   int(            os.environ.get("BRIDGE_SSH_PORT",  "22")),
+    "jump_host":  JUMP_HOST,
+    "jump_user":  os.environ.get("BRIDGE_JUMP_USER", ""),
     "eapi_user":  _arg("-eu") or os.environ.get("BRIDGE_EAPI_USER", "admin"),
     "eapi_pass":  _arg("-ep") or os.environ.get("BRIDGE_EAPI_PASS", ""),
     "eapi_port":  int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT", "443")),
     "eapi_proto": "http" if "--eapi-http" in sys.argv else "https",
 }
+
+def _jump_args():
+    """Return ['-J', 'user@host'] if jump host configured in _cfg, else []."""
+    host = _cfg.get('jump_host', '')
+    if not host:
+        return []
+    user = _cfg.get('jump_user', '')
+    via  = f'{user}@{host}' if user else host
+    return ['-J', via]
 
 # ── RESTCONF config (_cfg['transport'] = "rest") ─────────────────────────────────────────
 # OpenConfig YANG over HTTPS; EOS 4.22+; enable with: management api restconf
@@ -513,6 +524,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/settings":
             allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
+                       "jump_host", "jump_user",
                        "eapi_user", "eapi_pass", "eapi_port", "eapi_proto"}
             old_transport = _cfg.get("transport")
             changed = []
@@ -680,9 +692,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{_cfg['ssh_user']}@{ip}", eos_cmd])
+            exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", eos_cmd]
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
@@ -801,8 +811,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return result[0] if result else ""
         # SSH path
         base     = _ssh_base()
-        exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", cmd]
-                    if JUMP_HOST else [*base, f"{_cfg['ssh_user']}@{ip}", cmd])
+        exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", cmd]
         return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
                                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
@@ -841,9 +850,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
         base = _ssh_base(force_tty=force_tty)
-        cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}"]
-               if JUMP_HOST else
-               [*base, f"{_cfg['ssh_user']}@{ip}"])
+        cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}"]
         with subprocess.Popen(cmd,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, env=_SSH_ENV) as proc:
@@ -1251,6 +1258,44 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except Exception:
             pass  # VRF cleanup is best-effort
 
+        # OSPF/OSPFv3 cleanup — find stale 'no passive-interface X' entries in
+        # router ospf / router ospf3 blocks for interfaces being cleaned in this push.
+        # EOS configure sessions are additive: pushing a fresh OSPF block does NOT
+        # remove pre-existing 'no passive-interface' sub-commands — must negate them.
+        if cleanup:
+            orphan_ifaces = set()
+            for cmd in cleanup:
+                om = re.match(r'(?:default|no)\s+interface\s+(\S+)', cmd)
+                if om:
+                    orphan_ifaces.add(_norm_iface(om.group(1)))
+            if orphan_ifaces:
+                for ospf_kw in ('ospf', 'ospf3'):
+                    try:
+                        ospf_text = self._text_cmd(
+                            ip, f'show running-config | section router {ospf_kw}')
+                        _CTX_RE = re.compile(
+                            rf'^(router {ospf_kw}\s+\d+(?:\s+vrf\s+\S+)?)',
+                            re.MULTILINE)
+                        _NO_PASS_RE = re.compile(
+                            r'^\s+no\s+passive-interface\s+(\S+)', re.MULTILINE)
+                        for ctx_m in _CTX_RE.finditer(ospf_text):
+                            ctx_header = ctx_m.group(1)
+                            next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
+                            block      = ospf_text[
+                                ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
+                            stale = [
+                                npm.group(1)
+                                for npm in _NO_PASS_RE.finditer(block)
+                                if _norm_iface(npm.group(1)) in orphan_ifaces
+                            ]
+                            if stale:
+                                cleanup.append(ctx_header)
+                                for iface in stale:
+                                    cleanup.append(f'   passive-interface {iface}')
+                                cleanup.append('!')
+                    except Exception:
+                        pass  # OSPF cleanup is best-effort
+
         return cleanup
 
     def _find_bgp_asn_change(self, ip, config_text):
@@ -1509,7 +1554,6 @@ if __name__ == "__main__":
         sys.exit(0)
 
     server    = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
-    jump_info = f"via {JUMP_HOST}" if JUMP_HOST else "direct"
     gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
     print(f"\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  ─────────────────────────────────────")
@@ -1519,9 +1563,11 @@ if __name__ == "__main__":
         _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
                       "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
                       "key-based (arista-ssh)")
+        _jh = _cfg.get('jump_host', '')
+        _ju = _cfg.get('jump_user', '')
+        _jvia = (f'{_ju}@{_jh}' if _ju else _jh) if _jh else ''
         print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}")
-        print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
-        print(f"  Mode      : {jump_info}")
+        print(f"  Jump host : {_jvia or '(none — direct SSH)'}")
     elif _cfg['transport'] == "eapi":
         print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}  proto: {_cfg['eapi_proto']}")
     elif _cfg['transport'] == "rest":

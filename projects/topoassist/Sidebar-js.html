@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.18 | 2026-04-30 12:42:30 -->
+<!-- TopoAssist v260430.19 | 2026-04-30 12:48:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.18";  // keep in sync with Code.gs
+const APP_VERSION = "260430.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9746,15 +9746,26 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                   str(max(TIMEOUT * 4, 300))))
 
 _cfg = {
-    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "ssh"),
+    "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "eapi"),
     "ssh_user":   _arg("-u")  or os.environ.get("BRIDGE_SSH_USER",  "admin"),
     "ssh_pass":                  os.environ.get("BRIDGE_SSH_PASS",  ""),
     "ssh_port":   int(            os.environ.get("BRIDGE_SSH_PORT",  "22")),
+    "jump_host":  JUMP_HOST,
+    "jump_user":  os.environ.get("BRIDGE_JUMP_USER", ""),
     "eapi_user":  _arg("-eu") or os.environ.get("BRIDGE_EAPI_USER", "admin"),
     "eapi_pass":  _arg("-ep") or os.environ.get("BRIDGE_EAPI_PASS", ""),
     "eapi_port":  int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT", "443")),
     "eapi_proto": "http" if "--eapi-http" in sys.argv else "https",
 }
+
+def _jump_args():
+    """Return ['-J', 'user@host'] if jump host configured in _cfg, else []."""
+    host = _cfg.get('jump_host', '')
+    if not host:
+        return []
+    user = _cfg.get('jump_user', '')
+    via  = f'{user}@{host}' if user else host
+    return ['-J', via]
 
 # -- RESTCONF config (_cfg['transport'] = "rest") -----------------------------------------
 REST_USER = "admin"
@@ -9996,6 +10007,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(400, {"error": "invalid JSON body"}); return
         if self.path == "/settings":
             allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
+                       "jump_host", "jump_user",
                        "eapi_user", "eapi_pass", "eapi_port", "eapi_proto"}
             old_transport = _cfg.get("transport")
             changed = []
@@ -10110,9 +10122,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{_cfg['ssh_user']}@{ip}", eos_cmd])
+            exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", eos_cmd]
             if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
@@ -10177,8 +10187,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             result = self._eapi_push(ip, cmd)
             return result[0] if result else ""
         base     = _ssh_base()
-        exec_cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}", cmd]
-                    if JUMP_HOST else [*base, f"{_cfg['ssh_user']}@{ip}", cmd])
+        exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", cmd]
         return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
                                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
@@ -10191,9 +10200,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
         base = _ssh_base(force_tty=force_tty)
-        cmd = ([*base, "-J", JUMP_HOST, f"{_cfg['ssh_user']}@{ip}"]
-               if JUMP_HOST else
-               [*base, f"{_cfg['ssh_user']}@{ip}"])
+        cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}"]
         proc = subprocess.Popen(cmd,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, env=_SSH_ENV)
@@ -10697,7 +10704,6 @@ if __name__ == "__main__":
         sys.exit(0)
 
     server    = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
-    jump_info = f"via {JUMP_HOST}" if JUMP_HOST else "direct"
     gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
     print(f"\\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  -----------------------------------------")
@@ -10707,9 +10713,11 @@ if __name__ == "__main__":
         _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
                       "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
                       "key-based (arista-ssh)")
+        _jh = _cfg.get('jump_host', '')
+        _ju = _cfg.get('jump_user', '')
+        _jvia = (f'{_ju}@{_jh}' if _ju else _jh) if _jh else ''
         print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}")
-        print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
-        print(f"  Mode      : {jump_info}")
+        print(f"  Jump host : {_jvia or '(none — direct SSH)'}")
     elif _cfg['transport'] == "eapi":
         print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}")
     elif _cfg['transport'] == "rest":
@@ -10777,30 +10785,39 @@ function onBridgeTransportChange() {
 
 function onEapiProtoChange() {
   const rb    = document.querySelector('input[name="eapiProto"]:checked');
-  const proto = rb ? rb.value : 'http';
+  const proto = rb ? rb.value : 'https';
   const portEl = document.getElementById('bridgeEapiPort');
   if (portEl) portEl.value = (proto === 'http') ? '80' : '443';
   _applyBridgeSettings();
 }
 
+function onJumpHostToggle() {
+  const chk = document.getElementById('chkJumpHost');
+  const jf  = document.getElementById('bridgeJumpFields');
+  if (jf) jf.style.display = (chk && chk.checked) ? '' : 'none';
+  _applyBridgeSettings();
+}
+
 function _applyBridgeSettings() {
   const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
-  const mode = rb ? rb.value : 'ssh';
+  const mode = rb ? rb.value : 'eapi';
   const _v   = id => (document.getElementById(id) || {}).value || '';
   const protoRb = document.querySelector('input[name="eapiProto"]:checked');
+  const jumpChk = document.getElementById('chkJumpHost');
+  const useJump = jumpChk && jumpChk.checked;
   const cfg  = {
     transport:  mode,
     ssh_user:   _v('bridgeSshUser')  || 'admin',
     ssh_pass:   _v('bridgeSshPass'),
     ssh_port:   parseInt(_v('bridgeSshPort')  || '22'),
+    jump_host:  useJump ? (_v('bridgeJumpHost') || 'bus-home') : '',
+    jump_user:  useJump ? _v('bridgeJumpUser') : '',
     eapi_user:  _v('bridgeEapiUser') || 'admin',
     eapi_pass:  _v('bridgeEapiPass'),
-    eapi_port:  parseInt(_v('bridgeEapiPort') || '80'),
-    eapi_proto: protoRb ? protoRb.value : 'http',
+    eapi_port:  parseInt(_v('bridgeEapiPort') || '443'),
+    eapi_proto: protoRb ? protoRb.value : 'https',
   };
-  // Persist to localStorage so prefs survive page refresh
   Object.entries(cfg).forEach(([k, v]) => localStorage.setItem('bridgeCfg_' + k, v));
-  // Apply to running bridge (fire-and-forget — bridge may not be up yet)
   fetch(BRIDGE_URL + '/settings', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -10810,7 +10827,7 @@ function _applyBridgeSettings() {
 
 function _loadBridgeTransportPrefs() {
   const get  = (k, def) => localStorage.getItem('bridgeCfg_' + k) ?? def;
-  const mode = get('transport', 'ssh');
+  const mode = get('transport', 'eapi');
   const rbSsh  = document.getElementById('rbTransportSsh');
   const rbEapi = document.getElementById('rbTransportEapi');
   if (rbSsh)  rbSsh.checked  = (mode !== 'eapi');
@@ -10821,12 +10838,20 @@ function _loadBridgeTransportPrefs() {
   set('bridgeSshPort',  get('ssh_port',  '22'));
   set('bridgeEapiUser', get('eapi_user', 'admin'));
   set('bridgeEapiPass', get('eapi_pass', ''));
-  set('bridgeEapiPort', get('eapi_port', '80'));
-  const proto   = get('eapi_proto', 'http');
+  set('bridgeEapiPort', get('eapi_port', '443'));
+  const proto   = get('eapi_proto', 'https');
   const rbHttp  = document.getElementById('rbEapiHttp');
   const rbHttps = document.getElementById('rbEapiHttps');
   if (rbHttp)  rbHttp.checked  = (proto === 'http');
   if (rbHttps) rbHttps.checked = (proto === 'https');
+  // Jump host
+  const jumpHost = get('jump_host', '');
+  const chkJump  = document.getElementById('chkJumpHost');
+  if (chkJump) chkJump.checked = !!jumpHost;
+  set('bridgeJumpHost', jumpHost || 'bus-home');
+  set('bridgeJumpUser', get('jump_user', ''));
+  const jf = document.getElementById('bridgeJumpFields');
+  if (jf) jf.style.display = jumpHost ? '' : 'none';
   onBridgeTransportChange(); // shows/hides fields + calls _applyBridgeSettings
 }
 
