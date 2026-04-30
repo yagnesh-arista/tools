@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.77 | 2026-04-30 18:46:47 -->
+<!-- TopoAssist v260430.78 | 2026-04-30 19:17:05 -->
 <!DOCTYPE html>
 <html>
 
@@ -1297,43 +1297,17 @@
   </div>
 
   <!-- Topology Config Operation Modal -->
-  <div id="generateAllModal" class="modal-std" style="width:900px;max-width:95vw;">
+  <div id="generateAllModal" class="modal-std" style="width:900px;max-width:95vw;min-height:60vh;">
     <div class="modal-header">
       <div class="modal-header-title">Topology Config Operation</div>
       <button class="btn-modal-close" onclick="closeGenerateAllModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <!-- Modal description -->
-    <div style="padding:7px 16px;border-bottom:1px solid var(--border-light,#f1f5f9);border-left:3px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;font-style:italic;line-height:1.5;">
-      Topology Config Operation — generate, push, and clean up EOS configs across all Arista targets.
-    </div>
-    <div id="genAllPushWarn" style="display:none;padding:7px 16px;background:#fef3c7;border-bottom:1px solid #fcd34d;font-family:'JetBrains Mono',monospace;font-size:11px;color:#92400e;">
+    <div id="genAllPushWarn" style="display:none;padding:7px 16px;background:#fef3c7;border-bottom:1px solid #fcd34d;font-family:'JetBrains Mono',monospace;font-size:11px;color:#92400e;flex-shrink:0;">
       Push in progress — use <b>Stop Push</b> to cancel first, or wait for completion.
     </div>
-    <!-- Action section -->
-    <div class="genall-actions">
-      <div class="genall-action-card">
-        <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()" title="Build EOS configs for all visible Arista devices and write to the Configs sheet">Generate Configs</button>
-        <button class="btn-mono genall-btn" id="btnStopGenerate" disabled title="Stop config generation">Stop</button>
-        <span class="genall-desc">Builds fresh EOS configs for all visible Arista devices &amp; saves to the Configs sheet for offline review. Configs can be copied per device.</span>
-      </div>
-      <div class="genall-action-card">
-        <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()">Push Targets</button>
-        <button class="btn-mono genall-btn" id="btnStopPush" disabled>Stop</button>
-        <span class="genall-desc">Removes stale __TA entries then pushes fresh config in a single configure session per device. Commits directly — no per-device diff review.</span>
-        <span class="genall-desc" style="display:flex;align-items:flex-start;gap:5px;color:#b45309;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          Use single-device Push to preview the diff before committing.
-        </span>
-      </div>
-      <div class="genall-action-card">
-        <button class="btn-mono genall-btn" id="btnGenAllCleanup" onclick="runCleanup()">Clean-up Targets</button>
-        <button class="btn-mono genall-btn" id="btnStopCleanup" disabled>Stop</button>
-        <span class="genall-desc">Scans selected devices for stale __TA config (interfaces, BGP, VLANs, VRFs, OSPF). Choose items to remove — all, per-device, or per-item. Requires Device Bridge.</span>
-      </div>
-    </div>
-    <!-- Targets device selection (always visible) -->
-    <div id="genallDeviceFilter" style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <!-- Targets (always visible) -->
+    <div id="genallDeviceFilter" style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;user-select:none;-webkit-user-select:none;">Targets</span>
         <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(true)">All</button>
         <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(false)">None</button>
@@ -1341,16 +1315,36 @@
       </div>
       <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 14px;"></div>
     </div>
-    <!-- Generate / Push results section -->
-    <div style="display:flex;max-height:50vh;background:var(--bg-modal,#ffffff);">
-      <div id="generateAllLeft" style="flex:1;padding:20px;overflow-y:auto;border-right:1px solid var(--border);">
+    <!-- Compact action row -->
+    <div class="genall-action-row">
+      <div class="genall-action-group">
+        <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()" title="Build EOS configs for all visible Arista devices and write to the Configs sheet. Configs can be copied per device.">Generate Configs</button>
+        <button class="btn-mono genall-btn" id="btnStopGenerate" disabled title="Stop config generation">Stop</button>
+      </div>
+      <div class="genall-action-sep"></div>
+      <div class="genall-action-group">
+        <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()" title="Removes stale __TA entries then pushes fresh config. Commits directly — use single-device Push to preview the diff first.">Push Targets</button>
+        <button class="btn-mono genall-btn" id="btnStopPush" disabled title="Stop push">Stop</button>
+      </div>
+      <div class="genall-action-sep"></div>
+      <div class="genall-action-group">
+        <button class="btn-mono genall-btn" id="btnGenAllCleanup" onclick="runCleanup()" title="Scans selected devices for stale __TA config (interfaces, BGP, VLANs, VRFs, OSPF). Choose items to remove. Requires Device Bridge.">Clean-up Targets</button>
+        <button class="btn-mono genall-btn" id="btnStopCleanup" disabled title="Stop cleanup">Stop</button>
+      </div>
+    </div>
+    <!-- Tab strip -->
+    <div class="genall-tabs">
+      <button class="genall-tab active" id="genTab-generate" onclick="_switchGenTab('generate')">Generate</button>
+      <button class="genall-tab" id="genTab-push" onclick="_switchGenTab('push')">Push</button>
+      <button class="genall-tab" id="genTab-cleanup" onclick="_switchGenTab('cleanup')">Cleanup</button>
+    </div>
+    <!-- Tab panels — each fills all remaining height -->
+    <div class="genall-tab-content">
+      <div id="generateAllLeft" class="genall-panel">
         <div style="color:var(--text-muted);padding:20px 0;font-family:'JetBrains Mono',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>
       </div>
-      <div id="generateAllRight" style="flex:1;padding:20px;overflow-y:auto;display:none;"></div>
-    </div>
-    <!-- Reconcile results section -->
-    <div id="reconResults" style="display:none;padding:12px 20px;border-top:1px solid var(--border);overflow-y:auto;max-height:45vh;background:var(--bg-modal,#ffffff);">
-      <div id="reconResultsBody"></div>
+      <div id="generateAllRight" class="genall-panel" style="display:none;"></div>
+      <div id="reconResultsBody" class="genall-panel" style="display:none;"></div>
     </div>
   </div>
 

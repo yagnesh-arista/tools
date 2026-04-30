@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.77 | 2026-04-30 18:46:47 -->
+<!-- TopoAssist v260430.78 | 2026-04-30 19:16:15 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5852,31 +5852,42 @@
   }
 
   /* ================= Generate All Modal ================= */
-  .genall-actions {
-    display: flex;
-    gap: 12px;
-    padding: 14px 20px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-  }
-  .genall-action-card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    flex: 1;
-  }
-  .genall-btn { width: 100%; }
   .genall-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  /* Stop button — red when active (not disabled, not converted to Copy All) */
-  .genall-btn.stop-active             { background: #7f1d1d !important; color: #fca5a5 !important; border-color: #991b1b !important; }
-  .genall-btn.stop-active:hover       { background: #991b1b !important; }
-  .genall-desc {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.5;
-    user-select: none;
-    -webkit-user-select: none;
+  .genall-btn.stop-active       { background: #7f1d1d !important; color: #fca5a5 !important; border-color: #991b1b !important; }
+  .genall-btn.stop-active:hover { background: #991b1b !important; }
+  /* Compact action row */
+  .genall-action-row {
+    display: flex; align-items: center; gap: 0;
+    padding: 8px 16px; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-modal, #ffffff);
+  }
+  .genall-action-group { display: flex; gap: 5px; align-items: center; flex: 1; }
+  .genall-action-group .genall-btn:first-child { flex: 1; width: auto; }
+  .genall-action-group .genall-btn:last-child  { flex-shrink: 0; width: auto; }
+  .genall-action-sep { width: 1px; height: 22px; background: var(--border); margin: 0 10px; flex-shrink: 0; }
+  /* Tab strip */
+  .genall-tabs {
+    display: flex; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary, #f8fafc);
+  }
+  .genall-tab {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    padding: 7px 20px; border: none; border-bottom: 2px solid transparent;
+    background: transparent; color: var(--text-muted); cursor: pointer;
+    letter-spacing: 0.02em; user-select: none; -webkit-user-select: none;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .genall-tab.active { color: var(--text-main); border-bottom-color: #3b82f6; }
+  .genall-tab:hover:not(.active) { background: rgba(0,0,0,0.04); color: var(--text-main); }
+  /* Tab content */
+  .genall-tab-content { flex: 1; min-height: 0; position: relative; }
+  .genall-panel {
+    position: absolute; inset: 0; overflow-y: auto;
+    padding: 16px 20px; box-sizing: border-box;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--bg-modal, #ffffff);
   }
 
   /* ================= 13. COPY GROUP STRIP ================= */

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.77 | 2026-04-30 18:47:24 -->
+<!-- TopoAssist v260430.78 | 2026-04-30 19:19:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.77";  // keep in sync with Code.gs
+const APP_VERSION = "260430.78";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11895,10 +11895,9 @@ function _resetStopCleanupBtn() {
 
 function runCleanup() {
   if (!currentData || !currentData.nodes) return;
-  const btn        = document.getElementById('btnGenAllCleanup');
-  const reconPanel = document.getElementById('reconResults');
-  const reconBody  = document.getElementById('reconResultsBody');
-  if (!btn || !reconPanel || !reconBody) return;
+  const btn      = document.getElementById('btnGenAllCleanup');
+  const reconBody = document.getElementById('reconResultsBody');
+  if (!btn || !reconBody) return;
 
   const allArista = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   const devices   = allArista.filter(n => {
@@ -11912,12 +11911,12 @@ function runCleanup() {
 
   btn.disabled = true;
   btn.textContent = 'Scanning…';
-  reconPanel.style.display = 'none';
+  _switchGenTab('cleanup');
 
-  _doRunCleanup(btn, reconPanel, reconBody, devices);
+  _doRunCleanup(btn, reconBody, devices);
 }
 
-async function _doRunCleanup(btn, reconPanel, reconBody, devices) {
+async function _doRunCleanup(btn, reconBody, devices) {
   const mgmtIps        = _getLldpMgmtIps();
   const portsPerDev    = _buildExpectedPortsPerDevice();
   const allDeviceNames = devices.map(n => n.id);
@@ -11936,7 +11935,6 @@ async function _doRunCleanup(btn, reconPanel, reconBody, devices) {
 
   btn.disabled = true;
   btn.textContent = 'Fetching configs…';
-  reconPanel.style.display = 'block';
   reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">' +
     'Fetching configs for ' + devices.length + ' device' + (devices.length === 1 ? '' : 's') + '…</div>';
 
@@ -13108,7 +13106,7 @@ async function pushAllConfigs() {
   }
   const btn  = document.getElementById('btnPushAllConfigs');
   const body = document.getElementById('generateAllRight');
-  body.style.display = '';  // reveal right pane
+  _switchGenTab('push');
 
   // All Arista devices in topology — used for BGP __TA orphan cleanup during push
   const _allArista = (currentData && currentData.nodes || [])
@@ -15685,10 +15683,20 @@ function _genAllSelectAll(state) {
   _updateGenAllSelCount();
 }
 
+function _switchGenTab(tab) {
+  const panels = { generate: 'generateAllLeft', push: 'generateAllRight', cleanup: 'reconResultsBody' };
+  ['generate', 'push', 'cleanup'].forEach(t => {
+    const tabBtn = document.getElementById('genTab-' + t);
+    if (tabBtn) tabBtn.classList.toggle('active', t === tab);
+    const panel = document.getElementById(panels[t]);
+    if (panel) panel.style.display = (t === tab) ? '' : 'none';
+  });
+}
+
 function openGenerateAllModal() {
   document.getElementById('generateAllLeft').innerHTML =
     '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>';
-  document.getElementById('generateAllRight').style.display = 'none';
+  _switchGenTab('generate');
   _populateGenAllDeviceList();
   _resetStopGenerateBtn();
   _resetStopPushBtn();
@@ -15720,6 +15728,7 @@ function runGenerateAll() {
   btn.disabled = true;
   btn.innerText = 'Generating...';
   _setGenToolbarActive(true);
+  _switchGenTab('generate');
 
   // Activate stop button
   stopBtn.disabled = false;
