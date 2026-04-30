@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.48 | 2026-04-30 16:57:06 -->
+<!-- TopoAssist v260430.49 | 2026-04-30 17:01:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.48";  // keep in sync with Code.gs
+const APP_VERSION = "260430.49";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10768,7 +10768,9 @@ if __name__ == "__main__":
     print(f"  -----------------------------------------")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
-    print(f"  Ctrl+C to stop.\\n")
+    print(f"  Ctrl+C to stop.")
+    _print_transport_status()
+    print()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
