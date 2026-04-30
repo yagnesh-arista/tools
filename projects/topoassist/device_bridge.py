@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.23 | 2026-04-30 14:30:55
+# topoassist v260430.24 | 2026-04-30 15:03:28
 """
 TopoAssist Device Bridge
 ========================
@@ -14,13 +14,13 @@ Keep this terminal open while using Device Bridge in the sidebar.
 Ctrl+C to stop.
 
 Transport options (set _cfg['transport'] below):
-  ssh   — SSH via jump host or direct (default; stdlib only)
-  eapi  — Arista eAPI JSON-RPC over HTTPS (stdlib only)
+  eapi  — Arista eAPI JSON-RPC over HTTPS (default; stdlib only)
+  ssh   — SSH via jump host or direct (stdlib only)
   rest  — RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
   gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      → {"status":"ok","version":"260429.1","port":8765}
+  GET  /health      → {"status":"ok","version":"<VERSION>","port":8765}
   POST /lldp        → {ipMap} → per-device LLDP neighbors
   POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
   POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff

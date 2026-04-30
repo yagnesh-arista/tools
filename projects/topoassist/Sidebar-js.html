@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.23 | 2026-04-30 14:43:33 -->
+<!-- TopoAssist v260430.24 | 2026-04-30 15:04:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.23";  // keep in sync with Code.gs
+const APP_VERSION = "260430.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9643,13 +9643,13 @@ Keep this terminal open while using Device Bridge in the sidebar.
 Ctrl+C to stop.
 
 Transport options (set _cfg['transport'] below):
-  ssh   -- SSH via jump host or direct (default; stdlib only)
-  eapi  -- Arista eAPI JSON-RPC over HTTPS (stdlib only)
+  eapi  -- Arista eAPI JSON-RPC over HTTPS (default; stdlib only)
+  ssh   -- SSH via jump host or direct (stdlib only)
   rest  -- RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
   gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"260429.1","port":8765}
+  GET  /health      -> {"status":"ok","version":"<VERSION>","port":8765}
   POST /lldp        -> {ipMap} -> per-device LLDP neighbors
   POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
   POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
@@ -9737,7 +9737,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.16"
+VERSION    = "260430.17"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
