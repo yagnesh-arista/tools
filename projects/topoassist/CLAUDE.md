@@ -55,6 +55,24 @@ These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist
 
 **SHEETNAME(dummy_cell) must not be removed**: the function is not called by the script — it is used directly by a formula in the IXIA tab of the Google Sheet.
 
+## Design Review — Find Bar / Textarea Search
+
+Any modal that has a find bar searching inside a `<textarea>` must follow the Ctrl+F bar pattern:
+
+**Rule: focus never leaves the find input — `inp.focus()` is unconditional at the end of every jump.**
+
+`setSelectionRange()` requires the textarea to have focus momentarily, so `ta.focus()` then `ta.setSelectionRange()` is correct — but must always be followed by `inp.focus()` to return focus to the search input. Without this, the first jump steals focus to the textarea, and the next keystroke (Enter, character) goes to the content instead of the find bar.
+
+**The global-cfg-modal bug (2026-04-30) is the canonical example:** `_gcfgJumpTo()` called `ta.focus()` without returning focus to `inp`, so typing a character jumped focus to the textarea after the first match, and pressing Enter a second time replaced the selected matched text with a newline.
+
+**Checklist for any new textarea find bar:**
+- [ ] `ta.focus()` → `ta.setSelectionRange()` → scroll → **`inp.focus()`** — always, no conditional
+- [ ] `oninput` handler calls jump — focus returns to inp ✓
+- [ ] Enter/Shift+Enter calls jump — focus returns to inp ✓
+- [ ] Prev/Next buttons call jump — focus returns to inp ✓
+- [ ] Escape clears the find bar and keeps focus in inp (not in textarea)
+- [ ] Global `topologyKeyHandler` Escape block checks `inp.value.trim() !== ""` and clears first before closing the modal (mirror the `configModal` guard pattern)
+
 ## Design Review — Single Source of Truth
 
 Before writing any logic that classifies, routes, or counts data:
