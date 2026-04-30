@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.69 | 2026-04-30 18:01:36
+# topoassist v260430.71 | 2026-04-30 18:08:46
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.47"
+VERSION           = "260430.48"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -987,9 +987,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         break
                 reason = reasons.get((block_cmd, failed_cmd))
                 if reason:
+                    indented = reason.replace('\n', '\n  ')
                     result[i] = re.sub(
                         r':\s*could not run command\s*$',
-                        ': ' + reason,
+                        ':\n  ' + indented,
                         err, flags=re.IGNORECASE,
                     )
             return result
