@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.35 | 2026-04-30 15:44:00 -->
+<!-- TopoAssist v260430.36 | 2026-04-30 15:50:36 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3347,6 +3347,14 @@
   #configBody .cfg-neighbor  { color: #0369a1; }
   #configBody .cfg-shutdown  { color: #dc2626; }
   #configBody .cfg-desc      { color: #94a3b8; font-style: italic; }
+  /* Line-number gutter shown in filtered view */
+  #configBody .cfg-lno {
+    color: #94a3b8;
+    font-size: 10px;
+    padding-right: 10px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 
   #configBody::-webkit-scrollbar {
     height: 8px;

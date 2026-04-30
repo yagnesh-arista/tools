@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.35 | 2026-04-30 15:47:17 -->
+<!-- TopoAssist v260430.36 | 2026-04-30 15:51:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.35";  // keep in sync with Code.gs
+const APP_VERSION = "260430.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14420,23 +14420,67 @@ function loadFromSession() {
 }
 
 /* --- EOS CONFIG SYNTAX HIGHLIGHTER --- */
+function _cfgLineClass(line) {
+  if (/^\s*!!/.test(line))                              return 'cfg-error';
+  if (/^\s*!/.test(line))                               return 'cfg-comment';
+  if (/^\s*(?:no|default)\s/i.test(line))               return 'cfg-cleanup';
+  if (/^interface\s/i.test(line))                       return 'cfg-interface';
+  if (/^router\s+(bgp|ospf|isis)\b/i.test(line))        return 'cfg-router';
+  if (/^vlan\s+\d/i.test(line))                         return 'cfg-vlan';
+  if (/^mlag\s+configuration/i.test(line))              return 'cfg-mlag';
+  if (/^(ip routing|ipv6 unicast-routing)/i.test(line)) return 'cfg-routing';
+  if (/^\s+(ip|ipv6)\s+address\s/i.test(line))          return 'cfg-ip';
+  if (/^\s+neighbor\s/i.test(line))                     return 'cfg-neighbor';
+  if (/^\s+shutdown\b/i.test(line))                     return 'cfg-shutdown';
+  if (/^\s+description\s/i.test(line))                  return 'cfg-desc';
+  return null;
+}
+
 function highlightEosConfig(text) {
   if (!text) return "";
   return text.split('\n').map(line => {
     const esc = escapeHtml(line);
-    if (/^\s*!!/.test(line))                              return `<span class="cfg-error">${esc}</span>`;
-    if (/^\s*!/.test(line))                               return `<span class="cfg-comment">${esc}</span>`;
-    if (/^\s*(?:no|default)\s/i.test(line))               return `<span class="cfg-cleanup">${esc}</span>`;
-    if (/^interface\s/i.test(line))                       return `<span class="cfg-interface">${esc}</span>`;
-    if (/^router\s+(bgp|ospf|isis)\b/i.test(line))        return `<span class="cfg-router">${esc}</span>`;
-    if (/^vlan\s+\d/i.test(line))                         return `<span class="cfg-vlan">${esc}</span>`;
-    if (/^mlag\s+configuration/i.test(line))              return `<span class="cfg-mlag">${esc}</span>`;
-    if (/^(ip routing|ipv6 unicast-routing)/i.test(line)) return `<span class="cfg-routing">${esc}</span>`;
-    if (/^\s+(ip|ipv6)\s+address\s/i.test(line))          return `<span class="cfg-ip">${esc}</span>`;
-    if (/^\s+neighbor\s/i.test(line))                     return `<span class="cfg-neighbor">${esc}</span>`;
-    if (/^\s+shutdown\b/i.test(line))                     return `<span class="cfg-shutdown">${esc}</span>`;
-    if (/^\s+description\s/i.test(line))                  return `<span class="cfg-desc">${esc}</span>`;
-    return esc;
+    const cls = _cfgLineClass(line);
+    return cls ? `<span class="${cls}">${esc}</span>` : esc;
+  }).join('\n');
+}
+
+// Split raw config into block objects: [{header, lines, sep}]
+// header / sep / each line: {text, lineNum}
+function _splitConfigIntoBlocks(rawConfig) {
+  const blocks = [];
+  let cur = null;
+  rawConfig.split('\n').forEach((text, idx) => {
+    const lineNum = idx + 1;
+    const isSep = text === '!';
+    const isSub = text.startsWith(' ') || text.startsWith('\t');
+    const isHeader = text.length > 0 && !isSub && !isSep;
+    if (isSep) {
+      if (cur) { cur.sep = {text, lineNum}; blocks.push(cur); cur = null; }
+      else blocks.push({header: null, lines: [], sep: {text, lineNum}});
+    } else if (isHeader) {
+      if (cur) blocks.push(cur);
+      cur = {header: {text, lineNum}, lines: [], sep: null};
+    } else {
+      if (!cur) cur = {header: null, lines: [], sep: null};
+      cur.lines.push({text, lineNum});
+    }
+  });
+  if (cur) blocks.push(cur);
+  return blocks;
+}
+
+// Render an array of {text, lineNum} with gutter line numbers + syntax highlight.
+function _renderWithLineNums(lineObjs) {
+  if (!lineObjs.length) return `<span class="cfg-error">!! No matching blocks found !!</span>`;
+  const maxNum = Math.max(...lineObjs.map(o => o.lineNum));
+  const w = String(maxNum).length;
+  return lineObjs.map(({text, lineNum}) => {
+    const numStr = String(lineNum).padStart(w);
+    const esc = escapeHtml(text);
+    const cls = _cfgLineClass(text);
+    const code = cls ? `<span class="${cls}">${esc}</span>` : esc;
+    return `<span class="cfg-lno">${numStr}│</span>${code}`;
   }).join('\n');
 }
 
@@ -14508,40 +14552,37 @@ function showConfigModal(deviceName, configText) {
       return;
     }
 
-    // 🧠 EXPANDED ALIASING: Convert CLI shorthands to Full Config Format
+    // CLI shorthands → full config format
     const term = rawTerm
-      .replace(/^int\s/, "interface ")// "int " -> "interface "
-      .replace(/ethernet/g, "et")// "ethernet" -> "et"
-      .replace(/port-channel/g, "po")// "port-channel" -> "po"
-      .replace(/^desc\s/, "description ") // "desc " -> "description "
-      .replace(/^lo\s?/, "loopback")// "lo0" -> "loopback0"
-      .replace(/^mgmt/, "management")// "mgmt" -> "management"
-      .replace(/vlan\s/g, "vlan");// Handle vlan spacing
+      .replace(/^int\s/, "interface ")
+      .replace(/ethernet/g, "et")
+      .replace(/port-channel/g, "po")
+      .replace(/^desc\s/, "description ")
+      .replace(/^lo\s?/, "loopback")
+      .replace(/^mgmt/, "management")
+      .replace(/vlan\s/g, "vlan");
 
-    const lines = currentRawConfig.split('\n');
-    let filteredLines = [];
-    let isMatchingBlock = false;
-
-    lines.forEach(line => {
-      // Header detection: Line with content, not starting with space/bang
-      const isHeader = line.length > 0 && !line.startsWith(' ') && !line.startsWith('!');
-
-      if (isHeader) {
-        isMatchingBlock = line.toLowerCase().includes(term);
-      }
-
-      // Include if block matches OR line matches
-      if (isMatchingBlock || line.toLowerCase().includes(term)) {
-        filteredLines.push(line);
-      }
+    // Block-aware filter: if ANY line in a block matches, show the whole block
+    const blocks = _splitConfigIntoBlocks(currentRawConfig);
+    const matched = blocks.filter(b => {
+      const all = [...(b.header ? [b.header] : []), ...b.lines];
+      return all.some(l => l.text.toLowerCase().includes(term));
     });
 
-    body.innerHTML = highlightEosConfig(filteredLines.length > 0
-      ? filteredLines.join('\n')
-      : "!! No matching blocks found !!");
+    const flatLines = [];
+    matched.forEach(b => {
+      if (b.header) flatLines.push(b.header);
+      flatLines.push(...b.lines);
+      if (b.sep) flatLines.push(b.sep);
+    });
 
-    matchBadge.innerText = `${filteredLines.length} lines`;
-    matchBadge.classList.remove("hidden");
+    body.innerHTML = _renderWithLineNums(flatLines);
+
+    const blockCount = matched.length;
+    matchBadge.innerText = blockCount
+      ? `${blockCount} block${blockCount !== 1 ? 's' : ''} · ${flatLines.length} lines`
+      : '';
+    matchBadge.classList.toggle("hidden", !blockCount);
   };
 }
 
