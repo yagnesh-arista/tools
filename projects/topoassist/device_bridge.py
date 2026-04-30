@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.19 | 2026-04-30 12:48:32
+# topoassist v260430.21 | 2026-04-30 12:49:29
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.15"
+VERSION           = "260430.16"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
