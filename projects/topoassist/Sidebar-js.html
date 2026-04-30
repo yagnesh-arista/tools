@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.76 | 2026-04-30 18:29:52 -->
+<!-- TopoAssist v260430.77 | 2026-04-30 18:47:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.76";  // keep in sync with Code.gs
+const APP_VERSION = "260430.77";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9764,7 +9764,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.49"
+VERSION    = "260430.50"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10061,6 +10061,8 @@ def _diagnose_eapi_errors(self, ip, lines, eos_errs):
         for err in eos_errs:
             m = _EAPI_FAILED_CMD_RE.search(err)
             if not m:
+                continue
+            if 'could not run command' not in err.lower():
                 continue
             failed_cmd = m.group(1).strip()
             block_cmd  = ''
@@ -10527,7 +10529,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             except RuntimeError as e:
                 raw_msg = str(e)
                 if _EAPI_FAILED_CMD_RE.search(raw_msg):
-                    eos_errs = _annotate_eapi_errors([raw_msg], lines)
+                    parts = re.split(r'(?=CLI command \\d+ of \\d+)', raw_msg)
+                    parts = [p.strip() for p in parts if p.strip()]
+                    if not parts:
+                        parts = [raw_msg]
+                    eos_errs = _annotate_eapi_errors(parts, lines)
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
                     return {"ok": False, "error": "\\n".join(eos_errs)}
                 raise

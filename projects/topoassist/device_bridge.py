@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.76 | 2026-04-30 18:29:41
+# topoassist v260430.77 | 2026-04-30 18:46:44
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.49"
+VERSION           = "260430.50"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -925,6 +925,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 m = _EAPI_FAILED_CMD_RE.search(err)
                 if not m:
                     continue
+                # Skip errors that already have a specific % reason from eAPI —
+                # only diagnose those where EOS gave no detail ('could not run command').
+                if 'could not run command' not in err.lower():
+                    continue
                 failed_cmd = m.group(1).strip()
                 block_cmd  = ''
                 for i, line in enumerate(lines):
@@ -1223,7 +1227,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 # "CLI command N of M 'cmd' failed" is in this path; enrich it.
                 raw_msg = str(e)
                 if _EAPI_FAILED_CMD_RE.search(raw_msg):
-                    eos_errs = _annotate_eapi_errors([raw_msg], lines)
+                    # Split multi-error message (stopOnError:False may list all failures
+                    # in one top-level error string) into per-command entries so each
+                    # gets its own block-context header and SSH diagnostic enrichment.
+                    parts = re.split(r'(?=CLI command \d+ of \d+)', raw_msg)
+                    parts = [p.strip() for p in parts if p.strip()]
+                    if not parts:
+                        parts = [raw_msg]
+                    eos_errs = _annotate_eapi_errors(parts, lines)
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
                     return {"ok": False, "error": '\n'.join(eos_errs)}
                 raise
