@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.33 | 2026-04-30 15:39:37 -->
+<!-- TopoAssist v260430.34 | 2026-04-30 15:41:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.33";  // keep in sync with Code.gs
+const APP_VERSION = "260430.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9253,7 +9253,7 @@ function fetchData(force, autoVerify, silent) {
 
   // Warn if a push is in progress — refresh will orphan push status UI
   if (_commitInFlight || _pendingPush || _pushAllActive) {
-    const what = _pushAllActive ? 'Push All is in progress' : 'A config push is in progress';
+    const what = _pushAllActive ? 'Push Targets is in progress' : 'A config push is in progress';
     const ok = confirm(what + '.\n\nRefreshing will clear push status. Continue?');
     if (!ok) return;
   }
@@ -12030,18 +12030,49 @@ function _doCleanDevItems(devItems) {
     .then(results => {
       clearTimeout(_guard);
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      const failed = Object.entries(results).filter(([, r]) => !r || !r.ok);
-      if (failed.length) {
-        setStatus('Cleanup: ' + failed.length + ' device(s) failed — ' + failed.map(([d, r]) => d + ': ' + (r ? r.error : 'no response')).join('; '), 'status-error');
+      const reconBody = document.getElementById('reconResultsBody');
+      let okCount = 0, failCount = 0, rowsHtml = '';
+      Object.entries(devItems).forEach(([dev, items]) => {
+        const r    = results[dev];
+        const safe = escapeHtml(dev);
+        const n    = items.length;
+        if (!r || !r.ok) {
+          failCount++;
+          const err = escapeHtml((r && r.error) || 'no response');
+          rowsHtml +=
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
+            'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
+            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-main);">' + safe + '</span>' +
+            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#ef4444;">Error: ' + err + '</span></div>';
+        } else {
+          okCount++;
+          rowsHtml +=
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
+            'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
+            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-main);">' + safe + '</span>' +
+            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#10b981;">' +
+            n + ' item' + (n !== 1 ? 's' : '') + ' removed</span></div>';
+        }
+      });
+      const ts          = new Date().toTimeString().slice(0, 8);
+      const summaryClr  = failCount > 0 ? '#f59e0b' : '#10b981';
+      const summaryText = failCount > 0
+        ? 'Clean-up: ' + okCount + ' succeeded, ' + failCount + ' failed'
+        : 'Clean-up complete: ' + total + ' item' + (total !== 1 ? 's' : '') + ' removed across ' + okCount + ' device' + (okCount !== 1 ? 's' : '');
+      if (reconBody) {
+        reconBody.innerHTML =
+          '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding-bottom:10px;">' +
+          '<span style="font-weight:700;color:' + summaryClr + ';">' + escapeHtml(summaryText) + '</span>' +
+          '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + ts + '</span></div>' +
+          rowsHtml;
+      }
+      if (failCount > 0) {
+        setStatus('Clean-up: ' + okCount + ' succeeded, ' + failCount + ' failed', 'status-warn');
       } else {
-        setStatus('Cleanup done — ' + total + ' orphan' + (total > 1 ? 's' : '') + ' removed from ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '.', 'status-ok');
-        document.querySelectorAll('.recon-item-cb:checked').forEach(cb => {
-          const row = cb.closest('.bridge-orphan-row');
-          if (row) row.style.opacity = '0.4';
-        });
+        setStatus('Clean-up done — ' + total + ' orphan' + (total !== 1 ? 's' : '') + ' removed from ' + okCount + ' device' + (okCount !== 1 ? 's' : '') + '.', 'status-ok');
       }
     })
-    .catch(err => { clearTimeout(_guard); setStatus('Cleanup error: ' + err.message, 'status-error'); });
+    .catch(err => { clearTimeout(_guard); setStatus('Clean-up error: ' + err.message, 'status-error'); });
 }
 
 // Delete the sheet row AND unconfigure the interface on device via bridge.
@@ -12848,7 +12879,7 @@ function _extractInterfaceBlock(configText, portName) {
   return null;
 }
 
-// ── Bulk push (from Generate All Configs modal) ───────────────────────────────
+// ── Bulk push (from Device Operations modal — Push Targets) ───────────────────
 
 async function pushAllConfigs() {
   // Guard: a single-device push is waiting for user confirmation (EOS session PENDING).
@@ -13170,7 +13201,7 @@ async function pushAllConfigs() {
 
   _pushAllActive = false;
   btn.disabled = false;
-  btn.textContent = 'Push All';
+  btn.textContent = 'Push Targets';
   _setGenToolbarActive(false);
   _resetStopPushBtn();
 }
