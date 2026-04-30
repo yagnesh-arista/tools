@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260429.37 | 2026-04-29 16:59:57
+# topoassist v260430.1 | 2026-04-30 09:55:15
 """
 TopoAssist Device Bridge
 ========================
@@ -148,15 +148,20 @@ PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device wa
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 
 # ── Active transport ───────────────────────────────────────────────────────────
-METHOD = "ssh"      # ssh | eapi | rest | gnmi
+# -m flag | BRIDGE_METHOD env | default ssh
+METHOD     = _arg("-m") or os.environ.get("BRIDGE_METHOD", "ssh")
 
 # ── SSH config (METHOD = "ssh") ───────────────────────────────────────────────
 
 # ── eAPI config (METHOD = "eapi") ─────────────────────────────────────────────
 # Arista eAPI — JSON-RPC over HTTPS; returns same EOS JSON as SSH show | json
-EAPI_USER = "admin"
-EAPI_PASS = ""
-EAPI_PORT = 443
+# Enable with:  management api http-commands
+#               no shutdown
+# -eu / -ep / --eapi-port / --eapi-http override these defaults.
+EAPI_USER  = _arg("-eu")        or os.environ.get("BRIDGE_EAPI_USER",  "admin")
+EAPI_PASS  = _arg("-ep")        or os.environ.get("BRIDGE_EAPI_PASS",  "")
+EAPI_PORT  = int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT",  "443"))
+EAPI_PROTO = "http" if "--eapi-http" in sys.argv else "https"
 
 # ── RESTCONF config (METHOD = "rest") ─────────────────────────────────────────
 # OpenConfig YANG over HTTPS; EOS 4.22+; enable with: management api restconf
@@ -708,7 +713,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _eapi_cmds(self, ip, *cmds):
         """Run EOS show commands via eAPI JSON-RPC. Returns list of parsed JSON dicts.
         All commands are sent in a single HTTPS request (more efficient than SSH)."""
-        url     = f"https://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
         payload = json.dumps({
             "jsonrpc": "2.0", "method": "runCmds",
             "params":  {"version": 1, "cmds": list(cmds), "format": "json"},
@@ -741,7 +746,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def _eapi_push(self, ip, *cmds):
         """Run EOS commands via eAPI with format=text (for configure session).
         Returns list of raw text output strings, one per command."""
-        url     = f"https://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
         payload = json.dumps({
             "jsonrpc": "2.0", "method": "runCmds",
             "params":  {"version": 1, "cmds": list(cmds), "format": "text"},
@@ -758,6 +763,29 @@ class BridgeHandler(BaseHTTPRequestHandler):
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
         return [r.get("output", "") if isinstance(r, dict) else str(r)
                 for r in resp["result"]]
+
+    # ── Unified text-output command helper ────────────────────────────────────
+    def _text_cmd(self, ip, cmd):
+        """Run a single show command and return its text output.
+
+        Dispatches by METHOD so callers (BGP/VRF orphan detection, ASN check)
+        work identically in ssh and eapi mode without any per-caller branching.
+
+        SSH:  subprocess via jump host (or direct) — same path as _ssh_cmds
+              but without JSON parsing, for pipe commands (show X | section Y).
+        eAPI: reuses _eapi_push (format=text) and returns result[0].
+        """
+        if VERBOSE:
+            print(f"  [text-cmd/{METHOD}] {ip}: {cmd}", flush=True)
+        if METHOD == "eapi":
+            result = self._eapi_push(ip, cmd)
+            return result[0] if result else ""
+        # SSH path
+        base     = _ssh_base()
+        exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", cmd]
+                    if JUMP_HOST else [*base, f"{SSH_USER}@{ip}", cmd])
+        return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
+                                       stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
     # ── Transport: gNMI ───────────────────────────────────────────────────────
     def _gnmi_get(self, ip, *paths):
