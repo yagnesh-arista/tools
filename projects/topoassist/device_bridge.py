@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.2 | 2026-04-30 09:58:08
+# topoassist v260430.11 | 2026-04-30 10:21:57
 """
 TopoAssist Device Bridge
 ========================
@@ -1512,7 +1512,7 @@ if __name__ == "__main__":
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
-    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
+    print(f"  Options   : -m ssh|eapi  -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
     print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")

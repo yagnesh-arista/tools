@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.10 | 2026-04-30 10:17:59 -->
+<!-- TopoAssist v260430.11 | 2026-04-30 10:22:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.10";  // keep in sync with Code.gs
+const APP_VERSION = "260430.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10696,7 +10696,7 @@ if __name__ == "__main__":
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-P)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile")
-    print(f"  Options   : -u USER  -b JUMP_HOST  -t TIMEOUT  -P PUSH_TIMEOUT  -v  (run -h for details)")
+    print(f"  Options   : -m ssh|eapi  -u USER  -b JUMP_HOST  -t TIMEOUT  -p PUSH_TIMEOUT  -v  (run -h for details)")
     print(f"  -----------------------------------------")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
