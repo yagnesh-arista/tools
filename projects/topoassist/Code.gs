@@ -1,10 +1,10 @@
-// TopoAssist v260430.79 | 2026-04-30 19:26:14
+// TopoAssist v260430.80 | 2026-04-30 19:30:01
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.79";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.80";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2835,8 +2835,12 @@ function getTopologyData(forceSync, isColorEnabled) {
           if (port.details) {
             // Break reference using spread
             const cleanDetails = { ...port.details };
-            // Delete complex objects causing circular errors
-            if (cleanDetails.poGroup) delete cleanDetails.poGroup;
+            // Delete complex objects causing circular errors; rescue scalar peerPo first
+            if (cleanDetails.poGroup) {
+              const pp = cleanDetails.poGroup.peerPo;
+              if (pp && pp.startsWith('Po')) cleanDetails.peerPo = pp;
+              delete cleanDetails.poGroup;
+            }
             if (cleanDetails.configSource) delete cleanDetails.configSource;
             port.details = cleanDetails;
           }
@@ -4926,7 +4930,8 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
 
         if (finalDesc) cfg += ` description -> ${finalDesc} __TA\n`;
       } else if (d.remoteMlagPair) {
-        cfg += ` description -> ${d.remoteMlagPair}-${poVal} __TA\n`;
+        const _peerPoPart = d.peerPo ? `-${d.peerPo}` : '';
+        cfg += ` description -> ${d.remoteMlagPair}${_peerPoPart} __TA\n`;
       } else {
         // Rule 11: No group info — mark ownership only
         cfg += " description __TA\n";
