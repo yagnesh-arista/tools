@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.13 | 2026-04-30 11:04:42 -->
+<!-- TopoAssist v260430.15 | 2026-04-30 12:08:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.13";  // keep in sync with Code.gs
+const APP_VERSION = "260430.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15717,8 +15717,9 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
       const computed = _computeGroupBounds(gr.members);
       if (!computed) return; // all members hidden — skip this group rect
       gr.x = computed.x; gr.y = computed.y; gr.width = computed.width; gr.height = computed.height;
-    } else {
-      // Coordinate-based rects: hide when no nodes are visible (e.g. search with no matches)
+    } else if (!_isHolisticView()) {
+      // Coordinate-based rects: hide when no .node divs are visible (search no-match, all hidden).
+      // Holistic view uses SVG circles, not .node divs — skip this check there.
       const anyVisible = [...document.querySelectorAll('#canvas-surface .node[data-id]')]
         .some(el => el.style.display !== 'none');
       if (!anyVisible) return;
