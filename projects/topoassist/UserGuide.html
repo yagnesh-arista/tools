@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.84 | 2026-04-30 20:50:26 -->
+<!-- TopoAssist v260430.85 | 2026-04-30 21:07:01 -->
 <!DOCTYPE html>
 <html>
 
@@ -814,16 +814,39 @@ clasp login --no-localhost</pre>
     </div>
 
     <h3>5. Auto-Description Logic</h3>
-    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>__TA</code> — this ownership marker lets Reconcile identify and clean up stale interfaces on devices.</p>
+    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>__TA</code> — this ownership marker lets Reconcile identify and clean up stale interfaces on devices. Use <code>show interfaces status | grep __TA</code> on any device to list all managed interfaces.</p>
+
+    <p style="font-size:13px;"><b>Physical / Port-Channel interfaces:</b></p>
     <ul>
       <li>Physical standalone: <code>-&gt; PeerDev-PeerPort __TA</code></li>
       <li>Physical member of Po: <code>-&gt; PeerDev-PeerPort-PoX __TA</code></li>
       <li>Peer-link physical: <code>-&gt; PeerDev-PeerPort-MLAG-PEER-LINK __TA</code></li>
-      <li>Port-Channel (regular): <code>-&gt; PeerDev __TA</code> or <code>-&gt; PeerDev &amp; PeerDev2 __TA</code></li>
-      <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2 (MLAG) __TA</code></li>
+      <li>Port-Channel (regular): <code>-&gt; PeerDev-PoN __TA</code> when peer Po is known; <code>-&gt; PeerDev __TA</code> when peer has no Po configured</li>
+      <li>MLAG Port-Channel: <code>-&gt; PeerDev &amp; PeerDev2-PoN __TA</code> (or without <code>-PoN</code> when peer Po unavailable)</li>
       <li>Sub-interface (l3-et-sub-int / l3-po-sub-int): <code>-&gt; PeerDev-PeerPort __TA</code></li>
-      <li>SVI (l2-* with svi_vlan_): <code>__TA</code></li>
-      <li>BGP neighbors (underlay, overlay, VRF): <code>To PeerDev via EtX __TA</code> / <code>Overlay to PeerDev __TA</code></li>
+    </ul>
+
+    <p style="font-size:13px;"><b>Logical interfaces:</b></p>
+    <ul>
+      <li>Loopback0: <code>-&gt; ROUTER_ID __TA</code></li>
+      <li>Loopback1 (MLAG VTEP only): <code>-&gt; VTEP_MLAG_SHARED __TA</code></li>
+      <li>Vxlan1: <code>-&gt; VTEP __TA</code></li>
+      <li>Vlan4093 (MLAG L3 peering SVI): <code>-&gt; MLAG_L3_PEERING __TA</code></li>
+      <li>Vlan4094 (MLAG control plane SVI): <code>-&gt; MLAG_CONTROL_PLANE __TA</code></li>
+    </ul>
+
+    <p style="font-size:13px;"><b>SVIs (<code>l2-*</code> with <code>svi_vlan_</code>):</b></p>
+    <ul>
+      <li>GW SVI on LEAF + EVPN active: <code>-&gt; ANYCAST_GW_{vrf}_{vlan} __TA</code></li>
+      <li>GW SVI (non-LEAF or no EVPN): <code>-&gt; GW_{vrf}_{vlan} __TA</code></li>
+      <li>P2P SVI (<code>ip_type_</code> includes <code>p2p</code>): <code>-&gt; P2P_{vrf}_{vlan} __TA</code></li>
+      <li>All other SVIs: bare <code>__TA</code></li>
+    </ul>
+
+    <p style="font-size:13px;"><b>BGP neighbors:</b></p>
+    <ul>
+      <li>Underlay / VRF: <code>To PeerDev via EtX __TA</code></li>
+      <li>Overlay: <code>Overlay to PeerDev __TA</code></li>
     </ul>
 
     <h3>6. Global Config Template</h3>
