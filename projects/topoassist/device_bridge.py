@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.50 | 2026-04-30 17:03:07
+# topoassist v260430.51 | 2026-04-30 17:04:31
 """
 TopoAssist Device Bridge
 ========================
@@ -207,7 +207,8 @@ def _print_transport_status():
         _ju = _cfg.get('jump_user', '')
         _jvia = (f'{_ju}@{_jh}' if _ju else _jh) if _jh else ''
         print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}", flush=True)
-        print(f"  Jump host : {_jvia or '(none — direct SSH)'}", flush=True)
+        if _jvia:
+            print(f"  Jump host : {_jvia}", flush=True)
     elif t == "eapi":
         print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}  proto: {_cfg['eapi_proto']}", flush=True)
     elif t == "rest":
