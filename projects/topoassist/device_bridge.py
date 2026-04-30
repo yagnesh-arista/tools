@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.1 | 2026-04-30 09:55:15
+# topoassist v260430.2 | 2026-04-30 09:58:08
 """
 TopoAssist Device Bridge
 ========================
@@ -131,7 +131,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260429.7"
+VERSION           = "260429.8"
 PORT              = 8765
 # CLI flags (-u/-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1168,19 +1168,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if asn_m:
                 asn = asn_m.group(1)
                 try:
-                    eos_cmd = "show running-config | section router bgp"
-                    base = _ssh_base()
-                    exec_cmd = (
-                        [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd]
-                    )
-                    if VERBOSE:
-                        print(f"  [bgp-orphan] {ip}: {eos_cmd}", flush=True)
-                    bgp_text = subprocess.check_output(
-                        exec_cmd, timeout=TIMEOUT, text=True,
-                        stderr=subprocess.DEVNULL, env=_SSH_ENV,
-                    )
+                    bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
                     # Only scan global BGP context — stop before first VRF sub-context.
                     global_bgp = re.split(r'\n\s+vrf\s+', bgp_text, maxsplit=1)[0]
                     known_devs = {d.lower() for d in all_device_names}
@@ -1232,19 +1220,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if vm:
                 expected_vrfs.add(vm.group(1).lower())
         try:
-            eos_cmd = "show running-config | section vrf instance"
-            base = _ssh_base()
-            exec_cmd = (
-                [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                if JUMP_HOST else
-                [*base, f"{SSH_USER}@{ip}", eos_cmd]
-            )
-            if VERBOSE:
-                print(f"  [vrf-orphan] {ip}: {eos_cmd}", flush=True)
-            vrf_text = subprocess.check_output(
-                exec_cmd, timeout=TIMEOUT, text=True,
-                stderr=subprocess.DEVNULL, env=_SSH_ENV,
-            )
+            vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
             _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
             _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
             for vm in _VRF_INST_RE.finditer(vrf_text):
@@ -1278,17 +1254,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # 'show ip bgp summary | json' — the JSON `vrfs.<vrf>.as` field returns 0 when BGP
         # has no established peers, making it unreliable for ASN detection.
         try:
-            eos_cmd = "show running-config | include router bgp"
-            base = _ssh_base()
-            exec_cmd = ([*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                        if JUMP_HOST else
-                        [*base, f"{SSH_USER}@{ip}", eos_cmd])
-            if VERBOSE:
-                print(f"  [show] {ip}: {eos_cmd}", flush=True)
-            out = subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
-                                          stderr=subprocess.DEVNULL, env=_SSH_ENV)
-            if VERBOSE:
-                print(f"  [show] {ip}: {eos_cmd} → ok", flush=True)
+            out = self._text_cmd(ip, "show running-config | include router bgp")
         except Exception:
             return [], None
         m2 = re.search(r'^router bgp\s+(\d+)', out, re.MULTILINE | re.IGNORECASE)
@@ -1358,19 +1324,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if all_device_names:
             known_devs = {d.lower() for d in all_device_names}
             try:
-                eos_cmd = "show running-config | section router bgp"
-                base = _ssh_base()
-                exec_cmd = (
-                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                    if JUMP_HOST else
-                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
-                )
-                if VERBOSE:
-                    print(f"  [bgp-recon] {ip}: {eos_cmd}", flush=True)
-                bgp_text = subprocess.check_output(
-                    exec_cmd, timeout=TIMEOUT, text=True,
-                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
-                )
+                bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
                 asn_m = re.search(r'^router bgp\s+(\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
                 asn = asn_m.group(1) if asn_m else None
                 _NEIGH_DESC_RE = re.compile(
@@ -1418,19 +1372,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if vm:
                     expected_vrfs.add(vm.group(1).lower())
             try:
-                eos_cmd = "show running-config | section vrf instance"
-                base = _ssh_base()
-                exec_cmd = (
-                    [*base, "-J", JUMP_HOST, f"{SSH_USER}@{ip}", eos_cmd]
-                    if JUMP_HOST else
-                    [*base, f"{SSH_USER}@{ip}", eos_cmd]
-                )
-                if VERBOSE:
-                    print(f"  [vrf-recon] {ip}: {eos_cmd}", flush=True)
-                vrf_text = subprocess.check_output(
-                    exec_cmd, timeout=TIMEOUT, text=True,
-                    stderr=subprocess.DEVNULL, env=_SSH_ENV,
-                )
+                vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
                 _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
                 _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
                 for vm in _VRF_INST_RE.finditer(vrf_text):
@@ -1516,26 +1458,34 @@ if __name__ == "__main__":
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
   ─────────────────────────────────────
-  Usage: python device_bridge.py [-u USER] [-b JUMP_HOST] [-t TIMEOUT] [-p PUSH_TIMEOUT] [-v] [-h]
+  Usage: python device_bridge.py [-m MODE] [options] [-v] [-h]
 
-  Options:
-    -u USER       SSH username          default: admin
-    -b JUMP_HOST  Jump host for SSH     default: bus-home
+  Transport:
+    -m MODE       Transport mode: ssh | eapi         default: ssh
+
+  SSH options (METHOD=ssh):
+    -u USER       SSH username                        default: admin
+    -b JUMP_HOST  Jump host for SSH                   default: bus-home
                   Use -b "" for direct SSH (no jump host)
-    -t TIMEOUT    Query timeout         default: 15  (seconds)
-                  Per-device limit for show/LLDP/status queries.
-                  Keep small — unreachable devices fail fast.
-    -p TIMEOUT    Push timeout          default: max(-t * 4, 300)  (seconds)
-                  Per-device limit for configure-session pushes.
-                  Default auto-scales with -t but never drops below 300s (5 min).
-                  Raise this for very large configs. Example: -p 600
-    -v            Verbose — print SSH connect, session, retry, error, and timeout logs
+
+  eAPI options (METHOD=eapi):
+    -eu USER      eAPI username                       default: admin
+    -ep PASS      eAPI password                       default: (empty)
+    --eapi-port N eAPI port                           default: 443
+    --eapi-http   Use plain HTTP instead of HTTPS     default: HTTPS
+                  Example: -m eapi --eapi-http --eapi-port 80
+
+  Shared options:
+    -t TIMEOUT    Query timeout                       default: 15  (seconds)
+    -p TIMEOUT    Push timeout                        default: max(-t*4, 300)
+    -v            Verbose logging
     -h            Show this help and exit
 
   Examples:
-    python device_bridge.py -u root -b jumphost -t 30 -v
-    python device_bridge.py -u admin -b ""             # direct SSH, no jump
-    python device_bridge.py -t 30 -p 600              # large-config push headroom
+    python device_bridge.py                                   # SSH via bus-home
+    python device_bridge.py -m eapi --eapi-http              # eAPI HTTP port 80
+    python device_bridge.py -m eapi -eu admin -ep mypass     # eAPI HTTPS
+    python device_bridge.py -u root -b ""                    # SSH direct, no jump
 """)
         sys.exit(0)
 
@@ -1554,7 +1504,7 @@ if __name__ == "__main__":
         print(f"  Jump host : {JUMP_HOST or '(none — direct SSH)'}")
         print(f"  Mode      : {jump_info}")
     elif METHOD == "eapi":
-        print(f"  eAPI user : {EAPI_USER}  port: {EAPI_PORT}")
+        print(f"  eAPI user : {EAPI_USER}  port: {EAPI_PORT}  proto: {EAPI_PROTO}")
     elif METHOD == "rest":
         print(f"  REST user : {REST_USER}  port: {REST_PORT}")
     elif METHOD == "gnmi":
