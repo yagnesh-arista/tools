@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.88 | 2026-04-30 21:10:58 -->
+<!-- TopoAssist v260430.90 | 2026-04-30 21:22:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.88";  // keep in sync with Code.gs
+const APP_VERSION = "260430.90";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -240,6 +240,15 @@ const APP_VERSION = "260430.88";  // keep in sync with Code.gs
   let activeTooltipPortId = null;
   let isWindowMinimized = false;
   let previousDims = {w: 1600, h: 900 };
+
+  // Topology window size cycling — mirrors TOPOLOGY_SIZES in Code.gs
+  const TOPOLOGY_SIZES = [
+    { label: 'S',  w: 1100, h: 650  },
+    { label: 'M',  w: 1400, h: 800  },
+    { label: 'L',  w: 1600, h: 900  },
+    { label: 'XL', w: 1920, h: 1060 }
+  ];
+  let _topologySizeIdx = <?= defaultSizeIdx ?>;
   let globalSchema = [];
   const fetchQueue = {};
   let isGridSnapEnabled = false;
@@ -493,6 +502,7 @@ function initApp() {
   initTheme();
   syncToolbarTooltips();
   _injectMinimizeButtons();   // add minimize button to all modals that lack one
+  _updateSizeButtons();       // set initial size label + button states
   applyValidationState();
   applyBoldTextPref();
   dbg("Initializing App in mode:", currentMode);
@@ -9553,6 +9563,34 @@ function fetchData(force, autoVerify, silent) {
     let st = document.getElementById("status");
     setStatus("Init Error: " + e.message, "status-error");
   }
+}
+
+function _updateSizeButtons() {
+  const lbl = document.getElementById('topologySizeLabel');
+  const dn  = document.getElementById('btnSizeDown');
+  const up  = document.getElementById('btnSizeUp');
+  if (!lbl) return;
+  const sz = TOPOLOGY_SIZES[_topologySizeIdx];
+  lbl.textContent = sz ? sz.label : '';
+  if (dn) dn.disabled = (_topologySizeIdx <= 0);
+  if (up) up.disabled = (_topologySizeIdx >= TOPOLOGY_SIZES.length - 1);
+}
+
+function cycleTopologySize(delta) {
+  const newIdx = Math.max(0, Math.min(TOPOLOGY_SIZES.length - 1, _topologySizeIdx + delta));
+  if (newIdx === _topologySizeIdx) return;
+  _topologySizeIdx = newIdx;
+  const sz = TOPOLOGY_SIZES[newIdx];
+  _updateSizeButtons();
+  // Update previousDims so minimize/restore reflects the new size
+  if (!isWindowMinimized) {
+    previousDims.w = sz.w;
+    previousDims.h = sz.h;
+  }
+  google.script.host.setWidth(sz.w);
+  google.script.host.setHeight(sz.h);
+  // Persist preference (fire-and-forget)
+  google.script.run.setTopologySizeIdx(newIdx);
 }
 
 function toggleMinimize() {

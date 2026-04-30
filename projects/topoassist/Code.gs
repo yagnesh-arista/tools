@@ -1,10 +1,10 @@
-// TopoAssist v260430.88 | 2026-04-30 21:10:58
+// TopoAssist v260430.90 | 2026-04-30 21:20:10
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.88";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.90";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -730,21 +730,46 @@ function saveNetworkSettings(settings) {
 * UI LAUNCHERS
 * -------------------
 */
+const TOPOLOGY_SIZES = [
+  { label: 'S',  w: 1100, h: 650  },
+  { label: 'M',  w: 1400, h: 800  },
+  { label: 'L',  w: 1600, h: 900  },
+  { label: 'XL', w: 1920, h: 1060 }
+];
+const TOPOLOGY_SIZE_KEY = 'TOPOLOGY_SIZE_IDX';
+
+function getTopologySizeIdx() {
+  const v = parseInt(PropertiesService.getUserProperties().getProperty(TOPOLOGY_SIZE_KEY));
+  return (!isNaN(v) && v >= 0 && v < TOPOLOGY_SIZES.length) ? v : 2; // default L
+}
+
+function setTopologySizeIdx(idx) {
+  PropertiesService.getUserProperties().setProperty(TOPOLOGY_SIZE_KEY, String(idx));
+}
+
+function reopenTopologyAtSize(newIdx) {
+  newIdx = Math.max(0, Math.min(TOPOLOGY_SIZES.length - 1, parseInt(newIdx) || 0));
+  setTopologySizeIdx(newIdx);
+  showTopologyWindow();
+}
+
 function showTopologyWindow() {
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const template = HtmlService.createTemplateFromFile('Sidebar');
   template.initialMode = 'topology';
-  const settings = getUiSettings(); // Use the helper
+  const settings = getUiSettings();
 
-  template.defaultWidth = settings.width;
+  template.defaultWidth  = settings.width;
   template.defaultDevGap = settings.devGap;
   template.defaultOffset = settings.offset;
-  template.defaultTop = settings.top;
+  template.defaultTop    = settings.top;
   template.defaultRefresh = settings.refresh;
-  template.defaultAuto = settings.auto;
+  template.defaultAuto   = settings.auto;
+  template.defaultSizeIdx = getTopologySizeIdx();
 
-  const html = template.evaluate().setWidth(1600).setHeight(900).setTitle(`Live Network Topology v${APP_VERSION}`);
+  const sz = TOPOLOGY_SIZES[template.defaultSizeIdx];
+  const html = template.evaluate().setWidth(sz.w).setHeight(sz.h).setTitle(`Live Network Topology v${APP_VERSION}`);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
 }
 
