@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.38 | 2026-04-30 15:54:20
+# topoassist v260430.40 | 2026-04-30 16:42:45
 """
 TopoAssist Device Bridge
 ========================
@@ -194,6 +194,28 @@ try:
     HAS_GNMI = True
 except ImportError:
     HAS_GNMI = False
+
+def _print_transport_status():
+    """Print current transport settings — called at startup and on /settings change."""
+    t = _cfg['transport']
+    print(f"  Transport : {t.upper()}", flush=True)
+    if t == "ssh":
+        _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
+                      "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
+                      "key-based (arista-ssh)")
+        _jh = _cfg.get('jump_host', '')
+        _ju = _cfg.get('jump_user', '')
+        _jvia = (f'{_ju}@{_jh}' if _ju else _jh) if _jh else ''
+        print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}", flush=True)
+        print(f"  Jump host : {_jvia or '(none — direct SSH)'}", flush=True)
+    elif t == "eapi":
+        print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}  proto: {_cfg['eapi_proto']}", flush=True)
+    elif t == "rest":
+        print(f"  REST user : {REST_USER}  port: {REST_PORT}", flush=True)
+    elif t == "gnmi":
+        _gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
+        print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{_gnmi_note}", flush=True)
+
 
 # ── Shared SSL context (eAPI + REST — self-signed certs OK) ───────────────────
 _SSL_CTX = ssl.create_default_context()
@@ -612,13 +634,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     _cfg[k] = new_v
             if changed:
                 new_transport = _cfg.get("transport")
-                if old_transport != new_transport:
-                    _u = _cfg["ssh_user"] if new_transport == "ssh" else _cfg.get("eapi_user", "")
-                    _u_label = "SSH user" if new_transport == "ssh" else "eAPI user"
-                    print(f"Transport → {new_transport.upper()}  ({_u_label}: {_u})", flush=True)
                 for k, old_v, new_v in changed:
-                    if k != "transport" and k not in ("ssh_pass", "eapi_pass"):
-                        print(f"{k}: {old_v!r} → {new_v!r}", flush=True)
+                    if k not in ("ssh_pass", "eapi_pass"):
+                        print(f"  {k}: {old_v!r} → {new_v!r}", flush=True)
+                if old_transport != new_transport:
+                    _print_transport_status()
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
         ip_map           = body.get("ipMap", {})
@@ -1296,6 +1316,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
         orphan_iface_names = {_norm_iface(o['name']) for o in orphan_ifaces}
         matched = ta_total - len(orphan_ifaces)
 
+        detection_errors = {}  # {category: error_str} for any category that failed to query
+
         # ── BGP neighbor orphans ───────────────────────────────────────────────
         # Global context only — splits before first 'vrf' sub-context line.
         bgp_orphans = []
@@ -1315,8 +1337,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     dev_m    = _DEV_RE.search(desc)
                     if dev_m and dev_m.group(1).lower() not in known_devs:
                         bgp_orphans.append({'neighbor': neighbor, 'description': desc, 'asn': asn})
-            except Exception:
-                pass
+            except Exception as e:
+                detection_errors['bgp'] = str(e)[:80]
 
         # ── VLAN orphans ───────────────────────────────────────────────────────
         vlan_orphans = []
@@ -1337,8 +1359,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         continue
                     if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
                         vlan_orphans.append({'vid': vid, 'name': vinfo.get('name', '')})
-            except Exception:
-                pass
+            except Exception as e:
+                detection_errors['vlans'] = str(e)[:80]
 
         # ── VRF orphans ────────────────────────────────────────────────────────
         vrf_orphans = []
@@ -1358,8 +1380,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     block    = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
                     if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
                         vrf_orphans.append({'name': vrf_name})
-            except Exception:
-                pass
+            except Exception as e:
+                detection_errors['vrfs'] = str(e)[:80]
 
         # ── OSPF orphans ───────────────────────────────────────────────────────
         # Stale 'no passive-interface X' in router ospf/ospf3 for orphaned interfaces.
@@ -1383,18 +1405,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         for npm in _NO_PASS_RE.finditer(block):
                             if _norm_iface(npm.group(1)) in orphan_iface_names:
                                 ospf_orphans.append({'context': ctx_header, 'iface': npm.group(1)})
-                except Exception:
-                    pass
+                except Exception as e:
+                    detection_errors['ospf'] = str(e)[:80]
 
         return {
-            'ok':         True,
-            'ta_total':   ta_total,
-            'matched':    matched,
-            'interfaces': orphan_ifaces,
-            'bgp':        bgp_orphans,
-            'vlans':      vlan_orphans,
-            'vrfs':       vrf_orphans,
-            'ospf':       ospf_orphans,
+            'ok':               True,
+            'ta_total':         ta_total,
+            'matched':          matched,
+            'interfaces':       orphan_ifaces,
+            'bgp':              bgp_orphans,
+            'vlans':            vlan_orphans,
+            'vrfs':             vrf_orphans,
+            'ospf':             ospf_orphans,
+            'detection_errors': detection_errors,
         }
 
     def _find_bgp_asn_change(self, ip, config_text):
@@ -1526,27 +1549,11 @@ if __name__ == "__main__":
 """)
         sys.exit(0)
 
-    server    = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
-    gnmi_note = "" if HAS_GNMI else " (pygnmi not installed)"
+    server = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
     print(f"\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  ─────────────────────────────────────")
     print(f"  Listening : http://localhost:{PORT}")
-    print(f"  Transport : {_cfg['transport'].upper()}")
-    if _cfg['transport'] == "ssh":
-        _auth_mode = ("empty-password (sshpass)"    if _SSHPASS_BIN    else
-                      "empty-password (SSH_ASKPASS)" if _ASKPASS_SCRIPT else
-                      "key-based (arista-ssh)")
-        _jh = _cfg.get('jump_host', '')
-        _ju = _cfg.get('jump_user', '')
-        _jvia = (f'{_ju}@{_jh}' if _ju else _jh) if _jh else ''
-        print(f"  SSH user  : {_cfg['ssh_user']}  auth: {_auth_mode}")
-        print(f"  Jump host : {_jvia or '(none — direct SSH)'}")
-    elif _cfg['transport'] == "eapi":
-        print(f"  eAPI user : {_cfg['eapi_user']}  port: {_cfg['eapi_port']}  proto: {_cfg['eapi_proto']}")
-    elif _cfg['transport'] == "rest":
-        print(f"  REST user : {REST_USER}  port: {REST_PORT}")
-    elif _cfg['transport'] == "gnmi":
-        print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{gnmi_note}")
+    _print_transport_status()
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
