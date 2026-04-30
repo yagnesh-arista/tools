@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.16 | 2026-04-30 12:21:01
+# topoassist v260430.17 | 2026-04-30 12:37:22
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.14"
+VERSION           = "260430.15"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -424,7 +424,7 @@ def _extract_eos_errors(text):
 
 # ── Section-level cleaners for idempotent push ────────────────────────────────
 
-# Interfaces excluded from #TA orphan cleanup — system/VTEP/MLAG-control, not per-link
+# Interfaces excluded from __TA orphan cleanup — system/VTEP/MLAG-control, not per-link
 _TA_ORPHAN_SKIP_RE = re.compile(
     r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE
 )
@@ -535,7 +535,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         dry_run          = bool(body.get("dry_run", False))
         open_session     = bool(body.get("open_session", False))
         all_ifaces       = bool(body.get("all_ifaces", False))
-        all_device_names = body.get("allDeviceNames")  # for BGP #TA neighbor cleanup
+        all_device_names = body.get("allDeviceNames")  # for BGP __TA neighbor cleanup
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -909,7 +909,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
           dry_run=True    — push config, get diff, abort session (verify path).
           default         — push config, get diff, commit immediately.
 
-        all_ifaces=True — before building core_cmds, query the device for #TA-tagged
+        all_ifaces=True — before building core_cmds, query the device for __TA-tagged
                           interfaces not present in config_text and prepend cleanup
                           commands (default interface / no interface) so orphans are
                           removed in the same session. Best-effort — failures are
@@ -939,7 +939,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _ct.start()
         _ct.join(timeout=TIMEOUT)
 
-        # Prepend cleanup for orphan #TA interfaces not present in this push.
+        # Prepend cleanup for orphan __TA interfaces not present in this push.
         # Best-effort — failures are silently ignored so a query error never blocks push.
         if all_ifaces and not dry_run:
             orphan_cmds = self._find_ta_orphans(ip, config_text, all_device_names=all_device_names)
@@ -1142,7 +1142,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     # ── Orphan detection ──────────────────────────────────────────────────────
     def _find_ta_orphans(self, ip, config_text, all_device_names=None):
-        """Return EOS cleanup commands for stale #TA config not in config_text.
+        """Return EOS cleanup commands for stale __TA config not in config_text.
 
         Interface orphans (physical/PO) → `default interface X`
         Interface orphans (sub-int/SVI) → `no interface X`
@@ -1170,7 +1170,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         for name, info in iface_descs.items():
             if _TA_ORPHAN_SKIP_RE.match(name):
                 continue
-            if '#TA' not in info.get('description', ''):
+            if '__TA' not in info.get('description', ''):
                 continue
             if _norm_iface(name) in config_ifaces:
                 continue  # still in topology — not an orphan
@@ -1179,7 +1179,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 cleanup.append(f'default interface {name}')
 
-        # BGP neighbor orphan cleanup — find neighbors whose #TA description
+        # BGP neighbor orphan cleanup — find neighbors whose __TA description
         # references a device no longer in the topology and remove them.
         # Only runs when all_device_names is provided (requires caller to pass it).
         if all_device_names:
@@ -1192,7 +1192,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     global_bgp = re.split(r'\n\s+vrf\s+', bgp_text, maxsplit=1)[0]
                     known_devs = {d.lower() for d in all_device_names}
                     _NEIGH_DESC_RE = re.compile(
-                        r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
+                        r'^\s*neighbor\s+(\S+)\s+description\s+(.+?__TA\S*.*)',
                         re.MULTILINE,
                     )
                     _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
@@ -1211,7 +1211,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 except Exception:
                     pass  # BGP cleanup is best-effort
 
-        # VLAN orphan cleanup — find #TA-named VLANs on device not in config_text.
+        # VLAN orphan cleanup — find __TA-named VLANs on device not in config_text.
         # Skips 4093/4094 (MLAG). Uses show vlan | json for structured VLAN names.
         expected_vlans = set()
         for line in config_text.split('\n'):
@@ -1227,12 +1227,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     continue
                 if vid in (4093, 4094):
                     continue
-                if '#TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
                     cleanup.append(f'no vlan {vid}')
         except Exception:
             pass  # VLAN cleanup is best-effort
 
-        # VRF orphan cleanup — find VRFs with '#TA' description not in config_text.
+        # VRF orphan cleanup — find VRFs with '__TA' description not in config_text.
         expected_vrfs = set()
         for line in config_text.split('\n'):
             vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
@@ -1241,7 +1241,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         try:
             vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
             _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
-            _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
+            _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+__TA', re.MULTILINE)
             for vm in _VRF_INST_RE.finditer(vrf_text):
                 vrf_name = vm.group(1)
                 next_m = _VRF_INST_RE.search(vrf_text, vm.end())
@@ -1288,7 +1288,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     # ── Reconcile ─────────────────────────────────────────────────────────────
     def _reconcile_device(self, ip, expected_ports, all_device_names=None, config_text=None):
-        """SSH to device, find ALL stale #TA config not in the expected/generated set.
+        """SSH to device, find ALL stale __TA config not in the expected/generated set.
 
         Returns:
           { ok, ta_total, matched,
@@ -1297,10 +1297,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
             vlan_orphans: [{vid, name}],
             vrf_orphans:  [{name}] }
 
-        Interface check: #TA-tagged interfaces not in expected_ports.
-        BGP check: neighbors with #TA desc referencing device not in all_device_names.
-        VLAN check: #TA-named VLANs not in config_text (requires config_text).
-        VRF check: #TA-described VRFs not in config_text (requires config_text).
+        Interface check: __TA-tagged interfaces not in expected_ports.
+        BGP check: neighbors with __TA desc referencing device not in all_device_names.
+        VLAN check: __TA-named VLANs not in config_text (requires config_text).
+        VRF check: __TA-described VRFs not in config_text (requires config_text).
         Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094.
         All checks are best-effort — failure returns empty list for that section.
         """
@@ -1316,7 +1316,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if _SKIP_RE.match(name):
                 continue
             desc = info.get("description", "")
-            if "#TA" not in desc:
+            if "__TA" not in desc:
                 continue
             ta_ifaces.append({
                 "name":        name,
@@ -1347,7 +1347,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 asn_m = re.search(r'^router bgp\s+(\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
                 asn = asn_m.group(1) if asn_m else None
                 _NEIGH_DESC_RE = re.compile(
-                    r'^\s*neighbor\s+(\S+)\s+description\s+(.+?#TA\S*.*)',
+                    r'^\s*neighbor\s+(\S+)\s+description\s+(.+?__TA\S*.*)',
                     re.MULTILINE,
                 )
                 _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
@@ -1377,7 +1377,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         continue
                     if vid in (4093, 4094):
                         continue
-                    if '#TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                    if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
                         vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
             except Exception:
                 pass
@@ -1393,7 +1393,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             try:
                 vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
                 _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
-                _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+#TA', re.MULTILINE)
+                _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+__TA', re.MULTILINE)
                 for vm in _VRF_INST_RE.finditer(vrf_text):
                     vrf_name = vm.group(1)
                     next_m = _VRF_INST_RE.search(vrf_text, vm.end())
