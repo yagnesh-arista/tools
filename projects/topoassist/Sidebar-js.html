@@ -1,7 +1,7 @@
-<!-- TopoAssist v260429.37 | 2026-04-29 17:00:11 -->
+<!-- TopoAssist v260430.3 | 2026-04-30 09:59:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260429.37";  // keep in sync with Code.gs
+const APP_VERSION = "260430.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9721,24 +9721,25 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION = "260429.7"
-PORT    = 8765
-_b        = _arg("-b")
-SSH_USER  = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
-JUMP_HOST = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
-TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
+VERSION    = "260429.8"
+PORT       = 8765
+_b         = _arg("-b")
+SSH_USER   = _arg("-u") or os.environ.get("BRIDGE_SSH_USER",  "admin")
+JUMP_HOST  = _b         if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+TIMEOUT    = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 PUSH_TIMEOUT = int(_arg("-P") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
-                                                 str(max(TIMEOUT * 4, 300))))
+                                                  str(max(TIMEOUT * 4, 300))))
 
 # -- Active transport -----------------------------------------------------------
-METHOD = "ssh"      # ssh | eapi | rest | gnmi
+METHOD     = _arg("-m") or os.environ.get("BRIDGE_METHOD", "ssh")
 
 # -- SSH config (METHOD = "ssh") -----------------------------------------------
 
 # -- eAPI config (METHOD = "eapi") ---------------------------------------------
-EAPI_USER = "admin"
-EAPI_PASS = ""
-EAPI_PORT = 443
+EAPI_USER  = _arg("-eu")         or os.environ.get("BRIDGE_EAPI_USER",  "admin")
+EAPI_PASS  = _arg("-ep")         or os.environ.get("BRIDGE_EAPI_PASS",  "")
+EAPI_PORT  = int(_arg("--eapi-port") or os.environ.get("BRIDGE_EAPI_PORT",  "443"))
+EAPI_PROTO = "http" if "--eapi-http" in sys.argv else "https"
 
 # -- RESTCONF config (METHOD = "rest") -----------------------------------------
 REST_USER = "admin"
@@ -10112,7 +10113,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return results
 
     def _eapi_cmds(self, ip, *cmds):
-        url     = f"https://{ip}:{EAPI_PORT}/command-api"
+        url     = f"{EAPI_PROTO}://{ip}:{EAPI_PORT}/command-api"
         payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"json"},"id":1}).encode()
         creds   = base64.b64encode(f"{EAPI_USER}:{EAPI_PASS}".encode()).decode()
         req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
