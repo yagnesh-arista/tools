@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.90 | 2026-04-30 21:22:24 -->
+<!-- TopoAssist v260430.91 | 2026-04-30 21:26:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.90";  // keep in sync with Code.gs
+const APP_VERSION = "260430.91";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -248,7 +248,7 @@ const APP_VERSION = "260430.90";  // keep in sync with Code.gs
     { label: 'L',  w: 1600, h: 900  },
     { label: 'XL', w: 1920, h: 1060 }
   ];
-  let _topologySizeIdx = <?= defaultSizeIdx ?>;
+  let _topologySizeIdx = <?= (typeof defaultSizeIdx !== 'undefined' ? defaultSizeIdx : 2) ?>;
   let globalSchema = [];
   const fetchQueue = {};
   let isGridSnapEnabled = false;
