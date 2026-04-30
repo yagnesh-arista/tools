@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.64 | 2026-04-30 17:50:38 -->
+<!-- TopoAssist v260430.65 | 2026-04-30 17:51:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.64";  // keep in sync with Code.gs
+const APP_VERSION = "260430.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14657,7 +14657,8 @@ function _splitConfigIntoBlocks(rawConfig) {
 }
 
 // Render an array of {text, lineNum} with gutter line numbers + syntax highlight.
-function _renderWithLineNums(lineObjs) {
+// highlightLine: optional line number to highlight (amber glow, scrolled into view by caller).
+function _renderWithLineNums(lineObjs, highlightLine) {
   if (!lineObjs.length) return `<span class="cfg-error">!! No matching blocks found !!</span>`;
   const maxNum = Math.max(...lineObjs.map(o => o.lineNum));
   const w = String(maxNum).length;
@@ -14666,6 +14667,8 @@ function _renderWithLineNums(lineObjs) {
     const esc = escapeHtml(text);
     const cls = _cfgLineClass(text);
     const code = cls ? `<span class="${cls}">${esc}</span>` : esc;
+    if (highlightLine && lineNum === highlightLine)
+      return `<span class="cfg-line-hl"><span class="cfg-lno">${numStr}│</span>${code}</span>`;
     return `<span class="cfg-lno">${numStr}│</span>${code}`;
   }).join('\n');
 }
