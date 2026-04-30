@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.5 | 2026-04-30 10:06:19 -->
+<!-- TopoAssist v260430.6 | 2026-04-30 10:06:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.5";  // keep in sync with Code.gs
+const APP_VERSION = "260430.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10716,9 +10716,59 @@ function openBridgeModal() {
   document.getElementById('bridgeRunStatus').style.display = 'none';
   document.getElementById('btnRunBridge').disabled = true;
   _syncBridgeEnableCheckbox();
+  _loadBridgeTransportPrefs();
   _syncBridgeDevCollapse();
   _populateLldpDevTable();
   _checkBridgeHealth();
+}
+
+function _getBridgeCmdLine() {
+  const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
+  const mode = rb ? rb.value : 'ssh';
+  if (mode !== 'eapi') return 'python3 device_bridge.py';
+  const user  = (document.getElementById('bridgeEapiUser') || {}).value || 'admin';
+  const pass  = (document.getElementById('bridgeEapiPass') || {}).value || '';
+  const port  = (document.getElementById('bridgeEapiPort') || {}).value || '80';
+  const http  = document.getElementById('chkEapiHttp');
+  const proto = (http && http.checked) ? ' --eapi-http' : '';
+  let cmd = `python3 device_bridge.py -m eapi -eu ${user} --eapi-port ${port}${proto}`;
+  if (pass) cmd += ` -ep ${pass}`;
+  return cmd;
+}
+
+function onBridgeTransportChange() {
+  const rb   = document.querySelector('input[name="bridgeTransport"]:checked');
+  const mode = rb ? rb.value : 'ssh';
+  const ef   = document.getElementById('bridgeEapiFields');
+  if (ef) ef.style.display = (mode === 'eapi') ? '' : 'none';
+  _saveBridgeTransportPrefs();
+}
+
+function _saveBridgeTransportPrefs() {
+  const rb = document.querySelector('input[name="bridgeTransport"]:checked');
+  localStorage.setItem('bridgeTransportMode', rb ? rb.value : 'ssh');
+  localStorage.setItem('bridgeEapiUser', (document.getElementById('bridgeEapiUser') || {}).value || 'admin');
+  localStorage.setItem('bridgeEapiPass', (document.getElementById('bridgeEapiPass') || {}).value || '');
+  localStorage.setItem('bridgeEapiPort', (document.getElementById('bridgeEapiPort') || {}).value || '80');
+  const http = document.getElementById('chkEapiHttp');
+  localStorage.setItem('bridgeEapiHttp', (http && http.checked) ? '1' : '0');
+}
+
+function _loadBridgeTransportPrefs() {
+  const mode  = localStorage.getItem('bridgeTransportMode') || 'ssh';
+  const rbSsh = document.getElementById('rbTransportSsh');
+  const rbEapi = document.getElementById('rbTransportEapi');
+  if (rbSsh)  rbSsh.checked  = (mode !== 'eapi');
+  if (rbEapi) rbEapi.checked = (mode === 'eapi');
+  const uEl   = document.getElementById('bridgeEapiUser');
+  const pEl   = document.getElementById('bridgeEapiPass');
+  const portEl = document.getElementById('bridgeEapiPort');
+  const httpEl = document.getElementById('chkEapiHttp');
+  if (uEl)   uEl.value    = localStorage.getItem('bridgeEapiUser') || 'admin';
+  if (pEl)   pEl.value    = localStorage.getItem('bridgeEapiPass') || '';
+  if (portEl) portEl.value = localStorage.getItem('bridgeEapiPort') || '80';
+  if (httpEl) httpEl.checked = localStorage.getItem('bridgeEapiHttp') !== '0';
+  onBridgeTransportChange();
 }
 
 function _syncBridgeDevCollapse() {
