@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.36 | 2026-04-30 15:51:41 -->
+<!-- TopoAssist v260430.38 | 2026-04-30 15:54:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.36";  // keep in sync with Code.gs
+const APP_VERSION = "260430.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9737,7 +9737,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260430.36"
+VERSION    = "260430.39"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -9947,6 +9947,45 @@ def _extract_eos_errors(text):
             if cmd:
                 prev_cmd = cmd
     return errors, warnings
+
+
+_BLOCK_CMD_RE = re.compile(
+    r'^(?:interface|router\\s+(?:bgp|ospf|isis)|vlan\\s+\\d|address-family)\\s',
+    re.IGNORECASE,
+)
+
+_EAPI_FAILED_CMD_RE = re.compile(r"CLI command \\d+ of \\d+ '([^']+)' failed", re.IGNORECASE)
+
+def _annotate_eapi_errors(errors, lines):
+    """Inject block-context lines into eAPI error list.
+
+    eAPI errors report 'CLI command N of M <cmd> failed: reason' but carry no
+    surrounding block context (no PTY prompt echoes). This function parses the
+    failed command name from each error, locates it in lines[], scans backwards
+    for the nearest block-entering command (interface / router bgp / etc.), and
+    injects that block command as a context line immediately before the error so
+    the UI can show 'interface Ethernet5 -> ip address ... failed' instead of just
+    the raw error with no interface name.
+    """
+    result = []
+    last_injected_block = ''
+    for err in errors:
+        m = _EAPI_FAILED_CMD_RE.search(err)
+        if m:
+            failed_cmd = m.group(1).strip()
+            block_cmd  = ''
+            for i, line in enumerate(lines):
+                if line.strip() == failed_cmd:
+                    for j in range(i - 1, -1, -1):
+                        if _BLOCK_CMD_RE.match(lines[j].strip()):
+                            block_cmd = lines[j].strip()
+                            break
+                    break  # first occurrence of the failed command
+            if block_cmd and block_cmd != last_injected_block:
+                result.append(block_cmd)
+                last_injected_block = block_cmd
+        result.append(err)
+    return result
 
 
 _TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
@@ -10337,6 +10376,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-2].strip() if len(results) >= 2 else ""
             eos_errs, eos_warns = _extract_eos_errors("\\n".join(results))
             if eos_errs:
+                eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns

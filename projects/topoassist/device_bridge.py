@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.36 | 2026-04-30 15:50:25
+# topoassist v260430.38 | 2026-04-30 15:54:20
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.36"
+VERSION           = "260430.39"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1088,6 +1088,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 diff = results[-2].strip() if len(results) >= 2 else ""
             eos_errs, eos_warns = _extract_eos_errors('\n'.join(results))
             if eos_errs:
+                eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
