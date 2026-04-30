@@ -31,6 +31,10 @@
 
 **y key:** `bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel` in both Section 5 and Section 8 (Section 8 wins over yank plugin).
 
+**Prefix+F layout fix (display-switch resize):** `stty size < #{client_tty} | awk '{print $2"x"$1}' | xargs tmux refresh-client -C; tmux resize-window -A; tmux refresh-client -S; tmux select-layout -E`. Key insight: `run-shell` has no controlling TTY — must read PTY size from `#{client_tty}` (the client's device path, expanded by tmux before run-shell fires). `refresh-client -C WxH` pushes the real size into tmux; `resize-window -A` then fits the window to it. `aggressive-resize off` prevents pane size jumps when multiple clients at different sizes are attached.
+
+**Broadcast C-c pre-clear:** `tmux_broadcast.sh` sends `C-c` + 100ms sleep before every command so `--More--` pager and stuck prompts are cleared first. Applies to all four broadcast bindings (e/E/C-e/C-E) since they all call the same script.
+
 ## What Broke — Do Not Retry
 
 **`copy-mode -M` and `copy-mode -H`:** Unsupported in tmux 3.2a. Print "usage: copy-mode ..." error string into the pane. macOS trackpad sends drag events during scroll, triggering these errors on every scroll. Never use these flags.
