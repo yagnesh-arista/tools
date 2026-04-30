@@ -1,4 +1,4 @@
-<!-- TopoAssist v260430.22 | 2026-04-30 13:08:17 -->
+<!-- TopoAssist v260430.23 | 2026-04-30 14:44:01 -->
 <!DOCTYPE html>
 <html>
 
@@ -1313,9 +1313,9 @@
         <span class="genall-desc" style="color:#f59e0b;">&#9888; Commits directly — no per-device diff review. Use single Push to review before committing.</span>
       </div>
       <div class="genall-action-card">
-        <button class="btn-mono genall-btn" id="btnGenAllReconcile" onclick="runReconcile()">Reconcile</button>
-        <button class="btn-mono genall-btn" id="btnStopRecon" disabled>Stop</button>
-        <span class="genall-desc">Find stale __TA config (interfaces, BGP neighbors, VLANs, VRFs) on Push Target devices. Respects Push Targets selection. Requires Device Bridge.</span>
+        <button class="btn-mono genall-btn" id="btnGenAllCleanup" onclick="runCleanup()">Cleanup</button>
+        <button class="btn-mono genall-btn" id="btnStopCleanup" disabled>Stop</button>
+        <span class="genall-desc">Find and remove stale __TA config (interfaces, BGP neighbors, VLANs, VRFs, OSPF) on Push Target devices. Select all, per-device, or per-item. Requires Device Bridge.</span>
       </div>
     </div>
     <!-- Push Targets device selection -->

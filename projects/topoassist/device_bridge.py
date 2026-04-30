@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.22 | 2026-04-30 13:07:51
+# topoassist v260430.23 | 2026-04-30 14:30:55
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260430.16"
+VERSION           = "260430.17"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -471,6 +471,48 @@ def _norm_iface(name):
     return n.lower()
 
 
+def _orphans_to_cmds(orphans):
+    """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
+
+    Interface orphans (physical/PO) → default interface X
+    Interface orphans (sub-int/SVI) → no interface X
+    BGP orphans → router bgp ASN / no neighbor X / !
+    VLAN orphans → no vlan X
+    VRF orphans → no vrf instance X
+    OSPF orphans → router ospf_kw N [vrf V] / passive-interface X / ! (grouped by context)
+    """
+    cmds = []
+    for o in orphans.get('interfaces', []):
+        name = o['name']
+        if '.' in name or re.match(r'^vlan\d+$', name, re.IGNORECASE):
+            cmds.append(f'no interface {name}')
+        else:
+            cmds.append(f'default interface {name}')
+    bgp_by_asn = {}
+    for o in orphans.get('bgp', []):
+        asn = o.get('asn')
+        if asn:
+            bgp_by_asn.setdefault(asn, []).append(o['neighbor'])
+    for asn, neighbors in bgp_by_asn.items():
+        cmds.append(f'router bgp {asn}')
+        for n in neighbors:
+            cmds.append(f'   no neighbor {n}')
+        cmds.append('!')
+    for o in orphans.get('vlans', []):
+        cmds.append(f'no vlan {o["vid"]}')
+    for o in orphans.get('vrfs', []):
+        cmds.append(f'no vrf instance {o["name"]}')
+    ospf_by_ctx = {}
+    for o in orphans.get('ospf', []):
+        ospf_by_ctx.setdefault(o['context'], []).append(o['iface'])
+    for ctx, ifaces in ospf_by_ctx.items():
+        cmds.append(ctx)
+        for iface in ifaces:
+            cmds.append(f'   passive-interface {iface}')
+        cmds.append('!')
+    return cmds
+
+
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -566,12 +608,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
         elif self.path == "/reconcile":
-            # ipMap values are {ip, ports:[...]} dicts
-            all_device_names = body.get("allDeviceNames")  # optional — all topology device names for BGP check
+            # ipMap values are {ip, ports:[...], config_text} dicts
+            all_device_names = body.get("allDeviceNames")
             results = {dev: None for dev in ip_map}
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
-            def run_reconcile(dev, entry):
+            def run_cleanup(dev, entry):
                 ip             = (entry.get("ip") or "").strip()
                 expected_ports = entry.get("ports", [])
                 config_text    = entry.get("config_text") or None
@@ -580,22 +622,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     return
                 with sem:
                     try:
-                        res = self._reconcile_device(ip, expected_ports,
-                                                     all_device_names=all_device_names,
-                                                     config_text=config_text)
+                        res = self._detect_orphans(ip, config_text=config_text,
+                                                   all_device_names=all_device_names,
+                                                   expected_ports=expected_ports)
                         with lock: results[dev] = res
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                     except Exception as e:
                         with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-            threads = [threading.Thread(target=run_reconcile, args=(d, v), daemon=True)
+            threads = [threading.Thread(target=run_cleanup, args=(d, v), daemon=True)
                        for d, v in ip_map.items()]
             for t in threads: t.start()
             for t in threads: t.join(timeout=TIMEOUT + 5)
             with lock:
                 for dev in results:
                     if results[dev] is None:
-                        results[dev] = {"ok": False, "error": "Reconcile timed out"}
+                        results[dev] = {"ok": False, "error": "Cleanup timed out"}
             self._json(200, results)
         elif self.path == "/pushconfig/finalize":
             # Phase 2 of two-phase push: commit or abort an already-open named session.
@@ -1148,155 +1190,174 @@ class BridgeHandler(BaseHTTPRequestHandler):
         raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     # ── Orphan detection ──────────────────────────────────────────────────────
-    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
-        """Return EOS cleanup commands for stale __TA config not in config_text.
+    def _detect_orphans(self, ip, config_text=None, all_device_names=None, expected_ports=None):
+        """Unified orphan detection — used by both push cleanup and Cleanup UI.
 
-        Interface orphans (physical/PO) → `default interface X`
-        Interface orphans (sub-int/SVI) → `no interface X`
-        BGP neighbor orphans (global context only) → `router bgp ASN / no neighbor X`
-          — only when all_device_names is provided; orphan = referenced device name
-            is not in all_device_names.  VRF BGP neighbors are skipped (global only).
+        expected_ports: list of known-good interface names from the topology.
+                        If None, falls back to parsing config_text interface stanzas.
+        config_text:    Generated device config. Used for VLAN/VRF expected sets and
+                        supplements expected_ports for the interface check.
+        all_device_names: All topology device names (BGP orphan check).
 
-        Skips Loopback, Management, Vxlan, Vlan4093/4094 for interface check.
-        Returns [] on any query failure — orphan cleanup is best-effort.
+        Returns:
+          { ok, ta_total, matched,
+            interfaces: [{name, description, linkStatus, protocol}],
+            bgp:        [{neighbor, description, asn}],
+            vlans:      [{vid, name}],
+            vrfs:       [{name}],
+            ospf:       [{context, iface}] }
+
+        All checks are best-effort — failure returns empty list for that section.
         """
+        # ── Interface orphans ──────────────────────────────────────────────────
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
-            return []
+            return {"ok": False, "error": "show interfaces description failed"}
         iface_descs = (raw or {}).get("interfaceDescriptions", {})
 
-        # Collect abbreviated names of interfaces explicitly configured in config_text
-        config_ifaces = set()
-        for line in config_text.split('\n'):
-            m = re.match(r'^interface\s+(\S+)', line, re.IGNORECASE)
-            if m:
-                config_ifaces.add(_norm_iface(m.group(1)))
+        expected_set = {_norm_iface(p) for p in (expected_ports or [])}
+        if config_text:
+            for line in config_text.splitlines():
+                m = re.match(r'^interface\s+(\S+)', line, re.IGNORECASE)
+                if m:
+                    expected_set.add(_norm_iface(m.group(1)))
 
-        cleanup = []
+        ta_total      = 0
+        orphan_ifaces = []
         for name, info in iface_descs.items():
             if _TA_ORPHAN_SKIP_RE.match(name):
                 continue
-            if '__TA' not in info.get('description', ''):
+            desc = info.get('description', '')
+            if '__TA' not in desc:
                 continue
-            if _norm_iface(name) in config_ifaces:
-                continue  # still in topology — not an orphan
-            if '.' in name or re.match(r'^vlan\d+$', name, re.IGNORECASE):
-                cleanup.append(f'no interface {name}')
-            else:
-                cleanup.append(f'default interface {name}')
+            ta_total += 1
+            entry = {
+                'name':        name,
+                'description': desc,
+                'linkStatus':  info.get('lineProtocolStatus', info.get('interfaceStatus', '')),
+                'protocol':    info.get('lineProtocolStatus', ''),
+            }
+            if _norm_iface(name) not in expected_set:
+                orphan_ifaces.append(entry)
 
-        # BGP neighbor orphan cleanup — find neighbors whose __TA description
-        # references a device no longer in the topology and remove them.
-        # Only runs when all_device_names is provided (requires caller to pass it).
+        orphan_iface_names = {_norm_iface(o['name']) for o in orphan_ifaces}
+        matched = ta_total - len(orphan_ifaces)
+
+        # ── BGP neighbor orphans ───────────────────────────────────────────────
+        # Global context only — splits before first 'vrf' sub-context line.
+        bgp_orphans = []
         if all_device_names:
-            asn_m = re.search(r'^router bgp\s+(\d+)', config_text, re.MULTILINE | re.IGNORECASE)
-            if asn_m:
-                asn = asn_m.group(1)
-                try:
-                    bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
-                    # Only scan global BGP context — stop before first VRF sub-context.
-                    global_bgp = re.split(r'\n\s+vrf\s+', bgp_text, maxsplit=1)[0]
-                    known_devs = {d.lower() for d in all_device_names}
-                    _NEIGH_DESC_RE = re.compile(
-                        r'^\s*neighbor\s+(\S+)\s+description\s+(.+?__TA\S*.*)',
-                        re.MULTILINE,
-                    )
-                    _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
-                    stale_neighbors = []
-                    for m in _NEIGH_DESC_RE.finditer(global_bgp):
-                        neighbor = m.group(1)
-                        desc     = m.group(2).strip()
-                        dev_m    = _DEV_RE.search(desc)
-                        if dev_m and dev_m.group(1).lower() not in known_devs:
-                            stale_neighbors.append(neighbor)
-                    if stale_neighbors:
-                        cleanup.append(f'router bgp {asn}')
-                        for neigh in stale_neighbors:
-                            cleanup.append(f'   no neighbor {neigh}')
-                        cleanup.append('!')
-                except Exception:
-                    pass  # BGP cleanup is best-effort
+            known_devs = {d.lower() for d in all_device_names}
+            try:
+                bgp_text   = self._text_cmd(ip, "show running-config | section router bgp")
+                asn_m      = re.search(r'^router bgp\s+(\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
+                asn        = asn_m.group(1) if asn_m else None
+                global_bgp = re.split(r'\n\s+vrf\s+', bgp_text, maxsplit=1)[0]
+                _NEIGH_DESC_RE = re.compile(
+                    r'^\s*neighbor\s+(\S+)\s+description\s+(.+?__TA\S*.*)', re.MULTILINE)
+                _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
+                for m in _NEIGH_DESC_RE.finditer(global_bgp):
+                    neighbor = m.group(1)
+                    desc     = m.group(2).strip()
+                    dev_m    = _DEV_RE.search(desc)
+                    if dev_m and dev_m.group(1).lower() not in known_devs:
+                        bgp_orphans.append({'neighbor': neighbor, 'description': desc, 'asn': asn})
+            except Exception:
+                pass
 
-        # VLAN orphan cleanup — find __TA-named VLANs on device not in config_text.
-        # Skips 4093/4094 (MLAG). Uses show vlan | json for structured VLAN names.
-        expected_vlans = set()
-        for line in config_text.split('\n'):
-            vm = re.match(r'^vlan\s+(\d+)\s*$', line, re.IGNORECASE)
-            if vm:
-                expected_vlans.add(int(vm.group(1)))
-        try:
-            (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
-            for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
-                try:
-                    vid = int(vid_str)
-                except ValueError:
-                    continue
-                if vid in (4093, 4094):
-                    continue
-                if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
-                    cleanup.append(f'no vlan {vid}')
-        except Exception:
-            pass  # VLAN cleanup is best-effort
-
-        # VRF orphan cleanup — find VRFs with '__TA' description not in config_text.
-        expected_vrfs = set()
-        for line in config_text.split('\n'):
-            vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
-            if vm:
-                expected_vrfs.add(vm.group(1).lower())
-        try:
-            vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
-            _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
-            _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+__TA', re.MULTILINE)
-            for vm in _VRF_INST_RE.finditer(vrf_text):
-                vrf_name = vm.group(1)
-                next_m = _VRF_INST_RE.search(vrf_text, vm.end())
-                block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
-                if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
-                    cleanup.append(f'no vrf instance {vrf_name}')
-        except Exception:
-            pass  # VRF cleanup is best-effort
-
-        # OSPF/OSPFv3 cleanup — find stale 'no passive-interface X' entries in
-        # router ospf / router ospf3 blocks for interfaces being cleaned in this push.
-        # EOS configure sessions are additive: pushing a fresh OSPF block does NOT
-        # remove pre-existing 'no passive-interface' sub-commands — must negate them.
-        if cleanup:
-            orphan_ifaces = set()
-            for cmd in cleanup:
-                om = re.match(r'(?:default|no)\s+interface\s+(\S+)', cmd)
-                if om:
-                    orphan_ifaces.add(_norm_iface(om.group(1)))
-            if orphan_ifaces:
-                for ospf_kw in ('ospf', 'ospf3'):
+        # ── VLAN orphans ───────────────────────────────────────────────────────
+        vlan_orphans = []
+        if config_text:
+            expected_vlans = set()
+            for line in config_text.split('\n'):
+                vm = re.match(r'^vlan\s+(\d+)\s*$', line, re.IGNORECASE)
+                if vm:
+                    expected_vlans.add(int(vm.group(1)))
+            try:
+                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+                for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
                     try:
-                        ospf_text = self._text_cmd(
-                            ip, f'show running-config | section router {ospf_kw}')
-                        _CTX_RE = re.compile(
-                            rf'^(router {ospf_kw}\s+\d+(?:\s+vrf\s+\S+)?)',
-                            re.MULTILINE)
-                        _NO_PASS_RE = re.compile(
-                            r'^\s+no\s+passive-interface\s+(\S+)', re.MULTILINE)
-                        for ctx_m in _CTX_RE.finditer(ospf_text):
-                            ctx_header = ctx_m.group(1)
-                            next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
-                            block      = ospf_text[
-                                ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
-                            stale = [
-                                npm.group(1)
-                                for npm in _NO_PASS_RE.finditer(block)
-                                if _norm_iface(npm.group(1)) in orphan_ifaces
-                            ]
-                            if stale:
-                                cleanup.append(ctx_header)
-                                for iface in stale:
-                                    cleanup.append(f'   passive-interface {iface}')
-                                cleanup.append('!')
-                    except Exception:
-                        pass  # OSPF cleanup is best-effort
+                        vid = int(vid_str)
+                    except ValueError:
+                        continue
+                    if vid in (4093, 4094):
+                        continue
+                    if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                        vlan_orphans.append({'vid': vid, 'name': vinfo.get('name', '')})
+            except Exception:
+                pass
 
-        return cleanup
+        # ── VRF orphans ────────────────────────────────────────────────────────
+        vrf_orphans = []
+        if config_text:
+            expected_vrfs = set()
+            for line in config_text.split('\n'):
+                vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
+                if vm:
+                    expected_vrfs.add(vm.group(1).lower())
+            try:
+                vrf_text        = self._text_cmd(ip, "show running-config | section vrf instance")
+                _VRF_INST_RE    = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
+                _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+__TA', re.MULTILINE)
+                for vm in _VRF_INST_RE.finditer(vrf_text):
+                    vrf_name = vm.group(1)
+                    next_m   = _VRF_INST_RE.search(vrf_text, vm.end())
+                    block    = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
+                    if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
+                        vrf_orphans.append({'name': vrf_name})
+            except Exception:
+                pass
+
+        # ── OSPF orphans ───────────────────────────────────────────────────────
+        # Stale 'no passive-interface X' in router ospf/ospf3 for orphaned interfaces.
+        # EOS configure sessions are additive — a fresh OSPF block does NOT remove
+        # pre-existing 'no passive-interface' sub-commands; must negate them explicitly.
+        ospf_orphans = []
+        if orphan_iface_names:
+            for ospf_kw in ('ospf', 'ospf3'):
+                try:
+                    ospf_text = self._text_cmd(
+                        ip, f'show running-config | section router {ospf_kw}')
+                    _CTX_RE = re.compile(
+                        rf'^(router {ospf_kw}\s+\d+(?:\s+vrf\s+\S+)?)', re.MULTILINE)
+                    _NO_PASS_RE = re.compile(
+                        r'^\s+no\s+passive-interface\s+(\S+)', re.MULTILINE)
+                    for ctx_m in _CTX_RE.finditer(ospf_text):
+                        ctx_header = ctx_m.group(1)
+                        next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
+                        block      = ospf_text[
+                            ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
+                        for npm in _NO_PASS_RE.finditer(block):
+                            if _norm_iface(npm.group(1)) in orphan_iface_names:
+                                ospf_orphans.append({'context': ctx_header, 'iface': npm.group(1)})
+                except Exception:
+                    pass
+
+        return {
+            'ok':         True,
+            'ta_total':   ta_total,
+            'matched':    matched,
+            'interfaces': orphan_ifaces,
+            'bgp':        bgp_orphans,
+            'vlans':      vlan_orphans,
+            'vrfs':       vrf_orphans,
+            'ospf':       ospf_orphans,
+        }
+
+    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
+        """Return EOS cleanup commands for stale __TA config not in config_text.
+        Thin wrapper around _detect_orphans + _orphans_to_cmds.
+        Returns [] on any failure — orphan cleanup is best-effort.
+        """
+        try:
+            orphans = self._detect_orphans(ip, config_text=config_text,
+                                           all_device_names=all_device_names)
+            if not orphans.get('ok'):
+                return []
+            return _orphans_to_cmds(orphans)
+        except Exception:
+            return []
 
     def _find_bgp_asn_change(self, ip, config_text):
         """Return (cmds, asn_info) where cmds=['no router bgp <old>'] and
@@ -1330,133 +1391,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if VERBOSE:
             print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
         return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
-
-    # ── Reconcile ─────────────────────────────────────────────────────────────
-    def _reconcile_device(self, ip, expected_ports, all_device_names=None, config_text=None):
-        """SSH to device, find ALL stale __TA config not in the expected/generated set.
-
-        Returns:
-          { ok, ta_total, matched,
-            orphans:     [{name, description, linkStatus, protocol}],
-            bgp_orphans: [{neighbor, description}],
-            vlan_orphans: [{vid, name}],
-            vrf_orphans:  [{name}] }
-
-        Interface check: __TA-tagged interfaces not in expected_ports.
-        BGP check: neighbors with __TA desc referencing device not in all_device_names.
-        VLAN check: __TA-named VLANs not in config_text (requires config_text).
-        VRF check: __TA-described VRFs not in config_text (requires config_text).
-        Skips: Loopback*, Management*, Vxlan*, Vlan4093, Vlan4094.
-        All checks are best-effort — failure returns empty list for that section.
-        """
-        _SKIP_RE = re.compile(
-            r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$',
-            re.IGNORECASE,
-        )
-
-        (raw,), _ = self._run_cmds(ip, "show interfaces description")
-        lines = raw.get("interfaceDescriptions", {})
-        ta_ifaces = []
-        for name, info in lines.items():
-            if _SKIP_RE.match(name):
-                continue
-            desc = info.get("description", "")
-            if "__TA" not in desc:
-                continue
-            ta_ifaces.append({
-                "name":        name,
-                "description": desc,
-                "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
-                "protocol":    info.get("lineProtocolStatus", ""),
-            })
-
-        expected_set = {_norm_iface(p) for p in expected_ports}
-        # Also accept interfaces present in the generated config (SVIs from svi_vlan_,
-        # sub-interfaces, etc.) — they are not physical topology ports but are valid.
-        if config_text:
-            for _line in config_text.splitlines():
-                _m = re.match(r'^interface\s+(\S+)', _line, re.IGNORECASE)
-                if _m:
-                    expected_set.add(_norm_iface(_m.group(1)))
-        orphans = [
-            iface for iface in ta_ifaces
-            if _norm_iface(iface["name"]) not in expected_set
-        ]
-
-        # BGP neighbor orphan check
-        bgp_orphans = []
-        if all_device_names:
-            known_devs = {d.lower() for d in all_device_names}
-            try:
-                bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
-                asn_m = re.search(r'^router bgp\s+(\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
-                asn = asn_m.group(1) if asn_m else None
-                _NEIGH_DESC_RE = re.compile(
-                    r'^\s*neighbor\s+(\S+)\s+description\s+(.+?__TA\S*.*)',
-                    re.MULTILINE,
-                )
-                _DEV_RE = re.compile(r'(?:Overlay to|To)\s+(\S+)', re.IGNORECASE)
-                for m in _NEIGH_DESC_RE.finditer(bgp_text):
-                    neighbor = m.group(1)
-                    desc     = m.group(2).strip()
-                    dev_m    = _DEV_RE.search(desc)
-                    if dev_m and dev_m.group(1).lower() not in known_devs:
-                        bgp_orphans.append({"neighbor": neighbor, "description": desc, "asn": asn})
-            except Exception:
-                pass
-
-        # VLAN orphan check — requires config_text to know expected VLANs
-        vlan_orphans = []
-        if config_text:
-            expected_vlans = set()
-            for line in config_text.split('\n'):
-                vm = re.match(r'^vlan\s+(\d+)\s*$', line, re.IGNORECASE)
-                if vm:
-                    expected_vlans.add(int(vm.group(1)))
-            try:
-                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
-                for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
-                    try:
-                        vid = int(vid_str)
-                    except ValueError:
-                        continue
-                    if vid in (4093, 4094):
-                        continue
-                    if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
-                        vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
-            except Exception:
-                pass
-
-        # VRF orphan check — requires config_text to know expected VRFs
-        vrf_orphans = []
-        if config_text:
-            expected_vrfs = set()
-            for line in config_text.split('\n'):
-                vm = re.match(r'^vrf\s+instance\s+(\S+)', line, re.IGNORECASE)
-                if vm:
-                    expected_vrfs.add(vm.group(1).lower())
-            try:
-                vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
-                _VRF_INST_RE = re.compile(r'^vrf instance\s+(\S+)', re.MULTILINE | re.IGNORECASE)
-                _VRF_DESC_TA_RE = re.compile(r'^\s+description\s+\S+\s+__TA', re.MULTILINE)
-                for vm in _VRF_INST_RE.finditer(vrf_text):
-                    vrf_name = vm.group(1)
-                    next_m = _VRF_INST_RE.search(vrf_text, vm.end())
-                    block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
-                    if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
-                        vrf_orphans.append({"name": vrf_name})
-            except Exception:
-                pass
-
-        return {
-            "ok":           True,
-            "ta_total":     len(ta_ifaces),
-            "matched":      len(ta_ifaces) - len(orphans),
-            "orphans":      orphans,
-            "bgp_orphans":  bgp_orphans,
-            "vlan_orphans": vlan_orphans,
-            "vrf_orphans":  vrf_orphans,
-        }
 
     # ── Parallel runner ───────────────────────────────────────────────────────
     def _run_parallel(self, ip_map, check_fn):

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.22 | 2026-04-30 13:08:38 -->
+<!-- TopoAssist v260430.23 | 2026-04-30 14:43:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.22";  // keep in sync with Code.gs
+const APP_VERSION = "260430.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -9965,6 +9965,40 @@ def _clean_ssh_err(err_text):
     return cleaned or err_text.strip()
 
 
+def _orphans_to_cmds(orphans):
+    """Convert _detect_orphans() result to flat EOS CLI cleanup commands."""
+    cmds = []
+    for o in orphans.get("interfaces", []):
+        name = o["name"]
+        if "." in name or re.match(r"^vlan\\d+$", name, re.IGNORECASE):
+            cmds.append(f"no interface {name}")
+        else:
+            cmds.append(f"default interface {name}")
+    bgp_by_asn = {}
+    for o in orphans.get("bgp", []):
+        asn = o.get("asn")
+        if asn:
+            bgp_by_asn.setdefault(asn, []).append(o["neighbor"])
+    for asn, neighbors in bgp_by_asn.items():
+        cmds.append(f"router bgp {asn}")
+        for n in neighbors:
+            cmds.append(f"   no neighbor {n}")
+        cmds.append("!")
+    for o in orphans.get("vlans", []):
+        cmds.append(f'no vlan {o["vid"]}')
+    for o in orphans.get("vrfs", []):
+        cmds.append(f'no vrf instance {o["name"]}')
+    ospf_by_ctx = {}
+    for o in orphans.get("ospf", []):
+        ospf_by_ctx.setdefault(o["context"], []).append(o["iface"])
+    for ctx, ifaces in ospf_by_ctx.items():
+        cmds.append(ctx)
+        for iface in ifaces:
+            cmds.append(f"   passive-interface {iface}")
+        cmds.append("!")
+    return cmds
+
+
 # -- Bridge HTTP handler --------------------------------------------------------
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -10065,7 +10099,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             results = {dev: None for dev in ip_map}
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
-            def run_reconcile(dev, entry):
+            def run_cleanup(dev, entry):
                 ip             = (entry.get("ip") or "").strip()
                 expected_ports = entry.get("ports", [])
                 config_text    = entry.get("config_text") or None
@@ -10073,22 +10107,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     with lock: results[dev] = {"ok": False, "error": "No IP configured"}; return
                 with sem:
                     try:
-                        res = self._reconcile_device(ip, expected_ports,
-                                                     all_device_names=all_device_names,
-                                                     config_text=config_text)
+                        res = self._detect_orphans(ip, config_text=config_text,
+                                                   all_device_names=all_device_names,
+                                                   expected_ports=expected_ports)
                         with lock: results[dev] = res
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                     except Exception as e:
                         with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-            threads = [threading.Thread(target=run_reconcile, args=(d, v), daemon=True)
+            threads = [threading.Thread(target=run_cleanup, args=(d, v), daemon=True)
                        for d, v in ip_map.items()]
             for t in threads: t.start()
             for t in threads: t.join(timeout=TIMEOUT + 5)
             with lock:
                 for dev in results:
                     if results[dev] is None:
-                        results[dev] = {"ok": False, "error": "Reconcile timed out"}
+                        results[dev] = {"ok": False, "error": "Cleanup timed out"}
             self._json(200, results)
         else:
             results = {}
@@ -10368,135 +10402,161 @@ class BridgeHandler(BaseHTTPRequestHandler):
         raise NotImplementedError(f"_run_cmds not supported for _cfg['transport']={_cfg['transport']!r}")
 
     # -- Orphan detection ------------------------------------------------------
-    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
-        """Return EOS cleanup commands for stale __TA config not in config_text.
+    def _detect_orphans(self, ip, config_text=None, all_device_names=None, expected_ports=None):
+        """Unified orphan detection -- used by push cleanup and Cleanup UI.
 
-        Interface orphans (physical/PO): default interface X
-        Interface orphans (sub-int/SVI): no interface X
-        BGP neighbor orphans (global context): router bgp ASN / no neighbor X
-          — only when all_device_names provided; orphan = referenced device gone.
-        Best-effort — returns [] on any failure."""
+        Returns:
+          { ok, ta_total, matched,
+            interfaces: [{name, description, linkStatus, protocol}],
+            bgp:        [{neighbor, description, asn}],
+            vlans:      [{vid, name}],
+            vrfs:       [{name}],
+            ospf:       [{context, iface}] }
+        """
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
-            return []
-        iface_descs = raw.get("interfaceDescriptions", {})
-        config_ifaces = set()
-        for line in config_text.split("\\n"):
-            m = re.match(r"^interface\s+(\S+)", line, re.IGNORECASE)
-            if m:
-                config_ifaces.add(_norm_iface(m.group(1)))
-        cleanup = []
+            return {"ok": False, "error": "show interfaces description failed"}
+        iface_descs = (raw or {}).get("interfaceDescriptions", {})
+
+        expected_set = {_norm_iface(p) for p in (expected_ports or [])}
+        if config_text:
+            for line in config_text.splitlines():
+                m = re.match(r"^interface\\s+(\\S+)", line, re.IGNORECASE)
+                if m:
+                    expected_set.add(_norm_iface(m.group(1)))
+
+        ta_total      = 0
+        orphan_ifaces = []
         for name, info in iface_descs.items():
             if _TA_ORPHAN_SKIP_RE.match(name):
                 continue
-            if "__TA" not in info.get("description", ""):
+            desc = info.get("description", "")
+            if "__TA" not in desc:
                 continue
-            if _norm_iface(name) in config_ifaces:
-                continue
-            if "." in name or re.match(r"^vlan\d+$", name, re.IGNORECASE):
-                cleanup.append(f"no interface {name}")
-            else:
-                cleanup.append(f"default interface {name}")
+            ta_total += 1
+            entry = {
+                "name":        name,
+                "description": desc,
+                "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
+                "protocol":    info.get("lineProtocolStatus", ""),
+            }
+            if _norm_iface(name) not in expected_set:
+                orphan_ifaces.append(entry)
+
+        orphan_iface_names = {_norm_iface(o["name"]) for o in orphan_ifaces}
+        matched = ta_total - len(orphan_ifaces)
+
+        # BGP neighbor orphans -- global context only
+        bgp_orphans = []
         if all_device_names:
-            asn_m = re.search(r"^router bgp\s+(\d+)", config_text, re.MULTILINE | re.IGNORECASE)
-            if asn_m:
-                asn = asn_m.group(1)
+            known_devs = {d.lower() for d in all_device_names}
+            try:
+                bgp_text   = self._text_cmd(ip, "show running-config | section router bgp")
+                asn_m      = re.search(r"^router bgp\\s+(\\d+)", bgp_text, re.MULTILINE | re.IGNORECASE)
+                asn        = asn_m.group(1) if asn_m else None
+                global_bgp = re.split(r"\\n\\s+vrf\\s+", bgp_text, maxsplit=1)[0]
+                _NEIGH_DESC_RE = re.compile(
+                    r"^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?__TA\\S*.*)",
+                    re.MULTILINE)
+                _DEV_RE = re.compile(r"(?:Overlay to|To)\\s+(\\S+)", re.IGNORECASE)
+                for m in _NEIGH_DESC_RE.finditer(global_bgp):
+                    neighbor = m.group(1)
+                    desc     = m.group(2).strip()
+                    dev_m    = _DEV_RE.search(desc)
+                    if dev_m and dev_m.group(1).lower() not in known_devs:
+                        bgp_orphans.append({"neighbor": neighbor, "description": desc, "asn": asn})
+            except Exception:
+                pass
+
+        # VLAN orphans
+        vlan_orphans = []
+        if config_text:
+            expected_vlans = set()
+            for line in config_text.split("\\n"):
+                vm = re.match(r"^vlan\\s+(\\d+)\\s*$", line, re.IGNORECASE)
+                if vm:
+                    expected_vlans.add(int(vm.group(1)))
+            try:
+                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+                for vid_str, vinfo in (vlan_raw or {}).get("vlans", {}).items():
+                    try:
+                        vid = int(vid_str)
+                    except ValueError:
+                        continue
+                    if vid in (4093, 4094):
+                        continue
+                    if "__TA" in vinfo.get("name", "") and vid not in expected_vlans:
+                        vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
+            except Exception:
+                pass
+
+        # VRF orphans
+        vrf_orphans = []
+        if config_text:
+            expected_vrfs = set()
+            for line in config_text.split("\\n"):
+                vm = re.match(r"^vrf\\s+instance\\s+(\\S+)", line, re.IGNORECASE)
+                if vm:
+                    expected_vrfs.add(vm.group(1).lower())
+            try:
+                vrf_text        = self._text_cmd(ip, "show running-config | section vrf instance")
+                _VRF_INST_RE    = re.compile(r"^vrf instance\\s+(\\S+)", re.MULTILINE | re.IGNORECASE)
+                _VRF_DESC_TA_RE = re.compile(r"^\\s+description\\s+\\S+\\s+__TA", re.MULTILINE)
+                for vm in _VRF_INST_RE.finditer(vrf_text):
+                    vrf_name = vm.group(1)
+                    next_m   = _VRF_INST_RE.search(vrf_text, vm.end())
+                    block    = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
+                    if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
+                        vrf_orphans.append({"name": vrf_name})
+            except Exception:
+                pass
+
+        # OSPF orphans
+        ospf_orphans = []
+        if orphan_iface_names:
+            for ospf_kw in ("ospf", "ospf3"):
                 try:
-                    bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
-                    global_bgp = re.split(r"\\n\\s+vrf\\s+", bgp_text, maxsplit=1)[0]
-                    known_devs = {d.lower() for d in all_device_names}
-                    _NEIGH_DESC_RE = re.compile(
-                        r"^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?__TA\\S*.*)",
+                    ospf_text = self._text_cmd(
+                        ip, f"show running-config | section router {ospf_kw}")
+                    _CTX_RE = re.compile(
+                        rf"^(router {ospf_kw}\\s+\\d+(?:\\s+vrf\\s+\\S+)?)",
                         re.MULTILINE)
-                    _DEV_RE = re.compile(r"(?:Overlay to|To)\\s+(\\S+)", re.IGNORECASE)
-                    stale = []
-                    for m in _NEIGH_DESC_RE.finditer(global_bgp):
-                        dev_m = _DEV_RE.search(m.group(2).strip())
-                        if dev_m and dev_m.group(1).lower() not in known_devs:
-                            stale.append(m.group(1))
-                    if stale:
-                        cleanup.append(f"router bgp {asn}")
-                        for neigh in stale:
-                            cleanup.append(f"   no neighbor {neigh}")
-                        cleanup.append("!")
+                    _NO_PASS_RE = re.compile(
+                        r"^\\s+no\\s+passive-interface\\s+(\\S+)", re.MULTILINE)
+                    for ctx_m in _CTX_RE.finditer(ospf_text):
+                        ctx_header = ctx_m.group(1)
+                        next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
+                        block      = ospf_text[
+                            ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
+                        for npm in _NO_PASS_RE.finditer(block):
+                            if _norm_iface(npm.group(1)) in orphan_iface_names:
+                                ospf_orphans.append({"context": ctx_header, "iface": npm.group(1)})
                 except Exception:
                     pass
-        # VLAN orphan cleanup — find __TA-named VLANs on device not in config_text.
-        # Skips 4093/4094 (MLAG). Uses show vlan | json for structured VLAN names.
-        expected_vlans = set()
-        for line in config_text.split("\\n"):
-            vm = re.match(r"^vlan\s+(\d+)\s*$", line, re.IGNORECASE)
-            if vm:
-                expected_vlans.add(int(vm.group(1)))
+
+        return {
+            "ok":         True,
+            "ta_total":   ta_total,
+            "matched":    matched,
+            "interfaces": orphan_ifaces,
+            "bgp":        bgp_orphans,
+            "vlans":      vlan_orphans,
+            "vrfs":       vrf_orphans,
+            "ospf":       ospf_orphans,
+        }
+
+    def _find_ta_orphans(self, ip, config_text, all_device_names=None):
+        """Thin wrapper around _detect_orphans + _orphans_to_cmds.
+        Returns [] on any failure -- orphan cleanup is best-effort."""
         try:
-            (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
-            for vid_str, vinfo in (vlan_raw or {}).get("vlans", {}).items():
-                try:
-                    vid = int(vid_str)
-                except ValueError:
-                    continue
-                if vid in (4093, 4094):
-                    continue
-                if "__TA" in vinfo.get("name", "") and vid not in expected_vlans:
-                    cleanup.append(f"no vlan {vid}")
+            orphans = self._detect_orphans(ip, config_text=config_text,
+                                           all_device_names=all_device_names)
+            if not orphans.get("ok"):
+                return []
+            return _orphans_to_cmds(orphans)
         except Exception:
-            pass  # VLAN cleanup is best-effort
-        # VRF orphan cleanup — find VRFs with '__TA' description not in config_text.
-        expected_vrfs = set()
-        for line in config_text.split("\\n"):
-            vm = re.match(r"^vrf\s+instance\s+(\S+)", line, re.IGNORECASE)
-            if vm:
-                expected_vrfs.add(vm.group(1).lower())
-        try:
-            vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
-            _VRF_INST_RE = re.compile(r"^vrf instance\s+(\S+)", re.MULTILINE | re.IGNORECASE)
-            _VRF_DESC_TA_RE = re.compile(r"^\s+description\s+\S+\s+__TA", re.MULTILINE)
-            for vm in _VRF_INST_RE.finditer(vrf_text):
-                vrf_name = vm.group(1)
-                next_m = _VRF_INST_RE.search(vrf_text, vm.end())
-                block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
-                if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
-                    cleanup.append(f"no vrf instance {vrf_name}")
-        except Exception:
-            pass  # VRF cleanup is best-effort
-        # OSPF/OSPFv3 cleanup — stale 'no passive-interface X' in router ospf/ospf3.
-        # EOS configure sessions are additive: a fresh OSPF block does NOT remove
-        # pre-existing 'no passive-interface' sub-commands — must negate them explicitly.
-        if cleanup:
-            orphan_ifaces = set()
-            for cmd in cleanup:
-                om = re.match(r"(?:default|no)\\s+interface\\s+(\\S+)", cmd)
-                if om:
-                    orphan_ifaces.add(_norm_iface(om.group(1)))
-            if orphan_ifaces:
-                for ospf_kw in ("ospf", "ospf3"):
-                    try:
-                        ospf_text = self._text_cmd(
-                            ip, f"show running-config | section router {ospf_kw}")
-                        _CTX_RE = re.compile(
-                            rf"^(router {ospf_kw}\\s+\\d+(?:\\s+vrf\\s+\\S+)?)",
-                            re.MULTILINE)
-                        _NO_PASS_RE = re.compile(
-                            r"^\\s+no\\s+passive-interface\\s+(\\S+)", re.MULTILINE)
-                        for ctx_m in _CTX_RE.finditer(ospf_text):
-                            ctx_header = ctx_m.group(1)
-                            next_ctx   = _CTX_RE.search(ospf_text, ctx_m.end())
-                            block      = ospf_text[
-                                ctx_m.start(): next_ctx.start() if next_ctx else len(ospf_text)]
-                            stale = [
-                                npm.group(1)
-                                for npm in _NO_PASS_RE.finditer(block)
-                                if _norm_iface(npm.group(1)) in orphan_ifaces
-                            ]
-                            if stale:
-                                cleanup.append(ctx_header)
-                                for iface in stale:
-                                    cleanup.append(f"   passive-interface {iface}")
-                                cleanup.append("!")
-                    except Exception:
-                        pass  # OSPF cleanup is best-effort
-        return cleanup
+            return []
 
     def _find_bgp_asn_change(self, ip, config_text):
         """Return ([cmd], asn_info) when the device's running BGP AS differs from
@@ -10520,123 +10580,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if VERBOSE:
             print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} -- prepending no router bgp {old_asn}")
         return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
-
-    def _reconcile_device(self, ip, expected_ports, all_device_names=None, config_text=None):
-        """SSH to device, find ALL stale __TA config not in the expected/generated set.
-
-        Returns:
-          { ok, ta_total, matched,
-            orphans:     [{name, description, linkStatus, protocol}],
-            bgp_orphans: [{neighbor, description, asn}],
-            vlan_orphans: [{vid, name}],
-            vrf_orphans:  [{name}] }
-        """
-        _SKIP_RE = re.compile(
-            r'^(?:Loopback|Management|Vxlan)\\d|^Vlan409[34]$',
-            re.IGNORECASE,
-        )
-
-        (raw,), _ = self._run_cmds(ip, "show interfaces description")
-        lines = raw.get("interfaceDescriptions", {})
-        ta_ifaces = []
-        for name, info in lines.items():
-            if _SKIP_RE.match(name):
-                continue
-            desc = info.get("description", "")
-            if "__TA" not in desc:
-                continue
-            ta_ifaces.append({
-                "name":        name,
-                "description": desc,
-                "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
-                "protocol":    info.get("lineProtocolStatus", ""),
-            })
-
-        expected_set = {_norm_iface(p) for p in expected_ports}
-        if config_text:
-            for _line in config_text.splitlines():
-                _m = re.match(r"^interface\\s+(\\S+)", _line, re.IGNORECASE)
-                if _m:
-                    expected_set.add(_norm_iface(_m.group(1)))
-        orphans = [
-            iface for iface in ta_ifaces
-            if _norm_iface(iface["name"]) not in expected_set
-        ]
-
-        # BGP neighbor orphan check
-        bgp_orphans = []
-        if all_device_names:
-            known_devs = {d.lower() for d in all_device_names}
-            try:
-                bgp_text = self._text_cmd(ip, "show running-config | section router bgp")
-                asn_m = re.search(r'^router bgp\\s+(\\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
-                asn = asn_m.group(1) if asn_m else None
-                _NEIGH_DESC_RE = re.compile(
-                    r'^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?__TA\\S*.*)',
-                    re.MULTILINE,
-                )
-                _DEV_RE = re.compile(r'(?:Overlay to|To)\\s+(\\S+)', re.IGNORECASE)
-                for m in _NEIGH_DESC_RE.finditer(bgp_text):
-                    neighbor = m.group(1)
-                    desc     = m.group(2).strip()
-                    dev_m    = _DEV_RE.search(desc)
-                    if dev_m and dev_m.group(1).lower() not in known_devs:
-                        bgp_orphans.append({"neighbor": neighbor, "description": desc, "asn": asn})
-            except Exception:
-                pass
-
-        # VLAN orphan check -- requires config_text to know expected VLANs
-        vlan_orphans = []
-        if config_text:
-            expected_vlans = set()
-            for line in config_text.split("\\n"):
-                vm = re.match(r'^vlan\\s+(\\d+)\\s*$', line, re.IGNORECASE)
-                if vm:
-                    expected_vlans.add(int(vm.group(1)))
-            try:
-                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
-                for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
-                    try:
-                        vid = int(vid_str)
-                    except ValueError:
-                        continue
-                    if vid in (4093, 4094):
-                        continue
-                    if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
-                        vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
-            except Exception:
-                pass
-
-        # VRF orphan check -- requires config_text to know expected VRFs
-        vrf_orphans = []
-        if config_text:
-            expected_vrfs = set()
-            for line in config_text.split("\\n"):
-                vm = re.match(r'^vrf\\s+instance\\s+(\\S+)', line, re.IGNORECASE)
-                if vm:
-                    expected_vrfs.add(vm.group(1).lower())
-            try:
-                vrf_text = self._text_cmd(ip, "show running-config | section vrf instance")
-                _VRF_INST_RE = re.compile(r'^vrf instance\\s+(\\S+)', re.MULTILINE | re.IGNORECASE)
-                _VRF_DESC_TA_RE = re.compile(r'^\\s+description\\s+\\S+\\s+__TA', re.MULTILINE)
-                for vm in _VRF_INST_RE.finditer(vrf_text):
-                    vrf_name = vm.group(1)
-                    next_m = _VRF_INST_RE.search(vrf_text, vm.end())
-                    block = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
-                    if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
-                        vrf_orphans.append({"name": vrf_name})
-            except Exception:
-                pass
-
-        return {
-            "ok":           True,
-            "ta_total":     len(ta_ifaces),
-            "matched":      len(ta_ifaces) - len(orphans),
-            "orphans":      orphans,
-            "bgp_orphans":  bgp_orphans,
-            "vlan_orphans": vlan_orphans,
-            "vrf_orphans":  vrf_orphans,
-        }
 
     # -- Per-device checks -----------------------------------------------------
     def _check_lldp(self, ip):
@@ -11729,10 +11672,13 @@ function _buildExpectedPortsPerDevice() {
   return result;
 }
 
-let _reconcileAbort = null;
+let _cleanupAbort     = null;
+let _cleanupResults   = {};
+let _cleanupIpMap     = {};
+let _cleanupItemStore = [];  // [{dev, type, data}] indexed by checkbox data-idx
 
-function _resetStopReconBtn() {
-  const b = document.getElementById('btnStopRecon');
+function _resetStopCleanupBtn() {
+  const b = document.getElementById('btnStopCleanup');
   if (!b) return;
   b.disabled = true;
   b.className = 'btn-mono genall-btn';
@@ -11740,14 +11686,13 @@ function _resetStopReconBtn() {
   b.onclick = null;
 }
 
-function runReconcile() {
+function runCleanup() {
   if (!currentData || !currentData.nodes) return;
-  const btn        = document.getElementById('btnGenAllReconcile');
+  const btn        = document.getElementById('btnGenAllCleanup');
   const reconPanel = document.getElementById('reconResults');
   const reconBody  = document.getElementById('reconResultsBody');
   if (!btn || !reconPanel || !reconBody) return;
 
-  // Respect Push Targets checkboxes — same filter as Push All
   const allArista = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   const devices   = allArista.filter(n => {
     const cb = document.getElementById('genAllDev_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_'));
@@ -11759,27 +11704,26 @@ function runReconcile() {
   }
 
   btn.disabled = true;
-  btn.textContent = 'Reconciling…';
+  btn.textContent = 'Cleaning up…';
   reconPanel.style.display = 'none';
 
-  _doRunReconcile(btn, reconPanel, reconBody, devices);
+  _doRunCleanup(btn, reconPanel, reconBody, devices);
 }
 
-async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
+async function _doRunCleanup(btn, reconPanel, reconBody, devices) {
   const mgmtIps        = _getLldpMgmtIps();
   const portsPerDev    = _buildExpectedPortsPerDevice();
   const allDeviceNames = devices.map(n => n.id);
 
-  // Activate Stop button
-  const stopBtn = document.getElementById('btnStopRecon');
-  _reconcileAbort = new AbortController();
+  const stopBtn = document.getElementById('btnStopCleanup');
+  _cleanupAbort = new AbortController();
   if (stopBtn) {
     stopBtn.disabled = false;
     stopBtn.className = 'btn-mono genall-btn stop-active';
-    stopBtn.textContent = 'Stop Reconcile';
+    stopBtn.textContent = 'Stop Cleanup';
     stopBtn.onclick = () => {
-      if (_reconcileAbort) _reconcileAbort.abort();
-      _resetStopReconBtn();
+      if (_cleanupAbort) _cleanupAbort.abort();
+      _resetStopCleanupBtn();
     };
   }
 
@@ -11789,88 +11733,138 @@ async function _doRunReconcile(btn, reconPanel, reconBody, devices) {
   reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">' +
     'Fetching configs for ' + devices.length + ' device' + (devices.length === 1 ? '' : 's') + '…</div>';
 
-  // Fetch generated config for each device (cache hit = instant) for VLAN/VRF expected sets
   let configResults;
   try {
     configResults = await Promise.all(devices.map(n => _fetchConfigForPush(n.id)));
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'Reconcile';
-    _resetStopReconBtn();
+    btn.textContent = 'Cleanup';
+    _resetStopCleanupBtn();
     reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Config fetch failed: ' + _esc(e.message) + '</div>';
     return;
   }
-  if (_reconcileAbort && _reconcileAbort.signal.aborted) {
+  if (_cleanupAbort && _cleanupAbort.signal.aborted) {
     btn.disabled = false;
-    btn.textContent = 'Reconcile';
-    _resetStopReconBtn();
-    reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile stopped.</div>';
+    btn.textContent = 'Cleanup';
+    _resetStopCleanupBtn();
+    reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Cleanup stopped.</div>';
     return;
   }
 
   const configMap = {};
   configResults.forEach(({ deviceName, config }) => { configMap[deviceName] = config || ''; });
 
-  const ipMap = {};
+  _cleanupIpMap = {};
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const inp = document.getElementById('bridgeIp_' + safeId);
     let ip  = (inp ? inp.value.trim() : '') || mgmtIps[n.id] || '';
-    if (!ip) ip = n.id;  // hostname fallback — device_bridge.py resolves via DNS
-    ipMap[n.id] = { ip, ports: portsPerDev[n.id] || [], config_text: configMap[n.id] || '' };
+    if (!ip) ip = n.id;
+    _cleanupIpMap[n.id] = { ip, ports: portsPerDev[n.id] || [], config_text: configMap[n.id] || '' };
   });
 
-  btn.textContent = 'Reconciling…';
+  btn.textContent = 'Detecting orphans…';
   reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Querying ' +
     devices.length + ' device' + (devices.length === 1 ? '' : 's') + ' for stale __TA config…</div>';
 
   const _guard = setTimeout(() => {
     btn.disabled = false;
-    btn.textContent = 'Reconcile';
-    _resetStopReconBtn();
-    reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile timed out — try again.</div>';
+    btn.textContent = 'Cleanup';
+    _resetStopCleanupBtn();
+    reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Cleanup timed out — try again.</div>';
   }, 60000);
 
   fetch(BRIDGE_URL + '/reconcile', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ ipMap, allDeviceNames }),
-    signal:  _reconcileAbort.signal,
+    body:    JSON.stringify({ ipMap: _cleanupIpMap, allDeviceNames }),
+    signal:  _cleanupAbort.signal,
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
       clearTimeout(_guard);
       btn.disabled = false;
-      btn.textContent = 'Reconcile';
-      _resetStopReconBtn();
+      btn.textContent = 'Cleanup';
+      _resetStopCleanupBtn();
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      const vals = Object.values(results);
+      _cleanupResults = results;
+      const vals      = Object.values(results);
       const anyFailed = vals.some(r => !r || !r.ok);
-      const total = vals.reduce((s, r) => s + (r && r.ok
-        ? (r.orphans || []).length + (r.bgp_orphans || []).length +
-          (r.vlan_orphans || []).length + (r.vrf_orphans || []).length
+      const total     = vals.reduce((s, r) => s + (r && r.ok
+        ? (r.interfaces || []).length + (r.bgp || []).length +
+          (r.vlans || []).length + (r.vrfs || []).length + (r.ospf || []).length
         : 0), 0);
       if (!anyFailed && total === 0) {
-        reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All __TA config accounted for — no stale interfaces, BGP neighbors, VLANs, or VRFs.</div>';
+        reconBody.innerHTML = '<div style="color:#15803d;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">All __TA config accounted for — no stale interfaces, BGP neighbors, VLANs, VRFs, or OSPF entries.</div>';
       } else {
-        _renderReconcileResults(results, ipMap, reconBody);
+        _renderCleanupResults(results, reconBody);
       }
     })
     .catch(err => {
       clearTimeout(_guard);
       btn.disabled = false;
-      btn.textContent = 'Reconcile';
-      _resetStopReconBtn();
+      btn.textContent = 'Cleanup';
+      _resetStopCleanupBtn();
       if (err.name === 'AbortError') {
-        reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile stopped.</div>';
+        reconBody.innerHTML = '<div style="color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Cleanup stopped.</div>';
       } else {
-        reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Reconcile error: ' + _esc(err.message) + '</div>';
+        reconBody.innerHTML = '<div style="color:#dc2626;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px 0;">Cleanup error: ' + _esc(err.message) + '</div>';
       }
     });
 }
 
-function _renderReconcileResults(results, ipMap, reconBody) {
-  let html = '';
+function _buildCleanupConfig(items) {
+  const lines = [];
+  items.filter(x => x.type === 'interface').forEach(x => {
+    const n = x.data.name;
+    if (n.includes('.') || /^vlan\d+$/i.test(n)) lines.push('no interface ' + n);
+    else lines.push('default interface ' + n);
+  });
+  const bgpByAsn = {};
+  items.filter(x => x.type === 'bgp').forEach(x => {
+    if (x.data.asn) { bgpByAsn[x.data.asn] = bgpByAsn[x.data.asn] || []; bgpByAsn[x.data.asn].push(x.data.neighbor); }
+  });
+  Object.entries(bgpByAsn).forEach(([asn, ns]) => {
+    lines.push('router bgp ' + asn);
+    ns.forEach(n => lines.push('   no neighbor ' + n));
+    lines.push('!');
+  });
+  items.filter(x => x.type === 'vlan').forEach(x => lines.push('no vlan ' + x.data.vid));
+  items.filter(x => x.type === 'vrf').forEach(x => lines.push('no vrf instance ' + x.data.name));
+  const ospfByCtx = {};
+  items.filter(x => x.type === 'ospf').forEach(x => {
+    ospfByCtx[x.data.context] = ospfByCtx[x.data.context] || [];
+    ospfByCtx[x.data.context].push(x.data.iface);
+  });
+  Object.entries(ospfByCtx).forEach(([ctx, ifaces]) => {
+    lines.push(ctx);
+    ifaces.forEach(i => lines.push('   passive-interface ' + i));
+    lines.push('!');
+  });
+  return lines.join('\n') + '\n';
+}
+
+function _renderCleanupResults(results, reconBody) {
+  _cleanupItemStore = [];
+
+  function addItem(dev, type, data, labelHtml, badgeHtml) {
+    const idx = _cleanupItemStore.length;
+    _cleanupItemStore.push({ dev, type, data });
+    return '<div class="bridge-orphan-row" style="display:flex;align-items:center;gap:6px;padding:3px 0;">' +
+      '<label style="display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;min-width:0;">' +
+      '<input type="checkbox" class="recon-item-cb" data-dev="' + _esc(dev) + '" data-idx="' + idx + '" onchange="updateReconSelCount()">' +
+      '<span style="display:flex;gap:6px;align-items:center;min-width:0;overflow:hidden;">' + labelHtml + '</span>' +
+      '</label>' + badgeHtml + '</div>';
+  }
+
+  let html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">' +
+    '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-family:\'JetBrains Mono\',monospace;font-size:11px;user-select:none;-webkit-user-select:none;">' +
+    '<input type="checkbox" id="reconSelectAll" onchange="toggleReconSelectAll()"> Select All</label>' +
+    '<button id="btnCleanSelected" class="btn-mono" onclick="runCleanSelected()" disabled ' +
+    'style="font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;">Clean Selected (0)</button>' +
+    '<button class="btn-mono" onclick="runCleanAll()" ' +
+    'style="font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;">Clean All</button>' +
+    '</div>';
 
   Object.entries(results).forEach(([dev, r]) => {
     html += '<div class="bridge-recon-dev">';
@@ -11879,13 +11873,20 @@ function _renderReconcileResults(results, ipMap, reconBody) {
               '<span class="bridge-recon-counts" style="color:#dc2626;">' +
               _esc(r ? r.error : 'no response') + '</span></div>';
     } else {
-      const ip           = (ipMap[dev] && ipMap[dev].ip) || '';
-      const ifaceOrphans = r.orphans || [];
-      const bgpOrphans   = r.bgp_orphans || [];
-      const vlanOrphans  = r.vlan_orphans || [];
-      const vrfOrphans   = r.vrf_orphans || [];
-      const totalStale   = ifaceOrphans.length + bgpOrphans.length + vlanOrphans.length + vrfOrphans.length;
-      html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
+      const ifaceOrphans = r.interfaces || [];
+      const bgpOrphans   = r.bgp || [];
+      const vlanOrphans  = r.vlans || [];
+      const vrfOrphans   = r.vrfs || [];
+      const ospfOrphans  = r.ospf || [];
+      const totalStale   = ifaceOrphans.length + bgpOrphans.length + vlanOrphans.length + vrfOrphans.length + ospfOrphans.length;
+
+      html += '<div class="bridge-recon-dev-hdr" style="display:flex;align-items:center;gap:6px;">';
+      if (totalStale > 0) {
+        html += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;-webkit-user-select:none;">' +
+                '<input type="checkbox" class="recon-dev-cb" data-dev="' + _esc(dev) + '" onchange="toggleReconDevItems(\'' + _esc(dev) + '\')">' +
+                '</label>';
+      }
+      html += '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:700;user-select:none;-webkit-user-select:none;">' + _esc(dev) + '</span>' +
               '<span class="bridge-recon-counts">' +
               (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
               '</span></div>';
@@ -11894,72 +11895,54 @@ function _renderReconcileResults(results, ipMap, reconBody) {
         html += '<div class="bridge-recon-ok-msg">All __TA config accounted for.</div>';
       } else {
         if (ifaceOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale Interfaces</div>';
-          html += '<div class="bridge-orphan-list">';
+          html += '<div class="bridge-recon-sub-hdr">Stale Interfaces</div><div class="bridge-orphan-list">';
           ifaceOrphans.forEach(o => {
-            const proto = (o.linkStatus || o.protocol || '').toLowerCase();
+            const proto    = (o.linkStatus || o.protocol || '').toLowerCase();
             const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
-            html += '<div class="bridge-orphan-row">' +
-                    '<div class="bridge-orphan-info">' +
-                    '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
-                    '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
-                    '</div>' +
-                    '<span class="bridge-link-badge ' + badgeCls + '">' + _esc(proto || 'unk') + '</span>' +
-                    '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.name)) + ',this)">' +
-                    'Remove</button>' +
-                    '</div>';
+            html += addItem(dev, 'interface', o,
+              '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
+              '<span class="bridge-link-badge ' + badgeCls + '" style="flex-shrink:0;">' + _esc(proto || 'unk') + '</span>');
           });
           html += '</div>';
         }
         if (bgpOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale BGP Neighbors</div>';
-          html += '<div class="bridge-orphan-list">';
+          html += '<div class="bridge-recon-sub-hdr">Stale BGP Neighbors</div><div class="bridge-orphan-list">';
           bgpOrphans.forEach(o => {
-            html += '<div class="bridge-orphan-row">' +
-                    '<div class="bridge-orphan-info">' +
-                    '<span class="bridge-orphan-name">' + _esc(o.neighbor) + '</span>' +
-                    '<span class="bridge-orphan-desc">' + _esc(o.description) + '</span>' +
-                    '</div>' +
-                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>' +
-                    '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureBgpOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.neighbor)) + ',' + _esc(JSON.stringify(o.asn)) + ',this)">' +
-                    'Remove</button>' +
-                    '</div>';
+            html += addItem(dev, 'bgp', o,
+              '<span class="bridge-orphan-name">' + _esc(o.neighbor) + '</span>' +
+              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
+              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>');
           });
           html += '</div>';
         }
         if (vlanOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale VLANs</div>';
-          html += '<div class="bridge-orphan-list">';
+          html += '<div class="bridge-recon-sub-hdr">Stale VLANs</div><div class="bridge-orphan-list">';
           vlanOrphans.forEach(o => {
-            html += '<div class="bridge-orphan-row">' +
-                    '<div class="bridge-orphan-info">' +
-                    '<span class="bridge-orphan-name">VLAN ' + _esc(String(o.vid)) + '</span>' +
-                    '<span class="bridge-orphan-desc">' + _esc(o.name) + '</span>' +
-                    '</div>' +
-                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>' +
-                    '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureVlanOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + o.vid + ',this)">' +
-                    'Remove</button>' +
-                    '</div>';
+            html += addItem(dev, 'vlan', o,
+              '<span class="bridge-orphan-name">VLAN ' + _esc(String(o.vid)) + '</span>' +
+              '<span class="bridge-orphan-desc">' + _esc(o.name) + '</span>',
+              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>');
           });
           html += '</div>';
         }
         if (vrfOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale VRFs</div>';
-          html += '<div class="bridge-orphan-list">';
+          html += '<div class="bridge-recon-sub-hdr">Stale VRFs</div><div class="bridge-orphan-list">';
           vrfOrphans.forEach(o => {
-            html += '<div class="bridge-orphan-row">' +
-                    '<div class="bridge-orphan-info">' +
-                    '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
-                    '<span class="bridge-orphan-desc">vrf instance ' + _esc(o.name) + ' __TA</span>' +
-                    '</div>' +
-                    '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>' +
-                    '<button class="btn-unconfigure" ' +
-                    'onclick="unconfigureVrfOrphan(' + _esc(JSON.stringify(dev)) + ',' + _esc(JSON.stringify(ip)) + ',' + _esc(JSON.stringify(o.name)) + ',this)">' +
-                    'Remove</button>' +
-                    '</div>';
+            html += addItem(dev, 'vrf', o,
+              '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+              '<span class="bridge-orphan-desc">vrf instance ' + _esc(o.name) + ' __TA</span>',
+              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>');
+          });
+          html += '</div>';
+        }
+        if (ospfOrphans.length) {
+          html += '<div class="bridge-recon-sub-hdr">Stale OSPF Passive-Interfaces</div><div class="bridge-orphan-list">';
+          ospfOrphans.forEach(o => {
+            html += addItem(dev, 'ospf', o,
+              '<span class="bridge-orphan-name">' + _esc(o.iface) + '</span>' +
+              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.context) + '</span>',
+              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">OSPF</span>');
           });
           html += '</div>';
         }
@@ -11969,101 +11952,95 @@ function _renderReconcileResults(results, ipMap, reconBody) {
   });
 
   reconBody.innerHTML = html || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No results.</div>';
+  updateReconSelCount();
 }
 
-// Determine the EOS cleanup command for an orphan interface.
-//   Sub-interface (Et25/1.100): no interface Et25/1.100
-//   SVI (VlanX):                no interface VlanX
-//   Physical/PO:                default interface Et25/1
-function _orphanCleanupConfig(portName) {
-  if (portName.includes('.')) return 'no interface ' + portName + '\n';
-  if (/^vlan\d+$/i.test(portName)) return 'no interface ' + portName + '\n';
-  return 'default interface ' + portName + '\n';
+function toggleReconSelectAll() {
+  const master = document.getElementById('reconSelectAll');
+  if (!master) return;
+  document.querySelectorAll('.recon-item-cb').forEach(cb => { cb.checked = master.checked; });
+  document.querySelectorAll('.recon-dev-cb').forEach(cb => { cb.checked = master.checked; });
+  updateReconSelCount();
 }
 
-// Fully remove an orphan __TA interface from the device.
-function unconfigureOrphan(dev, ip, portName, btn) {
-  if (!ip) { alert('No IP configured for ' + dev + ' — enter it in the Devices section.'); return; }
-  const isSub  = portName.includes('.');
-  const isSVI  = /^vlan\d+$/i.test(portName);
-  const action = isSub || isSVI ? 'remove (no interface)' : 'reset to default (default interface)';
-  if (!confirm(portName + ' on ' + dev + ' is not in topology.\n\nAction: ' + action + '\n\nProceed?')) return;
-  const origText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Working…';
+function toggleReconDevItems(dev) {
+  const devCb = document.querySelector('.recon-dev-cb[data-dev="' + dev + '"]');
+  if (!devCb) return;
+  document.querySelectorAll('.recon-item-cb[data-dev="' + dev + '"]').forEach(cb => { cb.checked = devCb.checked; });
+  updateReconSelCount();
+}
 
-  const config = _orphanCleanupConfig(portName);
+function updateReconSelCount() {
+  const selected = document.querySelectorAll('.recon-item-cb:checked').length;
+  const total    = document.querySelectorAll('.recon-item-cb').length;
+  const btn = document.getElementById('btnCleanSelected');
+  if (btn) { btn.disabled = selected === 0; btn.textContent = 'Clean Selected (' + selected + ')'; }
+  const master = document.getElementById('reconSelectAll');
+  if (master) master.checked = total > 0 && selected === total;
+}
+
+function runCleanAll() {
+  const devItems = {};
+  Object.entries(_cleanupResults).forEach(([dev, r]) => {
+    if (!r || !r.ok) return;
+    const items = [];
+    (r.interfaces || []).forEach(d => items.push({ type: 'interface', data: d }));
+    (r.bgp        || []).forEach(d => items.push({ type: 'bgp',       data: d }));
+    (r.vlans      || []).forEach(d => items.push({ type: 'vlan',      data: d }));
+    (r.vrfs       || []).forEach(d => items.push({ type: 'vrf',       data: d }));
+    (r.ospf       || []).forEach(d => items.push({ type: 'ospf',      data: d }));
+    if (items.length) devItems[dev] = items;
+  });
+  _doCleanDevItems(devItems);
+}
+
+function runCleanSelected() {
+  const devItems = {};
+  document.querySelectorAll('.recon-item-cb:checked').forEach(cb => {
+    const entry = _cleanupItemStore[parseInt(cb.dataset.idx, 10)];
+    if (!entry) return;
+    devItems[entry.dev] = devItems[entry.dev] || [];
+    devItems[entry.dev].push({ type: entry.type, data: entry.data });
+  });
+  _doCleanDevItems(devItems);
+}
+
+function _doCleanDevItems(devItems) {
+  const total    = Object.values(devItems).reduce((s, a) => s + a.length, 0);
+  const devCount = Object.keys(devItems).length;
+  if (!total) { setStatus('Nothing to clean', 'status-warn'); return; }
+  if (!confirm('Clean ' + total + ' orphan' + (total > 1 ? 's' : '') + ' on ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '?\n\nThis pushes EOS commands to remove stale __TA config.')) return;
+
+  const ipMap = {};
+  Object.entries(devItems).forEach(([dev, items]) => {
+    const ip = (_cleanupIpMap[dev] || {}).ip || '';
+    ipMap[dev] = { ip, config: _buildCleanupConfig(items) };
+  });
+
+  setStatus('Pushing cleanup to ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '…', 'status-info');
+  const _guard = setTimeout(() => setStatus('Cleanup push timed out — try again', 'status-error'), 60000);
+
   fetch(BRIDGE_URL + '/pushconfig', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ ipMap: { [dev]: { ip, config } } }),
+    body:    JSON.stringify({ ipMap }),
   })
     .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
     .then(results => {
-      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); btn.disabled = false; btn.textContent = origText; return; }
-      const res = results[dev];
-      if (res && res.ok) {
-        btn.closest('.bridge-orphan-row').style.opacity = '0.4';
-        btn.textContent = 'Done';
+      clearTimeout(_guard);
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
+      const failed = Object.entries(results).filter(([, r]) => !r || !r.ok);
+      if (failed.length) {
+        setStatus('Cleanup: ' + failed.length + ' device(s) failed — ' + failed.map(([d, r]) => d + ': ' + (r ? r.error : 'no response')).join('; '), 'status-error');
       } else {
-        btn.disabled = false;
-        btn.textContent = origText;
-        alert('Error unconfiguring ' + portName + ': ' + (res ? res.error : 'no response'));
+        setStatus('Cleanup done — ' + total + ' orphan' + (total > 1 ? 's' : '') + ' removed from ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '.', 'status-ok');
+        document.querySelectorAll('.recon-item-cb:checked').forEach(cb => {
+          const row = cb.closest('.bridge-orphan-row');
+          if (row) row.style.opacity = '0.4';
+        });
       }
     })
-    .catch(err => {
-      btn.disabled = false;
-      btn.textContent = origText;
-      alert('Network error: ' + err.message);
-    });
-}
-
-// Shared helper — push a raw EOS config string to a single device and handle row feedback.
-function _pushOrphanConfig(dev, ip, config, btn, label) {
-  if (!ip) { alert('No IP configured for ' + dev + ' — enter it in the Devices section.'); return; }
-  if (!confirm(label + ' on ' + dev + '\n\nProceed?')) return;
-  const origText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Working…';
-  fetch(BRIDGE_URL + '/pushconfig', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ ipMap: { [dev]: { ip, config } } }),
-  })
-    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(results => {
-      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); btn.disabled = false; btn.textContent = origText; return; }
-      const res = results[dev];
-      if (res && res.ok) {
-        btn.closest('.bridge-orphan-row').style.opacity = '0.4';
-        btn.textContent = 'Done';
-      } else {
-        btn.disabled = false;
-        btn.textContent = origText;
-        alert('Error: ' + (res ? res.error : 'no response'));
-      }
-    })
-    .catch(err => { btn.disabled = false; btn.textContent = origText; alert('Network error: ' + err.message); });
-}
-
-function unconfigureBgpOrphan(dev, ip, neighbor, asn, btn) {
-  if (!asn) {
-    alert('Cannot remove BGP neighbor ' + neighbor + ' on ' + dev + ' — ASN unknown.\nRun Push to auto-clean instead.');
-    return;
-  }
-  const config = 'router bgp ' + asn + '\n no neighbor ' + neighbor + '\n!\n';
-  _pushOrphanConfig(dev, ip, config, btn,
-    'Remove BGP neighbor ' + neighbor + ' from router bgp ' + asn);
-}
-
-function unconfigureVlanOrphan(dev, ip, vid, btn) {
-  _pushOrphanConfig(dev, ip, 'no vlan ' + vid + '\n', btn,
-    'Remove VLAN ' + vid + ' (no vlan ' + vid + ')');
-}
-
-function unconfigureVrfOrphan(dev, ip, vrfName, btn) {
-  _pushOrphanConfig(dev, ip, 'no vrf instance ' + vrfName + '\n', btn,
-    'Remove VRF ' + vrfName + ' (no vrf instance ' + vrfName + ')');
+    .catch(err => { clearTimeout(_guard); setStatus('Cleanup error: ' + err.message, 'status-error'); });
 }
 
 // Delete the sheet row AND unconfigure the interface on device via bridge.
