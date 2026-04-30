@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.70 | 2026-04-30 18:03:33 -->
+<!-- TopoAssist v260430.71 | 2026-04-30 18:08:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.70";  // keep in sync with Code.gs
+const APP_VERSION = "260430.71";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10106,9 +10106,10 @@ def _diagnose_eapi_errors(self, ip, lines, eos_errs):
                     break
             reason = reasons.get((block_cmd, failed_cmd))
             if reason:
+                indented = reason.replace('\\n', '\\n  ')
                 result[i] = re.sub(
                     r':\\s*could not run command\\s*$',
-                    ': ' + reason,
+                    ':\\n  ' + indented,
                     err, flags=re.IGNORECASE,
                 )
         return result

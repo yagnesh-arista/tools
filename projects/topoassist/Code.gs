@@ -1,10 +1,10 @@
-// TopoAssist v260430.70 | 2026-04-30 18:03:33
+// TopoAssist v260430.71 | 2026-04-30 18:07:16
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.70";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260430.71";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4380,7 +4380,7 @@ function getDeviceConfig(deviceName) {
       const _high = Math.max(_myLoId, _peerLoId);
       const _lo1Ip  = `${_low}.${_low}.${_high}.${_high}`;
       const _lo1Ip6 = `${_low}:${_low}:${_high}::${_high}`;
-      const _lo1Lines = [`interface Loopback1`, ` description VTEP_MLAG_SHARED`, ` ip address ${_lo1Ip}/32`];
+      const _lo1Lines = [`interface Loopback1`, ` description VTEP_MLAG_SHARED __TA`, ` ip address ${_lo1Ip}/32`];
       if (settings.vxlan_ipv6) { _lo1Lines.push(` no ipv6 address`); _lo1Lines.push(` ipv6 address ${_lo1Ip6}/128`); }
       configMap["000_LO1"] = { full: _lo1Lines.join('\n'), blockStatus: "Loopback1 (MLAG VTEP)" };
     }
@@ -4765,6 +4765,7 @@ function generateSystemBlocks(deviceId, vrfs, vlans, netSettings, ipPrefs) {
   const lo0Lines = [
     `! System IDs (Derived from ID: ${deviceId}${loBase ? ` + base ${loBase}` : ''})`,
     `interface Loopback0`,
+    ` description ROUTER_ID __TA`,
     ` ip address ${loId}.${loId}.${loId}.${loId}/32`,
   ];
   if (hasP2pIpv6) {
@@ -5730,13 +5731,13 @@ function generateMlagConfig(localId, partnerObj, peerLinkName, bgpNeighbors, isV
   mlagLines.push("!");
 
   mlagLines.push("interface Vlan4094");
-  mlagLines.push(" description MLAG_CONTROL_PLANE");
+  mlagLines.push(" description MLAG_CONTROL_PLANE __TA");
   mlagLines.push(" no autostate");
   mlagLines.push(` ip address 169.254.0.${localIpBit}/31`);
   mlagLines.push(" no shutdown");
   mlagLines.push("!");
   mlagLines.push("interface Vlan4093");
-  mlagLines.push(" description MLAG_L3_PEERING");
+  mlagLines.push(" description MLAG_L3_PEERING __TA");
   mlagLines.push(" no autostate");
   mlagLines.push(` ip address 169.254.1.${localIpBit}/31`);
   if (hasMlagIpv6) mlagLines.push(` ipv6 address 169:254:1::${localIpBit}/127`);
@@ -6317,6 +6318,7 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
     myVtepIpV6 = `${low}:${low}:${high}::${high}`;
 
     lines.push("interface Vxlan1");
+    lines.push(" description VTEP __TA");
     lines.push(" vxlan source-interface Loopback0");
     lines.push(" vxlan mlag source-interface Loopback1");
     lines.push(" vxlan virtual-router encapsulation mac-address mlag-system-id");
@@ -6328,6 +6330,7 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
     myVtepIpV6 = `${myLoId}:${myLoId}:${myLoId}::${myLoId}`;
 
     lines.push("interface Vxlan1");
+    lines.push(" description VTEP __TA");
     lines.push(" vxlan source-interface Loopback0");
   }
 
