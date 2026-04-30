@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.51 | 2026-04-30 17:04:37 -->
+<!-- TopoAssist v260430.52 | 2026-04-30 17:12:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.51";  // keep in sync with Code.gs
+const APP_VERSION = "260430.52";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15128,6 +15128,12 @@ function copyAllConfig() {
   _copyToClipboard(currentRawConfig, document.getElementById('btnCfgCopyAll'));
 }
 
+function _copyDeviceConfigByIndex(idx, btnEl) {
+  const cfg = window._generateAllConfigs && window._generateAllConfigs[idx];
+  if (!cfg) return;
+  _copyToClipboard('! === ' + cfg.name + ' ===\n' + cfg.text, btnEl);
+}
+
 function copyInterfaceConfig() {
   const lines = (currentRawConfig || '').split('\n');
   const out = [];
@@ -15567,11 +15573,13 @@ function runGenerateAll() {
       let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">'
         + '<div style="color:#10b981;font-weight:700;margin-bottom:12px;">\u2713 ' + configs.length + ' device(s) \u2192 written to <b>' + result.sheetName + '</b> tab'
         + '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + new Date().toTimeString().slice(0,8) + '</span></div>';
-      configs.forEach(function(c) {
+      configs.forEach(function(c, idx) {
         const lines = c.text ? c.text.split('\n').length : 0;
-        html += '<div style="display:flex;justify-content:space-between;padding:4px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">'
-          + '<span style="color:var(--text-main);">' + c.name + '</span>'
-          + '<span style="color:var(--text-muted);">' + lines + ' lines</span></div>';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">'
+          + '<span style="color:var(--text-main);flex:1;">' + c.name + '</span>'
+          + '<span style="color:var(--text-muted);flex-shrink:0;">' + lines + ' lines</span>'
+          + '<button style="font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:0 6px;height:18px;line-height:18px;box-sizing:border-box;border:1px solid var(--border,#334155);border-radius:3px;background:transparent;color:var(--text-muted);cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none;" onclick="_copyDeviceConfigByIndex(' + idx + ', this)">Copy</button>'
+          + '</div>';
       });
       html += '</div>';
       document.getElementById('generateAllLeft').innerHTML = html;
