@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.35 | 2026-04-30 15:46:59
+# topoassist v260430.36 | 2026-04-30 15:50:25
 """
 TopoAssist Device Bridge
 ========================
@@ -431,6 +431,40 @@ def _extract_eos_errors(text):
                 if _BLOCK_CMD_RE.match(cmd):
                     current_block = cmd
     return errors, warnings
+
+
+_EAPI_FAILED_CMD_RE = re.compile(r"CLI command \d+ of \d+ '([^']+)' failed", re.IGNORECASE)
+
+def _annotate_eapi_errors(errors, lines):
+    """Inject block-context lines into eAPI error list.
+
+    eAPI errors report 'CLI command N of M <cmd> failed: reason' but carry no
+    surrounding block context (no PTY prompt echoes). This function parses the
+    failed command name from each error, locates it in lines[], scans backwards
+    for the nearest block-entering command (interface / router bgp / etc.), and
+    injects that block command as a context line immediately before the error so
+    the UI can show 'interface Ethernet5 → ip address ... failed' instead of just
+    the raw error with no interface name.
+    """
+    result = []
+    last_injected_block = ''
+    for err in errors:
+        m = _EAPI_FAILED_CMD_RE.search(err)
+        if m:
+            failed_cmd = m.group(1).strip()
+            block_cmd  = ''
+            for i, line in enumerate(lines):
+                if line.strip() == failed_cmd:
+                    for j in range(i - 1, -1, -1):
+                        if _BLOCK_CMD_RE.match(lines[j].strip()):
+                            block_cmd = lines[j].strip()
+                            break
+                    break  # first occurrence of the failed command
+            if block_cmd and block_cmd != last_injected_block:
+                result.append(block_cmd)
+                last_injected_block = block_cmd
+        result.append(err)
+    return result
 
 
 # ── Section-level cleaners for idempotent push ────────────────────────────────
