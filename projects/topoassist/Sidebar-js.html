@@ -1,7 +1,7 @@
-<!-- TopoAssist v260430.8 | 2026-04-30 10:10:23 -->
+<!-- TopoAssist v260430.9 | 2026-04-30 10:10:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260430.8";  // keep in sync with Code.gs
+const APP_VERSION = "260430.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5609,6 +5609,17 @@ window.topologyKeyHandler = function (event) {
             cfgSearch.value = "";
             cfgSearch.dispatchEvent(new Event('input')); // Update the list
             cfgSearch.focus(); // Keep focus
+            return; // Stop here, do NOT close the modal
+          }
+        }
+
+        // 🛑 FIX: If Global Config Modal is open & Find bar has text -> Clear first!
+        if (id === "globalCfgModal") {
+          const gcfgSearch = document.getElementById("globalCfgSearch");
+          if (gcfgSearch && gcfgSearch.value.trim() !== "") {
+            gcfgSearch.value = "";
+            gcfgSearch.dispatchEvent(new Event('input'));
+            gcfgSearch.focus();
             return; // Stop here, do NOT close the modal
           }
         }
