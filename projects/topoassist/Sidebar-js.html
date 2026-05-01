@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.14 | 2026-05-01 14:26:47 -->
+<!-- TopoAssist v260501.15 | 2026-05-01 14:46:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.14";  // keep in sync with Code.gs
+const APP_VERSION = "260501.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4828,6 +4828,25 @@ function saveIpConfig() {
   }
   if (p2p_v6.endsWith(':') || gw_v6_first.endsWith(':') || gw_v6_last.endsWith(':')) {
     alert("Validation Error (IPv6)\n\nHextets cannot end with a colon."); return;
+  }
+
+  // Mask prefix-length range validation
+  const _pfx = (id, def) => { const v = parseInt((document.getElementById(id).value || def).replace('/', '')); return isNaN(v) ? parseInt(def.replace('/','')) : v; };
+  const gwV4Pfx  = _pfx("ip_gw_v4_mask",  '/24');
+  const gwV6Pfx  = _pfx("ip_gw_v6_mask",  '/64');
+  const p2pV4Pfx = _pfx("ip_p2p_v4_mask", '/24');
+  const p2pV6Pfx = _pfx("ip_p2p_v6_mask", '/64');
+  if (gwV4Pfx < 16 || gwV4Pfx > 32) {
+    alert("Validation Error (GW IPv4 Mask)\n\nSupported range: /16 – /32\n  /16–/23 → wide-prefix formula\n  /24–/32 → standard formula"); return;
+  }
+  if (gwV6Pfx < 32 || gwV6Pfx > 128) {
+    alert("Validation Error (GW IPv6 Mask)\n\nSupported range: /32 – /128\n  /32–/63 → wide-prefix formula\n  /64–/128 → standard formula"); return;
+  }
+  if (p2pV4Pfx < 24 || p2pV4Pfx > 32) {
+    alert("Validation Error (P2P IPv4 Mask)\n\nSupported range: /24 – /32"); return;
+  }
+  if (p2pV6Pfx < 64 || p2pV6Pfx > 128) {
+    alert("Validation Error (P2P IPv6 Mask)\n\nSupported range: /64 – /128"); return;
   }
 
   // Collect per-device GW overrides and warn on MLAG mismatch before saving
