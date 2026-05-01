@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.7 | 2026-05-01 12:18:19 -->
+<!-- TopoAssist v260501.8 | 2026-05-01 12:27:13 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.7";  // keep in sync with Code.gs
+const APP_VERSION = "260501.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16310,11 +16310,7 @@ function _getTopologyDevices() {
       if (id && !seen.has(id)) { seen.add(id); devices.push(id); }
     });
   }
-  return devices.sort((a, b) => {
-    const ia = (allDevicesData[a] && allDevicesData[a].sheetIndex) || 0;
-    const ib = (allDevicesData[b] && allDevicesData[b].sheetIndex) || 0;
-    return ia - ib || a.localeCompare(b, undefined, { numeric: true });
-  });
+  return devices;
 }
 
 function _computeGroupBounds(memberIds, padding) {
@@ -16666,6 +16662,13 @@ function openGroupRectModal() {
     const existing = editingGroupRectId ? groupRects.find(r => r.id === editingGroupRectId) : null;
     const currentMembers = new Set((existing && existing.members || []).map(m => (m || "").toLowerCase()));
     const devices = _getTopologyDevices();
+    devices.sort((a, b) => {
+      const ia = parseInt((allDevicesData[a] || {}).sheetIndex);
+      const ib = parseInt((allDevicesData[b] || {}).sheetIndex);
+      const sa = isNaN(ia) ? Number.MAX_SAFE_INTEGER : ia;
+      const sb = isNaN(ib) ? Number.MAX_SAFE_INTEGER : ib;
+      return (sa - sb) || a.localeCompare(b, undefined, { numeric: true });
+    });
     if (!devices.length) {
       memberList.innerHTML = '<span style="color:#94a3b8;font-style:italic;font-family:\'JetBrains Mono\',monospace;font-size:11px;">No devices in topology</span>';
     } else {
