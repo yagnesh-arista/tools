@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.29 | 2026-05-01 19:18:04 -->
+<!-- TopoAssist v260501.30 | 2026-05-01 19:36:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.29";  // keep in sync with Code.gs
+const APP_VERSION = "260501.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4950,23 +4950,13 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_ep2_mac").value    = prefs.ep2_mac    || "";
     document.getElementById("ip_ep2_subnet").value = prefs.ep2_subnet || "";
 
-    // 2. Build per-device GW override table (must happen before snapshot)
-    _buildGwDeviceOverrideTable(prefs.arista_devices || [], prefs.gw_device_overrides || {});
-
-    // 3. Capture Snapshot (after table built — captures override inputs too)
-    initialIpState = getCurrentIpState();
-
-    // 4. Bind Listeners to ALL inputs
+    // 2. Bind Listeners to ALL inputs (per-device override table excluded — _buildGwDeviceOverrideTable sets those)
     const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
-    inputs.forEach(el => el.oninput = checkIpDirty);
+    inputs.forEach(el => { if (!el.closest('#gwDeviceOverrideTable')) el.oninput = checkIpDirty; });
     // EP NH fields also trigger snake warning re-check
     ['ip_ep1_nh', 'ip_ep2_nh'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.oninput = () => { checkIpDirty(); checkSnakeTrafficWarning(); };
-    });
-    // GW override inputs also trigger MLAG mismatch highlight
-    document.querySelectorAll('#gwDeviceOverrideTable input[type="text"]').forEach(el => {
-      el.oninput = () => { checkIpDirty(); _highlightGwMlagMismatch(); };
     });
     // Mask validation + GW example updater (override generic handler set above)
     [['ip_p2p_v4_mask','err_p2p_v4_mask',24,32],['ip_p2p_v6_mask','err_p2p_v6_mask',64,128]].forEach(([id,errId,min,max]) => {
@@ -4982,7 +4972,13 @@ function openIpConfigModal(btn) {
       el.oninput = () => { checkIpDirty(); _updateGwExample(); };
     });
 
-    // 4. Reset Button Visuals
+    // 3. Build per-device GW override table (after blanket binding — sets its own rich handlers)
+    _buildGwDeviceOverrideTable(prefs.arista_devices || [], prefs.gw_device_overrides || {});
+
+    // 4. Capture Snapshot (after table built — captures override inputs too)
+    initialIpState = getCurrentIpState();
+
+    // 5. Reset Button Visuals
     checkIpDirty();
     checkSnakeTrafficWarning();
     _updateGwExample();
