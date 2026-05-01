@@ -1,10 +1,10 @@
-// TopoAssist v260501.12 | 2026-05-01 13:36:12
+// TopoAssist v260501.13 | 2026-05-01 13:57:38
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.12";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.13";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4528,9 +4528,15 @@ function getDeviceConfig(deviceName) {
         if (apSviVlans.length > 0) {
           apSviVlans.forEach((v, i) => {
             vx1VlanSet.add(parseInt(v));
+            const oct2 = Math.floor(v / 100);
+            const oct3 = v % 100;
             const gwPfx_vx1 = parseInt((cfg2.gw_v4_mask || '/24').replace('/', '')) || 24;
-            const oct2 = gwPfx_vx1 < 24 ? Math.floor(v / 256) : Math.floor(v / 100);
-            const oct3 = gwPfx_vx1 < 24 ? v % 256 : v % 100;
+            const vx1Pv4Px = gwPfx_vx1 < 24
+              ? `${cfg2.gw_v4_first}${oct2}.${oct3}.0`
+              : `${cfg2.gw_v4_first}.${oct2}.${oct3}`;
+            const vx1Pv6Px = gwPfx_vx1 < 24
+              ? `${cfg2.gw_v6_first}${oct2}:${oct3}:0`
+              : `${cfg2.gw_v6_first}:${oct2}:${oct3}`;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
             const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
             // GW command: anycast (ip address virtual) vs VARP (ip address + ip virtual-router address)
@@ -4540,12 +4546,12 @@ function getDeviceConfig(deviceName) {
             const vx1PhySuffixV4 = parseInt(cfg2.gw_v4_last) + deviceSheetIndex;
             const vx1PhySuffixV6 = parseInt(cfg2.gw_v6_last) + deviceSheetIndex;
             const gwCmdV4 = useAnycast
-              ? ` ip address virtual ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`
-              : ` ip address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${vx1PhySuffixV4}${cfg2.gw_v4_mask}\n ip virtual-router address ${cfg2.gw_v4_first}.${oct2}.${oct3}.${cfg2.gw_v4_last}`;
+              ? ` ip address virtual ${vx1Pv4Px}.${cfg2.gw_v4_last}${cfg2.gw_v4_mask}`
+              : ` ip address ${vx1Pv4Px}.${vx1PhySuffixV4}${cfg2.gw_v4_mask}\n ip virtual-router address ${vx1Pv4Px}.${cfg2.gw_v4_last}`;
             const gwCmdV6 = gwHasIpv6vx1
               ? (useAnycast
-                  ? ` ipv6 address virtual ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`
-                  : ` ipv6 address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${vx1PhySuffixV6}${cfg2.gw_v6_mask}\n ipv6 virtual-router address ${cfg2.gw_v6_first}:${oct2}:${oct3}::${cfg2.gw_v6_last}`)
+                  ? ` ipv6 address virtual ${vx1Pv6Px}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`
+                  : ` ipv6 address ${vx1Pv6Px}::${vx1PhySuffixV6}${cfg2.gw_v6_mask}\n ipv6 virtual-router address ${vx1Pv6Px}::${cfg2.gw_v6_last}`)
               : null;
             sviLines.push([
               "!",
@@ -5165,11 +5171,17 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     // Non-LEAF (SPINE/HARNESS/etc): plain ip address using gwLastV4/V6 (operator-configured last
     // octet) — same value the operator set for the virtual/anycast IP, applied as a plain address.
     else if (ipType.includes("gw")) {
-      // For prefix < /24 (/23–/16): bit-split VLAN into high/low byte so each VLAN gets a unique IP.
-      // oct2=floor(vlan/256), oct3=vlan%256 — covers VLANs 1–4094 within first+second octet space.
-      // For /24 and tighter: keep legacy decimal-split (oct2=floor/100, oct3=%100) unchanged.
+      // Wide prefix (< /24): merge gw_v4_first+oct2 into the first octet, shift oct3 to second, fix
+      // the third to 0. Formula: {first}{oct2}.{oct3}.0.{last}/{mask}
+      // e.g. gw_v4_first="1", VLAN 4050 → 140.50.0.1/16  (oct2=40, oct3=50; "1"+"40"="140")
+      // Standard /24+: {first}.{oct2}.{oct3}.{last}/{mask} — unchanged (backwards compatible).
       const gwPfx = parseInt((cfg.gw_v4_mask || '/24').replace('/', '')) || 24;
-      if (gwPfx < 24) { oct2 = Math.floor(val / 256); oct3 = val % 256; }
+      const ipv4Px = gwPfx < 24
+        ? `${cfg.gw_v4_first}${oct2}.${oct3}.0`
+        : `${cfg.gw_v4_first}.${oct2}.${oct3}`;
+      const ipv6Px = gwPfx < 24
+        ? `${cfg.gw_v6_first}${oct2}:${oct3}:0`
+        : `${cfg.gw_v6_first}:${oct2}:${oct3}`;
       // Description prefix: ANYCAST_GW for LEAF+EVPN, GW for everything else.
       // Always includes VRF when set. Never just __TA alone.
       const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
@@ -5179,8 +5191,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         lines.push(` description -> ${gwDesc} __TA`);
         lines.push(` default ip address`, ` default ip address virtual`, ` default ip virtual-router address`,
                    ` default ipv6 address`, ` default ipv6 address virtual`, ` default ipv6 virtual-router address`);
-        if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${gwLastV4}${cfg.gw_v4_mask}`);
-        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${gwLastV6}${cfg.gw_v6_mask}`); }
+        if (gwHasIpv4) lines.push(` ip address ${ipv4Px}.${gwLastV4}${cfg.gw_v4_mask}`);
+        if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${ipv6Px}::${gwLastV6}${cfg.gw_v6_mask}`); }
       } else {
       if (isEvpnActive) {
         const gwDesc = vrf4Desc ? `ANYCAST_GW_${vrf4Desc}_${val}` : `ANYCAST_GW_${val}`;
@@ -5195,37 +5207,37 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
       if (d.isMlag) {
         if (useAnycastGW) {
           // EVPN anycast: single shared virtual IP — same on all VTEPs, no physical IP needed
-          if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
+          if (gwHasIpv4) lines.push(` ip address virtual ${ipv4Px}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${ipv6Px}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         } else {
           // MLAG VARP (or no EVPN): per-device physical IP + shared virtual-router address
           // phySuffix = gwLast + sheetIndex guarantees unique-per-peer and ≠ virtual IP
           const phySuffixV4 = gwLastV4 + sheetIndex;
           const phySuffixV6 = gwLastV6 + sheetIndex;
-          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`); }
-          if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
-          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+          if (gwHasIpv4) lines.push(` ip address ${ipv4Px}.${phySuffixV4}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${ipv6Px}::${phySuffixV6}${cfg.gw_v6_mask}`); }
+          if (gwHasIpv4) lines.push(` ip virtual-router address ${ipv4Px}.${cfg.gw_v4_last}`);
+          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${ipv6Px}::${cfg.gw_v6_last}`);
         }
       } else {
         if (useAnycastGW) {
           // Standalone EVPN anycast: ip address virtual (shared across all VTEPs)
-          if (gwHasIpv4) lines.push(` ip address virtual ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
+          if (gwHasIpv4) lines.push(` ip address virtual ${ipv4Px}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) { lines.push(` default ipv6 address virtual`); lines.push(` ipv6 address virtual ${ipv6Px}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         } else if (useVarpGW) {
           // Standalone VARP: unique physical IP (gwLast + sheetIndex) + shared virtual-router address.
           // Physical MUST differ from virtual — mirrors MLAG VARP pattern.
           // ip virtual-router mac-address is in the global block (generateGlobalBlock).
           const phySuffixV4 = gwLastV4 + sheetIndex;
           const phySuffixV6 = gwLastV6 + sheetIndex;
-          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${phySuffixV4}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${phySuffixV6}${cfg.gw_v6_mask}`); }
-          if (gwHasIpv4) lines.push(` ip virtual-router address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}`);
-          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}`);
+          if (gwHasIpv4) lines.push(` ip address ${ipv4Px}.${phySuffixV4}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${ipv6Px}::${phySuffixV6}${cfg.gw_v6_mask}`); }
+          if (gwHasIpv4) lines.push(` ip virtual-router address ${ipv4Px}.${cfg.gw_v4_last}`);
+          if (gwHasIpv6) lines.push(` ipv6 virtual-router address ${ipv6Px}::${cfg.gw_v6_last}`);
         } else {
           // Non-EVPN standalone: legacy behavior (plain ip address)
-          if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
-          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
+          if (gwHasIpv4) lines.push(` ip address ${ipv4Px}.${cfg.gw_v4_last}${cfg.gw_v4_mask}`);
+          if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${ipv6Px}::${cfg.gw_v6_last}${cfg.gw_v6_mask}`); }
         }
       }
       } // end LEAF else

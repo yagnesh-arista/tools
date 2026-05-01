@@ -1,4 +1,4 @@
-// TopoAssist v260501.12 | 2026-05-01 13:37:25
+// TopoAssist v260501.13 | 2026-05-01 13:58:23
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1239,35 +1239,38 @@ function test_generateComplexL3BlockGwType() {
     results.push(t("generateComplexL3Block — vx1VlanSet: VLAN excluded, no interface block", !out.includes("interface Vlan10"), true));
   }
 
-  // 6. Wide-prefix /16 GW formula: bit-split VLAN into high/low byte (oct2=floor/256, oct3=%256)
-  // VLAN 4050, /16: oct2=floor(4050/256)=15, oct3=4050%256=210 → IP 10.0.15.210.1/16
+  // 6. Wide-prefix /16: merge first+oct2 into first octet, oct3 to second, third=0.
+  // gw_v4_first="1", VLAN 4050: oct2=floor(4050/100)=40, oct3=4050%100=50
+  // → ipv4Px="140.50.0" → IP 140.50.0.1/16
   {
-    const cfg16 = Object.assign({}, cfg, { gw_v4_mask: '/16' });
+    const cfg16 = Object.assign({}, cfg, { gw_v4_first: '1', gw_v4_mask: '/16' });
     const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
                 gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
                 int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
     const out = generateComplexL3Block('Et1', makeD({ vlan_: '4050', svi_vlan_: 'yes' }), cfg16, s, null);
-    results.push(t("generateComplexL3Block — /16: VLAN 4050 → oct2=15, oct3=210", out.includes("10.0.15.210.1"), true));
-    results.push(t("generateComplexL3Block — /16: mask is /16 in output",           out.includes("/16"),           true));
+    results.push(t("generateComplexL3Block — /16: VLAN 4050 → 140.50.0.1", out.includes("140.50.0.1"), true));
+    results.push(t("generateComplexL3Block — /16: mask is /16 in output",    out.includes("/16"),        true));
   }
 
-  // 6b. Wide-prefix /23: VLAN 1520 → oct2=floor(1520/256)=5, oct3=1520%256=240 → IP 10.0.5.240.1/23
+  // 6b. Wide-prefix /23 (same formula as /16): gw_v4_first="1", VLAN 1520
+  // oct2=floor(1520/100)=15, oct3=1520%100=20 → ipv4Px="115.20.0" → IP 115.20.0.1/23
   {
-    const cfg23 = Object.assign({}, cfg, { gw_v4_mask: '/23' });
+    const cfg23 = Object.assign({}, cfg, { gw_v4_first: '1', gw_v4_mask: '/23' });
     const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
                 gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
                 int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
     const out = generateComplexL3Block('Et1', makeD({ vlan_: '1520', svi_vlan_: 'yes' }), cfg23, s, null);
-    results.push(t("generateComplexL3Block — /23: VLAN 1520 → oct2=5, oct3=240", out.includes("10.0.5.240.1"), true));
+    results.push(t("generateComplexL3Block — /23: VLAN 1520 → 115.20.0.1", out.includes("115.20.0.1"), true));
   }
 
-  // 6c. /24 decimal-split unchanged: VLAN 10 → oct2=0, oct3=10 → IP 10.0.0.10.1/24
+  // 6c. /24 decimal-split: gw_v4_first="100", VLAN 4050 → 100.40.50.1/24 (unchanged)
   {
+    const cfg24 = Object.assign({}, cfg, { gw_v4_first: '100', gw_v4_mask: '/24' });
     const s = { gw_ipv4: true, gw_ipv6: false, evpn_ipv4: true, evpn_ipv6: false,
                 gw_l3_type: 'anycast', ospf_ipv4: false, ospf_ipv6: false,
                 int_ipv4: true, int_ipv6: false, int_ipv6_unnum: false };
-    const out = generateComplexL3Block('Et1', makeD(), cfg, s, null);
-    results.push(t("generateComplexL3Block — /24: VLAN 10 → oct2=0, oct3=10 (decimal-split unchanged)", out.includes("10.0.0.10.1"), true));
+    const out = generateComplexL3Block('Et1', makeD({ vlan_: '4050', svi_vlan_: 'yes' }), cfg24, s, null);
+    results.push(t("generateComplexL3Block — /24: VLAN 4050 → 100.40.50.1 (decimal-split)", out.includes("100.40.50.1"), true));
   }
 
   return results;
