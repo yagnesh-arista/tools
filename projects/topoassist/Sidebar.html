@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.3 | 2026-05-01 11:30:56 -->
+<!-- TopoAssist v260501.4 | 2026-05-01 11:47:10 -->
 <!DOCTYPE html>
 <html>
 
@@ -742,16 +742,15 @@
         </div>
       </div>
 
-      <div class="section-header ip-section-toggle" id="gwAdvancedHeader" onclick="_toggleGwAdvanced()" title="Per-device GW first/last overrides">
-        PER-DEVICE GW OVERRIDES
-        <svg id="gwAdvancedChevron" width="10" height="10" viewBox="0 0 10 10" fill="none" style="margin-left:auto;flex-shrink:0;transition:transform 0.15s">
-          <path d="M2 3l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <div class="gw-subsection-toggle" id="gwAdvancedHeader" onclick="_toggleGwAdvanced()" title="Per-device GW overrides">
+        <svg id="gwAdvancedChevron" width="9" height="9" viewBox="0 0 10 10" fill="none" style="flex-shrink:0;transition:transform 0.15s">
+          <path d="M2 3l3 3 3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
+        Per-device overrides
       </div>
-      <div id="gwAdvancedSection" style="display:none">
-        <div class="info-box info-box--dim" style="margin:6px 0 8px 0;font-size:11px">
-          Override GW first/last octets per device. Empty = inherit global default above.
-          MLAG pairs must share the same first octet.
+      <div id="gwAdvancedSection" style="display:none;padding-left:12px">
+        <div class="info-box info-box--dim" style="margin:4px 0 6px 0;font-size:11px">
+          Override GW octets per device. Empty = inherit global. MLAG pairs must share the same first octet.
         </div>
         <div id="gwDeviceOverrideTable"></div>
       </div>

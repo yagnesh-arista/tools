@@ -1,10 +1,10 @@
-// TopoAssist v260501.3 | 2026-05-01 11:30:27
+// TopoAssist v260501.4 | 2026-05-01 11:46:48
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.4";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3003,25 +3003,10 @@ function getIpPreferences() {
 function getIpPreferencesForModal() {
   const prefs = getIpPreferences();
   prefs.gw_device_overrides = getGwDeviceOverrides();
-
-  // Build ordered Arista device list (names only — device order matches sheet column order)
-  const mlagPeers = getDeviceMlagPeers();
-  const nonArista = getNonAristaList();
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DATA);
-  const aristaDevices = [];
-  if (sheet) {
-    const row2 = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const seen = new Set();
-    row2.forEach(h => {
-      const s = String(h);
-      if (!s.startsWith('int_')) return;
-      const name = s.substring(4);
-      if (!name || seen.has(name) || nonArista.includes(name)) return;
-      seen.add(name);
-      aristaDevices.push({ name, mlagPeer: mlagPeers[name] || null });
-    });
-  }
-  prefs.arista_devices = aristaDevices;
+  // Full device list including id, rack, hostname — used to build per-device GW override table
+  prefs.arista_devices = getExistingDevices()
+    .filter(d => d.type !== 'non-arista')
+    .map(d => ({ name: d.name, id: d.sheetIndex, hostname: d.hostname || '', rack: d.rack || '', mlagPeer: d.mlagPeer || null }));
   return prefs;
 }
 
@@ -3034,7 +3019,7 @@ function saveGwDeviceOverrides(overrides) {
   // Only persist entries that have at least one non-empty field
   const clean = {};
   Object.entries(overrides || {}).forEach(([dev, vals]) => {
-    if (vals.v4_first || vals.v4_last || vals.v6_first || vals.v6_last) {
+    if (vals.v4_first || vals.v4_last || vals.v4_mask || vals.v6_first || vals.v6_last || vals.v6_mask) {
       clean[dev] = vals;
     }
   });
@@ -4356,8 +4341,10 @@ function getDeviceConfig(deviceName) {
     const _gwOv = getGwDeviceOverrides()[deviceName] || {};
     if (_gwOv.v4_first) ipPrefs.gw_v4_first = _gwOv.v4_first;
     if (_gwOv.v4_last)  ipPrefs.gw_v4_last  = _gwOv.v4_last;
+    if (_gwOv.v4_mask)  ipPrefs.gw_v4_mask  = _gwOv.v4_mask;
     if (_gwOv.v6_first) ipPrefs.gw_v6_first  = _gwOv.v6_first;
     if (_gwOv.v6_last)  ipPrefs.gw_v6_last   = _gwOv.v6_last;
+    if (_gwOv.v6_mask)  ipPrefs.gw_v6_mask   = _gwOv.v6_mask;
     const settings = getNetworkSettings();
 
     // FEATURE FLAGS (derived from per-family settings flags)

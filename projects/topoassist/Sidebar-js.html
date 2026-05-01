@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.3 | 2026-05-01 11:34:45 -->
+<!-- TopoAssist v260501.4 | 2026-05-01 11:47:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.3";  // keep in sync with Code.gs
+const APP_VERSION = "260501.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4931,24 +4931,34 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
     return;
   }
 
+  const colHdr = t => `<span class="gw-ov-col-hdr">${t}</span>`;
   let html = '<div class="gw-ov-row gw-ov-header">' +
     '<span class="gw-ov-devname"></span>' +
-    '<span class="gw-ov-col-hdr">IPv4 First</span>' +
-    '<span class="gw-ov-col-hdr">IPv4 Last</span>' +
-    '<span class="gw-ov-col-hdr">IPv6 First</span>' +
-    '<span class="gw-ov-col-hdr">IPv6 Last</span>' +
+    colHdr('v4 First') + colHdr('v4 Last') + colHdr('v4 Mask') +
+    colHdr('v6 First') + colHdr('v6 Last') + colHdr('v6 Mask') +
     '</div>';
 
   const shown = new Set();
+  let currentRack = null;
+
   devices.forEach(dev => {
     if (shown.has(dev.name)) return;
+
+    // Rack group header when rack changes
+    const rack = dev.rack || '';
+    if (rack !== currentRack) {
+      currentRack = rack;
+      if (rack) html += `<div class="gw-ov-rack-header">${rack}</div>`;
+    }
+
     shown.add(dev.name);
-    const isFirst = !!dev.mlagPeer;
-    html += _gwDeviceRow(dev.name, overrides[dev.name] || {}, isFirst, false);
+    html += _gwDeviceRow(dev, overrides[dev.name] || {}, !!dev.mlagPeer, false);
+
+    // Immediately follow with MLAG peer
     if (dev.mlagPeer && !shown.has(dev.mlagPeer)) {
       shown.add(dev.mlagPeer);
       const peerDev = devices.find(d => d.name === dev.mlagPeer);
-      if (peerDev) html += _gwDeviceRow(dev.mlagPeer, overrides[dev.mlagPeer] || {}, true, true);
+      if (peerDev) html += _gwDeviceRow(peerDev, overrides[dev.mlagPeer] || {}, true, true);
     }
   });
 
@@ -4959,18 +4969,22 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
   _highlightGwMlagMismatch();
 }
 
-function _gwDeviceRow(name, ov, hasMlag, isPeer) {
+function _gwDeviceRow(dev, ov, hasMlag, isPeer) {
+  const name   = dev.name;
+  const idTag  = dev.id ? `<span class="gw-ov-dev-id">[${dev.id}]</span>` : '';
   const rowCls = 'gw-ov-row' + (hasMlag ? ' gw-ov-mlag' + (isPeer ? ' gw-ov-mlag-peer' : ' gw-ov-mlag-first') : '');
   const badge  = hasMlag ? '<span class="gw-ov-mlag-badge">[M]</span>' : '';
   const inp = (field, val, ph) =>
     `<input type="text" id="gw_ov_${name}_${field}" value="${val || ''}" placeholder="${ph}"` +
-    ` style="width:48px;font-family:'JetBrains Mono',monospace;font-size:11px;box-sizing:border-box">`;
+    ` style="font-family:'JetBrains Mono',monospace;font-size:11px;box-sizing:border-box">`;
   return `<div class="${rowCls}" data-dev="${name}">` +
-    `<span class="gw-ov-devname">${badge}<span class="gw-ov-devname-text">${name}</span></span>` +
-    `<span class="gw-ov-cell">${inp('v4_first', ov.v4_first, '—')}</span>` +
+    `<span class="gw-ov-devname">${badge}${idTag}<span class="gw-ov-devname-text">${name}</span></span>` +
+    `<span class="gw-ov-cell gw-ov-cell-first">${inp('v4_first', ov.v4_first, '—')}</span>` +
     `<span class="gw-ov-cell">${inp('v4_last',  ov.v4_last,  '—')}</span>` +
-    `<span class="gw-ov-cell">${inp('v6_first', ov.v6_first, '—')}</span>` +
+    `<span class="gw-ov-cell gw-ov-cell-mask">${inp('v4_mask',  ov.v4_mask,  '—')}</span>` +
+    `<span class="gw-ov-cell gw-ov-cell-first">${inp('v6_first', ov.v6_first, '—')}</span>` +
     `<span class="gw-ov-cell">${inp('v6_last',  ov.v6_last,  '—')}</span>` +
+    `<span class="gw-ov-cell gw-ov-cell-mask">${inp('v6_mask',  ov.v6_mask,  '—')}</span>` +
     '</div>';
 }
 
@@ -4980,8 +4994,8 @@ function _readGwDeviceOverrides() {
     const name = row.getAttribute('data-dev');
     if (!name) return;
     const g = f => ((document.getElementById('gw_ov_' + name + '_' + f) || {}).value || '').trim();
-    const vals = { v4_first: g('v4_first'), v4_last: g('v4_last'), v6_first: g('v6_first'), v6_last: g('v6_last') };
-    if (vals.v4_first || vals.v4_last || vals.v6_first || vals.v6_last) overrides[name] = vals;
+    const vals = { v4_first: g('v4_first'), v4_last: g('v4_last'), v4_mask: g('v4_mask'), v6_first: g('v6_first'), v6_last: g('v6_last'), v6_mask: g('v6_mask') };
+    if (vals.v4_first || vals.v4_last || vals.v4_mask || vals.v6_first || vals.v6_last || vals.v6_mask) overrides[name] = vals;
   });
   return overrides;
 }

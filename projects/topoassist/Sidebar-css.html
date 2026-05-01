@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.3 | 2026-05-01 11:35:21 -->
+<!-- TopoAssist v260501.4 | 2026-05-01 11:48:39 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3959,21 +3959,40 @@
     gap: 6px;
   }
 
-  /* ── Per-device GW override toggle header ── */
-  .ip-section-toggle {
+  /* ── Per-device GW subsection toggle (nested under GATEWAY section) ── */
+  .gw-subsection-toggle {
     display: flex;
     align-items: center;
+    gap: 5px;
     cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    padding: 4px 0 4px 2px;
     user-select: none;
     -webkit-user-select: none;
   }
-  .ip-section-toggle:hover { color: var(--text-main); }
+  .gw-subsection-toggle:hover { color: #3b82f6; }
 
   /* ── Per-device GW override table ── */
+  .gw-ov-rack-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    padding: 6px 0 2px 0;
+    border-bottom: 1px solid var(--border-light, #e2e8f0);
+    margin-bottom: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
   .gw-ov-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     padding: 2px 0;
     font-family: 'JetBrains Mono', monospace;
   }
@@ -3981,15 +4000,22 @@
   .gw-ov-devname {
     display: flex;
     align-items: center;
-    gap: 4px;
-    min-width: 100px;
+    gap: 3px;
+    width: 120px;
     flex-shrink: 0;
     font-size: 11px;
     font-weight: 600;
     color: var(--text-main);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .gw-ov-dev-id {
+    font-size: 9px;
+    font-weight: 700;
+    color: #94a3b8;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -4003,15 +4029,13 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  .gw-ov-cell {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-  }
+  /* Mask columns slightly narrower than first/last */
+  .gw-ov-cell { flex: 1; display: flex; justify-content: center; }
+  .gw-ov-cell-mask { flex: 0.9; }
   .gw-ov-cell input {
-    width: 48px;
+    width: 100%;
     height: 20px;
-    padding: 0 4px;
+    padding: 0 3px;
     line-height: 20px;
     box-sizing: border-box;
     font-family: 'JetBrains Mono', monospace;
@@ -4021,21 +4045,22 @@
     border: 1px solid var(--border);
     border-radius: 3px;
     outline: none;
+    min-width: 0;
   }
   .gw-ov-cell input::placeholder { color: #cbd5e1; font-style: italic; }
   .gw-ov-cell input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
   .gw-ov-cell input.gw-ov-mismatch { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.12); }
 
   /* MLAG pair visual — colored left border connecting paired rows */
-  .gw-ov-mlag-first { border-left: 2px solid #3b82f6; padding-left: 4px; }
-  .gw-ov-mlag-peer  { border-left: 2px solid #3b82f6; padding-left: 4px; margin-bottom: 4px; }
+  .gw-ov-mlag-first { border-left: 2px solid #3b82f6; padding-left: 3px; }
+  .gw-ov-mlag-peer  { border-left: 2px solid #3b82f6; padding-left: 3px; margin-bottom: 4px; }
   .gw-ov-mlag-badge {
     font-size: 9px;
     font-weight: 700;
     color: #3b82f6;
     background: rgba(59,130,246,0.08);
     border-radius: 2px;
-    padding: 0 3px;
+    padding: 0 2px;
     flex-shrink: 0;
     font-family: 'JetBrains Mono', monospace;
     user-select: none;
