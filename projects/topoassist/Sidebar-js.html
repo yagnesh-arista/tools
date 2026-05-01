@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.27 | 2026-05-01 18:09:40 -->
+<!-- TopoAssist v260501.28 | 2026-05-01 18:17:18 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.27";  // keep in sync with Code.gs
+const APP_VERSION = "260501.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4791,32 +4791,37 @@ function _updateGwExample() {
   }
   if (lblEl6) lblEl6.textContent = wide6 ? 'Prefix' : 'First Hextet';
 
-  // ── Per-device override first-field: show "1" hint when effective mask is wide ──
-  // Effective mask = per-device override if set, else global. Field stays editable
-  // so the user can type a per-device first override. Hint only on empty fields.
-  const applyHint = (el, wide) => {
+  // ── Per-device override fields: all 6 fields show live global value as grey hint ──
+  // Hint updates whenever _updateGwExample() runs (global change, per-device mask change).
+  // applyHint sets value+class on empty fields or fields already showing a hint.
+  // oninput removes hint class → field becomes an explicit override, saved normally.
+  // _readGwDeviceOverrides skips hint-class fields so hints are never saved as overrides.
+  const applyHint = (el, inheritedVal) => {
     if (!el) return;
-    if (wide) {
-      if (!('savedWide' in el.dataset)) {
-        el.dataset.savedWide = el.value;
-        if (!el.value.trim()) { el.value = '1'; el.classList.add('gw-ov-wide-hint'); }
-      }
-    } else {
-      if ('savedWide' in el.dataset) {
-        if (el.classList.contains('gw-ov-wide-hint')) el.value = el.dataset.savedWide || '';
-        delete el.dataset.savedWide;
-        el.classList.remove('gw-ov-wide-hint');
-      }
+    if (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) {
+      el.value = inheritedVal;
+      if (inheritedVal) el.classList.add('gw-ov-wide-hint');
+      else el.classList.remove('gw-ov-wide-hint');
     }
   };
+  const glb4first = wide4 ? '1' : ((firstEl4 && firstEl4.value.trim()) || '');
+  const glb4last  = (document.getElementById('ip_gw_v4_last')  || {}).value || '';
+  const glb6first = wide6 ? '1' : ((firstEl6 && firstEl6.value.trim()) || '');
+  const glb6last  = (document.getElementById('ip_gw_v6_last')  || {}).value || '';
   document.querySelectorAll('#gwDeviceOverrideTable .gw-ov-row[data-dev]').forEach(row => {
     const n = row.getAttribute('data-dev');
     const dMEl4 = document.getElementById('gw_ov_' + n + '_v4_mask');
     const dMEl6 = document.getElementById('gw_ov_' + n + '_v6_mask');
-    const devWide4 = (parseInt(((dMEl4 && dMEl4.value.trim()) || m4).replace('/', '')) || 24) < 24;
-    const devWide6 = (parseInt(((dMEl6 && dMEl6.value.trim()) || m6).replace('/', '')) || 64) < 64;
-    applyHint(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4);
-    applyHint(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6);
+    const devM4 = (dMEl4 && !dMEl4.classList.contains('gw-ov-wide-hint') && dMEl4.value.trim()) || m4;
+    const devM6 = (dMEl6 && !dMEl6.classList.contains('gw-ov-wide-hint') && dMEl6.value.trim()) || m6;
+    const devWide4 = (parseInt(devM4.replace('/', '')) || 24) < 24;
+    const devWide6 = (parseInt(devM6.replace('/', '')) || 64) < 64;
+    applyHint(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4 ? '1' : glb4first);
+    applyHint(document.getElementById('gw_ov_' + n + '_v4_last'),  glb4last);
+    applyHint(document.getElementById('gw_ov_' + n + '_v4_mask'),  m4);
+    applyHint(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6 ? '1' : glb6first);
+    applyHint(document.getElementById('gw_ov_' + n + '_v6_last'),  glb6last);
+    applyHint(document.getElementById('gw_ov_' + n + '_v6_mask'),  m6);
   });
 
   // ── Build values used in examples ──
