@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.16 | 2026-05-01 15:13:11 -->
+<!-- TopoAssist v260501.17 | 2026-05-01 15:30:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.16";  // keep in sync with Code.gs
+const APP_VERSION = "260501.17";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4751,22 +4751,58 @@ function _onMaskInput(inp, errId, min, max) {
   inp.closest('.input-wrapper').classList.toggle('has-error', invalid);
 }
 
-// Rebuild GW Auto Config example IPs based on current input values.
+// Wide-prefix mode state — tracks transitions to save/restore the first-field value.
+// In wide mode (IPv4 < /24, IPv6 < /64), "1" is the only universally valid prefix:
+// any larger digit overflows 255 for VLANs ≥ 1000 (e.g. "3"+oct2=10 → "310").
+let _gwV4WideMode = false, _gwV6WideMode = false;
+let _gwV4FirstSaved = null, _gwV6FirstSaved = null;
+
+// Rebuild GW Auto Config example IPs and lock/unlock the first-field in wide mode.
 // Example uses VLAN 1520: oct2 = floor(1520/100) = 15, oct3 = 1520 % 100 = 20.
 function _updateGwExample() {
   const oct2 = 15, oct3 = 20;
-  const f4 = (document.getElementById('ip_gw_v4_first').value || '100').trim();
-  const l4 = (document.getElementById('ip_gw_v4_last').value  || '1').trim();
-  const m4 = (document.getElementById('ip_gw_v4_mask').value  || '/24').trim();
-  const f6 = (document.getElementById('ip_gw_v6_first').value || '100').trim();
-  const l6 = (document.getElementById('ip_gw_v6_last').value  || '1').trim();
-  const m6 = (document.getElementById('ip_gw_v6_mask').value  || '/64').trim();
+  const m4 = (document.getElementById('ip_gw_v4_mask').value || '/24').trim();
+  const m6 = (document.getElementById('ip_gw_v6_mask').value || '/64').trim();
   const pfx4 = parseInt(m4.replace('/', '')) || 24;
   const pfx6 = parseInt(m6.replace('/', '')) || 64;
   const wide4 = pfx4 < 24, wide6 = pfx6 < 64;
+
+  // Lock IPv4 first field to "1" on entry to wide mode; restore on exit.
+  const firstEl4 = document.getElementById('ip_gw_v4_first');
+  const lblEl4   = document.getElementById('lbl_gw_v4_first');
+  if (wide4 && !_gwV4WideMode) {
+    _gwV4FirstSaved = firstEl4 ? firstEl4.value : null;
+    _gwV4WideMode = true;
+  } else if (!wide4 && _gwV4WideMode) {
+    _gwV4WideMode = false;
+    if (firstEl4 && _gwV4FirstSaved !== null) firstEl4.value = _gwV4FirstSaved;
+    _gwV4FirstSaved = null;
+  }
+  if (firstEl4) { firstEl4.disabled = wide4; if (wide4) firstEl4.value = '1'; }
+  if (lblEl4) lblEl4.textContent = wide4 ? 'Prefix' : 'First Octet';
+
+  // Lock IPv6 first field to "1" on entry to wide mode; restore on exit.
+  const firstEl6 = document.getElementById('ip_gw_v6_first');
+  const lblEl6   = document.getElementById('lbl_gw_v6_first');
+  if (wide6 && !_gwV6WideMode) {
+    _gwV6FirstSaved = firstEl6 ? firstEl6.value : null;
+    _gwV6WideMode = true;
+  } else if (!wide6 && _gwV6WideMode) {
+    _gwV6WideMode = false;
+    if (firstEl6 && _gwV6FirstSaved !== null) firstEl6.value = _gwV6FirstSaved;
+    _gwV6FirstSaved = null;
+  }
+  if (firstEl6) { firstEl6.disabled = wide6; if (wide6) firstEl6.value = '1'; }
+  if (lblEl6) lblEl6.textContent = wide6 ? 'Prefix' : 'First Hextet';
+
+  // f4/f6 are always "1" in wide mode.
+  const f4  = wide4 ? '1' : (firstEl4 ? (firstEl4.value || '100') : '100').trim();
+  const l4  = (document.getElementById('ip_gw_v4_last').value || '1').trim();
+  const f6  = wide6 ? '1' : (firstEl6 ? (firstEl6.value || '100') : '100').trim();
+  const l6  = (document.getElementById('ip_gw_v6_last').value || '1').trim();
   const l4n = parseInt(l4) || 1, l6n = parseInt(l6) || 1;
 
-  const sp = (cls, txt) => '<span class="' + cls + '">' + txt + '</span>';
+  const sp   = (cls, txt) => '<span class="' + cls + '">' + txt + '</span>';
   const note = txt => sp('ip-ex-note', txt);
 
   function html4Phy(id) {
