@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.19 | 2026-05-01 15:46:13 -->
+<!-- TopoAssist v260501.20 | 2026-05-01 16:11:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.19";  // keep in sync with Code.gs
+const APP_VERSION = "260501.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4841,6 +4841,26 @@ function _updateGwExample() {
   const p62 = document.getElementById('gw-ex6-phy2');    if (p62) p62.innerHTML = html6Phy(4);
   const v6  = document.getElementById('gw-ex6-vip');     if (v6)  v6.innerHTML  = html6Vip() + ' ' + note(ARR + 'ipv6 virtual-router address (same on all)');
   const a6  = document.getElementById('gw-ex6-anycast'); if (a6)  a6.innerHTML  = html6Vip() + m6 + ' ' + note(ARR + 'ipv6 address virtual (same on all)');
+
+  // Wide-prefix calc hint: show amber oct2/oct3 between header and phy rows.
+  const calc4 = document.getElementById('gw-ex4-calc');
+  if (calc4) {
+    if (wide4) {
+      calc4.innerHTML = '1·<span class="f-dyn">' + oct2 + '</span>=<b style="color:#64748b;font-style:normal;font-weight:600">' + ('' + 1 + oct2) + '</b>, oct3=<span class="f-dyn">' + oct3 + '</span>';
+      calc4.style.display = '';
+    } else {
+      calc4.style.display = 'none';
+    }
+  }
+  const calc6 = document.getElementById('gw-ex6-calc');
+  if (calc6) {
+    if (wide6) {
+      calc6.innerHTML = '1·<span class="f-dyn">' + oct2 + '</span>=<b style="color:#64748b;font-style:normal;font-weight:600">' + ('' + 1 + oct2) + '</b>, oct3=<span class="f-dyn">' + oct3 + '</span>';
+      calc6.style.display = '';
+    } else {
+      calc6.style.display = 'none';
+    }
+  }
 }
 
 // --- UPDATED OPEN FUNCTION ---
