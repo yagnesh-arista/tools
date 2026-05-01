@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.15 | 2026-05-01 14:46:04 -->
+<!-- TopoAssist v260501.16 | 2026-05-01 15:12:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -633,25 +633,25 @@
 
             <div class="ip-ex-peer-sep"></div>
 
-            <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none;">GW IPv4</div>
+            <div id="gw-ex4-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none;display:flex;align-items:center;gap:6px">GW IPv4 <span id="gw-ex4-mode" style="font-weight:400;font-style:italic;color:#94a3b8">standard</span></div>
             <div class="ip-ex-key">GW IPv4 phy</div>
-            <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">4</span>/24 <span class="ip-ex-note">last+id</span></div>
-            <div class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">5</span>/24 <span class="ip-ex-note">last+id</span></div>
+            <div id="gw-ex4-phy1" class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">4</span>/24 <span class="ip-ex-note">last+id</span></div>
+            <div id="gw-ex4-phy2" class="ip-ex-val"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="ip-ex-result">5</span>/24 <span class="ip-ex-note">last+id</span></div>
             <div class="ip-ex-key">GW VARP vip</div>
-            <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span> <span class="ip-ex-note">&rarr; ip virtual-router address (same on all)</span></div>
+            <div id="gw-ex4-vip" class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span> <span class="ip-ex-note">&rarr; ip virtual-router address (same on all)</span></div>
             <div class="ip-ex-key">GW Anycast vip</div>
-            <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">&rarr; ip address virtual (same on all)</span></div>
+            <div id="gw-ex4-anycast" class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>.<span class="f-dyn">15</span>.<span class="f-dyn">20</span>.<span class="f-var">1</span>/24 <span class="ip-ex-note">&rarr; ip address virtual (same on all)</span></div>
 
             <div class="ip-ex-peer-sep"></div>
 
-            <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none;">GW IPv6</div>
+            <div id="gw-ex6-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none;display:flex;align-items:center;gap:6px">GW IPv6 <span id="gw-ex6-mode" style="font-weight:400;font-style:italic;color:#94a3b8">standard</span></div>
             <div class="ip-ex-key">GW IPv6 phy</div>
-            <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">4</span>/64 <span class="ip-ex-note">last+id</span></div>
-            <div class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">5</span>/64 <span class="ip-ex-note">last+id</span></div>
+            <div id="gw-ex6-phy1" class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">4</span>/64 <span class="ip-ex-note">last+id</span></div>
+            <div id="gw-ex6-phy2" class="ip-ex-val"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="ip-ex-result">5</span>/64 <span class="ip-ex-note">last+id</span></div>
             <div class="ip-ex-key">GW VARP vip</div>
-            <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span> <span class="ip-ex-note">&rarr; ipv6 virtual-router address (same on all)</span></div>
+            <div id="gw-ex6-vip" class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span> <span class="ip-ex-note">&rarr; ipv6 virtual-router address (same on all)</span></div>
             <div class="ip-ex-key">GW Anycast vip</div>
-            <div class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span>/64 <span class="ip-ex-note">&rarr; ipv6 address virtual (same on all)</span></div>
+            <div id="gw-ex6-anycast" class="ip-ex-val" style="grid-column:2/4"><span class="f-var">100</span>:<span class="f-dyn">15</span>:<span class="f-dyn">20</span>::<span class="f-var">1</span>/64 <span class="ip-ex-note">&rarr; ipv6 address virtual (same on all)</span></div>
 
             <div class="ip-ex-peer-sep"></div>
 
@@ -687,9 +687,17 @@
       <!-- 3. CONFIG FORMULA KEY -->
       <div class="info-box info-box--dim info-box--keep-colors">
         <div class="info-title">Configurable &mdash; VLAN key: oct2 = &lfloor;VLAN &divide; 100&rfloor; &middot; oct3 = VLAN mod 100</div>
-        <div class="ip-legend-grid">
-          <span class="legend-label">P2P:</span><span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">Device ID</span>
-          <span class="legend-label">GW:</span><span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+        <div class="ip-legend-grid" style="grid-template-columns:92px auto 12px auto 12px auto 14px auto;row-gap:7px">
+          <span class="legend-label" style="font-size:10px">P2P:</span>
+          <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">ID</span>
+          <span class="legend-label" style="font-size:10px">GW /24–/32:</span>
+          <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+          <span class="legend-label" style="font-size:10px">GW /16–/23:</span>
+          <span class="legend-octet" style="padding:4px 6px"><span class="f-var">first</span><span class="f-dyn">oct2</span></span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+          <span class="legend-label" style="font-size:10px">GW v6 /64–/128:</span>
+          <span class="legend-octet f-var">first</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
+          <span class="legend-label" style="font-size:10px">GW v6 /32–/63:</span>
+          <span class="legend-octet" style="padding:4px 6px"><span class="f-var">first</span><span class="f-dyn">oct2</span></span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
         </div>
       </div>
 
@@ -713,13 +721,13 @@
         <div class="ip-row"><span class="ip-label">IPv4</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_p2p_v4_first" placeholder="200" style="width:56px"></div>
-            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v4_mask" placeholder="/24" style="width:46px" title="IPv4 P2P: /24–/32"><span class="error-msg" id="err_p2p_v4_mask"></span></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Hextet</label><input type="text" id="ip_p2p_v6_first" placeholder="200" style="width:56px"></div>
-            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_p2p_v6_mask" placeholder="/64" style="width:46px" title="IPv6 P2P: /64–/128"><span class="error-msg" id="err_p2p_v6_mask"></span></div>
           </div>
         </div>
       </div>
@@ -730,14 +738,14 @@
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Octet</label><input type="text" id="ip_gw_v4_first" placeholder="100" style="width:56px"></div>
             <div class="input-wrapper"><label>Last Octet</label><input type="text" id="ip_gw_v4_last" placeholder="1" style="width:40px"></div>
-            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v4_mask" placeholder="/24" style="width:46px" title="IPv4 GW: /16–/32 · /16–/23 wide-prefix · /24–/32 standard"><span class="error-msg" id="err_gw_v4_mask"></span></div>
           </div>
         </div>
         <div class="ip-row"><span class="ip-label">IPv6</span>
           <div class="ip-inputs">
             <div class="input-wrapper"><label>First Hextet</label><input type="text" id="ip_gw_v6_first" placeholder="100" style="width:56px"></div>
             <div class="input-wrapper"><label>Last Hextet</label><input type="text" id="ip_gw_v6_last" placeholder="1" style="width:40px"></div>
-            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64" style="width:46px"></div>
+            <div class="input-wrapper" style="--label-w:36px"><label>Mask</label><input type="text" id="ip_gw_v6_mask" placeholder="/64" style="width:46px" title="IPv6 GW: /32–/128 · /32–/63 wide-prefix · /64–/128 standard"><span class="error-msg" id="err_gw_v6_mask"></span></div>
           </div>
         </div>
       </div>

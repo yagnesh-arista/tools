@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.15 | 2026-05-01 14:46:04 -->
+<!-- TopoAssist v260501.16 | 2026-05-01 15:13:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.15";  // keep in sync with Code.gs
+const APP_VERSION = "260501.16";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4739,6 +4739,74 @@ function checkSnakeTrafficWarning() {
   warn.style.display = 'block';
 }
 
+// Validate a mask input and show/hide inline error. min/max are integer prefix lengths.
+function _onMaskInput(inp, errId, min, max) {
+  const raw = inp.value.trim();
+  const errEl = document.getElementById(errId);
+  if (!errEl) return;
+  if (!raw) { errEl.textContent = ''; inp.closest('.input-wrapper').classList.remove('has-error'); return; }
+  const n = parseInt(raw.replace('/', ''));
+  const invalid = isNaN(n) || n < min || n > max;
+  errEl.textContent = invalid ? '/' + min + '–/' + max : '';
+  inp.closest('.input-wrapper').classList.toggle('has-error', invalid);
+}
+
+// Rebuild GW Auto Config example IPs based on current input values.
+// Example uses VLAN 1520: oct2 = floor(1520/100) = 15, oct3 = 1520 % 100 = 20.
+function _updateGwExample() {
+  const oct2 = 15, oct3 = 20;
+  const f4 = (document.getElementById('ip_gw_v4_first').value || '100').trim();
+  const l4 = (document.getElementById('ip_gw_v4_last').value  || '1').trim();
+  const m4 = (document.getElementById('ip_gw_v4_mask').value  || '/24').trim();
+  const f6 = (document.getElementById('ip_gw_v6_first').value || '100').trim();
+  const l6 = (document.getElementById('ip_gw_v6_last').value  || '1').trim();
+  const m6 = (document.getElementById('ip_gw_v6_mask').value  || '/64').trim();
+  const pfx4 = parseInt(m4.replace('/', '')) || 24;
+  const pfx6 = parseInt(m6.replace('/', '')) || 64;
+  const wide4 = pfx4 < 24, wide6 = pfx6 < 64;
+  const l4n = parseInt(l4) || 1, l6n = parseInt(l6) || 1;
+
+  const sp = (cls, txt) => '<span class="' + cls + '">' + txt + '</span>';
+  const note = txt => sp('ip-ex-note', txt);
+
+  function html4Phy(id) {
+    const last = l4n + id;
+    return wide4
+      ? sp('f-var',f4)+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.0.'+sp('ip-ex-result',last)+m4+' '+note('last+id')
+      : sp('f-var',f4)+'.'+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.'+sp('ip-ex-result',last)+m4+' '+note('last+id');
+  }
+  function html4Vip() {
+    return wide4
+      ? sp('f-var',f4)+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.0.'+sp('f-var',l4n)
+      : sp('f-var',f4)+'.'+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.'+sp('f-var',l4n);
+  }
+  function html6Phy(id) {
+    const last = l6n + id;
+    return wide6
+      ? sp('f-var',f6)+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+':0::'+sp('ip-ex-result',last)+m6+' '+note('last+id')
+      : sp('f-var',f6)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('ip-ex-result',last)+m6+' '+note('last+id');
+  }
+  function html6Vip() {
+    return wide6
+      ? sp('f-var',f6)+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+':0::'+sp('f-var',l6n)
+      : sp('f-var',f6)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('f-var',l6n);
+  }
+
+  const ARR = '&rarr; ';
+  const m4el = document.getElementById('gw-ex4-mode');   if (m4el) m4el.textContent = wide4 ? 'wide-prefix' : 'standard';
+  const m6el = document.getElementById('gw-ex6-mode');   if (m6el) m6el.textContent = wide6 ? 'wide-prefix' : 'standard';
+
+  const p41 = document.getElementById('gw-ex4-phy1');    if (p41) p41.innerHTML = html4Phy(3);
+  const p42 = document.getElementById('gw-ex4-phy2');    if (p42) p42.innerHTML = html4Phy(4);
+  const v4  = document.getElementById('gw-ex4-vip');     if (v4)  v4.innerHTML  = html4Vip() + ' ' + note(ARR + 'ip virtual-router address (same on all)');
+  const a4  = document.getElementById('gw-ex4-anycast'); if (a4)  a4.innerHTML  = html4Vip() + m4 + ' ' + note(ARR + 'ip address virtual (same on all)');
+
+  const p61 = document.getElementById('gw-ex6-phy1');    if (p61) p61.innerHTML = html6Phy(3);
+  const p62 = document.getElementById('gw-ex6-phy2');    if (p62) p62.innerHTML = html6Phy(4);
+  const v6  = document.getElementById('gw-ex6-vip');     if (v6)  v6.innerHTML  = html6Vip() + ' ' + note(ARR + 'ipv6 virtual-router address (same on all)');
+  const a6  = document.getElementById('gw-ex6-anycast'); if (a6)  a6.innerHTML  = html6Vip() + m6 + ' ' + note(ARR + 'ipv6 address virtual (same on all)');
+}
+
 // --- UPDATED OPEN FUNCTION ---
 function openIpConfigModal(btn) {
   showModalLoading("ipConfigModal");
@@ -4799,10 +4867,24 @@ function openIpConfigModal(btn) {
     document.querySelectorAll('#gwDeviceOverrideTable input[type="text"]').forEach(el => {
       el.oninput = () => { checkIpDirty(); _highlightGwMlagMismatch(); };
     });
+    // Mask validation + GW example updater (override generic handler set above)
+    [['ip_p2p_v4_mask','err_p2p_v4_mask',24,32],['ip_p2p_v6_mask','err_p2p_v6_mask',64,128]].forEach(([id,errId,min,max]) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.oninput = () => { checkIpDirty(); _onMaskInput(el, errId, min, max); };
+    });
+    [['ip_gw_v4_mask','err_gw_v4_mask',16,32],['ip_gw_v6_mask','err_gw_v6_mask',32,128]].forEach(([id,errId,min,max]) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.oninput = () => { checkIpDirty(); _onMaskInput(el, errId, min, max); _updateGwExample(); };
+    });
+    ['ip_gw_v4_first','ip_gw_v4_last','ip_gw_v6_first','ip_gw_v6_last'].forEach(id => {
+      const el = document.getElementById(id); if (!el) return;
+      el.oninput = () => { checkIpDirty(); _updateGwExample(); };
+    });
 
     // 4. Reset Button Visuals
     checkIpDirty();
     checkSnakeTrafficWarning();
+    _updateGwExample();
 
     document.getElementById("editOverlay").style.display = "block";
     document.getElementById("ipConfigModal").style.display = "flex";
