@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.28 | 2026-05-01 18:17:18 -->
+<!-- TopoAssist v260501.29 | 2026-05-01 19:18:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.28";  // keep in sync with Code.gs
+const APP_VERSION = "260501.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4791,17 +4791,41 @@ function _updateGwExample() {
   }
   if (lblEl6) lblEl6.textContent = wide6 ? 'Prefix' : 'First Hextet';
 
-  // ── Per-device override fields: all 6 fields show live global value as grey hint ──
-  // Hint updates whenever _updateGwExample() runs (global change, per-device mask change).
-  // applyHint sets value+class on empty fields or fields already showing a hint.
-  // oninput removes hint class → field becomes an explicit override, saved normally.
-  // _readGwDeviceOverrides skips hint-class fields so hints are never saved as overrides.
+  // ── Per-device override fields ──
+  // applyForced (first only): always overwrites with "1" on wide-mode entry; saves the
+  //   pre-wide value (empty string if it was itself a hint) and restores on exit.
+  // applyHint (last, mask): applies inherited value only on empty or already-hinted fields.
+  // Both: oninput removes hint class → explicit override; _readGwDeviceOverrides skips hint fields.
+  const applyForced = (el, devWide, fallback) => {
+    if (!el) return;
+    if (devWide) {
+      if (!('savedWide' in el.dataset)) {
+        el.dataset.savedWide = el.classList.contains('gw-ov-wide-hint') ? '' : el.value;
+        el.value = '1';
+        el.classList.add('gw-ov-wide-hint');
+      }
+      // Already in wide mode and user hasn't typed (hint still present): keep "1"
+      // If user typed (hint removed), don't overwrite their explicit override
+    } else {
+      if ('savedWide' in el.dataset) {
+        const prev = el.classList.contains('gw-ov-wide-hint') ? (el.dataset.savedWide || '') : el.value;
+        delete el.dataset.savedWide;
+        el.classList.remove('gw-ov-wide-hint');
+        el.value = prev;
+        if (!el.value.trim()) { el.value = fallback; if (fallback) el.classList.add('gw-ov-wide-hint'); }
+      } else {
+        if (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) {
+          el.value = fallback;
+          if (fallback) el.classList.add('gw-ov-wide-hint'); else el.classList.remove('gw-ov-wide-hint');
+        }
+      }
+    }
+  };
   const applyHint = (el, inheritedVal) => {
     if (!el) return;
     if (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) {
       el.value = inheritedVal;
-      if (inheritedVal) el.classList.add('gw-ov-wide-hint');
-      else el.classList.remove('gw-ov-wide-hint');
+      if (inheritedVal) el.classList.add('gw-ov-wide-hint'); else el.classList.remove('gw-ov-wide-hint');
     }
   };
   const glb4first = wide4 ? '1' : ((firstEl4 && firstEl4.value.trim()) || '');
@@ -4816,10 +4840,10 @@ function _updateGwExample() {
     const devM6 = (dMEl6 && !dMEl6.classList.contains('gw-ov-wide-hint') && dMEl6.value.trim()) || m6;
     const devWide4 = (parseInt(devM4.replace('/', '')) || 24) < 24;
     const devWide6 = (parseInt(devM6.replace('/', '')) || 64) < 64;
-    applyHint(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4 ? '1' : glb4first);
+    applyForced(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4, glb4first);
     applyHint(document.getElementById('gw_ov_' + n + '_v4_last'),  glb4last);
     applyHint(document.getElementById('gw_ov_' + n + '_v4_mask'),  m4);
-    applyHint(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6 ? '1' : glb6first);
+    applyForced(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6, glb6first);
     applyHint(document.getElementById('gw_ov_' + n + '_v6_last'),  glb6last);
     applyHint(document.getElementById('gw_ov_' + n + '_v6_mask'),  m6);
   });
@@ -5193,12 +5217,14 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
   tbl.innerHTML = html;
   tbl.querySelectorAll('input[type="text"]').forEach(el => {
     const isMask = el.id.endsWith('_v4_mask') || el.id.endsWith('_v6_mask');
+    el.onfocus = () => { if (el.classList.contains('gw-ov-wide-hint')) el.select(); };
     el.oninput = () => {
       el.classList.remove('gw-ov-wide-hint');
       if (isMask) _updateGwExample();
       checkIpDirty();
       _highlightGwMlagMismatch();
     };
+    el.onblur = () => { if (!el.value.trim()) _updateGwExample(); };
   });
   _highlightGwMlagMismatch();
 }
