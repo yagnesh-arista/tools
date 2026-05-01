@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.33 | 2026-05-01 23:06:24 -->
+<!-- TopoAssist v260501.34 | 2026-05-01 23:18:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.33";  // keep in sync with Code.gs
+const APP_VERSION = "260501.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4817,10 +4817,23 @@ function _updateGwExample() {
     const lockFirst = (el, wide, fallback) => {
       if (!el) return;
       if (wide) {
-        el.disabled = true; el.value = '1'; el.classList.remove('gw-ov-wide-hint');
+        if (!el.disabled) {
+          // First entry into wide mode — save explicit value, lock to '1'
+          el.dataset.preLockVal = (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) ? '' : el.value;
+          el.disabled = true; el.value = '1'; el.classList.remove('gw-ov-wide-hint');
+        }
+        // Already locked — no-op, never re-overwrite
       } else {
-        if (el.disabled) { el.value = ''; el.classList.remove('gw-ov-wide-hint'); }
-        el.disabled = false; applyHint(el, fallback);
+        if (el.disabled) {
+          // Exiting wide mode — restore pre-wide value if any
+          const saved = el.dataset.preLockVal || '';
+          delete el.dataset.preLockVal;
+          el.disabled = false;
+          if (saved) { el.value = saved; el.classList.remove('gw-ov-wide-hint'); }
+          else { el.value = ''; applyHint(el, fallback); }
+        } else {
+          applyHint(el, fallback);
+        }
       }
     };
     lockFirst(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4, glb4first);
