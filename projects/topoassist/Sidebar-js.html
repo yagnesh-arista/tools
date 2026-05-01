@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.6 | 2026-05-01 12:09:08 -->
+<!-- TopoAssist v260501.7 | 2026-05-01 12:18:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.6";  // keep in sync with Code.gs
+const APP_VERSION = "260501.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16677,7 +16677,13 @@ function openGroupRectModal() {
         cb.value = devId;
         cb.checked = currentMembers.has(devId.toLowerCase());
         cb.style.cssText = "accent-color:#8b5cf6;cursor:pointer;flex-shrink:0;";
+        const devData = allDevicesData[devId];
+        const idx = (devData && devData.sheetIndex) ? devData.sheetIndex : '-';
+        const idBadge = document.createElement('span');
+        idBadge.style.cssText = "color:#94a3b8;font-size:10px;flex-shrink:0;font-family:'JetBrains Mono',monospace;";
+        idBadge.textContent = '[' + idx + ']';
         lbl.appendChild(cb);
+        lbl.appendChild(idBadge);
         lbl.appendChild(document.createTextNode(devId));
         memberList.appendChild(lbl);
       });
