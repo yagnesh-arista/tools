@@ -1,10 +1,10 @@
-// TopoAssist v260501.1 | 2026-05-01 10:30:26
+// TopoAssist v260501.2 | 2026-05-01 11:09:20
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.2";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4503,9 +4503,13 @@ function getDeviceConfig(deviceName) {
               `interface Vlan${v}`,
               effectiveVrf ? ` vrf ${effectiveVrf}` : null,
               ` description ${desc} __TA`,
+              ` default ip address`,
+              ` default ip address virtual`,
+              ` default ip virtual-router address`,
+              ` default ipv6 address`,
+              ` default ipv6 address virtual`,
+              ` default ipv6 virtual-router address`,
               gwCmdV4,
-              useAnycast && gwHasIpv6vx1 ? ` default ipv6 address virtual` : null,
-              !useAnycast && gwHasIpv6vx1 ? ` no ipv6 address` : null,
               gwCmdV6,
             ].filter(Boolean).join("\n"));
           });
@@ -5119,6 +5123,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         // Non-LEAF (SPINE/HARNESS/etc): plain routed IP — no virtual or virtual-router address
         const gwDesc = vrf4Desc ? `GW_${vrf4Desc}_${val}` : `GW_${val}`;
         lines.push(` description -> ${gwDesc} __TA`);
+        lines.push(` default ip address`, ` default ip address virtual`, ` default ip virtual-router address`,
+                   ` default ipv6 address`, ` default ipv6 address virtual`, ` default ipv6 virtual-router address`);
         if (gwHasIpv4) lines.push(` ip address ${cfg.gw_v4_first}.${oct2}.${oct3}.${gwLastV4}${cfg.gw_v4_mask}`);
         if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${cfg.gw_v6_first}:${oct2}:${oct3}::${gwLastV6}${cfg.gw_v6_mask}`); }
       } else {
@@ -5129,6 +5135,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         const gwDesc = vrf4Desc ? `GW_${vrf4Desc}_${val}` : `GW_${val}`;
         lines.push(` description -> ${gwDesc} __TA`);
       }
+      lines.push(` default ip address`, ` default ip address virtual`, ` default ip virtual-router address`,
+                 ` default ipv6 address`, ` default ipv6 address virtual`, ` default ipv6 virtual-router address`);
 
       if (d.isMlag) {
         if (useAnycastGW) {
