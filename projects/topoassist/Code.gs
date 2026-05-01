@@ -1,10 +1,10 @@
-// TopoAssist v260430.95 | 2026-04-30 21:58:16
+// TopoAssist v260501.1 | 2026-05-01 10:30:26
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260430.95";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -743,7 +743,7 @@ function showTopologyWindow() {
   template.defaultRefresh = settings.refresh;
   template.defaultAuto   = settings.auto;
 
-  const html = template.evaluate().setWidth(1600).setHeight(900).setTitle(`Live Network Topology v${APP_VERSION}`);
+  const html = template.evaluate().setWidth(1600).setHeight(1170).setTitle(`Live Network Topology v${APP_VERSION}`);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
 }
 
