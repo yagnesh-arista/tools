@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.2 | 2026-05-01 11:06:18 -->
+<!-- TopoAssist v260501.3 | 2026-05-01 11:34:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.2";  // keep in sync with Code.gs
+const APP_VERSION = "260501.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4781,16 +4781,23 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_ep2_mac").value    = prefs.ep2_mac    || "";
     document.getElementById("ip_ep2_subnet").value = prefs.ep2_subnet || "";
 
-    // 2. Capture Snapshot
+    // 2. Build per-device GW override table (must happen before snapshot)
+    _buildGwDeviceOverrideTable(prefs.arista_devices || [], prefs.gw_device_overrides || {});
+
+    // 3. Capture Snapshot (after table built — captures override inputs too)
     initialIpState = getCurrentIpState();
 
-    // 3. Bind Listeners to ALL inputs
+    // 4. Bind Listeners to ALL inputs
     const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
     inputs.forEach(el => el.oninput = checkIpDirty);
     // EP NH fields also trigger snake warning re-check
     ['ip_ep1_nh', 'ip_ep2_nh'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.oninput = () => { checkIpDirty(); checkSnakeTrafficWarning(); };
+    });
+    // GW override inputs also trigger MLAG mismatch highlight
+    document.querySelectorAll('#gwDeviceOverrideTable input[type="text"]').forEach(el => {
+      el.oninput = () => { checkIpDirty(); _highlightGwMlagMismatch(); };
     });
 
     // 4. Reset Button Visuals
@@ -4804,12 +4811,11 @@ function openIpConfigModal(btn) {
     clearTimeout(_guard);
     hideGlobalLoading();
     alert("Failed to load settings: " + err);
-  }).getIpPreferences();
+  }).getIpPreferencesForModal();
 }
 
-// --- UPDATED SAVE FUNCTION ---
+
 function saveIpConfig() {
-  // (Validation logic remains the same as your previous code...)
   const p2p_v4 = (document.getElementById("ip_p2p_v4_first").value || '').trim();
   const p2p_v6 = (document.getElementById("ip_p2p_v6_first").value || '').trim();
   const gw_v4_first = (document.getElementById("ip_gw_v4_first").value || '').trim();
@@ -4818,10 +4824,23 @@ function saveIpConfig() {
   const gw_v6_last = (document.getElementById("ip_gw_v6_last").value || '').trim();
 
   if (p2p_v4.endsWith('.') || gw_v4_first.endsWith('.') || gw_v4_last.endsWith('.')) {
-    alert("✗ Validation Error (IPv4)\n\nOctets cannot end with a dot."); return;
+    alert("Validation Error (IPv4)\n\nOctets cannot end with a dot."); return;
   }
   if (p2p_v6.endsWith(':') || gw_v6_first.endsWith(':') || gw_v6_last.endsWith(':')) {
-    alert("✗ Validation Error (IPv6)\n\nHextets cannot end with a colon."); return;
+    alert("Validation Error (IPv6)\n\nHextets cannot end with a colon."); return;
+  }
+
+  // Collect per-device GW overrides and warn on MLAG mismatch before saving
+  const gwDeviceOverrides = _readGwDeviceOverrides();
+  const mlagMismatches = _checkGwMlagMismatches(gwDeviceOverrides);
+  if (mlagMismatches.length > 0) {
+    const lines = mlagMismatches.map(m => {
+      const parts = [];
+      if (m.v4a && m.v4b && m.v4a !== m.v4b) parts.push(`IPv4 first: ${m.a}=${m.v4a} vs ${m.b}=${m.v4b}`);
+      if (m.v6a && m.v6b && m.v6a !== m.v6b) parts.push(`IPv6 first: ${m.a}=${m.v6a} vs ${m.b}=${m.v6b}`);
+      return parts.join(', ');
+    }).join('\n');
+    if (!confirm('MLAG GW Mismatch\n\nMLAG pairs must share the same first octet for anycast/VARP:\n' + lines + '\n\nSave anyway?')) return;
   }
 
   const prefs = {
@@ -4845,7 +4864,8 @@ function saveIpConfig() {
     ep1_subnet:  (document.getElementById("ip_ep1_subnet").value  || '').trim(),
     ep2_nh:      (document.getElementById("ip_ep2_nh").value      || '').trim(),
     ep2_mac:     (document.getElementById("ip_ep2_mac").value     || '').trim(),
-    ep2_subnet:  (document.getElementById("ip_ep2_subnet").value  || '').trim()
+    ep2_subnet:  (document.getElementById("ip_ep2_subnet").value  || '').trim(),
+    gw_device_overrides: gwDeviceOverrides
   };
 
   showGlobalLoading("Saving & Applying IPs...");
@@ -4887,7 +4907,116 @@ function saveIpConfig() {
     .saveIpPreferences(prefs);
 }
 
-// --- TECH MODAL: P2P mode → flag mapping ---
+// ── Per-device GW override helpers ──────────────────────────────────────────
+
+// MLAG pairs map, populated when the override table is built
+let _gwMlagPairs = {};
+
+function _toggleGwAdvanced() {
+  const sec  = document.getElementById('gwAdvancedSection');
+  const chev = document.getElementById('gwAdvancedChevron');
+  const open = sec.style.display !== 'none';
+  sec.style.display  = open ? 'none' : 'block';
+  chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function _buildGwDeviceOverrideTable(devices, overrides) {
+  _gwMlagPairs = {};
+  devices.forEach(d => { if (d.mlagPeer) _gwMlagPairs[d.name] = d.mlagPeer; });
+
+  const tbl = document.getElementById('gwDeviceOverrideTable');
+  if (!tbl) return;
+  if (!devices || devices.length === 0) {
+    tbl.innerHTML = '<div style="font-size:11px;color:#94a3b8;padding:4px 0;font-family:\'JetBrains Mono\',monospace">No Arista devices found.</div>';
+    return;
+  }
+
+  let html = '<div class="gw-ov-row gw-ov-header">' +
+    '<span class="gw-ov-devname"></span>' +
+    '<span class="gw-ov-col-hdr">IPv4 First</span>' +
+    '<span class="gw-ov-col-hdr">IPv4 Last</span>' +
+    '<span class="gw-ov-col-hdr">IPv6 First</span>' +
+    '<span class="gw-ov-col-hdr">IPv6 Last</span>' +
+    '</div>';
+
+  const shown = new Set();
+  devices.forEach(dev => {
+    if (shown.has(dev.name)) return;
+    shown.add(dev.name);
+    const isFirst = !!dev.mlagPeer;
+    html += _gwDeviceRow(dev.name, overrides[dev.name] || {}, isFirst, false);
+    if (dev.mlagPeer && !shown.has(dev.mlagPeer)) {
+      shown.add(dev.mlagPeer);
+      const peerDev = devices.find(d => d.name === dev.mlagPeer);
+      if (peerDev) html += _gwDeviceRow(dev.mlagPeer, overrides[dev.mlagPeer] || {}, true, true);
+    }
+  });
+
+  tbl.innerHTML = html;
+  tbl.querySelectorAll('input[type="text"]').forEach(el => {
+    el.oninput = () => { checkIpDirty(); _highlightGwMlagMismatch(); };
+  });
+  _highlightGwMlagMismatch();
+}
+
+function _gwDeviceRow(name, ov, hasMlag, isPeer) {
+  const rowCls = 'gw-ov-row' + (hasMlag ? ' gw-ov-mlag' + (isPeer ? ' gw-ov-mlag-peer' : ' gw-ov-mlag-first') : '');
+  const badge  = hasMlag ? '<span class="gw-ov-mlag-badge">[M]</span>' : '';
+  const inp = (field, val, ph) =>
+    `<input type="text" id="gw_ov_${name}_${field}" value="${val || ''}" placeholder="${ph}"` +
+    ` style="width:48px;font-family:'JetBrains Mono',monospace;font-size:11px;box-sizing:border-box">`;
+  return `<div class="${rowCls}" data-dev="${name}">` +
+    `<span class="gw-ov-devname">${badge}<span class="gw-ov-devname-text">${name}</span></span>` +
+    `<span class="gw-ov-cell">${inp('v4_first', ov.v4_first, '—')}</span>` +
+    `<span class="gw-ov-cell">${inp('v4_last',  ov.v4_last,  '—')}</span>` +
+    `<span class="gw-ov-cell">${inp('v6_first', ov.v6_first, '—')}</span>` +
+    `<span class="gw-ov-cell">${inp('v6_last',  ov.v6_last,  '—')}</span>` +
+    '</div>';
+}
+
+function _readGwDeviceOverrides() {
+  const overrides = {};
+  document.querySelectorAll('#gwDeviceOverrideTable .gw-ov-row[data-dev]').forEach(row => {
+    const name = row.getAttribute('data-dev');
+    if (!name) return;
+    const g = f => ((document.getElementById('gw_ov_' + name + '_' + f) || {}).value || '').trim();
+    const vals = { v4_first: g('v4_first'), v4_last: g('v4_last'), v6_first: g('v6_first'), v6_last: g('v6_last') };
+    if (vals.v4_first || vals.v4_last || vals.v6_first || vals.v6_last) overrides[name] = vals;
+  });
+  return overrides;
+}
+
+function _highlightGwMlagMismatch() {
+  const seen = new Set();
+  Object.entries(_gwMlagPairs).forEach(([devA, devB]) => {
+    const key = [devA, devB].sort().join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const aEl = document.getElementById('gw_ov_' + devA + '_v4_first');
+    const bEl = document.getElementById('gw_ov_' + devB + '_v4_first');
+    const mismatch = aEl && bEl && aEl.value.trim() && bEl.value.trim() && aEl.value.trim() !== bEl.value.trim();
+    if (aEl) aEl.classList.toggle('gw-ov-mismatch', !!mismatch);
+    if (bEl) bEl.classList.toggle('gw-ov-mismatch', !!mismatch);
+  });
+}
+
+function _checkGwMlagMismatches(overrides) {
+  const mismatches = [];
+  const seen = new Set();
+  Object.entries(_gwMlagPairs).forEach(([devA, devB]) => {
+    const key = [devA, devB].sort().join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const ovA = overrides[devA] || {};
+    const ovB = overrides[devB] || {};
+    const v4Mismatch = ovA.v4_first && ovB.v4_first && ovA.v4_first !== ovB.v4_first;
+    const v6Mismatch = ovA.v6_first && ovB.v6_first && ovA.v6_first !== ovB.v6_first;
+    if (v4Mismatch || v6Mismatch) mismatches.push({ a: devA, b: devB, v4a: ovA.v4_first, v4b: ovB.v4_first, v6a: ovA.v6_first, v6b: ovB.v6_first });
+  });
+  return mismatches;
+}
+
+// ── TECH MODAL: P2P mode → flag mapping ─────────────────────────────────────
 const P2P_MODE_FLAGS = {
   ipv4:          { int_ipv4: true,  int_ipv6: false, int_ipv6_unnum: false },
   ipv6:          { int_ipv4: false, int_ipv6: true,  int_ipv6_unnum: false },

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.2 | 2026-05-01 11:06:18 -->
+<!-- TopoAssist v260501.3 | 2026-05-01 11:35:21 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3957,6 +3957,96 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+
+  /* ── Per-device GW override toggle header ── */
+  .ip-section-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .ip-section-toggle:hover { color: var(--text-main); }
+
+  /* ── Per-device GW override table ── */
+  .gw-ov-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gw-ov-header { margin-bottom: 2px; }
+  .gw-ov-devname {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 100px;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .gw-ov-col-hdr {
+    flex: 1;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .gw-ov-cell {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+  .gw-ov-cell input {
+    width: 48px;
+    height: 20px;
+    padding: 0 4px;
+    line-height: 20px;
+    box-sizing: border-box;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-main);
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    outline: none;
+  }
+  .gw-ov-cell input::placeholder { color: #cbd5e1; font-style: italic; }
+  .gw-ov-cell input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+  .gw-ov-cell input.gw-ov-mismatch { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.12); }
+
+  /* MLAG pair visual — colored left border connecting paired rows */
+  .gw-ov-mlag-first { border-left: 2px solid #3b82f6; padding-left: 4px; }
+  .gw-ov-mlag-peer  { border-left: 2px solid #3b82f6; padding-left: 4px; margin-bottom: 4px; }
+  .gw-ov-mlag-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #3b82f6;
+    background: rgba(59,130,246,0.08);
+    border-radius: 2px;
+    padding: 0 3px;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .gw-ov-devname-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   /* Auto Config — fixed (non-configurable) value rows */

@@ -1,10 +1,10 @@
-// TopoAssist v260501.2 | 2026-05-01 11:09:20
+// TopoAssist v260501.3 | 2026-05-01 11:30:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2997,9 +2997,64 @@ function getIpPreferences() {
   return prefs;
 }
 
+// Extended version called only from the modal open path — includes GW device overrides
+// and the ordered Arista device list for building the per-device table.
+// Do NOT use this inside config generation (adds sheet I/O overhead).
+function getIpPreferencesForModal() {
+  const prefs = getIpPreferences();
+  prefs.gw_device_overrides = getGwDeviceOverrides();
+
+  // Build ordered Arista device list (names only — device order matches sheet column order)
+  const mlagPeers = getDeviceMlagPeers();
+  const nonArista = getNonAristaList();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DATA);
+  const aristaDevices = [];
+  if (sheet) {
+    const row2 = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const seen = new Set();
+    row2.forEach(h => {
+      const s = String(h);
+      if (!s.startsWith('int_')) return;
+      const name = s.substring(4);
+      if (!name || seen.has(name) || nonArista.includes(name)) return;
+      seen.add(name);
+      aristaDevices.push({ name, mlagPeer: mlagPeers[name] || null });
+    });
+  }
+  prefs.arista_devices = aristaDevices;
+  return prefs;
+}
+
+function getGwDeviceOverrides() {
+  const raw = PropertiesService.getDocumentProperties().getProperty('GW_DEVICE_OVERRIDES');
+  return raw ? JSON.parse(raw) : {};
+}
+
+function saveGwDeviceOverrides(overrides) {
+  // Only persist entries that have at least one non-empty field
+  const clean = {};
+  Object.entries(overrides || {}).forEach(([dev, vals]) => {
+    if (vals.v4_first || vals.v4_last || vals.v6_first || vals.v6_last) {
+      clean[dev] = vals;
+    }
+  });
+  PropertiesService.getDocumentProperties().setProperty('GW_DEVICE_OVERRIDES', JSON.stringify(clean));
+  return { success: true };
+}
+
 function saveIpPreferences(prefs) {
   const userProps = PropertiesService.getUserProperties();
-  userProps.setProperties(prefs);
+  // gw_device_overrides is stored separately in DocumentProperties — remove before UserProperties save
+  const gwOverrides = prefs.gw_device_overrides;
+  if (gwOverrides !== undefined) {
+    saveGwDeviceOverrides(gwOverrides);
+    const prefsForUser = Object.assign({}, prefs);
+    delete prefsForUser.gw_device_overrides;
+    delete prefsForUser.arista_devices;
+    userProps.setProperties(prefsForUser);
+  } else {
+    userProps.setProperties(prefs);
+  }
   return { success: true };
 }
 
@@ -4297,6 +4352,12 @@ function getDeviceConfig(deviceName) {
 
     const indices = getColumnIndices(headers, deviceName);
     const ipPrefs = getIpPreferences() || {};
+    // Apply per-device GW first/last overrides when set (non-empty string overrides global)
+    const _gwOv = getGwDeviceOverrides()[deviceName] || {};
+    if (_gwOv.v4_first) ipPrefs.gw_v4_first = _gwOv.v4_first;
+    if (_gwOv.v4_last)  ipPrefs.gw_v4_last  = _gwOv.v4_last;
+    if (_gwOv.v6_first) ipPrefs.gw_v6_first  = _gwOv.v6_first;
+    if (_gwOv.v6_last)  ipPrefs.gw_v6_last   = _gwOv.v6_last;
     const settings = getNetworkSettings();
 
     // FEATURE FLAGS (derived from per-family settings flags)
