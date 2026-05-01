@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.35 | 2026-05-01 23:28:30 -->
+<!-- TopoAssist v260501.36 | 2026-05-01 23:50:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.35";  // keep in sync with Code.gs
+const APP_VERSION = "260501.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2657,8 +2657,10 @@ function runValidation(logIssues) {
     }
 
     // K. VLAN CONFLICTS WITH EOS INTERNAL VLANS (requires bridge check data)
+    // Only l2-* and Vx1 create VLAN database entries — l3-* sub-int uses vlan_ for dot1q
+    // encapsulation only (no vlan N stanza generated), so internal VLAN overlap is harmless.
     const _intVlansForDev = deviceInternalVlans[(node.device || "").toLowerCase()] || [];
-    if (_intVlansForDev.length) {
+    if (_intVlansForDev.length && (mode.startsWith('l2') || portName === 'Vx1')) {
       const _vlanStr = [_pvAuditJ.vlans, _pvAuditJ.native].filter(Boolean).join(',');
       if (_vlanStr) {
         const _portVlans = [...parseVlanInput(_vlanStr)].map(v => parseInt(v)).filter(v => !isNaN(v));
