@@ -1,10 +1,10 @@
-// TopoAssist v260501.4 | 2026-05-01 11:46:48
+// TopoAssist v260501.5 | 2026-05-01 11:55:08
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.4";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3006,7 +3006,7 @@ function getIpPreferencesForModal() {
   // Full device list including id, rack, hostname — used to build per-device GW override table
   prefs.arista_devices = getExistingDevices()
     .filter(d => d.type !== 'non-arista')
-    .map(d => ({ name: d.name, id: d.sheetIndex, hostname: d.hostname || '', rack: d.rack || '', mlagPeer: d.mlagPeer || null }));
+    .map(d => ({ name: d.name, id: d.sheetIndex, hostname: d.hostname || '', mlagPeer: d.mlagPeer || null }));
   return prefs;
 }
 
