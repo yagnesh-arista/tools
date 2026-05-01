@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.25 | 2026-05-01 17:56:06 -->
+<!-- TopoAssist v260501.26 | 2026-05-01 18:02:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.25";  // keep in sync with Code.gs
+const APP_VERSION = "260501.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4791,23 +4791,28 @@ function _updateGwExample() {
   }
   if (lblEl6) lblEl6.textContent = wide6 ? 'Prefix' : 'First Hextet';
 
-  // ── Per-device override first-field lock (same rule, saved in data-saved-wide) ──
+  // ── Per-device override first-field: show "1" hint when global mask is wide ──
+  // Field stays editable — user can type a per-device override. Hint only shown on
+  // empty fields (explicit overrides are preserved). Removing hint on user input.
   document.querySelectorAll('#gwDeviceOverrideTable .gw-ov-row[data-dev]').forEach(row => {
     const n = row.getAttribute('data-dev');
-    const e4 = document.getElementById('gw_ov_' + n + '_v4_first');
-    if (e4) {
-      if (wide4 && !e4.disabled) e4.dataset.savedWide = e4.value;
-      else if (!wide4 && e4.disabled) { e4.value = e4.dataset.savedWide || ''; delete e4.dataset.savedWide; }
-      e4.disabled = wide4;
-      if (wide4) e4.value = '1';
-    }
-    const e6 = document.getElementById('gw_ov_' + n + '_v6_first');
-    if (e6) {
-      if (wide6 && !e6.disabled) e6.dataset.savedWide = e6.value;
-      else if (!wide6 && e6.disabled) { e6.value = e6.dataset.savedWide || ''; delete e6.dataset.savedWide; }
-      e6.disabled = wide6;
-      if (wide6) e6.value = '1';
-    }
+    const applyHint = (el, wide) => {
+      if (!el) return;
+      if (wide) {
+        if (!('savedWide' in el.dataset)) {
+          el.dataset.savedWide = el.value;
+          if (!el.value.trim()) { el.value = '1'; el.classList.add('gw-ov-wide-hint'); }
+        }
+      } else {
+        if ('savedWide' in el.dataset) {
+          if (el.classList.contains('gw-ov-wide-hint')) el.value = el.dataset.savedWide || '';
+          delete el.dataset.savedWide;
+          el.classList.remove('gw-ov-wide-hint');
+        }
+      }
+    };
+    applyHint(document.getElementById('gw_ov_' + n + '_v4_first'), wide4);
+    applyHint(document.getElementById('gw_ov_' + n + '_v6_first'), wide6);
   });
 
   // ── Build values used in examples ──
@@ -5178,7 +5183,7 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
 
   tbl.innerHTML = html;
   tbl.querySelectorAll('input[type="text"]').forEach(el => {
-    el.oninput = () => { checkIpDirty(); _highlightGwMlagMismatch(); };
+    el.oninput = () => { el.classList.remove('gw-ov-wide-hint'); checkIpDirty(); _highlightGwMlagMismatch(); };
   });
   _highlightGwMlagMismatch();
 }
@@ -5208,7 +5213,7 @@ function _readGwDeviceOverrides() {
   document.querySelectorAll('#gwDeviceOverrideTable .gw-ov-row[data-dev]').forEach(row => {
     const name = row.getAttribute('data-dev');
     if (!name) return;
-    const g = f => ((document.getElementById('gw_ov_' + name + '_' + f) || {}).value || '').trim();
+    const g = f => { const el = document.getElementById('gw_ov_' + name + '_' + f); return (el && !el.classList.contains('gw-ov-wide-hint')) ? el.value.trim() : ''; };
     const vals = { v4_first: g('v4_first'), v4_last: g('v4_last'), v4_mask: g('v4_mask'), v6_first: g('v6_first'), v6_last: g('v6_last'), v6_mask: g('v6_mask') };
     if (vals.v4_first || vals.v4_last || vals.v4_mask || vals.v6_first || vals.v6_last || vals.v6_mask) overrides[name] = vals;
   });
