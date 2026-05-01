@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.5 | 2026-05-01 11:55:48 -->
+<!-- TopoAssist v260501.6 | 2026-05-01 12:09:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.5";  // keep in sync with Code.gs
+const APP_VERSION = "260501.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4954,16 +4954,38 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
     return r;
   };
 
+  // Build a position index for gap detection
+  const deviceIndexMap = {};
+  devices.forEach((d, i) => { deviceIndexMap[d.name] = i; });
+
   // Render grouped by topology group rects (holistic view groups)
+  // Non-adjacent members (gap of non-member devices between them) get separate sub-headers
   const hasGroups = groupRects && groupRects.length > 0;
   if (hasGroups) {
     groupRects.forEach(gr => {
-      const members = (gr.members || []).filter(m => devices.some(d => d.name === m));
-      if (members.length === 0) return;
-      html += `<div class="gw-ov-group-header">${gr.label || 'Group'}</div>`;
-      members.forEach(m => {
-        const dev = devices.find(d => d.name === m);
-        if (dev) html += renderDev(dev);
+      const memberSet = new Set(gr.members || []);
+      // orderedMembers: group's devices in sheet-index order
+      const orderedMembers = devices.filter(d => memberSet.has(d.name));
+      if (orderedMembers.length === 0) return;
+
+      // Split into contiguous runs: a gap exists when any device between two
+      // consecutive members (by sheet position) is NOT in this group
+      const runs = [[orderedMembers[0]]];
+      for (let i = 1; i < orderedMembers.length; i++) {
+        const prevIdx = deviceIndexMap[orderedMembers[i - 1].name];
+        const currIdx = deviceIndexMap[orderedMembers[i].name];
+        let hasGap = false;
+        for (let j = prevIdx + 1; j < currIdx; j++) {
+          if (!memberSet.has(devices[j].name)) { hasGap = true; break; }
+        }
+        if (hasGap) runs.push([orderedMembers[i]]);
+        else runs[runs.length - 1].push(orderedMembers[i]);
+      }
+
+      const label = gr.label || 'Group';
+      runs.forEach(run => {
+        html += `<div class="gw-ov-group-header">${label}</div>`;
+        run.forEach(dev => { html += renderDev(dev); });
       });
     });
   }
@@ -16288,7 +16310,11 @@ function _getTopologyDevices() {
       if (id && !seen.has(id)) { seen.add(id); devices.push(id); }
     });
   }
-  return devices.sort();
+  return devices.sort((a, b) => {
+    const ia = (allDevicesData[a] && allDevicesData[a].sheetIndex) || 0;
+    const ib = (allDevicesData[b] && allDevicesData[b].sheetIndex) || 0;
+    return ia - ib || a.localeCompare(b, undefined, { numeric: true });
+  });
 }
 
 function _computeGroupBounds(memberIds, padding) {
