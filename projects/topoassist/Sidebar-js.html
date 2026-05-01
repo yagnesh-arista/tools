@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.9 | 2026-05-01 13:00:28 -->
+<!-- TopoAssist v260501.10 | 2026-05-01 13:02:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.9";  // keep in sync with Code.gs
+const APP_VERSION = "260501.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4960,9 +4960,17 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
 
   // Render grouped by topology group rects (holistic view groups)
   // Non-adjacent members (gap of non-member devices between them) get separate sub-headers
+  // Groups are sorted by the sheet position of their first member (not creation order)
   const hasGroups = groupRects && groupRects.length > 0;
   if (hasGroups) {
-    groupRects.forEach(gr => {
+    const sortedGroups = groupRects.slice().sort((a, b) => {
+      const firstA = devices.findIndex(d => (a.members || []).includes(d.name));
+      const firstB = devices.findIndex(d => (b.members || []).includes(d.name));
+      const ia = firstA === -1 ? Number.MAX_SAFE_INTEGER : firstA;
+      const ib = firstB === -1 ? Number.MAX_SAFE_INTEGER : firstB;
+      return ia - ib;
+    });
+    sortedGroups.forEach(gr => {
       const memberSet = new Set(gr.members || []);
       // orderedMembers: group's devices in sheet-index order
       const orderedMembers = devices.filter(d => memberSet.has(d.name));
