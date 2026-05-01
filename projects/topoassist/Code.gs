@@ -1,10 +1,10 @@
-// TopoAssist v260501.11 | 2026-05-01 13:07:48
+// TopoAssist v260501.12 | 2026-05-01 13:36:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.11";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.12";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4528,8 +4528,9 @@ function getDeviceConfig(deviceName) {
         if (apSviVlans.length > 0) {
           apSviVlans.forEach((v, i) => {
             vx1VlanSet.add(parseInt(v));
-            const oct2 = Math.floor(v / 100);
-            const oct3 = v % 100;
+            const gwPfx_vx1 = parseInt((cfg2.gw_v4_mask || '/24').replace('/', '')) || 24;
+            const oct2 = gwPfx_vx1 < 24 ? Math.floor(v / 256) : Math.floor(v / 100);
+            const oct3 = gwPfx_vx1 < 24 ? v % 256 : v % 100;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
             const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
             // GW command: anycast (ip address virtual) vs VARP (ip address + ip virtual-router address)
@@ -5164,6 +5165,11 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     // Non-LEAF (SPINE/HARNESS/etc): plain ip address using gwLastV4/V6 (operator-configured last
     // octet) — same value the operator set for the virtual/anycast IP, applied as a plain address.
     else if (ipType.includes("gw")) {
+      // For prefix < /24 (/23–/16): bit-split VLAN into high/low byte so each VLAN gets a unique IP.
+      // oct2=floor(vlan/256), oct3=vlan%256 — covers VLANs 1–4094 within first+second octet space.
+      // For /24 and tighter: keep legacy decimal-split (oct2=floor/100, oct3=%100) unchanged.
+      const gwPfx = parseInt((cfg.gw_v4_mask || '/24').replace('/', '')) || 24;
+      if (gwPfx < 24) { oct2 = Math.floor(val / 256); oct3 = val % 256; }
       // Description prefix: ANYCAST_GW for LEAF+EVPN, GW for everything else.
       // Always includes VRF when set. Never just __TA alone.
       const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
