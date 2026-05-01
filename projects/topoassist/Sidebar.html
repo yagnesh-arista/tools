@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.17 | 2026-05-01 15:28:41 -->
+<!-- TopoAssist v260501.18 | 2026-05-01 15:36:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -690,14 +690,22 @@
         <div class="ip-legend-grid" style="grid-template-columns:92px auto 12px auto 12px auto 14px auto;row-gap:7px">
           <span class="legend-label" style="font-size:10px">P2P:</span>
           <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">ID</span>
+
+          <span class="legend-label" style="font-size:10px">GW /16–/23:</span>
+          <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+          <span class="legend-label" style="font-size:10px;font-style:italic;color:#94a3b8"></span>
+          <span style="grid-column:2/9;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;user-select:none;-webkit-user-select:none">e.g. VLAN 1520, /16 &rarr; <b style="color:#64748b;font-style:normal">115</b>.20.0.last/16 &nbsp;(1 concat 15 = 115)</span>
+
           <span class="legend-label" style="font-size:10px">GW /24–/32:</span>
           <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
-          <span class="legend-label" style="font-size:10px">GW /16–/23:</span>
-          <span class="legend-octet" style="padding:4px 6px"><span class="f-var">first</span><span class="f-dyn">oct2</span></span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+
+          <span class="legend-label" style="font-size:10px">GW v6 /32–/63:</span>
+          <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
+          <span class="legend-label" style="font-size:10px;font-style:italic;color:#94a3b8"></span>
+          <span style="grid-column:2/9;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;user-select:none;-webkit-user-select:none">e.g. VLAN 1520, /32 &rarr; <b style="color:#64748b;font-style:normal">115</b>:20:0::last/32 &nbsp;(1 concat 15 = 115)</span>
+
           <span class="legend-label" style="font-size:10px">GW v6 /64–/128:</span>
           <span class="legend-octet f-var">first</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
-          <span class="legend-label" style="font-size:10px">GW v6 /32–/63:</span>
-          <span class="legend-octet" style="padding:4px 6px"><span class="f-var">first</span><span class="f-dyn">oct2</span></span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
         </div>
       </div>
 
