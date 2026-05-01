@@ -1,4 +1,4 @@
-<!-- TopoAssist v260501.37 | 2026-05-01 23:54:51 -->
+<!-- TopoAssist v260501.38 | 2026-05-01 23:56:52 -->
 <!DOCTYPE html>
 <html>
 
@@ -812,6 +812,43 @@ clasp login --no-localhost</pre>
     <div class="info-box amber">
       IPv6 uses the same pattern as IPv4 for lab convenience — this intentionally deviates from strict Arista EOS syntax.
     </div>
+
+    <h4 style="font-size:13px; margin:14px 0 4px;">IP Configuration Modal</h4>
+    <p style="font-size:13px;">Open with the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span> toolbar button. Configure global GW and P2P base addresses, loopback and VNI bases, BGP ASN base, bridge MAC, and per-device GW overrides. Changes take effect on the next config generation; saving also invalidates all cached configs so they are regenerated on next view.</p>
+
+    <h4 style="font-size:13px; margin:14px 0 4px;">GW Address Formula</h4>
+    <p style="font-size:13px;">Gateway SVIs are addressed using four configurable fields — <b>First</b>, <b>Last</b>, and <b>Mask</b> for each of IPv4 and IPv6 — combined with the VLAN-derived octets.</p>
+    <p style="font-size:13px;"><b>Standard prefix (IPv4 ≥ /24, IPv6 ≥ /64):</b></p>
+    <ul style="font-size:13px;">
+      <li>IPv4: <code>{First}.{oct2}.{oct3}.{Last}/{Mask}</code> — e.g. first=<code>100</code>, VLAN 1520 → <code>100.15.20.1/24</code></li>
+      <li>IPv6: <code>{First}:{oct2}:{oct3}::{Last}/{Mask}</code> — e.g. first=<code>100</code>, VLAN 1520 → <code>100:15:20::1/64</code></li>
+    </ul>
+    <p style="font-size:13px;"><b>Wide prefix (IPv4 &lt; /24, IPv6 &lt; /64) — first field becomes a numeric prefix:</b></p>
+    <ul style="font-size:13px;">
+      <li>IPv4: <code>{First}{oct2}.{oct3}.0.{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 4050 → <code>140.50.0.1/16</code></li>
+      <li>IPv6: <code>{First}{oct2}:{oct3}:0::{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 4050 → <code>140:50:0::1/32</code></li>
+    </ul>
+    <div class="info-box slate" style="font-size:12px;">In wide-prefix mode the First field is locked to <code>1</code> (the only universally valid prefix — larger digits overflow 255 for VLANs ≥ 1000). The live formula examples in the modal update as you type to show the resulting address for a representative VLAN.</div>
+
+    <h4 style="font-size:13px; margin:14px 0 4px;">Per-Device GW Override (Advanced)</h4>
+    <p style="font-size:13px;">The <b>GW Auto Config</b> accordion in the IP Config modal exposes a per-device override table. Each Arista device gets six fields: <b>v4 First</b>, <b>v4 Last</b>, <b>v4 Mask</b>, and the IPv6 equivalents. Fields left empty inherit the global GW values (shown as grey italic placeholder text).</p>
+    <p style="font-size:13px;"><b>How overrides work:</b></p>
+    <ul style="font-size:13px;">
+      <li>Any non-empty field replaces the global value for that device only.</li>
+      <li>Empty fields and grey-italic (hint) fields always inherit from global. Clearing a field back to empty re-inherits.</li>
+      <li>To enter an explicit value: click the field (the grey hint text clears automatically), type the value, and tab away. The field stays white to confirm the override is active.</li>
+      <li>To reset a field back to global: clear it and click away — the hint re-appears.</li>
+    </ul>
+    <p style="font-size:13px;"><b>Wide-prefix mode in per-device overrides:</b></p>
+    <ul style="font-size:13px;">
+      <li>When the <em>effective</em> mask for a device is wide (either the per-device override mask, or the global mask if no override), the <b>First</b> field for that device is locked to <code>1</code> and disabled.</li>
+      <li>If the device had an explicit First override before the mask went wide, the value is preserved internally and restored when the mask returns to a standard prefix.</li>
+      <li>Hint-mode First fields (no override) are also forced to <code>1</code> in wide mode and cleared on exit.</li>
+    </ul>
+    <div class="info-box slate" style="font-size:12px;">Overrides are stored in DocumentProperties (per-spreadsheet) and applied at config generation time — they do not affect the sheet rows.</div>
+
+    <h4 style="font-size:13px; margin:14px 0 4px;">MLAG Constraint</h4>
+    <p style="font-size:13px;">MLAG peer pairs must share the same GW First octet (they share a common anycast or virtual-router IP). TopoAssist warns on save if the per-device First overrides for an MLAG pair differ, and highlights mismatched fields amber in the table. You can proceed past the warning, but the generated config will have a mismatch that EOS will reject at push time.</p>
 
     <h3>5. Auto-Description Logic</h3>
     <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>__TA</code> — this ownership marker lets Reconcile identify and clean up stale interfaces on devices. Use <code>show interfaces status | grep __TA</code> on any device to list all managed interfaces.</p>
