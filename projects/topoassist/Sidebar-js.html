@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.20 | 2026-05-01 16:11:07 -->
+<!-- TopoAssist v260501.21 | 2026-05-01 17:03:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.20";  // keep in sync with Code.gs
+const APP_VERSION = "260501.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4757,110 +4757,116 @@ function _onMaskInput(inp, errId, min, max) {
 let _gwV4WideMode = false, _gwV6WideMode = false;
 let _gwV4FirstSaved = null, _gwV6FirstSaved = null;
 
-// Rebuild GW Auto Config example IPs and lock/unlock the first-field in wide mode.
+// Rebuild GW Auto Config examples — always shows both standard and wide-prefix columns.
 // Example uses VLAN 1520: oct2 = floor(1520/100) = 15, oct3 = 1520 % 100 = 20.
+// "GW MLAG phy" rows use last+id (id=3,4 = notional MLAG pair sheet indices).
+// "GW phy" row uses just last (non-LEAF / SPINE formula — no device-id offset).
 function _updateGwExample() {
   const oct2 = 15, oct3 = 20;
-  const m4 = (document.getElementById('ip_gw_v4_mask').value || '/24').trim();
-  const m6 = (document.getElementById('ip_gw_v6_mask').value || '/64').trim();
+  const firstEl4 = document.getElementById('ip_gw_v4_first');
+  const lblEl4   = document.getElementById('lbl_gw_v4_first');
+  const firstEl6 = document.getElementById('ip_gw_v6_first');
+  const lblEl6   = document.getElementById('lbl_gw_v6_first');
+
+  const m4   = (document.getElementById('ip_gw_v4_mask').value || '/24').trim();
+  const m6   = (document.getElementById('ip_gw_v6_mask').value || '/64').trim();
   const pfx4 = parseInt(m4.replace('/', '')) || 24;
   const pfx6 = parseInt(m6.replace('/', '')) || 64;
   const wide4 = pfx4 < 24, wide6 = pfx6 < 64;
 
-  // Lock IPv4 first field to "1" on entry to wide mode; restore on exit.
-  const firstEl4 = document.getElementById('ip_gw_v4_first');
-  const lblEl4   = document.getElementById('lbl_gw_v4_first');
-  if (wide4 && !_gwV4WideMode) {
-    _gwV4FirstSaved = firstEl4 ? firstEl4.value : null;
-    _gwV4WideMode = true;
-  } else if (!wide4 && _gwV4WideMode) {
-    _gwV4WideMode = false;
-    if (firstEl4 && _gwV4FirstSaved !== null) firstEl4.value = _gwV4FirstSaved;
-    _gwV4FirstSaved = null;
+  // ── Global first-field lock: "1" in wide mode, saved/restored on transition ──
+  if (firstEl4) {
+    if (wide4 && !_gwV4WideMode) { _gwV4FirstSaved = firstEl4.value; _gwV4WideMode = true; }
+    else if (!wide4 && _gwV4WideMode) { _gwV4WideMode = false; if (_gwV4FirstSaved !== null) firstEl4.value = _gwV4FirstSaved; _gwV4FirstSaved = null; }
+    firstEl4.disabled = wide4;
+    if (wide4) firstEl4.value = '1';
   }
-  if (firstEl4) { firstEl4.disabled = wide4; if (wide4) firstEl4.value = '1'; }
   if (lblEl4) lblEl4.textContent = wide4 ? 'Prefix' : 'First Octet';
 
-  // Lock IPv6 first field to "1" on entry to wide mode; restore on exit.
-  const firstEl6 = document.getElementById('ip_gw_v6_first');
-  const lblEl6   = document.getElementById('lbl_gw_v6_first');
-  if (wide6 && !_gwV6WideMode) {
-    _gwV6FirstSaved = firstEl6 ? firstEl6.value : null;
-    _gwV6WideMode = true;
-  } else if (!wide6 && _gwV6WideMode) {
-    _gwV6WideMode = false;
-    if (firstEl6 && _gwV6FirstSaved !== null) firstEl6.value = _gwV6FirstSaved;
-    _gwV6FirstSaved = null;
+  if (firstEl6) {
+    if (wide6 && !_gwV6WideMode) { _gwV6FirstSaved = firstEl6.value; _gwV6WideMode = true; }
+    else if (!wide6 && _gwV6WideMode) { _gwV6WideMode = false; if (_gwV6FirstSaved !== null) firstEl6.value = _gwV6FirstSaved; _gwV6FirstSaved = null; }
+    firstEl6.disabled = wide6;
+    if (wide6) firstEl6.value = '1';
   }
-  if (firstEl6) { firstEl6.disabled = wide6; if (wide6) firstEl6.value = '1'; }
   if (lblEl6) lblEl6.textContent = wide6 ? 'Prefix' : 'First Hextet';
 
-  // f4/f6 are always "1" in wide mode.
-  const f4  = wide4 ? '1' : (firstEl4 ? (firstEl4.value || '100') : '100').trim();
-  const l4  = (document.getElementById('ip_gw_v4_last').value || '1').trim();
-  const f6  = wide6 ? '1' : (firstEl6 ? (firstEl6.value || '100') : '100').trim();
-  const l6  = (document.getElementById('ip_gw_v6_last').value || '1').trim();
-  const l4n = parseInt(l4) || 1, l6n = parseInt(l6) || 1;
-
-  const sp   = (cls, txt) => '<span class="' + cls + '">' + txt + '</span>';
-  const note = txt => sp('ip-ex-note', txt);
-
-  function html4Phy(id) {
-    const last = l4n + id;
-    return wide4
-      ? sp('f-var',f4)+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.0.'+sp('ip-ex-result',last)+m4+' '+note('last+id')
-      : sp('f-var',f4)+'.'+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.'+sp('ip-ex-result',last)+m4+' '+note('last+id');
-  }
-  function html4Vip() {
-    return wide4
-      ? sp('f-var',f4)+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.0.'+sp('f-var',l4n)
-      : sp('f-var',f4)+'.'+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.'+sp('f-var',l4n);
-  }
-  function html6Phy(id) {
-    const last = l6n + id;
-    return wide6
-      ? sp('f-var',f6)+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+':0::'+sp('ip-ex-result',last)+m6+' '+note('last+id')
-      : sp('f-var',f6)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('ip-ex-result',last)+m6+' '+note('last+id');
-  }
-  function html6Vip() {
-    return wide6
-      ? sp('f-var',f6)+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+':0::'+sp('f-var',l6n)
-      : sp('f-var',f6)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('f-var',l6n);
-  }
-
-  const ARR = '&rarr; ';
-  const m4el = document.getElementById('gw-ex4-mode');   if (m4el) m4el.textContent = wide4 ? 'wide-prefix' : 'standard';
-  const m6el = document.getElementById('gw-ex6-mode');   if (m6el) m6el.textContent = wide6 ? 'wide-prefix' : 'standard';
-
-  const p41 = document.getElementById('gw-ex4-phy1');    if (p41) p41.innerHTML = html4Phy(3);
-  const p42 = document.getElementById('gw-ex4-phy2');    if (p42) p42.innerHTML = html4Phy(4);
-  const v4  = document.getElementById('gw-ex4-vip');     if (v4)  v4.innerHTML  = html4Vip() + ' ' + note(ARR + 'ip virtual-router address (same on all)');
-  const a4  = document.getElementById('gw-ex4-anycast'); if (a4)  a4.innerHTML  = html4Vip() + m4 + ' ' + note(ARR + 'ip address virtual (same on all)');
-
-  const p61 = document.getElementById('gw-ex6-phy1');    if (p61) p61.innerHTML = html6Phy(3);
-  const p62 = document.getElementById('gw-ex6-phy2');    if (p62) p62.innerHTML = html6Phy(4);
-  const v6  = document.getElementById('gw-ex6-vip');     if (v6)  v6.innerHTML  = html6Vip() + ' ' + note(ARR + 'ipv6 virtual-router address (same on all)');
-  const a6  = document.getElementById('gw-ex6-anycast'); if (a6)  a6.innerHTML  = html6Vip() + m6 + ' ' + note(ARR + 'ipv6 address virtual (same on all)');
-
-  // Wide-prefix calc hint: show amber oct2/oct3 between header and phy rows.
-  const calc4 = document.getElementById('gw-ex4-calc');
-  if (calc4) {
-    if (wide4) {
-      calc4.innerHTML = '1·<span class="f-dyn">' + oct2 + '</span>=<b style="color:#64748b;font-style:normal;font-weight:600">' + ('' + 1 + oct2) + '</b>, oct3=<span class="f-dyn">' + oct3 + '</span>';
-      calc4.style.display = '';
-    } else {
-      calc4.style.display = 'none';
+  // ── Per-device override first-field lock (same rule, saved in data-saved-wide) ──
+  document.querySelectorAll('#gwDeviceOverrideTable .gw-ov-row[data-dev]').forEach(row => {
+    const n = row.getAttribute('data-dev');
+    const e4 = document.getElementById('gw_ov_' + n + '_v4_first');
+    if (e4) {
+      if (wide4 && !e4.disabled) e4.dataset.savedWide = e4.value;
+      else if (!wide4 && e4.disabled) { e4.value = e4.dataset.savedWide || ''; delete e4.dataset.savedWide; }
+      e4.disabled = wide4;
+      if (wide4) e4.value = '1';
     }
-  }
-  const calc6 = document.getElementById('gw-ex6-calc');
-  if (calc6) {
-    if (wide6) {
-      calc6.innerHTML = '1·<span class="f-dyn">' + oct2 + '</span>=<b style="color:#64748b;font-style:normal;font-weight:600">' + ('' + 1 + oct2) + '</b>, oct3=<span class="f-dyn">' + oct3 + '</span>';
-      calc6.style.display = '';
-    } else {
-      calc6.style.display = 'none';
+    const e6 = document.getElementById('gw_ov_' + n + '_v6_first');
+    if (e6) {
+      if (wide6 && !e6.disabled) e6.dataset.savedWide = e6.value;
+      else if (!wide6 && e6.disabled) { e6.value = e6.dataset.savedWide || ''; delete e6.dataset.savedWide; }
+      e6.disabled = wide6;
+      if (wide6) e6.value = '1';
     }
-  }
+  });
+
+  // ── Build values used in examples ──
+  // Standard section uses configured first (if currently wide, use saved value).
+  const f4std = (wide4 ? (_gwV4FirstSaved || '100') : ((firstEl4 ? firstEl4.value : '') || '100')).trim();
+  const f6std = (wide6 ? (_gwV6FirstSaved || '100') : ((firstEl6 ? firstEl6.value : '') || '100')).trim();
+  const l4n   = parseInt((document.getElementById('ip_gw_v4_last').value || '1').trim()) || 1;
+  const l6n   = parseInt((document.getElementById('ip_gw_v6_last').value || '1').trim()) || 1;
+
+  // Mask for each column: use actual configured mask if it fits the mode, else representative.
+  const m4s = pfx4 >= 24 ? m4 : '/24';   // standard col: actual or /24 illustrative
+  const m4w = pfx4 <  24 ? m4 : '/16';   // wide col:     actual or /16 illustrative
+  const m6s = pfx6 >= 64 ? m6 : '/64';
+  const m6w = pfx6 <  64 ? m6 : '/32';
+
+  const sp   = (cls, v) => '<span class="' + cls + '">' + v + '</span>';
+  const note = v => sp('ip-ex-note', v);
+  const set  = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  // ── IPv4 standard formula: {f4std}.{oct2}.{oct3}.{N}/{mask} ──
+  const s4p = (n) => sp('f-var',f4std)+'.'+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.'+sp('ip-ex-result',n);
+  const s4mphy  = (id) => s4p(l4n+id)+m4s+' '+note('last+id');
+  const s4solo  = ()   => s4p(l4n)+m4s+' '+note('last');
+  const s4vip   = ()   => s4p(l4n)+' '+note('&rarr; ip virtual-router address');
+  const s4any   = ()   => s4p(l4n)+m4s+' '+note('&rarr; ip address virtual');
+
+  // ── IPv4 wide formula: {1}{oct2}.{oct3}.0.{N}/{mask} ──
+  const w4p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+'.'+sp('f-dyn',oct3)+'.0.'+sp('ip-ex-result',n);
+  const w4mphy  = (id) => w4p(l4n+id)+m4w+' '+note('last+id');
+  const w4solo  = ()   => w4p(l4n)+m4w+' '+note('last');
+  const w4vip   = ()   => w4p(l4n)+' '+note('&rarr; ip virtual-router address');
+  const w4any   = ()   => w4p(l4n)+m4w+' '+note('&rarr; ip address virtual');
+
+  // ── IPv6 standard formula: {f6std}:{oct2}:{oct3}::{N}/{mask} ──
+  const s6p = (n) => sp('f-var',f6std)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('ip-ex-result',n);
+  const s6mphy  = (id) => s6p(l6n+id)+m6s+' '+note('last+id');
+  const s6solo  = ()   => s6p(l6n)+m6s+' '+note('last');
+  const s6vip   = ()   => s6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
+  const s6any   = ()   => s6p(l6n)+m6s+' '+note('&rarr; ipv6 address virtual');
+
+  // ── IPv6 wide formula: {1}{oct2}:{oct3}:0::{N}/{mask} ──
+  const w6p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+':0::'+sp('ip-ex-result',n);
+  const w6mphy  = (id) => w6p(l6n+id)+m6w+' '+note('last+id');
+  const w6solo  = ()   => w6p(l6n)+m6w+' '+note('last');
+  const w6vip   = ()   => w6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
+  const w6any   = ()   => w6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
+
+  // ── Populate all cells ──
+  set('gw-ex4-std-mphy1',  s4mphy(3)); set('gw-ex4-wide-mphy1', w4mphy(3));
+  set('gw-ex4-std-mphy2',  s4mphy(4)); set('gw-ex4-wide-mphy2', w4mphy(4));
+  set('gw-ex4-std-solo',   s4solo());  set('gw-ex4-wide-solo',  w4solo());
+  set('gw-ex4-std-anycast',s4any());   set('gw-ex4-wide-anycast',w4any());
+  set('gw-ex4-std-vip',    s4vip());   set('gw-ex4-wide-vip',   w4vip());
+
+  set('gw-ex6-std-mphy1',  s6mphy(3)); set('gw-ex6-wide-mphy1', w6mphy(3));
+  set('gw-ex6-std-mphy2',  s6mphy(4)); set('gw-ex6-wide-mphy2', w6mphy(4));
+  set('gw-ex6-std-solo',   s6solo());  set('gw-ex6-wide-solo',  w6solo());
+  set('gw-ex6-std-anycast',s6any());   set('gw-ex6-wide-anycast',w6any());
+  set('gw-ex6-std-vip',    s6vip());   set('gw-ex6-wide-vip',   w6vip());
 }
 
 // --- UPDATED OPEN FUNCTION ---
