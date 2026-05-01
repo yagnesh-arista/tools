@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.36 | 2026-05-01 23:50:15 -->
+<!-- TopoAssist v260501.37 | 2026-05-01 23:55:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.36";  // keep in sync with Code.gs
+const APP_VERSION = "260501.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2502,7 +2502,7 @@ function runValidation(logIssues) {
 
   for (let nodeId in allNodesData) {
     let node = allNodesData[nodeId];
-    if (!node || !node.details) continue;
+    if (!node || !node.details || !node.name) continue;
 
     let d = node.details;
     let configErrors = [];
@@ -2820,7 +2820,7 @@ function runValidation(logIssues) {
 
     portIds.forEach(pid => {
       const node = allNodesData[pid];
-      if (!node || !node.details) return;
+      if (!node || !node.details || !node.name) return;
       const d = node.details;
 
       let logicalOwner = node.name;
