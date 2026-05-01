@@ -1,7 +1,7 @@
-<!-- TopoAssist v260501.22 | 2026-05-01 17:10:30 -->
+<!-- TopoAssist v260501.23 | 2026-05-01 17:19:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260501.22";  // keep in sync with Code.gs
+const APP_VERSION = "260501.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4856,13 +4856,15 @@ function _updateGwExample() {
   const w6any   = ()   => w6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
 
   // ── Populate all cells ──
-  // Standard group (above calc hint divider), wide group (below). One MLAG device row each.
-  set('gw-ex4-std-mphy',   s4mphy(3)); set('gw-ex4-wide-mphy',  w4mphy(3));
+  // Standard group (above calc hint), wide group (below). Both MLAG devices shown.
+  set('gw-ex4-std-mphy1',  s4mphy(3)); set('gw-ex4-wide-mphy1', w4mphy(3));
+  set('gw-ex4-std-mphy2',  s4mphy(4)); set('gw-ex4-wide-mphy2', w4mphy(4));
   set('gw-ex4-std-solo',   s4solo());  set('gw-ex4-wide-solo',  w4solo());
   set('gw-ex4-std-anycast',s4any());   set('gw-ex4-wide-anycast',w4any());
   set('gw-ex4-std-vip',    s4vip());   set('gw-ex4-wide-vip',   w4vip());
 
-  set('gw-ex6-std-mphy',   s6mphy(3)); set('gw-ex6-wide-mphy',  w6mphy(3));
+  set('gw-ex6-std-mphy1',  s6mphy(3)); set('gw-ex6-wide-mphy1', w6mphy(3));
+  set('gw-ex6-std-mphy2',  s6mphy(4)); set('gw-ex6-wide-mphy2', w6mphy(4));
   set('gw-ex6-std-solo',   s6solo());  set('gw-ex6-wide-solo',  w6solo());
   set('gw-ex6-std-anycast',s6any());   set('gw-ex6-wide-anycast',w6any());
   set('gw-ex6-std-vip',    s6vip());   set('gw-ex6-wide-vip',   w6vip());
