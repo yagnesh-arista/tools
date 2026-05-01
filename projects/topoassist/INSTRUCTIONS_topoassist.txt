@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-01 (UserGuide: expanded section 4 with IP Config modal, GW address formula (standard vs wide-prefix), per-device GW override table usage, wide-mode locking behaviour, and MLAG First-octet constraint. Files: UserGuide.html)
+  Last updated: 2026-05-02 (CSS: bump .gw-ov-dev-id and .gw-ov-mlag-badge from 9px → 10px to satisfy 10px font-size floor. Files: Sidebar-css.html)
+  Previous: 2026-05-01 (UserGuide: expanded section 4 with IP Config modal, GW address formula (standard vs wide-prefix), per-device GW override table usage, wide-mode locking behaviour, and MLAG First-octet constraint. Files: UserGuide.html)
   Previous: 2026-05-01 (runValidation() crash fix: two node-guard conditions (!node || !node.details) now also check !node.name — prevents TypeError: Cannot read properties of undefined (reading 'toLowerCase') when a sheet row has an empty int_ column, producing an allNodesData entry with name:undefined. Files: Sidebar-js.html)
   Previous: 2026-05-01 (Audit check K (Internal VLAN Conflict) gated to l2-* modes and Vx1 only — l3-* sub-int vlan_ is dot1q encap only, no VLAN DB entry, so overlap with EOS-internal VLANs is harmless. VERSION 260501.36. Files: Sidebar-js.html)
   Previous: 2026-05-01 (Per-device GW lockFirst() corrected: hint/empty fields → disable + force '1'; explicit fields → disable only, value preserved (shown as disabled, not overwritten). _readGwDeviceOverrides: disabled fields return dataset.preLockVal ('' for hint-locked, explicit value for user-set), so saves in wide mode correctly preserve per-device explicit first overrides. Files: Sidebar-js.html)
