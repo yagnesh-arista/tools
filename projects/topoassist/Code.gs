@@ -1,10 +1,10 @@
-// TopoAssist v260501.13 | 2026-05-01 13:57:38
+// TopoAssist v260501.14 | 2026-05-01 14:27:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260501.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260501.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4530,11 +4530,12 @@ function getDeviceConfig(deviceName) {
             vx1VlanSet.add(parseInt(v));
             const oct2 = Math.floor(v / 100);
             const oct3 = v % 100;
-            const gwPfx_vx1 = parseInt((cfg2.gw_v4_mask || '/24').replace('/', '')) || 24;
-            const vx1Pv4Px = gwPfx_vx1 < 24
+            const gwPfx4_vx1 = parseInt((cfg2.gw_v4_mask || '/24').replace('/', '')) || 24;
+            const gwPfx6_vx1 = parseInt((cfg2.gw_v6_mask || '/64').replace('/', '')) || 64;
+            const vx1Pv4Px = gwPfx4_vx1 < 24
               ? `${cfg2.gw_v4_first}${oct2}.${oct3}.0`
               : `${cfg2.gw_v4_first}.${oct2}.${oct3}`;
-            const vx1Pv6Px = gwPfx_vx1 < 24
+            const vx1Pv6Px = gwPfx6_vx1 < 64
               ? `${cfg2.gw_v6_first}${oct2}:${oct3}:0`
               : `${cfg2.gw_v6_first}:${oct2}:${oct3}`;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
@@ -5175,11 +5176,12 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
       // the third to 0. Formula: {first}{oct2}.{oct3}.0.{last}/{mask}
       // e.g. gw_v4_first="1", VLAN 4050 → 140.50.0.1/16  (oct2=40, oct3=50; "1"+"40"="140")
       // Standard /24+: {first}.{oct2}.{oct3}.{last}/{mask} — unchanged (backwards compatible).
-      const gwPfx = parseInt((cfg.gw_v4_mask || '/24').replace('/', '')) || 24;
-      const ipv4Px = gwPfx < 24
+      const gwPfx4 = parseInt((cfg.gw_v4_mask || '/24').replace('/', '')) || 24;
+      const gwPfx6 = parseInt((cfg.gw_v6_mask || '/64').replace('/', '')) || 64;
+      const ipv4Px = gwPfx4 < 24
         ? `${cfg.gw_v4_first}${oct2}.${oct3}.0`
         : `${cfg.gw_v4_first}.${oct2}.${oct3}`;
-      const ipv6Px = gwPfx < 24
+      const ipv6Px = gwPfx6 < 64
         ? `${cfg.gw_v6_first}${oct2}:${oct3}:0`
         : `${cfg.gw_v6_first}:${oct2}:${oct3}`;
       // Description prefix: ANYCAST_GW for LEAF+EVPN, GW for everything else.
