@@ -207,12 +207,6 @@
         "/export/users/ash.chan/MCP/arista-eos/eos_server.py"
       ]
     },
-    "arista-sonic": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/arista-sonic/sonic_server.py"
-      ]
-    },
     "arista-ixia": {
       "command": "/export/users/ash.chan/MCP/py310/bin/python3",
       "args": [
@@ -223,42 +217,6 @@
       "command": "/export/users/ash.chan/MCP/py310/bin/python3",
       "args": [
         "/export/users/ash.chan/MCP/arista-bugsby/bugsby_server.py"
-      ]
-    },
-    "swat-lab": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/swat-lab-mcp/swat_lab_server.py"
-      ]
-    },
-    "swat-config": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/swat-config-mcp/swat_config_server.py"
-      ]
-    },
-    "swat-debug": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/swat-debug-mcp/swat_debug_server.py"
-      ]
-    },
-    "swat-release": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/swat-release-mcp/swat_release_server.py"
-      ]
-    },
-    "gdoc-mcp": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/gdoc-mcp/gdoc_server.py"
-      ]
-    },
-    "claudeGHCBot": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/claudeGHCBot/claudeGHCBot.py"
       ]
     }
   }
