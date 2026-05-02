@@ -1,10 +1,10 @@
-// TopoAssist v260502.1 | 2026-05-02 01:37:26
+// TopoAssist v260502.3 | 2026-05-02 12:32:21
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260502.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260502.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -32,9 +32,9 @@ function onOpen() {
       .addItem('L1: Transceiver', 'viewTransceiver')
       .addItem('L1: Speed', 'viewSpeed')
       .addSeparator()
+      .addItem('L1.5: Mode', 'viewMode')
       .addItem('L1.5: Port Channel', 'viewPo')
       .addSeparator()
-      .addItem('L2/L3: Mode', 'viewMode')
       .addItem('L2/L3: Vlan', 'viewVlan')
       .addItem('L2/L3: SVI', 'viewSvi')
       .addItem('L2/L3: IP', 'viewIpTypeL2L3')
