@@ -1,4 +1,4 @@
-<!-- TopoAssist v260502.7 | 2026-05-02 14:37:41 -->
+<!-- TopoAssist v260502.9 | 2026-05-02 15:00:38 -->
 <!DOCTYPE html>
 <html>
 
@@ -1354,11 +1354,11 @@
     <div id="genallDeviceFilter" style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;user-select:none;-webkit-user-select:none;">Targets</span>
-        <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(true)">All</button>
-        <button class="btn-mono" style="height:18px;padding:0 6px;font-size:10px;line-height:18px;box-sizing:border-box;" onclick="_genAllSelectAll(false)">None</button>
+        <button class="genall-sel-chip" onclick="_genAllSelectAll(true)">All</button>
+        <button class="genall-sel-chip" onclick="_genAllSelectAll(false)">None</button>
         <span id="genAllSelCount" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;user-select:none;-webkit-user-select:none;"></span>
       </div>
-      <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 14px;"></div>
+      <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:6px 8px;"></div>
     </div>
     <!-- Compact action row -->
     <div class="genall-action-row">

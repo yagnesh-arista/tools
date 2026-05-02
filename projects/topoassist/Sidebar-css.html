@@ -1,4 +1,4 @@
-<!-- TopoAssist v260502.7 | 2026-05-02 14:37:41 -->
+<!-- TopoAssist v260502.9 | 2026-05-02 15:00:16 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6006,12 +6006,24 @@
     font-family: 'JetBrains Mono', monospace; font-size: 12px;
     background: var(--bg-modal, #ffffff);
   }
+  /* Targets header — All / None quick-select chips */
+  .genall-sel-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    padding: 0 9px; height: 20px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-secondary, #f8fafc); color: var(--text-muted);
+    cursor: pointer; white-space: nowrap; letter-spacing: 0.03em;
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+    user-select: none; -webkit-user-select: none;
+  }
+  .genall-sel-chip:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.06); }
   /* Device pill selector */
   .genall-dev-pill {
     display: inline-flex; align-items: center;
     font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
-    padding: 2px 8px; height: 22px; box-sizing: border-box;
-    border: 1px solid var(--border); border-radius: 11px;
+    padding: 0 10px; height: 24px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 12px;
     background: transparent; color: var(--text-muted);
     cursor: pointer; white-space: nowrap;
     transition: background 0.1s, border-color 0.1s, color 0.1s;
