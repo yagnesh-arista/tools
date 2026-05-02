@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260425.18 | 2026-04-25 13:06:23
+# settings v260502.2 | 2026-05-02 14:26:30
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
