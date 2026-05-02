@@ -14,11 +14,8 @@ The user provides the EOS device hostname each session. Ask for it if not given.
 
 ## Credentials
 
-Set via env vars before running if non-default:
-```bash
-EOS_USERNAME=admin EOS_PASSWORD=<your-pw> python3 ~/claude/projects/ixia/eos_check.py <host>
-```
-Default: username=admin, no password.
+Read from env vars at runtime: `EOS_USERNAME` (default: admin) and `EOS_PASSWORD` (default: empty).
+Export them in the shell before running if the device needs non-default credentials.
 
 ## Default commands (when no cmds given)
 
