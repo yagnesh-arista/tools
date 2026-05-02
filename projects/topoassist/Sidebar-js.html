@@ -1,7 +1,7 @@
-<!-- TopoAssist v260502.4 | 2026-05-02 14:13:22 -->
+<!-- TopoAssist v260502.5 | 2026-05-02 14:17:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260502.4";  // keep in sync with Code.gs
+const APP_VERSION = "260502.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -805,7 +805,7 @@ function renderManagerList() {
     const mlagPeerOptions = ['', ...currentDeviceList
       .filter(d => d.name !== devObj.name && d.type !== 'non-arista')
       .map(d => d.name)
-    ].map(n => `<option value="${n}" ${mlagPeerVal === n ? 'selected' : ''}>${n || '—'}</option>`).join('');
+    ].map(n => `<option value="${n}" ${mlagPeerVal === n ? 'selected' : ''}>${n ? _fmtDev(n) : '—'}</option>`).join('');
 
     li.innerHTML = `
 <div class="col-center"><span class="reorder-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span></div>
@@ -2472,7 +2472,7 @@ function runValidation(logIssues) {
         let vlanB = normalizeVlan(nodeB.details.vlan_);
         if (vlanA !== vlanB) {
           auditCheckHadIssue.auditFlagVlanMismatch = (auditCheckHadIssue.auditFlagVlanMismatch || 0) + 1;
-          if (auditFlagVlanMismatch) pairErrors.push(`VLAN Mismatch: ${nodeA.device}:${nodeA.name} (${vlanA}) \u2194 ${nodeB.device}:${nodeB.name} (${vlanB})`);
+          if (auditFlagVlanMismatch) pairErrors.push(`VLAN Mismatch: ${_fmtDev(nodeA.device)}:${nodeA.name} (${vlanA}) \u2194 ${_fmtDev(nodeB.device)}:${nodeB.name} (${vlanB})`);
         }
 
         // D. MODE COMPATIBILITY
@@ -2480,7 +2480,7 @@ function runValidation(logIssues) {
         const modeB = (nodeB.details.sp_mode_ || "").trim().toLowerCase();
         if (modeA && modeB && !VALID_MODE_PAIRS.has(`${modeA}|${modeB}`)) {
           auditCheckHadIssue.auditFlagModeIncompat = (auditCheckHadIssue.auditFlagModeIncompat || 0) + 1;
-          if (auditFlagModeIncompat) pairErrors.push(`Mode Incompatible: ${nodeA.device}:${nodeA.name} (${modeA}) \u2194 ${nodeB.device}:${nodeB.name} (${modeB})`);
+          if (auditFlagModeIncompat) pairErrors.push(`Mode Incompatible: ${_fmtDev(nodeA.device)}:${nodeA.name} (${modeA}) \u2194 ${_fmtDev(nodeB.device)}:${nodeB.name} (${modeB})`);
         }
 
         // E. SPEED MISMATCH
@@ -2492,7 +2492,7 @@ function runValidation(logIssues) {
         const normSpA = _sp(spA); const normSpB = _sp(spB);
         if (normSpA && normSpB && normSpA !== normSpB) {
           auditCheckHadIssue.auditFlagSpeedMismatch = (auditCheckHadIssue.auditFlagSpeedMismatch || 0) + 1;
-          if (auditFlagSpeedMismatch) pairErrors.push(`Speed Mismatch: ${nodeA.device} (${normSpA}) ↔ ${nodeB.device} (${normSpB})`);
+          if (auditFlagSpeedMismatch) pairErrors.push(`Speed Mismatch: ${_fmtDev(nodeA.device)} (${normSpA}) ↔ ${_fmtDev(nodeB.device)} (${normSpB})`);
         }
 
         if (pairErrors.length > 0) {
@@ -5237,7 +5237,8 @@ function _buildGwDeviceOverrideTable(devices, overrides) {
 function _gwDeviceRow(dev, ov, hasMlag, isPeer, globalGw) {
   const name   = dev.name;
   const gw     = globalGw || {};
-  const idTag  = dev.id ? `<span class="gw-ov-dev-id">[${dev.id}]</span>` : '';
+  const _devIdx = dev.sheetIndex ? String(dev.sheetIndex).padStart(2, '0') : null;
+  const idTag  = _devIdx ? `<span class="gw-ov-dev-id">[${_devIdx}]</span>` : '';
   const rowCls = 'gw-ov-row' + (hasMlag ? ' gw-ov-mlag' + (isPeer ? ' gw-ov-mlag-peer' : ' gw-ov-mlag-first') : '');
   const badge  = hasMlag ? '<span class="gw-ov-mlag-badge">[M]</span>' : '';
   const inp = (field, val, ph) =>
@@ -6541,7 +6542,7 @@ function selectDevice(deviceId) {
       document.getElementById("status").title = Array.from(devErrors).join("\n");
     } else {
       // Standard Blue Selection Text
-      setStatus("Selected Device: " + deviceId);
+      setStatus("Selected Device: " + _fmtDev(deviceId));
       document.getElementById("status").title = "";
     }
   }
@@ -11965,7 +11966,7 @@ function _populateLldpDevTable() {
     const host = autoIps[n.id] || n.id;
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     return `<div class="bridge-dev-row">
-      <span class="bridge-dev-name">${n.id}</span>
+      <span class="bridge-dev-name">${_fmtDev(n.id)}</span>
       <input class="bridge-ip-inp" id="bridgeIp_${safeId}" type="text" value="${host}" placeholder="host / IP" spellcheck="false">
       <span class="bridge-dev-dot" id="bridgeDot_${safeId}" title="SSH status"></span>
       <span class="bridge-hn-dot"  id="bridgeHn_${safeId}"  title="Hostname"></span>
@@ -12502,10 +12503,12 @@ function _renderCleanupResults(results, reconBody) {
     'style="font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;">Clean All</button>' +
     '</div>';
 
-  Object.entries(results).forEach(([dev, r]) => {
+  Object.entries(results)
+    .sort(([a], [b]) => (allDevicesData[a]?.sheetIndex || 0) - (allDevicesData[b]?.sheetIndex || 0))
+    .forEach(([dev, r]) => {
     html += '<div class="bridge-recon-dev">';
     if (!r || !r.ok) {
-      html += '<div class="bridge-recon-dev-hdr">' + _esc(dev) +
+      html += '<div class="bridge-recon-dev-hdr">' + _esc(_fmtDev(dev)) +
               '<span class="bridge-recon-counts" style="color:#dc2626;">' +
               _esc(r ? r.error : 'no response') + '</span></div>';
     } else {
@@ -12522,7 +12525,7 @@ function _renderCleanupResults(results, reconBody) {
                 '<input type="checkbox" class="recon-dev-cb" data-dev="' + _esc(dev) + '" onchange="toggleReconDevItems(\'' + _esc(dev) + '\')">' +
                 '</label>';
       }
-      html += '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:700;user-select:none;-webkit-user-select:none;">' + _esc(dev) + '</span>' +
+      html += '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:700;user-select:none;-webkit-user-select:none;">' + _esc(_fmtDev(dev)) + '</span>' +
               '<span class="bridge-recon-counts">' +
               (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
               '</span></div>';
@@ -12980,7 +12983,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   const modal    = document.getElementById('pushConfirmModal');
   const subtitle = document.getElementById('pushConfirmSubtitle');
   const body     = document.getElementById('pushConfirmBody');
-  subtitle.textContent = deviceName;
+  subtitle.textContent = _fmtDev(deviceName);
   const titleEl  = document.getElementById('pushConfirmTitle');
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
@@ -15170,7 +15173,7 @@ function showConfigModal(deviceName, configText) {
   const matchBadge = document.getElementById("configMatchCount");
 
   // Reset UI State
-  title.innerText = deviceName;
+  title.innerText = _fmtDev(deviceName);
   searchInput.value = "";
   clearBtn.classList.add("hidden");
   matchBadge.classList.add("hidden");
@@ -16089,7 +16092,7 @@ function _populateGenAllDeviceList() {
   }
   container.innerHTML = devices.map(name => {
     const safe = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const safeName = escapeHtml(name);
+    const safeName = escapeHtml(_fmtDev(name));
     return `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;-webkit-user-select:none;">` +
       `<input type="checkbox" id="genAllDev_${safe}" checked onchange="_updateGenAllSelCount()" ` +
       `style="cursor:pointer;accent-color:#3b82f6;flex-shrink:0;">` +
