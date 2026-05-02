@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-02 (SheetViewMenu column sets: viewMode=[int,sp_mode]; viewPo=[int,sp_mode,po]. Files: Code.gs)
+  Last updated: 2026-05-02 (Device name display: added _fmtDev(name) helper → '[NN] DevName' using sheetIndex zero-padded to 2 digits; falls back to raw name when sheetIndex unavailable. Applied everywhere: MLAG peer dropdown, audit pair errors (VLAN/Mode/Speed), status bar, bridge device rows, cleanup UI device headers (+ sorted by sheetIndex), push modal subtitle, config modal title, genAll device checklist. GW override table fixed to use dev.sheetIndex instead of dev.id. FILES: Sidebar-js.html)
+  Previous: 2026-05-02 (SheetViewMenu column sets: viewMode=[int,sp_mode]; viewPo=[int,sp_mode,po]. Files: Code.gs)
   Previous: 2026-05-02 (SheetViewMenu: moved Mode view from L2/L3 section to L1.5, renamed to 'L1.5: Mode', positioned above 'L1.5: Port Channel'. Files: Code.gs)
   Previous: 2026-05-02 (CSS: bump .gw-ov-dev-id and .gw-ov-mlag-badge from 9px → 10px to satisfy 10px font-size floor. Files: Sidebar-css.html)
   Previous: 2026-05-01 (UserGuide: expanded section 4 with IP Config modal, GW address formula (standard vs wide-prefix), per-device GW override table usage, wide-mode locking behaviour, and MLAG First-octet constraint. Files: UserGuide.html)
