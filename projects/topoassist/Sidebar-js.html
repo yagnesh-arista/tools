@@ -1,7 +1,7 @@
-<!-- TopoAssist v260502.3 | 2026-05-02 12:32:21 -->
+<!-- TopoAssist v260502.4 | 2026-05-02 14:13:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260502.3";  // keep in sync with Code.gs
+const APP_VERSION = "260502.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -341,6 +341,16 @@ const APP_VERSION = "260502.3";  // keep in sync with Code.gs
     let stored = localStorage.getItem("topology_positions");
   if(stored) savedNodePositions = JSON.parse(stored);
 } catch(e) {console.error("Could not load positions", e); }
+
+  // --- HELPER: DEVICE LABEL FORMATTER ---
+  // Returns "[NN] DevName" using sheetIndex (zero-padded to 2 digits).
+  // Falls back to raw name when sheetIndex is unavailable (topology not yet loaded).
+  function _fmtDev(name) {
+    const d = allDevicesData[name];
+    const idx = d ? d.sheetIndex : null;
+    if (!idx && idx !== 0) return name;
+    return '[' + String(idx).padStart(2, '0') + '] ' + name;
+  }
 
   // --- HELPER: SECURITY (XSS Prevention) ---
   function escapeHtml(text) {
