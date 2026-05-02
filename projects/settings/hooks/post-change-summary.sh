@@ -143,7 +143,7 @@ fi
 # Only fire on relevant commands — strip quoted strings first to avoid false
 # positives from commit messages containing "git push" etc.
 cmd_unquoted=$(echo "$cmd" | sed 's/"[^"]*"//g; s/'"'"'[^'"'"']*'"'"'//g')
-echo "$cmd_unquoted" | grep -qE 'git\s+(commit|push)|clasp\s+push' || exit 0
+echo "$cmd_unquoted" | grep -qE 'git\b.+\b(commit|push)\b|clasp\s+push' || exit 0
 
 REPO="$HOME/claude"
 
