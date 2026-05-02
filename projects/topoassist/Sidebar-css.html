@@ -1,4 +1,4 @@
-<!-- TopoAssist v260502.5 | 2026-05-02 14:15:04 -->
+<!-- TopoAssist v260502.7 | 2026-05-02 14:37:41 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6006,6 +6006,22 @@
     font-family: 'JetBrains Mono', monospace; font-size: 12px;
     background: var(--bg-modal, #ffffff);
   }
+  /* Device pill selector */
+  .genall-dev-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+    padding: 2px 8px; height: 22px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 11px;
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+    user-select: none; -webkit-user-select: none;
+  }
+  .genall-dev-pill:hover { border-color: #3b82f6; color: #3b82f6; }
+  .genall-dev-pill.selected {
+    background: #3b82f6; border-color: #3b82f6; color: #ffffff;
+  }
+  .genall-dev-pill.selected:hover { background: #2563eb; border-color: #2563eb; }
 
   /* ================= 13. COPY GROUP STRIP ================= */
   .copy-group-strip {

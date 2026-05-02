@@ -1,7 +1,7 @@
-<!-- TopoAssist v260502.5 | 2026-05-02 14:17:56 -->
+<!-- TopoAssist v260502.7 | 2026-05-02 14:38:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260502.5";  // keep in sync with Code.gs
+const APP_VERSION = "260502.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12333,8 +12333,8 @@ function runCleanup() {
 
   const allArista = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
   const devices   = allArista.filter(n => {
-    const cb = document.getElementById('genAllDev_' + n.id.replace(/[^a-zA-Z0-9_-]/g, '_'));
-    return !cb || cb.checked;
+    const pill = document.querySelector(`.genall-dev-pill[data-dev="${CSS.escape(n.id)}"]`);
+    return !pill || pill.classList.contains('selected');
   });
   if (!devices.length) {
     setStatus('No devices selected — check Targets', 'status-warn');
@@ -13547,10 +13547,10 @@ async function pushAllConfigs() {
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
     .map(n => n.id);
 
-  // Device list: EOS devices in current topology, filtered by Push Targets checklist (all selected by default)
+  // Device list: EOS devices in current topology, filtered by Push Targets pill selector (all selected by default)
   const deviceNames = _allArista.filter(name => {
-    const cb = document.getElementById('genAllDev_' + name.replace(/[^a-zA-Z0-9_-]/g, '_'));
-    return !cb || cb.checked;
+    const pill = document.querySelector(`.genall-dev-pill[data-dev="${CSS.escape(name)}"]`);
+    return !pill || pill.classList.contains('selected');
   });
 
   if (!deviceNames.length) {
@@ -16091,21 +16091,23 @@ function _populateGenAllDeviceList() {
     return;
   }
   container.innerHTML = devices.map(name => {
-    const safe = name.replace(/[^a-zA-Z0-9_-]/g, '_');
     const safeName = escapeHtml(_fmtDev(name));
-    return `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;-webkit-user-select:none;">` +
-      `<input type="checkbox" id="genAllDev_${safe}" checked onchange="_updateGenAllSelCount()" ` +
-      `style="cursor:pointer;accent-color:#3b82f6;flex-shrink:0;">` +
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-main);">${safeName}</span></label>`;
+    const safeAttr = escapeHtml(name);
+    return `<button class="genall-dev-pill selected" data-dev="${safeAttr}" onclick="_toggleGenAllPill(this)">${safeName}</button>`;
   }).join('');
+  _updateGenAllSelCount();
+}
+
+function _toggleGenAllPill(btn) {
+  btn.classList.toggle('selected');
   _updateGenAllSelCount();
 }
 
 function _updateGenAllSelCount() {
   const container = document.getElementById('genAllDeviceList');
   if (!container) return;
-  const total   = container.querySelectorAll('input[type=checkbox]').length;
-  const checked = container.querySelectorAll('input[type=checkbox]:checked').length;
+  const total   = container.querySelectorAll('.genall-dev-pill').length;
+  const checked = container.querySelectorAll('.genall-dev-pill.selected').length;
   const el = document.getElementById('genAllSelCount');
   if (el) el.textContent = `${checked}/${total} selected`;
 }
@@ -16113,7 +16115,9 @@ function _updateGenAllSelCount() {
 function _genAllSelectAll(state) {
   const container = document.getElementById('genAllDeviceList');
   if (!container) return;
-  container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = state; });
+  container.querySelectorAll('.genall-dev-pill').forEach(pill => {
+    pill.classList.toggle('selected', state);
+  });
   _updateGenAllSelCount();
 }
 
