@@ -305,7 +305,7 @@ Type "yes delete all", "yes delete 1,3" (specific items), or "no" to cancel.
 
 ---
 
-## Step 5 — Resolve Conflicts (REQUIRED — never pick a side without user input)
+## Step 6 — Resolve Conflicts (REQUIRED — never pick a side without user input)
 
 For each conflict, ask the user explicitly. Do NOT guess. Wait for answers before proceeding.
 
@@ -314,13 +314,13 @@ Present all conflicts together in one AskUserQuestion call if possible:
 > "CONFLICT [N]: Source A ([file]) says '[X]'. Source B ([file]) says '[Y]'.
 > Which is the correct, authoritative version?"
 
-Do NOT proceed to Step 6 until every conflict has a user answer.
+Do NOT proceed to Step 7 until every conflict has a user answer.
 
 ---
 
-## Step 6 — Apply Cleanup
+## Step 7 — Apply Cleanup
 
-Apply only what was approved in Steps 4 and 5. Order:
+Apply only what was approved in Steps 5 and 6. Order:
 
 1. **Delete approved files** — `rm` each confirmed file + remove its MEMORY.md line
 2. **Fix stale entries** — edit memory files / INSTRUCTIONS / CLAUDE.md in-place; remove orphaned MEMORY.md lines
