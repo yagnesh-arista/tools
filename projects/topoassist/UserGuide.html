@@ -1,4 +1,4 @@
-<!-- TopoAssist v260503.8 | 2026-05-03 14:55:34 -->
+<!-- TopoAssist v260503.9 | 2026-05-03 14:55:56 -->
 <!DOCTYPE html>
 <html>
 
@@ -854,13 +854,15 @@ clasp login --no-localhost</pre>
     <span class="menu-path">TopoAssist &gt; Sheet View</span>
     <p style="font-size:13px;">Quickly focus the sheet on specific data without losing any columns:</p>
     <ul>
-      <li><b>Show All Columns</b> — unhide everything.</li>
-      <li><b>Cabling</b> — <code>int_</code> columns only.</li>
-      <li><b>Transceiver</b> — <code>int_</code> + <code>xcvr_type_</code> columns.</li>
-      <li><b>Speed</b> — <code>int_</code> + <code>xcvr_type_</code> + <code>et_speed_</code> + <code>xcvr_speed_</code> columns. Use this to cross-check transceiver type against port and module speeds.</li>
-      <li><b>Po</b> — <code>int_</code> + <code>po_</code> columns.</li>
-      <li><b>Mode</b> — <code>int_</code> + <code>sp_mode_</code> + <code>po_</code> columns.</li>
-      <li><b>Vlan</b> — <code>int_</code> + <code>sp_mode_</code> + <code>po_</code> + <code>vlan_</code> columns.</li>
+      <li><b>Show All</b> — unhide everything.</li>
+      <li><b>L1: Interface</b> — <code>int_</code> columns only.</li>
+      <li><b>L1: Transceiver</b> — <code>int_</code> + <code>xcvr_type_</code>.</li>
+      <li><b>L1: Speed</b> — <code>int_</code> + <code>xcvr_type_</code> + <code>et_speed_</code> + <code>xcvr_speed_</code>. Cross-check transceiver type against port and module speeds.</li>
+      <li><b>L1.5: Mode</b> — <code>int_</code> + <code>sp_mode_</code>.</li>
+      <li><b>L1.5: Port Channel</b> — <code>int_</code> + <code>sp_mode_</code> + <code>po_</code>.</li>
+      <li><b>L2/L3: Vlan</b> — <code>int_</code> + <code>sp_mode_</code> + <code>po_</code> + <code>vlan_</code>.</li>
+      <li><b>L2/L3: SVI</b> — adds <code>svi_vlan_</code>.</li>
+      <li><b>L2/L3: IP</b> — adds <code>ip_type_</code>.</li>
       <li><b>Custom View</b> — pick any column combination and save it.</li>
     </ul>
 
