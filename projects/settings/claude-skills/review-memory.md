@@ -49,7 +49,52 @@ ls ~/.claude/projects/-home-yagnesh-claude/memory/*.md
 # Read every file listed in MEMORY.md
 ```
 
-### Step 1c — Verify Memory File Integrity
+### Step 1c — Reference Card Staleness Check
+
+`~/claude/Reference_Card.md` is the human-readable mirror of CLAUDE.md. Check it for:
+
+```bash
+cat ~/claude/Reference_Card.md
+```
+
+**What to verify:**
+- Every slash command listed in the Reference Card table exists as a file in `~/.claude/commands/`
+- Every hook in the "Fully Automatic" table matches an entry in `~/.claude/settings.json`
+- Every "Manual step" in the "Requires Manual Action" table is still accurate (paths, commands)
+- The Demo Sheet Release Workflow steps match the current `topoassist-deploy-inst-gas-clasp.md`
+- No renamed commands still appear under the old name
+
+```bash
+# Verify every /project:X in Reference Card has a matching command file
+grep -oP '/project:\K[\w-]+' ~/claude/Reference_Card.md | sort -u | while read cmd; do
+  [ -f ~/.claude/commands/${cmd}.md ] || echo "MISSING command file: $cmd"
+done
+```
+
+✗ FAIL if any command listed in Reference Card has no matching file (or vice versa — renamed but not updated)
+✗ FAIL if Reference Card describes a hook behavior that no longer matches settings.json
+
+---
+
+### Step 1d — Slash Command File Staleness Check
+
+Each `~/.claude/commands/*.md` can contain stale: script paths, step sequences, version numbers, or referenced IDs.
+
+```bash
+ls ~/.claude/commands/*.md
+```
+
+For each command file, check:
+- Script paths mentioned still exist (`~/.local/bin/clasp`, `~/.nvm/...`, etc.)
+- Any hardcoded Script IDs or Sheet IDs still match INSTRUCTIONS_topoassist.txt
+- Step-by-step instructions still match reality (e.g. auth flows, format-fix scripts)
+- Any referenced command names match the actual current command names
+
+⚠ WARN for minor drift; ✗ FAIL for broken steps that would cause the command to silently fail
+
+---
+
+### Step 1e — Verify Memory File Integrity
 
 ```bash
 # Check all project dirs referenced in memory still exist
