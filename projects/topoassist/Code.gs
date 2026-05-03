@@ -1,10 +1,10 @@
-// TopoAssist v260503.15 | 2026-05-03 15:53:58
+// TopoAssist v260503.17 | 2026-05-03 16:01:36
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.15";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.17";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1492,20 +1492,24 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
       mappingSheet.setColumnWidth(idx + 1, width);
     });
 
+    // Ensure _sys_ is at col A BEFORE formatting — CF rules and header backgrounds
+    // are built from live column positions. If _sys_ is inserted after formatting,
+    // every CF rule is off by one column (device col 1 shifts to col 2).
+    ensureDummyColumn(mappingSheet);
+
     // --- STAGE 5: COLOR APPLICATION (CONDITIONAL) ---
     if (applyFormatting) {
       ss.toast("Applying colors...", "Formatting", 1);
-      if (row1Colors.length > 0) mappingSheet.getRange(1, 1, 1, row1Colors.length).setBackgrounds([row1Colors]);
-      mappingSheet.getRange(2, 1, 1, outRow2.length).setBackground("#f1f5f9");
+      // Device colors start at col 2 — col 1 is _sys_ (already styled by ensureDummyColumn)
+      if (row1Colors.length > 0) mappingSheet.getRange(1, 2, 1, row1Colors.length).setBackgrounds([row1Colors]);
+      mappingSheet.getRange(2, 2, 1, outRow2.length).setBackground("#f1f5f9");
       applyGlobalFormatting();
     }
 
-    // Re-apply column visibility + recreate _sys_ after full sheet rebuild.
-    // refreshSheetRowVisibility() now calls ensureDummyColumn unconditionally before its
-    // lastRow < 3 guard, so the explicit call here is belt-and-suspenders only.
+    // Re-apply column visibility. ensureDummyColumn already ran above;
+    // the call inside refreshSheetRowVisibility() is idempotent (no-op when _sys_ exists).
     safeCachePut(syncCache, 'SYNC_STATUS', '👁️ Phase 4/4: Restoring column view...', 60);
     try {
-      ensureDummyColumn(mappingSheet);
       refreshSheetRowVisibility();
       applyCustomView(getViewPreferences());
     } catch (visErr) {
@@ -2425,10 +2429,9 @@ function safeCachePut(cache, key, value, ttl) {
  * @param {Array<string>} headers - Flattened row-2 header strings
  * @returns {{mlagConfigPorts: Object, peerLinkPorts: Object, debugLogs: Array, mlagPeerMap: Object, globalLinkMap: Object, poMap: Object}}
  */
-/* REPLACE IN Code.gs */
 function calculateGlobalTopology(data, headers) {
   const debugLogs = [];
-  const log = (msg) => { console.log(msg); debugLogs.push(msg); };
+  const log = (msg) => { debugLogs.push(msg); };
 
   // --- 1. MAPPING HEADERS ---
   const allIntCols = {};
