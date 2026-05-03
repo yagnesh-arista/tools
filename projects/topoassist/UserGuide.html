@@ -1,4 +1,4 @@
-<!-- TopoAssist v260503.7 | 2026-05-03 14:50:09 -->
+<!-- TopoAssist v260503.8 | 2026-05-03 14:55:34 -->
 <!DOCTYPE html>
 <html>
 
@@ -510,22 +510,22 @@ clasp login --no-localhost</pre>
 
     <div class="step-box">
       <span class="step-num">Step 5 — Annotate with Group Rects</span>
-      <p>In <b>Simple</b> (◎) view, click the <b>Group Rect</b> toolbar button and drag to draw a labeled rectangle around a logical group — POD, tier, DC. See <a href="#group-rects">Group Rects</a>.</p>
+      <p>Click the <b>Group Rect</b> toolbar button and drag to draw a labeled rectangle around a logical group — POD, tier, DC. Works in any topology view. See <a href="#group-rects">Group Rects</a>.</p>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 6 — Configure Technology Stack &amp; IPs</span>
-      <p>Open the <b>Tech Stack</b> modal to enable GW, P2P mode, BGP/OSPF underlay, and VXLAN/EVPN overlay. Open the <b>IP Config</b> modal to set base subnets, loopback base, and BGP ASN base. Details in <a href="#config-generation">Configuration Generation</a>.</p>
+      <span class="step-num">Step 6 — Configure Technology Stack &amp; Auto Config</span>
+      <p>Open the <b>Tech Stack</b> modal to enable GW, P2P, BGP/OSPF underlay, VXLAN/EVPN overlay, and MLAG. Open the <b>IP Config</b> modal to set base subnets, loopback base, BGP ASN base, and per-device GW overrides. Details in <a href="#config-generation">Configuration Generation</a>.</p>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 7 — Run Audit</span>
-      <p>Double-click the <b>Audit</b> icon in the toolbar. Design issues (VLAN mismatches, Po asymmetry, mode conflicts) are flagged on the canvas with a red badge count. Details in <a href="#audit-engine">Audit Engine</a>.</p>
+      <span class="step-num">Step 7 — Check Audit</span>
+      <p>Audit runs automatically when the topology loads. Design issues (VLAN mismatches, Po asymmetry, mode conflicts) are flagged on the canvas with a red badge count. Check the <b>Audit</b> tab in the status log for the full issue list. Details in <a href="#audit-engine">Audit Engine</a>.</p>
     </div>
 
     <div class="step-box">
       <span class="step-num">Step 8 — Verify with Device Bridge</span>
-      <p>Run <code>python3 device_bridge.py</code> locally, then open the <b>Device Bridge</b> modal and click <b>Run Checks</b>. LLDP results are overlaid on every port — green = match, amber = mismatch, red = missing. Details in <a href="#device-bridge">Device Bridge</a>.</p>
+      <p>Open the <b>Device Bridge</b> modal and download <code>device_bridge.py</code> — then double-click to run it locally. Click <b>Run Checks</b> to overlay LLDP results on every port — green = match, amber = mismatch, red = missing. Details in <a href="#device-bridge">Device Bridge</a>.</p>
     </div>
 
     <div class="step-box">
@@ -586,10 +586,14 @@ clasp login --no-localhost</pre>
     <span class="menu-path">TopoAssist &gt; Sheet View</span>
     <p style="font-size:13px;">Work through the views in order to fill the sheet without being overwhelmed by all columns at once:</p>
     <ol style="font-size:13px;">
-      <li><b>Cabling</b> — shows only <code>int_</code> columns. Fill in which port on each device connects to which port on another device.</li>
-      <li><b>Mode</b> — adds <code>sp_mode_</code> and <code>po_</code>. Mode drives config generation and canvas color-coding. See the mode pills in the Configuration Generation section for valid values.</li>
-      <li><b>Speed / Xcvr</b> — adds <code>et_speed_</code>, <code>xcvr_type_</code>, and <code>xcvr_speed_</code>. Color-coding immediately highlights speed mismatches between port speed and transceiver speed.</li>
-      <li><b>Vlan</b> — adds <code>vlan_</code>, <code>svi_vlan_</code>, and <code>vrf_</code>.</li>
+      <li><b>L1: Interface</b> — <code>int_</code> columns only. Fill in which port on each device connects to which port on another device.</li>
+      <li><b>L1: Transceiver</b> — adds <code>xcvr_type_</code>. Record the transceiver type installed in each port.</li>
+      <li><b>L1: Speed</b> — adds <code>et_speed_</code> and <code>xcvr_speed_</code>. Color-coding immediately highlights speed mismatches between port speed and transceiver speed.</li>
+      <li><b>L1.5: Mode</b> — <code>int_</code> + <code>sp_mode_</code>. Mode drives config generation and canvas color-coding. See the mode pills in the Configuration Generation section for valid values.</li>
+      <li><b>L1.5: Port Channel</b> — adds <code>po_</code>. Assign Po numbers for trunk and Po-mode ports.</li>
+      <li><b>L2/L3: Vlan</b> — adds <code>vlan_</code>. Fill allowed/access VLANs and dot1q encap VLANs for sub-interfaces.</li>
+      <li><b>L2/L3: SVI</b> — adds <code>svi_vlan_</code>. Specify which VLANs get a routed SVI (<code>all</code>, a list, or blank).</li>
+      <li><b>L2/L3: IP</b> — adds <code>ip_type_</code>. Set the IP role for each port (<code>p2p</code>, <code>gw</code>, etc.).</li>
       <li><b>Show All</b> — unhides all columns for a final review before generating config.</li>
     </ol>
 
