@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260503.26 | 2026-05-03 17:12:09
 # Auto-publish EOS_CLI_Tricks.md → public_html/eos-tricks.html on every edit
 input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
