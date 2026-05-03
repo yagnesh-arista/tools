@@ -171,17 +171,10 @@ rm -f ~/.clasprc.json
 source ~/.bashrc && cd ~/claude/projects/topoassist && clasp login --no-localhost
 # visit URL, paste back the localhost:8888/?code=... URL
 ```
-Then fix the credential format (clasp login writes `tokens.default`, installed clasp reads `token`):
-```bash
-python3 -c "
-import json
-with open('/home/yagnesh/.clasprc.json') as f: d = json.load(f)
-tok = d['tokens']['default']
-json.dump({'token': {'access_token': tok['access_token'], 'refresh_token': tok['refresh_token'],
-  'client_id': tok['client_id'], 'client_secret': tok['client_secret'], 'token_type': 'Bearer'}},
-  open('/home/yagnesh/.clasprc.json','w'), indent=2); print('✓ done')
-"
-```
+**Do NOT reformat** — `clasp login` writes V3 `{"tokens":{"default":{...}}}` which the NVM
+clasp reads natively. Converting to `{"token":{...}}` (V1) breaks subsequent pushes because V1
+local requires `oauth2ClientSettings` which login does not write.
+
 Then re-run `/topoassist-deploy-demo-template`. Full instructions: `/topoassist-deploy-inst-gas-clasp`.
 
 **Optional — tag the release:**
