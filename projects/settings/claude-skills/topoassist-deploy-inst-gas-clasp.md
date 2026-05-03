@@ -12,28 +12,12 @@ If `clasp: command not found`, run `source ~/.bashrc` first (it loads nvm).
    Visit the printed URL in a browser, complete the OAuth flow, then paste the
    full `http://localhost:8888/?code=...` URL back into the terminal prompt.
 
-2. Fix credential format — `clasp login` writes `tokens.default` but the installed clasp
-   reads `token`. Run this after every login:
-   ```bash
-   python3 -c "
-   import json
-   with open('/home/yagnesh/.clasprc.json') as f:
-       d = json.load(f)
-   tok = d['tokens']['default']
-   out = {'token': {
-       'access_token': tok['access_token'],
-       'refresh_token': tok['refresh_token'],
-       'client_id': tok['client_id'],
-       'client_secret': tok['client_secret'],
-       'token_type': 'Bearer'
-   }}
-   with open('/home/yagnesh/.clasprc.json', 'w') as f:
-       json.dump(out, f, indent=2)
-   print('✓ clasprc rewritten to token format')
-   "
-   ```
+   `clasp login` writes V3 format `{"tokens":{"default":{...}}}` — **do NOT reformat it**.
+   The NVM clasp binary reads this format natively. Converting to `{"token":{...}}` (V1)
+   breaks subsequent pushes because V1 local requires `oauth2ClientSettings` which login
+   does not write.
 
-3. Push to GAS (dev sheet):
+2. Push to GAS (dev sheet):
    ```bash
-   cd ~/claude/projects/topoassist && clasp push --force
+   source ~/.bashrc && cd ~/claude/projects/topoassist && clasp push --force
    ```
