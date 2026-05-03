@@ -291,11 +291,11 @@ const APP_VERSION = "260503.27";  // keep in sync with Code.gs
   // MANAGERS STATE
   let initialDeviceState = "[]";
   let currentDeviceList = [];
-  let isDeviceListDirty = false;
+  let isDeviceManagerDirty = false;
   let pendingDeleteIndex = -1;
   let initialSchemaState = "[]";
   let currentSchemaList = [];
-  let isSchemaDirty = false;
+  let isSheetColumnManagerDirty = false;
   let isSchemaSaving = false;
   let initialSchemaKeyOrder = "";
   let schemaLockTimer = null;
@@ -682,18 +682,18 @@ function applyDeviceListFromServer(devices) {
     if (d.model || d.rack) deviceMetadata[d.name] = { model: d.model || '', rack: d.rack || '' };
   });
   initialDeviceState = JSON.stringify(currentDeviceList);
-  isDeviceListDirty = false;
+  isDeviceManagerDirty = false;
   DeviceManagerSaveButton();
 }
 
 // Called automatically when topology refreshes — silently syncs the device manager
 // if it is open and the user has made no pending edits
 function silentRefreshDeviceManager() {
-  if (currentMode !== 'manager' || isDeviceListDirty) return;
+  if (currentMode !== 'manager' || isDeviceManagerDirty) return;
 
   google.script.run.withSuccessHandler(devices => {
     // Guard again: user may have started editing while the server call was in-flight
-    if (isDeviceListDirty) return;
+    if (isDeviceManagerDirty) return;
     applyDeviceListFromServer(devices);
     DeviceManager();
   }).getExistingDevices();
@@ -1020,7 +1020,7 @@ function toggleDeviceLabel(index, label) {
 // Checks if current state differs from the initial snapshot
 function DeviceManagerCheckChanges() {
   const currentState = JSON.stringify(currentDeviceList);
-  isDeviceListDirty = (currentState !== initialDeviceState);
+  isDeviceManagerDirty = (currentState !== initialDeviceState);
   DeviceManagerSaveButton();
 }
 
@@ -1259,7 +1259,7 @@ function saveDeviceChanges() {
 
     // Reset Dirty Flags using the UPDATED list
     initialDeviceState = JSON.stringify(currentDeviceList);
-    isDeviceListDirty = false;
+    isDeviceManagerDirty = false;
 
     setTimeout(() => {
       // 1. Reset UI
@@ -1421,14 +1421,14 @@ function saveDeviceChanges() {
 
 function DeviceManagerCloseButton() {
   // 1. Check for Unsaved Changes
-  if (typeof isDeviceListDirty !== 'undefined' && isDeviceListDirty) {
+  if (typeof isDeviceManagerDirty !== 'undefined' && isDeviceManagerDirty) {
     if (!confirm("△ You have unsaved changes in the Device Manager.\n\nClose anyway? (Changes will be lost)")) {
       return; // User clicked Cancel, keep window open
     }
   }
 
   // 2. Reset flag to prevent 'beforeunload' interference
-  isDeviceListDirty = false;
+  isDeviceManagerDirty = false;
 
   // 3. Close the window
   google.script.host.close();
@@ -1447,7 +1447,7 @@ function SheetColumnManagerOpenButton() {
 </div>`;
 
   // Reset Flag
-  isSchemaDirty = false;
+  isSheetColumnManagerDirty = false;
   SheetColumnManagerSaveButton();
 
   google.script.run.withSuccessHandler(schemaArray => {
@@ -1479,7 +1479,7 @@ function SheetColumnManagerCleanState(list) {
 // 3. CHECKER: Determines if Orange or Green
 function SheetColumnManagerCheckChanges() {
   const currentState = JSON.stringify(SheetColumnManagerCleanState(currentSchemaList));
-  isSchemaDirty = (currentState !== initialSchemaState);
+  isSheetColumnManagerDirty = (currentState !== initialSchemaState);
   SheetColumnManagerSaveButton();
 }
 
@@ -1489,7 +1489,7 @@ function SheetColumnManagerSaveButton() {
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
   const label = btn.dataset.cleanLabel;
-  if (isSchemaDirty) {
+  if (isSheetColumnManagerDirty) {
     btn.style.background = "#f59e0b";
     btn.innerText = label + " *";
   } else {
@@ -1705,7 +1705,7 @@ function DeviceManagerSaveButton() {
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
   const label = btn.dataset.cleanLabel;
-  if (isDeviceListDirty) {
+  if (isDeviceManagerDirty) {
     btn.style.background = "#f59e0b";
     btn.innerText = label + " *";
   } else {
@@ -1777,7 +1777,7 @@ function SheetColumnManagerSave() {
 
         // Update Snapshot to new state (Reset Dirty Flag)
         initialSchemaState = JSON.stringify(cleanList);
-        isSchemaDirty = false;
+        isSheetColumnManagerDirty = false;
 
         btn.innerText = "Saved!";
         btn.style.background = "#10b981"; // Green
@@ -2009,7 +2009,7 @@ function SheetColumnManagerResetDefaults() {
     .withSuccessHandler(schemaArray => {
       currentSchemaList = schemaArray;
       initialSchemaState = JSON.stringify(schemaArray.map(({ key, label, options }) => ({ key, label, options })));
-      isSchemaDirty = false;
+      isSheetColumnManagerDirty = false;
       SheetColumnManager();
     })
     .withFailureHandler(err => alert("✗ Reset Failed: " + err.message))
@@ -2018,14 +2018,14 @@ function SheetColumnManagerResetDefaults() {
 
 function SheetColumnManagerCloseButton() {
   // 1. Safety Check & Dirty Flag Check
-  if (typeof isSchemaDirty !== 'undefined' && isSchemaDirty) {
+  if (typeof isSheetColumnManagerDirty !== 'undefined' && isSheetColumnManagerDirty) {
     if (!confirm("△ You have unsaved changes in the Data Manager.\n\nClose anyway? (Changes will be lost)")) {
       return; // User clicked Cancel, stay here
     }
   }
 
   // 2. Reset Flag (Prevents interference with window.onbeforeunload)
-  isSchemaDirty = false;
+  isSheetColumnManagerDirty = false;
 
   // 3. Close the dialog window
   google.script.host.close();
@@ -6340,7 +6340,7 @@ function triggerResetAnimation() {
 
 // Warn on Window/Tab Close if Device Manager has Unsaved Changes
 window.addEventListener('beforeunload', function (e) {
-  if (typeof isDeviceListDirty !== 'undefined' && isDeviceListDirty) {
+  if (typeof isDeviceManagerDirty !== 'undefined' && isDeviceManagerDirty) {
     // Standard way to trigger browser confirmation
     e.preventDefault();
     e.returnValue = '';
