@@ -202,7 +202,32 @@ Verify every hook script listed in the Reference Card's "Fully Automatic" table:
 
 ---
 
-## Step 3 — Present Findings
+## Phase 3 — Other Project INSTRUCTIONS Verification
+
+Run for each non-TopoAssist project that has a memory file describing it.
+
+```bash
+# Check all project INSTRUCTIONS files exist and match memory descriptions
+for proj in tmux-studio tmux.conf bashrc_bus-home zshrc_macbook; do
+  echo "=== $proj ==="
+  ls ~/claude/projects/$proj/INSTRUCTIONS_*.txt 2>&1
+done
+
+# Check autodeploy hook targets still match what memory files describe
+grep -A3 'tmux_studio\|tmux\.conf\|\.bashrc\|zshrc' ~/.claude/settings.json
+```
+
+For each project, verify the memory file (`project_*.md`) description matches:
+- The actual files present in the project directory
+- The deploy method described still works (scp path, hook target, command)
+- The "Last updated" date in INSTRUCTIONS is recent relative to its git log
+
+⚠ WARN if INSTRUCTIONS hasn't been updated recently but memory says the project is active
+✗ FAIL if a memory file references a file path or deploy target that no longer exists
+
+---
+
+## Step 4 — Present Findings
 
 Output this report — do NOT apply any changes yet:
 
