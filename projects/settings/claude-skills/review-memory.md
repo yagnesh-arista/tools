@@ -166,7 +166,26 @@ grep -n "DUPLICATED\|last synced" \
   ~/claude/projects/topoassist/Sidebar-js.html
 ```
 
-### Step 2b — TopoAssist-Specific Checks
+### Step 2b — Settings Hook vs Reference Card Consistency
+
+```bash
+# Extract hook script names from settings.json
+grep -oP '"[^"]+\.sh"' ~/.claude/settings.json | sort -u
+
+# Compare against the "Fully Automatic" table in Reference Card
+grep '\.sh' ~/claude/Reference_Card.md
+```
+
+Verify every hook script listed in the Reference Card's "Fully Automatic" table:
+- Exists as an entry in `settings.json` PostToolUse/PreToolUse
+- The trigger description matches what the hook actually does
+- No hooks in settings.json are absent from the Reference Card table
+
+✗ FAIL if hook in Reference Card has no entry in settings.json (or vice versa)
+
+---
+
+### Step 2c — TopoAssist-Specific Checks
 
 **S — Stale in INSTRUCTIONS / project CLAUDE.md**
 - Function name, param count, column name, or behavior that doesn't match grep output from Code.gs
