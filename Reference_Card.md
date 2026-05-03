@@ -39,7 +39,7 @@ Last updated: 2026-04-27 (Rule 26 added — label-column alignment: fixed-width 
 | 20 | GAS loading overlay guard — every `showGlobalLoading()` must have a `_guard = setTimeout(hideGlobalLoading+setStatus, N)`; both handlers `clearTimeout(_guard)` first; timeouts: 15s read/save, 20s fetchFullConfig/getDeviceConfig, 60s full-data-load (getTopologyData — use `_fetchGuardFired` bool) / sync/schema ops | `rules/` | `rules/gas.md` |
 | 21 | Modal button standard — SVG × header (`.btn-modal-close`); footer order: Delete-isolated-left · Cancel · Primary-right; view-only = no footer; no duplicate close/cancel; every new modal must register in `modalOrder` + `closeFuncs` for Esc handling | `rules/` | `rules/ui.md` |
 | 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
-| 23 | Memory tiering — Tier 1 (CLAUDE.md+rules/+project CLAUDE.md) always loaded; Tier 2 (memory) only for things NOT in Tier 1; never write a memory file for something already in Tier 1; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
+| 23 | Memory tiering — Tier 2 never duplicates Tier 1; before writing any memory file: check Tier 1 + existing Tier 2 for overlap, ask user before creating; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
 | 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
 | 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
 
@@ -91,7 +91,11 @@ Session end (Stop)
 | When | Command |
 |---|---|
 | New project | `/new-project` — 7-question gate, `git init` runs first |
-| Before committing | `/review-global` → `/fix-and-commit` |
+| Before committing | `/review-global` — structured pre-commit review |
+| Fix review failures + commit | `/fix-and-commit` — fix all ✗ FAIL items, then commit |
+| Memory review + cleanup | `/review-memory` — two-phase sweep: all memory (R/S/D/M) + TopoAssist INSTRUCTIONS/code/hooks |
+| Query EOS device | `/eos-check` — eAPI/SSH runner for EOS commands; user provides hostname |
+| Query IXIA chassis | `/ixia-check` — IxNetwork BGP/topology/route state; user provides hostname |
 | New machine | `bash ~/claude/projects/settings/setup.sh` |
 
 ### TopoAssist
@@ -108,6 +112,7 @@ Session end (Stop)
 | `/project:topoassist-deploy-inst-gas-clasp` | Instructions: re-authenticate `clasp` for headless/SSH sessions |
 | `/project:topoassist-deploy-demo-template` | Push current code to demo/template sheet (intentional releases only) |
 | `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
+| `/project:topoassist-check-constraints` | Verify design invariants: canonicalizeInterface sync, generateConfig param count, hasKey usage, device_bridge↔template sync, VERSION sync, no MLAG heuristics |
 
 ---
 
@@ -122,6 +127,7 @@ Session end (Stop)
 | Any Write/Edit (no git project) | Backup hook | `.claude/backups/` snapshot + `git init` warning |
 | Any Write/Edit (any project) | INSTRUCTIONS reminder | Prompt to update INSTRUCTIONS_<project>.txt |
 | Edit `~/.claude/**` or `~/claude/CLAUDE.md` | `settings-backup.sh` | Auto-syncs to `settings/` + commits + pushes |
+| Edit any `~/claude/projects/*/.claude/commands/*.md` | `project-commands-sync.sh` | Copies command file to `~/.claude/commands/` |
 | Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written |
 | Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in Tests.gs; lists gaps |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
