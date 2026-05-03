@@ -1466,7 +1466,7 @@
   </div>
 
   <!-- Manage Column & Formatting Managers -->
-  <div id="schemaContainer" class="modal-std modal-large">
+  <div id="sheetColumnManagerContainer" class="modal-std modal-large">
     <div class="modal-header">
       <div>
         <div class="modal-header-title">Manage Column & Formatting</div>
@@ -1474,11 +1474,11 @@
       </div>
       <button class="btn-modal-close" onclick="SheetColumnManagerCloseButton()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div id="schemaBody"></div>
+    <div id="sheetColumnManagerBody"></div>
     <div class="schema-add-row">
       <input type="text" id="newFieldKey" placeholder="e.g. rack_id" class="form-input" style="flex: 3;">
       <input type="text" id="newFieldLabel" placeholder="Display label" class="form-input" style="flex: 7;">
-      <button class="btn btn-primary btn-sm" onclick="addNewField()">Add</button>
+      <button class="btn btn-primary btn-sm" onclick="SheetColumnManagerAddField()">Add</button>
     </div>
     <div class="modal-actions">
       <div class="footer-group">
@@ -1503,7 +1503,7 @@
         </button>
       </div>
       <div class="footer-group">
-        <button id="btnSaveSchema" class="btn-std btn-success ui-equal-size" onclick="SheetColumnManagerSave()">Save & Sync</button>
+        <button id="btnSheetColumnManagerSave" class="btn-std btn-success ui-equal-size" onclick="SheetColumnManagerSave()">Save & Sync</button>
       </div>
     </div>
   </div>

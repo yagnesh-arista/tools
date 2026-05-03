@@ -648,13 +648,13 @@ function DeviceManagerOpenButton() {
 </div>`;
 
   google.script.run.withSuccessHandler(devices => {
-    applyDeviceListFromServer(devices);
+    DeviceManagerLoadDevices(devices);
     DeviceManager();
   }).getExistingDevices();
 }
 
 // Shared helper — builds currentDeviceManagerList from raw server response and snapshots state
-function applyDeviceListFromServer(devices) {
+function DeviceManagerLoadDevices(devices) {
   let aristaCounter = 0;
   currentDeviceManagerList = devices.map((d, index) => {
     let name = d.name || d;
@@ -688,13 +688,13 @@ function applyDeviceListFromServer(devices) {
 
 // Called automatically when topology refreshes — silently syncs the device manager
 // if it is open and the user has made no pending edits
-function silentRefreshDeviceManager() {
+function DeviceManagerAutoRefresh() {
   if (currentMode !== 'manager' || isDeviceManagerDirty) return;
 
   google.script.run.withSuccessHandler(devices => {
     // Guard again: user may have started editing while the server call was in-flight
     if (isDeviceManagerDirty) return;
-    applyDeviceListFromServer(devices);
+    DeviceManagerLoadDevices(devices);
     DeviceManager();
   }).getExistingDevices();
 }
@@ -763,8 +763,8 @@ function DeviceManager() {
       : `<span style="font-weight:600;">${escapeHtml(devObj.name)}</span>`;
 
     const hostnameHtml = devObj.hostname
-      ? `<span class="dev-hostname-text dev-hostname-clickable" onclick="promptRenameDevice(${index})" title="Click to edit hostname">${escapeHtml(devObj.hostname)}</span>`
-      : `<span class="dev-hostname-add" onclick="promptRenameDevice(${index})">+ set hostname</span>`;
+      ? `<span class="dev-hostname-text dev-hostname-clickable" onclick="DeviceManagerRenameDevice(${index})" title="Click to edit hostname">${escapeHtml(devObj.hostname)}</span>`
+      : `<span class="dev-hostname-add" onclick="DeviceManagerRenameDevice(${index})">+ set hostname</span>`;
 
     const isRoleManaged = (devObj.role === 'IXIA' || devObj.role === 'SPIRENT');
     let typeBadge;
@@ -812,7 +812,7 @@ onchange="toggleDeviceVisibility(${index})">
 <div class="col-center">${tidHtml}</div>
 <div class="col-center">${didHtml}</div>
 <div class="col-left"><div class="dev-name-cell">${nameDisplay}${hostnameHtml}</div></div>
-<div class="col-center"><button class="btn-icon-edit" onclick="promptRenameDevice(${index})" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
+<div class="col-center"><button class="btn-icon-edit" onclick="DeviceManagerRenameDevice(${index})" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
 <div class="col-center">${typeBadge}</div>
 <div class="dev-role-cell"><select class="role-select" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
 <div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
@@ -1126,7 +1126,7 @@ function toggleDeviceVisibility(index) {
   }
 }
 
-function promptRenameDevice(index) {
+function DeviceManagerRenameDevice(index) {
   const existing = document.getElementById('deviceEditRow');
   if (existing && existing.dataset.editFor == index) { closeDeviceEditor(); return; }
   closeDeviceEditor();
@@ -1440,7 +1440,7 @@ function DeviceManagerCloseButton() {
 
 // 1. INIT
 function SheetColumnManagerOpenButton() {
-  const body = document.getElementById("schemaBody");
+  const body = document.getElementById("sheetColumnManagerBody");
   body.innerHTML = `<div style="padding:40px; text-align:center; color:#94a3b8;">
 <div style="display:inline-block; animation:spin 1s linear infinite;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
 <div>Loading Schema...</div>
@@ -1485,7 +1485,7 @@ function SheetColumnManagerCheckChanges() {
 
 // 4. VISUALS: Toggles Button Color
 function SheetColumnManagerSaveButton() {
-  const btn = document.getElementById("btnSaveSchema");
+  const btn = document.getElementById("btnSheetColumnManagerSave");
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
   const label = btn.dataset.cleanLabel;
@@ -1505,7 +1505,7 @@ function SheetColumnManagerUpdateLabel(key, newLabel, inputEl) {
     item.label = newLabel;
 
     // 1. Visual Logic: Check against snapshot
-    const original = getOriginalItem(key);
+    const original = SheetColumnManagerGetOriginalItem(key);
     // It is modified if it's New (no original) OR value doesn't match original
     const isModified = !original || (original.label !== newLabel);
 
@@ -1528,7 +1528,7 @@ function SheetColumnManagerUpdateOption(key, valStr, inputEl) {
     item.options = arr;
 
     // 1. Visual Logic
-    const original = getOriginalItem(key);
+    const original = SheetColumnManagerGetOriginalItem(key);
     const currJson = JSON.stringify(arr);
     const origJson = original ? JSON.stringify(original.options || []) : "[]";
 
@@ -1544,21 +1544,21 @@ function SheetColumnManagerUpdateOption(key, valStr, inputEl) {
   }
 }
 
-function getOriginalItem(key) {
+function SheetColumnManagerGetOriginalItem(key) {
   try {
     const parsed = JSON.parse(initialSheetColumnManagerState || "[]");
     return parsed.find(p => p.key === key);
   } catch (e) { return null; }
 }
 
-function deleteField(key) {
+function SheetColumnManagerDeleteField(key) {
   if (!confirm(`Delete field '${key}'?`)) return;
   currentSheetColumnManagerList = currentSheetColumnManagerList.filter(i => i.key !== key);
   SheetColumnManager();
   SheetColumnManagerCheckChanges();
 }
 
-function addNewField() {
+function SheetColumnManagerAddField() {
   const keyInput = document.getElementById("newFieldKey");
   const labelInput = document.getElementById("newFieldLabel");
 
@@ -1590,12 +1590,12 @@ function addNewField() {
   SheetColumnManagerCheckChanges();
   SheetColumnManager();
 
-  const body = document.getElementById("schemaBody");
+  const body = document.getElementById("sheetColumnManagerBody");
   body.scrollTop = body.scrollHeight;
 }
 
 function SheetColumnManager() {
-  const body = document.getElementById("schemaBody");
+  const body = document.getElementById("sheetColumnManagerBody");
   body.innerHTML = "";
 
   // 1. Parse the Snapshot for comparison
@@ -1672,7 +1672,7 @@ placeholder="Description">
 onchange="SheetColumnManagerUpdateOption('${item.key}', this.value, this)">${valStr}</textarea>
 </div>
 
-<button class="schema-del" onclick="deleteField('${item.key}')" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+<button class="schema-del" onclick="SheetColumnManagerDeleteField('${item.key}')" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 `;
     ul.appendChild(row);
   });
@@ -1722,7 +1722,7 @@ function SheetColumnManagerSave() {
   if (isSheetColumnManagerSaving) return; // Guard: prevent concurrent saves
   isSheetColumnManagerSaving = true;
 
-  const btn = document.getElementById("btnSaveSchema");
+  const btn = document.getElementById("btnSheetColumnManagerSave");
   const origText = btn.innerText;
 
   // 1. Lock UI
@@ -1885,7 +1885,7 @@ function SheetColumnManagerSave() {
 * Locks/Unlocks the entire interface to prevent concurrent actions.
 */
 function setUiBusy(isBusy) {
-  const container = document.getElementById("schemaContainer");
+  const container = document.getElementById("sheetColumnManagerContainer");
   if (!container) return;
 
   // 1. Visually dim the container
@@ -6028,7 +6028,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "schemaContainer", "viewCustomContainer"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -6069,7 +6069,7 @@ window.topologyKeyHandler = function (event) {
           "groupRectModal": closeGroupRectModal,
           "generateAllModal": closeGenerateAllModal,
           "vlanSummaryModal": closeVlanSummaryModal,
-          "schemaContainer": attemptCloseSchema,
+          "sheetColumnManagerContainer": SheetColumnManagerCloseButton,
           "viewCustomContainer": () => google.script.host.close()
         };
         if (typeof closeFuncs[id] === 'function') {
@@ -9862,7 +9862,7 @@ function fetchData(force, autoVerify, silent) {
         .getDeviceMetadata();
 
       // Sync device manager if it's open and has no pending edits
-      silentRefreshDeviceManager();
+      DeviceManagerAutoRefresh();
 
       // Clear stale audit badge on fresh data load
       const auditBadge = document.getElementById("auditBadge");
