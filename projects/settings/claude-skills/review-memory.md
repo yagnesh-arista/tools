@@ -237,22 +237,27 @@ MEMORY REVIEW
 Phase 1 — All-Memory Sweep
   Memory files: [N] total
   Global rules (Tier 1): [N] rule files + [N] project CLAUDE.md files
+  Commands: [N] files in ~/.claude/commands/
 
   ── REDUNDANT (Tier 2 duplicates Tier 1 → delete) ─────────────
     [file]: "[topic]" → already in [CLAUDE.md Rule N / rules/X.md]
 
   ── STALE ──────────────────────────────────────────────────────
     [file or MEMORY.md entry]: "[what it says]" → [reason stale]
+    Reference_Card.md: [any stale command names, hook entries, workflow steps]
+    Commands: [any command file with stale paths/steps/IDs]
 
   ── DUPLICATES (2+ Tier 2 files, same content) ─────────────────
     [file A] + [file B]: [topic] → keep [A/B]
 
   ── MISSING ────────────────────────────────────────────────────
     [pattern] not in any tier → suggest: [Tier 1 / Tier 2 / Tier 3]
+    Reference_Card.md: [commands in ~/.claude/commands/ not listed]
 
 Phase 2 — TopoAssist Technical Verification
   INSTRUCTIONS last updated: [date]
   Project CLAUDE.md: [N] constraints
+  Settings hook count: [N] / Reference Card "Automatic" table: [N]
 
   ── STALE ──────────────────────────────────────────────────────
     [source] "[what it says]" → [reason stale]
@@ -266,13 +271,17 @@ Phase 2 — TopoAssist Technical Verification
   ── MISSING ────────────────────────────────────────────────────
     [pattern] → suggest: [add to INSTRUCTIONS / project CLAUDE.md]
 
+Phase 3 — Other Projects
+  ── STALE ──────────────────────────────────────────────────────
+    [project]: [what memory says] → [actual state on disk]
+
 ──────────────────────────────────────────────────────────────────
 Status: [N] redundant · [N] stale · [N] CONFLICTS (blocked) · [N] missing · [N] duplicates
 ```
 
 ---
 
-## Step 4 — Confirm Deletions (REQUIRED — never delete without user approval)
+## Step 5 — Confirm Deletions (REQUIRED — never delete without user approval)
 
 Before deleting ANY file, present the complete deletion list and wait for explicit approval:
 
