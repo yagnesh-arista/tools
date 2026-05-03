@@ -326,12 +326,12 @@ Apply only what was approved in Steps 5 and 6. Order:
 2. **Fix stale entries** — edit memory files / INSTRUCTIONS / CLAUDE.md in-place; remove orphaned MEMORY.md lines
 3. **Apply updates** — edit INSTRUCTIONS in-place (keep "Last updated" chain); edit memory files (keep frontmatter)
 4. **Add missing entries** — decide tier first; Tier 1 → CLAUDE.md or rules/*.md; Tier 2 → new memory file + MEMORY.md line; never add to both
-5. **Resolve duplicates** — keep authoritative; delete the other (only if approved in Step 4)
+5. **Resolve duplicates** — keep authoritative; delete the other (only if approved in Step 5)
 6. **Update INSTRUCTIONS Last updated** to today's date with review summary
 
 ---
 
-## Step 6 — Final Report + Commit
+## Step 8 — Final Report + Commit
 
 ```
 CLEANUP COMPLETE
