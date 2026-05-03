@@ -1,8 +1,9 @@
 Review the full memory system for staleness, conflicts, redundancy, and gaps,
 then clean it to a single consistent, refreshed state across all sources.
 
-Sources covered (Phase 1 — all projects): all memory/*.md files · CLAUDE.md (global + all projects) · ~/.claude/rules/*.md
-Sources covered (Phase 2 — TopoAssist): INSTRUCTIONS_topoassist.txt · Code.gs · Sidebar-js.html · topoassist-* hooks
+Sources covered (Phase 1 — all projects): all memory/*.md files · CLAUDE.md (global + all projects) · ~/.claude/rules/*.md · Reference_Card.md · ~/.claude/commands/*.md
+Sources covered (Phase 2 — TopoAssist): INSTRUCTIONS_topoassist.txt · Code.gs · Sidebar-js.html · topoassist-* hooks · settings.json hook list vs Reference Card
+Sources covered (Phase 3 — other projects): INSTRUCTIONS files for tmux-studio, bashrc_bus-home, zshrc_macbook, tmux.conf vs memory/*.md descriptions
 
 **NEVER resolve a conflict unilaterally — always ask the user first.**
 
