@@ -31,7 +31,7 @@
 
 **y key:** `bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel` in both Section 5 and Section 8 (Section 8 wins over yank plugin).
 
-**Prefix+F layout fix (display-switch resize, all windows):** `stty size < #{client_tty}` reads the real PTY size (run-shell has no controlling TTY — must use the device path). `refresh-client -C WxH` pushes it to tmux once. Then `list-windows -F '#{window_id}' | xargs -I W sh -c 'resize-window -A -t W; select-layout -E -t W'` fixes every window in the session. `aggressive-resize off` prevents pane size jumps when multiple clients at different sizes are attached.
+**Prefix+F layout fix (display-switch resize, all windows):** `stty size < #{client_tty} 2>/dev/null` reads the real PTY size (run-shell has no controlling TTY — must use the device path). The `2>/dev/null` suppresses stty errors during screen-switch. awk guard `$1>0 && $2>0` skips zero dimensions. `xargs -r` skips `refresh-client -C` when stdin is empty (prevents "returned 2" on display-switch failure). `refresh-client -C WxH` pushes the size to tmux once. Then `list-windows -F '#{window_id}' | xargs -I W sh -c 'resize-window -A -t W; select-layout -E -t W'` fixes every window in the session. `aggressive-resize off` prevents pane size jumps when multiple clients at different sizes are attached.
 
 **Broadcast C-c pre-clear:** `tmux_broadcast.sh` sends `C-c` + 100ms sleep before every command so `--More--` pager and stuck prompts are cleared first. Applies to all four broadcast bindings (e/E/C-e/C-E) since they all call the same script.
 
