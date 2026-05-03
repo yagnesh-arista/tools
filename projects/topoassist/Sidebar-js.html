@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.20 | 2026-05-03 16:13:00 -->
+<!-- TopoAssist v260503.22 | 2026-05-03 16:22:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.20";  // keep in sync with Code.gs
+const APP_VERSION = "260503.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -652,7 +652,7 @@ function openDeviceManager() {
 
   google.script.run.withSuccessHandler(devices => {
     applyDeviceListFromServer(devices);
-    renderManagerList();
+    DeviceManager();
   }).getExistingDevices();
 }
 
@@ -699,11 +699,11 @@ function silentRefreshDeviceManager() {
     // Guard again: user may have started editing while the server call was in-flight
     if (isDeviceListDirty) return;
     applyDeviceListFromServer(devices);
-    renderManagerList();
+    DeviceManager();
   }).getExistingDevices();
 }
 
-function renderManagerList() {
+function DeviceManager() {
   closeLabelPicker();
   const listEl = document.getElementById("reorderList");
   listEl.innerHTML = "";
@@ -845,7 +845,7 @@ ${deleteCell}
         currentDeviceList.splice(evt.newIndex, 0, item);
         pendingDeleteIndex = -1;
         checkForChanges();
-        renderManagerList();
+        DeviceManager();
       }
     });
   }
@@ -899,7 +899,7 @@ function setDeviceType(index) {
   if (role === 'IXIA' || role === 'SPIRENT') return; // role-managed, toggle disabled
   dev.type = dev.type === 'non-arista' ? 'full' : 'non-arista';
   checkForChanges();
-  renderManagerList();
+  DeviceManager();
 }
 
 function setDeviceRole(index, value) {
@@ -907,7 +907,7 @@ function setDeviceRole(index, value) {
   if (!dev) return;
   dev.role = value ? value.toUpperCase() : '';
   checkForChanges();
-  renderManagerList();
+  DeviceManager();
 }
 
 function buildMlagPeersMap() {
@@ -923,7 +923,7 @@ function setDeviceMlagPeer(index, value) {
   if (!dev) return;
   dev.mlagPeer = value || '';
   checkForChanges();
-  renderManagerList();
+  DeviceManager();
 }
 
 function buildMetadataMap() {
@@ -1075,7 +1075,7 @@ function addDevicesToList() {
     if (addedCount > 0) {
       checkForChanges();
       input.value = "";
-      renderManagerList();
+      DeviceManager();
 
       const scrollContainer = document.getElementById("reorderScrollContainer");
       if (scrollContainer) {
@@ -1106,7 +1106,7 @@ function addDevicesToList() {
 
 function removeDeviceFromList(index) {
   pendingDeleteIndex = index;
-  renderManagerList();
+  DeviceManager();
 }
 
 function confirmRemoveDevice() {
@@ -1114,13 +1114,13 @@ function confirmRemoveDevice() {
     currentDeviceList.splice(pendingDeleteIndex, 1);
     pendingDeleteIndex = -1;
     checkForChanges();
-    renderManagerList();
+    DeviceManager();
   }
 }
 
 function cancelRemoveDevice() {
   pendingDeleteIndex = -1;
-  renderManagerList();
+  DeviceManager();
 }
 
 function toggleDeviceVisibility(index) {
@@ -1200,7 +1200,7 @@ function applyDeviceEdit(index) {
   currentDeviceList[index].hostname = newHostname;
   closeDeviceEditor();
   checkForChanges();
-  renderManagerList();
+  DeviceManager();
   const items = document.querySelectorAll('#reorderList .reorder-item');
   if (items[index]) items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
@@ -1272,7 +1272,7 @@ function saveDeviceChanges() {
       btn.style.background = "";
 
       checkForChanges();
-      renderManagerList(); // Will now render Blue IDs (e.g. "2")
+      DeviceManager(); // Will now render Blue IDs (e.g. "2")
 
       // 2. TRIGGER REFRESH
       dbg("Triggering Auto-Refresh...");
@@ -1452,7 +1452,7 @@ function initSchemaManager() {
 
   // Reset Flag
   isSchemaDirty = false;
-  updateSaveButtonVisuals();
+  SheetColumnsManagerSaveButton();
 
   google.script.run.withSuccessHandler(schemaArray => {
     currentSchemaList = schemaArray || [];
@@ -1484,11 +1484,11 @@ function getCleanSchema(list) {
 function checkSchemaChanges() {
   const currentState = JSON.stringify(getCleanSchema(currentSchemaList));
   isSchemaDirty = (currentState !== initialSchemaState);
-  updateSaveButtonVisuals();
+  SheetColumnsManagerSaveButton();
 }
 
 // 4. VISUALS: Toggles Button Color
-function updateSaveButtonVisuals() {
+function SheetColumnsManagerSaveButton() {
   const btn = document.getElementById("btnSaveSchema");
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
@@ -1791,7 +1791,7 @@ function saveSchemaChanges() {
 
         // Reset Button Text after delay
         setTimeout(() => {
-          updateSaveButtonVisuals(); // Will set text to "Save & Sync"
+          SheetColumnsManagerSaveButton(); // Will set text to "Save & Sync"
           btn.disabled = false;
         }, 1500);
 
@@ -1812,7 +1812,7 @@ function saveSchemaChanges() {
         schemaLockTimer = null;
         setUiBusy(false);
         btn.innerText = origText;
-        updateSaveButtonVisuals();
+        SheetColumnsManagerSaveButton();
         alert("Save OK, but Sync Failed: " + err.message);
       };
 
@@ -1878,7 +1878,7 @@ function saveSchemaChanges() {
       schemaLockTimer = null;
       setUiBusy(false);
       btn.innerText = origText;
-      updateSaveButtonVisuals();
+      SheetColumnsManagerSaveButton();
       alert("✗ Save Failed: " + err.message);
     })
     .saveSchemaConfig(cleanList);

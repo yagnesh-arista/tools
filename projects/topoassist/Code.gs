@@ -1,10 +1,10 @@
-// TopoAssist v260503.20 | 2026-05-03 16:13:00
+// TopoAssist v260503.22 | 2026-05-03 16:22:31
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.20";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.22";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -43,7 +43,7 @@ function onOpen() {
     .addSeparator()
     // 3. Sheet Data & Schema Management (Submenu)
     .addSubMenu(SpreadsheetApp.getUi().createMenu('Sheet Manager')
-      .addItem('Manage Column & Formatting', 'showDeviceDataUi')
+      .addItem('Manage Column & Formatting', 'SheetColumnManager')
       .addItem('Change Sheet Name', 'promptRenameSheet')
       .addSeparator()
       .addItem('Create Sheet Checkpoint', 'createTopologySnapshot')
@@ -766,7 +766,7 @@ function showDeviceManagerUi() {
   SpreadsheetApp.getUi().showModelessDialog(html, 'Device Manager');
 }
 
-function showDeviceDataUi() {
+function SheetColumnManager() {
   const template = HtmlService.createTemplateFromFile('Sidebar');
   template.initialMode = 'schema';
 
