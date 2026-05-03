@@ -31,7 +31,9 @@
 
 **y key:** `bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel` in both Section 5 and Section 8 (Section 8 wins over yank plugin).
 
-**Prefix+F layout fix (display-switch resize, all windows):** Uses `run-shell -b` (background flag) — background mode never reports exit status, so "returned N" errors are completely eliminated regardless of which subcommand fails. `stty size < #{client_tty} 2>/dev/null` reads the real PTY size; captured into `DIMS`; `[ -n "$DIMS" ] && refresh-client -C "$DIMS"` skips when stty fails or returns zeros. `resize-window -A` and `select-layout -E` use `2>/dev/null` to suppress pane-minimum-size errors when shrinking. `aggressive-resize off` prevents pane size jumps when multiple clients at different sizes are attached. **Do NOT use `run-shell` (foreground) for this command — it will show "returned N" on any subcommand failure during display-switch.**
+**Auto-resize on display change (`client-resized` hook):** `set-hook -g client-resized` fires automatically whenever any client changes size (display-switch, monitor hotplug, terminal resize). Runs `sleep 0.05` first so tmux finishes SIGWINCH processing, then iterates all windows with `list-windows | xargs -I W sh -c 'resize-window -A -t W; select-layout -E -t W'`. Ends with `; :` (null command) to force exit 0 and silence "returned N". This replaces the need for Prefix+F on resolution changes — it is fully automatic. **Do NOT remove the `sleep 0.05` — without it, resize-window may see the old dimensions.**
+
+**Prefix+F layout fix (manual fallback):** Kept as a manual override for stuck/broken layouts. Simplified — no stty pipeline needed since client-resized handles auto-sizing. Ends with `; :` to suppress "returned N". `aggressive-resize off` prevents pane size jumps when multiple clients at different sizes are attached.
 
 **Broadcast C-c pre-clear:** `tmux_broadcast.sh` sends `C-c` + 100ms sleep before every command so `--More--` pager and stuck prompts are cleared first. Applies to all four broadcast bindings (e/E/C-e/C-E) since they all call the same script.
 
