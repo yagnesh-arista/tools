@@ -194,7 +194,7 @@ const APP_VERSION = "260503.27";  // keep in sync with Code.gs
 
       let targetH;
       if (currentMode === 'manager') {
-        const n   = currentDeviceList ? currentDeviceList.length : 0;
+        const n   = currentDeviceManagerList ? currentDeviceManagerList.length : 0;
         const ROW = 44; // approx px per device row
         const HDR = 110; // header + column labels + save row
         targetH = Math.max(380, Math.min(maxH, HDR + n * ROW + 40));
@@ -241,7 +241,7 @@ const APP_VERSION = "260503.27";  // keep in sync with Code.gs
   let isWindowMinimized = false;
   let previousDims = {w: 1600, h: 900 };
 
-  let globalSchema = [];
+  let topoColumnSchema = [];
   const fetchQueue = {};
   let isGridSnapEnabled = false;
   const debouncedFilterTopology = debounce(filterTopology, 300);
@@ -289,16 +289,16 @@ const APP_VERSION = "260503.27";  // keep in sync with Code.gs
   };
 
   // MANAGERS STATE
-  let initialDeviceState = "[]";
-  let currentDeviceList = [];
+  let initialDeviceManagerState = "[]";
+  let currentDeviceManagerList = [];
   let isDeviceManagerDirty = false;
-  let pendingDeleteIndex = -1;
-  let initialSchemaState = "[]";
-  let currentSchemaList = [];
+  let pendingDeviceManagerDeleteIndex = -1;
+  let initialSheetColumnManagerState = "[]";
+  let currentSheetColumnManagerList = [];
   let isSheetColumnManagerDirty = false;
-  let isSchemaSaving = false;
-  let initialSchemaKeyOrder = "";
-  let schemaLockTimer = null;
+  let isSheetColumnManagerSaving = false;
+  let initialSheetColumnManagerKeyOrder = "";
+  let sheetColumnManagerLockTimer = null;
   let currentViewMode = localStorage.getItem('topology_view_mode') || "detailed";
   let holisticSimulation = null;
   let isGroupRectMode = false;
@@ -653,10 +653,10 @@ function DeviceManagerOpenButton() {
   }).getExistingDevices();
 }
 
-// Shared helper — builds currentDeviceList from raw server response and snapshots state
+// Shared helper — builds currentDeviceManagerList from raw server response and snapshots state
 function applyDeviceListFromServer(devices) {
   let aristaCounter = 0;
-  currentDeviceList = devices.map((d, index) => {
+  currentDeviceManagerList = devices.map((d, index) => {
     let name = d.name || d;
     let isNonArista = d.type === 'non-arista';
     let origTID = index + 1;
@@ -678,10 +678,10 @@ function applyDeviceListFromServer(devices) {
     };
   });
   // Sync deviceMetadata global so cabling report has model/rack even if Device Manager stays closed
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     if (d.model || d.rack) deviceMetadata[d.name] = { model: d.model || '', rack: d.rack || '' };
   });
-  initialDeviceState = JSON.stringify(currentDeviceList);
+  initialDeviceManagerState = JSON.stringify(currentDeviceManagerList);
   isDeviceManagerDirty = false;
   DeviceManagerSaveButton();
 }
@@ -705,7 +705,7 @@ function DeviceManager() {
   listEl.innerHTML = "";
 
 
-  if (!currentDeviceList || currentDeviceList.length === 0) {
+  if (!currentDeviceManagerList || currentDeviceManagerList.length === 0) {
     document.getElementById("emptyMsg").style.display = "block";
     return;
   }
@@ -714,7 +714,7 @@ function DeviceManager() {
   let currentAristaCount = 0;
 
   // Render Loop
-  currentDeviceList.forEach((devObj, index) => {
+  currentDeviceManagerList.forEach((devObj, index) => {
     const li = document.createElement("li");
     li.className = "reorder-item reorder-grid";
 
@@ -776,7 +776,7 @@ function DeviceManager() {
       typeBadge = `<button class="type-toggle-btn" onclick="setDeviceType(${index})" title="EOS — click to mark as Non-EOS (requires Force Sync)">EOS</button>`;
     }
 
-    const isPendingDelete = (index === pendingDeleteIndex);
+    const isPendingDelete = (index === pendingDeviceManagerDeleteIndex);
     if (isPendingDelete) {
       li.style.background = 'rgba(239,68,68,0.08)';
       li.style.outline = '1px solid rgba(239,68,68,0.35)';
@@ -798,7 +798,7 @@ function DeviceManager() {
     const modelPlaceholder = dsPlat || 'e.g. 7050CX3-32S';
 
     const mlagPeerVal = devObj.mlagPeer || '';
-    const mlagPeerOptions = ['', ...currentDeviceList
+    const mlagPeerOptions = ['', ...currentDeviceManagerList
       .filter(d => d.name !== devObj.name && d.type !== 'non-arista')
       .map(d => d.name)
     ].map(n => `<option value="${n}" ${mlagPeerVal === n ? 'selected' : ''}>${n ? _fmtDev(n) : '—'}</option>`).join('');
@@ -837,9 +837,9 @@ ${deleteCell}
     new Sortable(listEl, {
       animation: 150, handle: '.reorder-handle', ghostClass: 'sortable-ghost',
       onEnd: function (evt) {
-        const item = currentDeviceList.splice(evt.oldIndex, 1)[0];
-        currentDeviceList.splice(evt.newIndex, 0, item);
-        pendingDeleteIndex = -1;
+        const item = currentDeviceManagerList.splice(evt.oldIndex, 1)[0];
+        currentDeviceManagerList.splice(evt.newIndex, 0, item);
+        pendingDeviceManagerDeleteIndex = -1;
         DeviceManagerCheckChanges();
         DeviceManager();
       }
@@ -866,7 +866,7 @@ function renderDeviceLabelPills(labels, index) {
 
 function buildLabelsMap() {
   const map = {};
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     if (d.labels && d.labels.length > 0) map[d.name] = d.labels;
   });
   return map;
@@ -874,7 +874,7 @@ function buildLabelsMap() {
 
 function buildHostnamesMap() {
   const map = {};
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     if (d.hostname && d.hostname.trim()) map[d.name] = d.hostname.trim();
   });
   return map;
@@ -882,14 +882,14 @@ function buildHostnamesMap() {
 
 function buildRolesMap() {
   const map = {};
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     if (d.role && d.role.trim()) map[d.name] = d.role.trim().toUpperCase();
   });
   return map;
 }
 
 function setDeviceType(index) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   if (!dev) return;
   const role = (dev.role || '').toUpperCase();
   if (role === 'IXIA' || role === 'SPIRENT') return; // role-managed, toggle disabled
@@ -899,7 +899,7 @@ function setDeviceType(index) {
 }
 
 function setDeviceRole(index, value) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   if (!dev) return;
   dev.role = value ? value.toUpperCase() : '';
   DeviceManagerCheckChanges();
@@ -908,14 +908,14 @@ function setDeviceRole(index, value) {
 
 function buildMlagPeersMap() {
   const map = {};
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     map[d.name] = d.mlagPeer || '';
   });
   return map;
 }
 
 function setDeviceMlagPeer(index, value) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   if (!dev) return;
   dev.mlagPeer = value || '';
   DeviceManagerCheckChanges();
@@ -924,7 +924,7 @@ function setDeviceMlagPeer(index, value) {
 
 function buildMetadataMap() {
   const map = {};
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     const model = (d.model || '').trim();
     const rack  = (d.rack  || '').trim();
     if (model || rack) map[d.name] = { model, rack };
@@ -933,7 +933,7 @@ function buildMetadataMap() {
 }
 
 function updateDeviceMeta(index, field, value) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   if (!dev) return;
   dev[field] = value;
   DeviceManagerCheckChanges();
@@ -960,7 +960,7 @@ function openLabelPicker(index) {
 }
 
 function buildLabelEditorHTML(index) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   const current = dev ? (dev.labels || []) : [];
   const maxReached = current.length >= 5;
   // All labels are custom — no predefined chips
@@ -1000,7 +1000,7 @@ function closeLabelPicker() {
 }
 
 function toggleDeviceLabel(index, label) {
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   if (!dev.labels) dev.labels = [];
   const i = dev.labels.indexOf(label);
   if (i !== -1) dev.labels.splice(i, 1);
@@ -1019,8 +1019,8 @@ function toggleDeviceLabel(index, label) {
 
 // Checks if current state differs from the initial snapshot
 function DeviceManagerCheckChanges() {
-  const currentState = JSON.stringify(currentDeviceList);
-  isDeviceManagerDirty = (currentState !== initialDeviceState);
+  const currentState = JSON.stringify(currentDeviceManagerList);
+  isDeviceManagerDirty = (currentState !== initialDeviceManagerState);
   DeviceManagerSaveButton();
 }
 
@@ -1048,11 +1048,11 @@ function addDevicesToList() {
 
     let addedCount = 0;
     newDevNames.forEach(name => {
-      const exists = currentDeviceList.some(d => d.name.toLowerCase() === name.toLowerCase());
+      const exists = currentDeviceManagerList.some(d => d.name.toLowerCase() === name.toLowerCase());
       if (!exists) {
         // ID STRATEGY: Mark as "NEW".
         // The render loop will assign the next sequential number (e.g., 3) automatically.
-        currentDeviceList.push({
+        currentDeviceManagerList.push({
           name: name,
           originalName: name,
           type: isNonArista ? 'non-arista' : 'full',
@@ -1101,27 +1101,27 @@ function addDevicesToList() {
 }
 
 function removeDeviceFromList(index) {
-  pendingDeleteIndex = index;
+  pendingDeviceManagerDeleteIndex = index;
   DeviceManager();
 }
 
 function confirmRemoveDevice() {
-  if (pendingDeleteIndex >= 0) {
-    currentDeviceList.splice(pendingDeleteIndex, 1);
-    pendingDeleteIndex = -1;
+  if (pendingDeviceManagerDeleteIndex >= 0) {
+    currentDeviceManagerList.splice(pendingDeviceManagerDeleteIndex, 1);
+    pendingDeviceManagerDeleteIndex = -1;
     DeviceManagerCheckChanges();
     DeviceManager();
   }
 }
 
 function cancelRemoveDevice() {
-  pendingDeleteIndex = -1;
+  pendingDeviceManagerDeleteIndex = -1;
   DeviceManager();
 }
 
 function toggleDeviceVisibility(index) {
-  if (currentDeviceList[index]) {
-    currentDeviceList[index].isVisible = !currentDeviceList[index].isVisible;
+  if (currentDeviceManagerList[index]) {
+    currentDeviceManagerList[index].isVisible = !currentDeviceManagerList[index].isVisible;
     DeviceManagerCheckChanges(); // Marks button as "Save *"
   }
 }
@@ -1135,7 +1135,7 @@ function promptRenameDevice(index) {
   const li = items[index];
   if (!li) return;
 
-  const dev = currentDeviceList[index];
+  const dev = currentDeviceManagerList[index];
   const editorLi = document.createElement('li');
   editorLi.id = 'deviceEditRow';
   editorLi.dataset.editFor = index;
@@ -1184,7 +1184,7 @@ function applyDeviceEdit(index) {
     nameInput.focus();
     return;
   }
-  const isDuplicate = currentDeviceList.some((d, i) => i !== index && d.name.toLowerCase() === newName.toLowerCase());
+  const isDuplicate = currentDeviceManagerList.some((d, i) => i !== index && d.name.toLowerCase() === newName.toLowerCase());
   if (isDuplicate) {
     errorDiv.textContent = 'DNS name already exists in the list.';
     errorDiv.style.display = 'block';
@@ -1192,8 +1192,8 @@ function applyDeviceEdit(index) {
     return;
   }
 
-  currentDeviceList[index].name = newName;
-  currentDeviceList[index].hostname = newHostname;
+  currentDeviceManagerList[index].name = newName;
+  currentDeviceManagerList[index].hostname = newHostname;
   closeDeviceEditor();
   DeviceManagerCheckChanges();
   DeviceManager();
@@ -1215,16 +1215,16 @@ function saveDeviceChanges() {
 
   // 1. Detect Structural Changes
   let initialList = [];
-  try { initialList = JSON.parse(initialDeviceState); } catch (e) { }
+  try { initialList = JSON.parse(initialDeviceManagerState); } catch (e) { }
 
-  const currentStructure = JSON.stringify(currentDeviceList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" })));
+  const currentStructure = JSON.stringify(currentDeviceManagerList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" })));
   const initialStructure = JSON.stringify(initialList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" })));
 
   const isStructureDirty = (currentStructure !== initialStructure);
 
   // 2. Prepare Hidden List
   const hiddenList = [];
-  currentDeviceList.forEach(d => {
+  currentDeviceManagerList.forEach(d => {
     if (!d.isVisible) hiddenList.push(d.name);
   });
 
@@ -1238,7 +1238,7 @@ function saveDeviceChanges() {
     // ============================================================
     let tempAristaCounter = 0;
 
-    currentDeviceList.forEach((d, index) => {
+    currentDeviceManagerList.forEach((d, index) => {
       const isNonArista = (d.type === 'non-arista');
 
       // 1. Commit Name (Clear "Rename" status)
@@ -1258,7 +1258,7 @@ function saveDeviceChanges() {
     // ============================================================
 
     // Reset Dirty Flags using the UPDATED list
-    initialDeviceState = JSON.stringify(currentDeviceList);
+    initialDeviceManagerState = JSON.stringify(currentDeviceManagerList);
     isDeviceManagerDirty = false;
 
     setTimeout(() => {
@@ -1276,8 +1276,8 @@ function saveDeviceChanges() {
       let dmMsg = 'Device Manager saved';
       try {
         const prevNames = new Set(initialList.map(d => d.name));
-        const currNames = new Set(currentDeviceList.map(d => d.name));
-        const added = currentDeviceList.filter(d => !prevNames.has(d.name)).map(d => d.name);
+        const currNames = new Set(currentDeviceManagerList.map(d => d.name));
+        const added = currentDeviceManagerList.filter(d => !prevNames.has(d.name)).map(d => d.name);
         const removed = [...prevNames].filter(n => !currNames.has(n));
         const parts = [];
         if (added.length) parts.push('+' + added.join(', +'));
@@ -1332,7 +1332,7 @@ function saveDeviceChanges() {
     // Role-based non-Arista (IXIA/SPIRENT) — handled server-side by saveDeviceRoles()
     const changedDevs = Object.entries(rolesMap).filter(([, r]) => nonAristaRoles.has(r)).map(([name]) => name);
     // Manually toggled non-EOS devices (not IXIA/SPIRENT role)
-    const manualNonArista = currentDeviceList
+    const manualNonArista = currentDeviceManagerList
       .filter(d => d.type === 'non-arista' && !nonAristaRoles.has((d.role || '').toUpperCase()))
       .map(d => d.name);
     // Show Force Sync notice for all devices that need column collapse/expand
@@ -1388,8 +1388,8 @@ function saveDeviceChanges() {
       }).getSyncStatus();
     }, 600);
 
-    const renames = currentDeviceList.filter(d => d.name !== d.originalName).map(d => ({ old: d.originalName, new: d.name }));
-    const finalOrder = currentDeviceList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" }));
+    const renames = currentDeviceManagerList.filter(d => d.name !== d.originalName).map(d => ({ old: d.originalName, new: d.name }));
+    const finalOrder = currentDeviceManagerList.map(d => ({ name: d.name, type: d.type, hostname: d.hostname || "" }));
 
     const _guard = setTimeout(() => {
       clearInterval(rebuildPollTimer);
@@ -1451,10 +1451,10 @@ function SheetColumnManagerOpenButton() {
   SheetColumnManagerSaveButton();
 
   google.script.run.withSuccessHandler(schemaArray => {
-    currentSchemaList = schemaArray || [];
+    currentSheetColumnManagerList = schemaArray || [];
 
     // TAKE SNAPSHOT (This replaces your old _originalLabel logic)
-    initialSchemaState = JSON.stringify(SheetColumnManagerCleanState(currentSchemaList));
+    initialSheetColumnManagerState = JSON.stringify(SheetColumnManagerCleanState(currentSheetColumnManagerList));
 
     SheetColumnManager();
   }).getSchemaConfig();
@@ -1478,8 +1478,8 @@ function SheetColumnManagerCleanState(list) {
 
 // 3. CHECKER: Determines if Orange or Green
 function SheetColumnManagerCheckChanges() {
-  const currentState = JSON.stringify(SheetColumnManagerCleanState(currentSchemaList));
-  isSheetColumnManagerDirty = (currentState !== initialSchemaState);
+  const currentState = JSON.stringify(SheetColumnManagerCleanState(currentSheetColumnManagerList));
+  isSheetColumnManagerDirty = (currentState !== initialSheetColumnManagerState);
   SheetColumnManagerSaveButton();
 }
 
@@ -1500,7 +1500,7 @@ function SheetColumnManagerSaveButton() {
 
 // 5. INPUT HANDLERS (Must trigger the check)
 function SheetColumnManagerUpdateLabel(key, newLabel, inputEl) {
-  const item = currentSchemaList.find(i => i.key === key);
+  const item = currentSheetColumnManagerList.find(i => i.key === key);
   if (item) {
     item.label = newLabel;
 
@@ -1523,7 +1523,7 @@ function SheetColumnManagerUpdateOption(key, valStr, inputEl) {
   // Semicolon is the sole delimiter — commas inside an option value are preserved
   const arr = valStr.split(";").map(s => s.trim()).filter(s => s !== "");
 
-  const item = currentSchemaList.find(i => i.key === key);
+  const item = currentSheetColumnManagerList.find(i => i.key === key);
   if (item) {
     item.options = arr;
 
@@ -1546,14 +1546,14 @@ function SheetColumnManagerUpdateOption(key, valStr, inputEl) {
 
 function getOriginalItem(key) {
   try {
-    const parsed = JSON.parse(initialSchemaState || "[]");
+    const parsed = JSON.parse(initialSheetColumnManagerState || "[]");
     return parsed.find(p => p.key === key);
   } catch (e) { return null; }
 }
 
 function deleteField(key) {
   if (!confirm(`Delete field '${key}'?`)) return;
-  currentSchemaList = currentSchemaList.filter(i => i.key !== key);
+  currentSheetColumnManagerList = currentSheetColumnManagerList.filter(i => i.key !== key);
   SheetColumnManager();
   SheetColumnManagerCheckChanges();
 }
@@ -1568,12 +1568,12 @@ function addNewField() {
   if (!label) { alert("Please enter a Description."); return; }
   if (!key) key = label.toLowerCase().replace(/[^a-z0-9]/g, "_");
 
-  if (currentSchemaList.some(i => i.key === key)) { alert("Field ID already exists."); return; }
+  if (currentSheetColumnManagerList.some(i => i.key === key)) { alert("Field ID already exists."); return; }
 
   // Prefix collision guard: reject keys where one is a prefix of another (e.g. "xcvr" vs "xcvr_speed").
   // Such pairs cause silent data loss in rebuildSheet — the shorter key overwrites the longer one during backup.
   const newKeySuf = key + "_";
-  const collision = currentSchemaList.find(item => {
+  const collision = currentSheetColumnManagerList.find(item => {
     const existing = item.key + "_";
     return existing !== newKeySuf && (newKeySuf.startsWith(existing) || existing.startsWith(newKeySuf));
   });
@@ -1582,7 +1582,7 @@ function addNewField() {
     return;
   }
 
-  currentSchemaList.push({ key: key, label: label, options: [] });
+  currentSheetColumnManagerList.push({ key: key, label: label, options: [] });
 
   keyInput.value = "";
   labelInput.value = "";
@@ -1602,7 +1602,7 @@ function SheetColumnManager() {
   let originalMap = new Map();
   let originalKeys = [];
   try {
-    const parsed = JSON.parse(initialSchemaState || "[]");
+    const parsed = JSON.parse(initialSheetColumnManagerState || "[]");
     parsed.forEach(p => {
       originalMap.set(p.key, p);
       originalKeys.push(p.key);
@@ -1611,7 +1611,7 @@ function SheetColumnManager() {
 
   const ul = document.createElement("div");
 
-  currentSchemaList.forEach((item, index) => {
+  currentSheetColumnManagerList.forEach((item, index) => {
     // --- DIFF LOGIC ---
     const originalItem = originalMap.get(item.key);
     const isNew = !originalItem; // True if this field didn't exist in the snapshot
@@ -1686,8 +1686,8 @@ onchange="SheetColumnManagerUpdateOption('${item.key}', this.value, this)">${val
       animation: 150,
       onEnd: function (evt) {
         // Update List Order
-        const item = currentSchemaList.splice(evt.oldIndex, 1)[0];
-        currentSchemaList.splice(evt.newIndex, 0, item);
+        const item = currentSheetColumnManagerList.splice(evt.oldIndex, 1)[0];
+        currentSheetColumnManagerList.splice(evt.newIndex, 0, item);
 
         // Trigger Global Check (Updates Save Button)
         SheetColumnManagerCheckChanges();
@@ -1719,8 +1719,8 @@ function DeviceManagerSaveButton() {
 * Locks UI during the entire Save -> Sync chain
 */
 function SheetColumnManagerSave() {
-  if (isSchemaSaving) return; // Guard: prevent concurrent saves
-  isSchemaSaving = true;
+  if (isSheetColumnManagerSaving) return; // Guard: prevent concurrent saves
+  isSheetColumnManagerSaving = true;
 
   const btn = document.getElementById("btnSaveSchema");
   const origText = btn.innerText;
@@ -1733,12 +1733,12 @@ function SheetColumnManagerSave() {
   let syncPollTimer = null;
 
   // Safety: unlock after 30s if server hangs
-  if (schemaLockTimer) clearTimeout(schemaLockTimer);
-  schemaLockTimer = setTimeout(() => {
+  if (sheetColumnManagerLockTimer) clearTimeout(sheetColumnManagerLockTimer);
+  sheetColumnManagerLockTimer = setTimeout(() => {
     if (syncPollTimer) { clearInterval(syncPollTimer); syncPollTimer = null; }
     hideGlobalLoading();
-    isSchemaSaving = false;
-    schemaLockTimer = null;
+    isSheetColumnManagerSaving = false;
+    sheetColumnManagerLockTimer = null;
     setUiBusy(false);
     btn.innerText = origText;
     alert("⚠ Save timed out. The server took too long. Please try again.");
@@ -1747,12 +1747,12 @@ function SheetColumnManagerSave() {
   const applyFormatting = document.getElementById("chkApplyFormatting").checked;
 
   // Prepare clean list for saving
-  const cleanList = SheetColumnManagerCleanState(currentSchemaList);
+  const cleanList = SheetColumnManagerCleanState(currentSheetColumnManagerList);
 
   // --- SMART CHANGE DETECTION ---
   // We compare the Current state vs the Initial Snapshot to decide what sync to run
   let oldList = [];
-  try { oldList = JSON.parse(initialSchemaState); } catch (e) { }
+  try { oldList = JSON.parse(initialSheetColumnManagerState); } catch (e) { }
 
   // A. Check for Structural Changes (New Fields, Deleted Fields, Reordering)
   const oldKeys = oldList.map(i => i.key).join('|');
@@ -1771,12 +1771,12 @@ function SheetColumnManagerSave() {
 
       // Define what happens after Sync is done
       const onComplete = () => {
-        isSchemaSaving = false;
-        clearTimeout(schemaLockTimer);
-        schemaLockTimer = null;
+        isSheetColumnManagerSaving = false;
+        clearTimeout(sheetColumnManagerLockTimer);
+        sheetColumnManagerLockTimer = null;
 
         // Update Snapshot to new state (Reset Dirty Flag)
-        initialSchemaState = JSON.stringify(cleanList);
+        initialSheetColumnManagerState = JSON.stringify(cleanList);
         isSheetColumnManagerDirty = false;
 
         btn.innerText = "Saved!";
@@ -1803,9 +1803,9 @@ function SheetColumnManagerSave() {
       };
 
       const onFailure = (err) => {
-        isSchemaSaving = false;
-        clearTimeout(schemaLockTimer);
-        schemaLockTimer = null;
+        isSheetColumnManagerSaving = false;
+        clearTimeout(sheetColumnManagerLockTimer);
+        sheetColumnManagerLockTimer = null;
         setUiBusy(false);
         btn.innerText = origText;
         SheetColumnManagerSaveButton();
@@ -1869,9 +1869,9 @@ function SheetColumnManagerSave() {
       }
     })
     .withFailureHandler(err => {
-      isSchemaSaving = false;
-      clearTimeout(schemaLockTimer);
-      schemaLockTimer = null;
+      isSheetColumnManagerSaving = false;
+      clearTimeout(sheetColumnManagerLockTimer);
+      sheetColumnManagerLockTimer = null;
       setUiBusy(false);
       btn.innerText = origText;
       SheetColumnManagerSaveButton();
@@ -2007,8 +2007,8 @@ function SheetColumnManagerResetDefaults() {
   SheetColumnManagerOpenButton();
   google.script.run
     .withSuccessHandler(schemaArray => {
-      currentSchemaList = schemaArray;
-      initialSchemaState = JSON.stringify(schemaArray.map(({ key, label, options }) => ({ key, label, options })));
+      currentSheetColumnManagerList = schemaArray;
+      initialSheetColumnManagerState = JSON.stringify(schemaArray.map(({ key, label, options }) => ({ key, label, options })));
       isSheetColumnManagerDirty = false;
       SheetColumnManager();
     })
@@ -3716,7 +3716,7 @@ ${peerData ? buildBox(peerIdx, peerData.device, peerData.name, false) : buildBox
 <div class="tt-body">`;
 
   // Iterate through schema and compare values; skip rows where both sides are empty
-  globalSchema.filter(item => item.key !== 'int').forEach(item => {
+  topoColumnSchema.filter(item => item.key !== 'int').forEach(item => {
     let key = item.key + "_";
     let raw1 = (myData.details[key] || "").trim();
     let raw2 = peerData ? ((peerData.details[key] || "").trim()) : "";
@@ -6843,7 +6843,7 @@ function buildFormFields(d, prefix, isReadOnly) {
   let html = "";
 
   // Iterate over Global Schema
-  globalSchema.forEach(item => {
+  topoColumnSchema.forEach(item => {
     // Skip 'int' (handled in top section) and 'snake_int' (set internally by addSnakePair, not user-editable)
     if (item.key === 'int' || item.key === 'snake_int') return;
 
@@ -7143,7 +7143,7 @@ function saveEdit() {
 
   // [NEW] Dynamically get IDs from Schema
   // We filter out 'int' because it is handled separately (portA_name / portB_name)
-  let dynamicIds = globalSchema
+  let dynamicIds = topoColumnSchema
     .filter(item => item.key !== 'int' && item.key !== 'snake_int')
     .map(item => item.key);
 
@@ -7288,9 +7288,9 @@ function _scanInternalVlanConflicts() {
   return hits;
 }
 
-function runSchemaAudit() {
+function SheetColumnManagerAudit() {
   const btn = document.getElementById("btnAudit");
-  dbg("runSchemaAudit triggered");
+  dbg("SheetColumnManagerAudit triggered");
 
   // Safety check
   if (!btn) { console.error("Audit button not found"); return; }
@@ -9841,7 +9841,7 @@ function fetchData(force, autoVerify, silent) {
       // Populate Globals
       if (data.dropdowns) globalDropdowns = data.dropdowns;
       if (data.deviceNames) globalDeviceNames = data.deviceNames;
-      if (data.schema) globalSchema = data.schema;
+      if (data.schema) topoColumnSchema = data.schema;
       if (data.links) globalLinks = data.links;
       if (data.portFrequency) globalPortFrequency = data.portFrequency;
       if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
@@ -15057,7 +15057,7 @@ function loadFromSession() {
         // Restore Globals needed for Render
         if (data.dropdowns) globalDropdowns = data.dropdowns;
         if (data.deviceNames) globalDeviceNames = data.deviceNames;
-        if (data.schema) globalSchema = data.schema;
+        if (data.schema) topoColumnSchema = data.schema;
         if (data.links) globalLinks = data.links;
         if (data.portFrequency) globalPortFrequency = data.portFrequency;
         if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
