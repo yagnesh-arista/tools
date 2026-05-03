@@ -261,6 +261,7 @@ Mode   : [Git / Local]
 7 — canonicalizeInterface ✓ / ✗ / ⚠
 8 — INSTRUCTIONS Updated  ✓ / ✗ / ⚠
 9 — Modal Button Standard ✓ / ✗ / ⚠
+29 — Naming & docs        ✓ / ✗ / ⚠
 
 ── Part 2: Global ──────────────────────
 A — Scope & Hygiene       ✓ / ✗ / ⚠
