@@ -1,10 +1,10 @@
-// TopoAssist v260503.9 | 2026-05-03 14:55:56
+// TopoAssist v260503.10 | 2026-05-03 15:06:18
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.9";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1498,11 +1498,13 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
     }
 
     // Re-apply column visibility + recreate _sys_ after full sheet rebuild.
-    // Order matters: refreshSheetRowVisibility() calls ensureDummyColumn() first,
-    // inserting _sys_ at col 1 and shifting device columns to col 2+.
-    // applyCustomView() then reads the correct layout (col A = _sys_, cols B+ = devices).
+    // ensureDummyColumn() is called unconditionally here because refreshSheetRowVisibility()
+    // returns early when lastRow < 3 (new project with no data rows yet), skipping its own
+    // ensureDummyColumn call. Calling it directly guarantees _sys_ is at col 1 regardless
+    // of whether any data rows exist. ensureDummyColumn is idempotent — safe for all paths.
     safeCachePut(syncCache, 'SYNC_STATUS', '👁️ Phase 4/4: Restoring column view...', 60);
     try {
+      ensureDummyColumn(mappingSheet);
       refreshSheetRowVisibility();
       applyCustomView(getViewPreferences());
     } catch (visErr) {
@@ -3482,7 +3484,6 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
       'refresh': String(refresh),
       'auto': String(auto)
     });
-    console.log("✓ Preferences saved for user: " + width + "px width");
     return "Saved"; // Return a value so the sidebar knows it worked
   } catch (e) {
     console.error("✗ Error saving preferences: " + e.toString());
