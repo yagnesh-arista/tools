@@ -52,7 +52,7 @@ function onOpen() {
       .addItem('New Project — Reset All Data', 'showNewProjectDialog'))
     .addSeparator()
     // 4. Device & Config Management
-    .addItem('Device Manager', 'showDeviceManagerUi')
+    .addItem('Device Manager', 'DeviceManager')
     .addSeparator()
     // 5. Help
     .addItem('User Guide', 'openUserGuide')
@@ -750,7 +750,7 @@ function showTopologyWindow() {
   SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
 }
 
-function showDeviceManagerUi() {
+function DeviceManager() {
   const template = HtmlService.createTemplateFromFile('Sidebar');
   template.initialMode = 'manager';
   const settings = getUiSettings(); // Use the helper

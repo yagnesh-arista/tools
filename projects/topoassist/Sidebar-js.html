@@ -840,7 +840,7 @@ ${deleteCell}
         const item = currentDeviceList.splice(evt.oldIndex, 1)[0];
         currentDeviceList.splice(evt.newIndex, 0, item);
         pendingDeleteIndex = -1;
-        checkForChanges();
+        DeviceManagerCheckChanges();
         DeviceManager();
       }
     });
@@ -894,7 +894,7 @@ function setDeviceType(index) {
   const role = (dev.role || '').toUpperCase();
   if (role === 'IXIA' || role === 'SPIRENT') return; // role-managed, toggle disabled
   dev.type = dev.type === 'non-arista' ? 'full' : 'non-arista';
-  checkForChanges();
+  DeviceManagerCheckChanges();
   DeviceManager();
 }
 
@@ -902,7 +902,7 @@ function setDeviceRole(index, value) {
   const dev = currentDeviceList[index];
   if (!dev) return;
   dev.role = value ? value.toUpperCase() : '';
-  checkForChanges();
+  DeviceManagerCheckChanges();
   DeviceManager();
 }
 
@@ -918,7 +918,7 @@ function setDeviceMlagPeer(index, value) {
   const dev = currentDeviceList[index];
   if (!dev) return;
   dev.mlagPeer = value || '';
-  checkForChanges();
+  DeviceManagerCheckChanges();
   DeviceManager();
 }
 
@@ -936,7 +936,7 @@ function updateDeviceMeta(index, field, value) {
   const dev = currentDeviceList[index];
   if (!dev) return;
   dev[field] = value;
-  checkForChanges();
+  DeviceManagerCheckChanges();
 }
 
 function openLabelPicker(index) {
@@ -1010,7 +1010,7 @@ function toggleDeviceLabel(index, label) {
   const cell = document.querySelector(`[data-label-index="${index}"]`);
   if (cell) cell.innerHTML = renderDeviceLabelPills(dev.labels, index);
 
-  checkForChanges();
+  DeviceManagerCheckChanges();
 
   // Refresh the editor sub-row in place (keep it open)
   const sub = document.getElementById('labelEditorRow');
@@ -1018,7 +1018,7 @@ function toggleDeviceLabel(index, label) {
 }
 
 // Checks if current state differs from the initial snapshot
-function checkForChanges() {
+function DeviceManagerCheckChanges() {
   const currentState = JSON.stringify(currentDeviceList);
   isDeviceListDirty = (currentState !== initialDeviceState);
   DeviceManagerSaveButton();
@@ -1069,7 +1069,7 @@ function addDevicesToList() {
     });
 
     if (addedCount > 0) {
-      checkForChanges();
+      DeviceManagerCheckChanges();
       input.value = "";
       DeviceManager();
 
@@ -1109,7 +1109,7 @@ function confirmRemoveDevice() {
   if (pendingDeleteIndex >= 0) {
     currentDeviceList.splice(pendingDeleteIndex, 1);
     pendingDeleteIndex = -1;
-    checkForChanges();
+    DeviceManagerCheckChanges();
     DeviceManager();
   }
 }
@@ -1122,7 +1122,7 @@ function cancelRemoveDevice() {
 function toggleDeviceVisibility(index) {
   if (currentDeviceList[index]) {
     currentDeviceList[index].isVisible = !currentDeviceList[index].isVisible;
-    checkForChanges(); // Marks button as "Save *"
+    DeviceManagerCheckChanges(); // Marks button as "Save *"
   }
 }
 
@@ -1195,7 +1195,7 @@ function applyDeviceEdit(index) {
   currentDeviceList[index].name = newName;
   currentDeviceList[index].hostname = newHostname;
   closeDeviceEditor();
-  checkForChanges();
+  DeviceManagerCheckChanges();
   DeviceManager();
   const items = document.querySelectorAll('#reorderList .reorder-item');
   if (items[index]) items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -1267,7 +1267,7 @@ function saveDeviceChanges() {
       btn.disabled = false;
       btn.style.background = "";
 
-      checkForChanges();
+      DeviceManagerCheckChanges();
       DeviceManager(); // Will now render Blue IDs (e.g. "2")
 
       // 2. TRIGGER REFRESH
@@ -1454,7 +1454,7 @@ function SheetColumnManagerOpenButton() {
     currentSchemaList = schemaArray || [];
 
     // TAKE SNAPSHOT (This replaces your old _originalLabel logic)
-    initialSchemaState = JSON.stringify(getCleanSchema(currentSchemaList));
+    initialSchemaState = JSON.stringify(SheetColumnManagerCleanState(currentSchemaList));
 
     SheetColumnManager();
   }).getSchemaConfig();
@@ -1468,7 +1468,7 @@ function SheetColumnManagerOpenButton() {
 }
 
 // 2. HELPER: Prepares data for comparison (removes UI artifacts)
-function getCleanSchema(list) {
+function SheetColumnManagerCleanState(list) {
   return list.map(item => ({
     key: item.key,
     label: item.label,
@@ -1477,8 +1477,8 @@ function getCleanSchema(list) {
 }
 
 // 3. CHECKER: Determines if Orange or Green
-function checkSchemaChanges() {
-  const currentState = JSON.stringify(getCleanSchema(currentSchemaList));
+function SheetColumnManagerCheckChanges() {
+  const currentState = JSON.stringify(SheetColumnManagerCleanState(currentSchemaList));
   isSchemaDirty = (currentState !== initialSchemaState);
   SheetColumnManagerSaveButton();
 }
@@ -1499,7 +1499,7 @@ function SheetColumnManagerSaveButton() {
 }
 
 // 5. INPUT HANDLERS (Must trigger the check)
-function updateSchemaLabel(key, newLabel, inputEl) {
+function SheetColumnManagerUpdateLabel(key, newLabel, inputEl) {
   const item = currentSchemaList.find(i => i.key === key);
   if (item) {
     item.label = newLabel;
@@ -1515,11 +1515,11 @@ function updateSchemaLabel(key, newLabel, inputEl) {
     }
 
     // 2. Global Button State
-    checkSchemaChanges();
+    SheetColumnManagerCheckChanges();
   }
 }
 
-function updateSchemaOption(key, valStr, inputEl) {
+function SheetColumnManagerUpdateOption(key, valStr, inputEl) {
   // Semicolon is the sole delimiter — commas inside an option value are preserved
   const arr = valStr.split(";").map(s => s.trim()).filter(s => s !== "");
 
@@ -1540,7 +1540,7 @@ function updateSchemaOption(key, valStr, inputEl) {
     }
 
     // 2. Global Button State
-    checkSchemaChanges();
+    SheetColumnManagerCheckChanges();
   }
 }
 
@@ -1555,7 +1555,7 @@ function deleteField(key) {
   if (!confirm(`Delete field '${key}'?`)) return;
   currentSchemaList = currentSchemaList.filter(i => i.key !== key);
   SheetColumnManager();
-  checkSchemaChanges();
+  SheetColumnManagerCheckChanges();
 }
 
 function addNewField() {
@@ -1587,7 +1587,7 @@ function addNewField() {
   keyInput.value = "";
   labelInput.value = "";
 
-  checkSchemaChanges();
+  SheetColumnManagerCheckChanges();
   SheetColumnManager();
 
   const body = document.getElementById("schemaBody");
@@ -1662,14 +1662,14 @@ function SheetColumnManager() {
 <!-- Added ', this' to onchange -->
 <input type="text" class="${labelClass}"
 value="${item.label || item.key}"
-onchange="updateSchemaLabel('${item.key}', this.value, this)"
+onchange="SheetColumnManagerUpdateLabel('${item.key}', this.value, this)"
 placeholder="Description">
 
 <div class="${keyClass}">${item.key}_</div>
 </div>
 
 <textarea class='${areaClass}'
-onchange="updateSchemaOption('${item.key}', this.value, this)">${valStr}</textarea>
+onchange="SheetColumnManagerUpdateOption('${item.key}', this.value, this)">${valStr}</textarea>
 </div>
 
 <button class="schema-del" onclick="deleteField('${item.key}')" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -1690,7 +1690,7 @@ onchange="updateSchemaOption('${item.key}', this.value, this)">${valStr}</textar
         currentSchemaList.splice(evt.newIndex, 0, item);
 
         // Trigger Global Check (Updates Save Button)
-        checkSchemaChanges();
+        SheetColumnManagerCheckChanges();
 
         // Re-render (Updates Index Numbers)
         SheetColumnManager();
@@ -1718,7 +1718,7 @@ function DeviceManagerSaveButton() {
 * --- UPDATED SAVE FUNCTION ---
 * Locks UI during the entire Save -> Sync chain
 */
-function saveSchemaChanges() {
+function SheetColumnManagerSave() {
   if (isSchemaSaving) return; // Guard: prevent concurrent saves
   isSchemaSaving = true;
 
@@ -1747,7 +1747,7 @@ function saveSchemaChanges() {
   const applyFormatting = document.getElementById("chkApplyFormatting").checked;
 
   // Prepare clean list for saving
-  const cleanList = getCleanSchema(currentSchemaList);
+  const cleanList = SheetColumnManagerCleanState(currentSchemaList);
 
   // --- SMART CHANGE DETECTION ---
   // We compare the Current state vs the Initial Snapshot to decide what sync to run
@@ -2002,7 +2002,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
     .syncSchemaPreservingOrder(null, applyFormatting, deleteOrphans);
 }
 
-function resetSchemaToDefaults() {
+function SheetColumnManagerResetDefaults() {
   if (!confirm("Reset column schema to built-in defaults?\n\nThis resets column definitions only — sheet data is not affected.")) return;
   SheetColumnManagerOpenButton();
   google.script.run
