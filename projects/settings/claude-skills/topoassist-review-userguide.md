@@ -7,6 +7,53 @@ The h1 in UserGuide.html uses `<?= APP_VERSION ?>` (GAS template tag, injected a
 
 ---
 
+## UserGuide structure (as of 2026-05-03)
+
+All `<h2>` sections are auto-wrapped in `<details>/<summary>` by JS at DOMContentLoaded.
+Two sections are open by default: **Installation** and **Typical Workflow**. All others start closed.
+A `.quick-nav` grid at the top provides anchor links to every section.
+
+### Section order and IDs
+| ID | Section |
+|---|---|
+| `#installation` | 📦 Installation |
+| `#typical-workflow` | 🗺️ Typical Workflow (replaced Quick Start; 10-step user journey) |
+| `#device-manager` | 🖥️ Device Manager (DID, MLAG pairing, Non-EOS toggle, Model/Rack, Visibility, mid-project insert callout) |
+| `#sheet-filling` | 📋 Sheet Filling (progressive views: Cabling→Mode→Speed/Xcvr→Vlan→Show All; SheetAssist Panel; formatting; connecting interfaces) |
+| `#topology-toolbar` | 🔲 Topology Toolbar |
+| `#keyboard-shortcuts` | ⌨️ Keyboard Shortcuts |
+| `#visual-color-coding` | 🎨 Visual Color Coding |
+| `#group-rects` | ⬛ Group Rects (Simple view only; localStorage persistence) |
+| `#sheet-schema` | 🔧 Sheet & Schema Management |
+| `#config-generation` | ⚙️ Configuration Generation (incl. Snake Test sub-section) |
+| `#audit-engine` | 🛡️ Audit Engine |
+| `#device-bridge` | 🔌 Device Bridge (Cleanup section — was "Reconcile" before 2026-05-03) |
+| `#tips` | 💡 Tips & Notes |
+| `#appendix` | 📎 Appendix (Checkpoints, Snake Test reference, Custom View) |
+
+### Key renames since last review
+- **Quick Start → Typical Workflow** (10-step guide replacing the old 4-step quick start)
+- **Reconcile → Cleanup** (Device Bridge modal button and h3 heading)
+- **Checkpoints** moved from Sheet & Schema Management → Appendix
+- New sections added: Device Manager, Sheet Filling, Group Rects, Appendix
+
+### What the Device Manager section covers
+DID (Device ID) — sequential Arista device index driving Lo0 IP (`id.id.id.id/32`), BGP ASN
+(`asn_base+DID`), VARP physical IP last octet. DID shifts when a device is inserted mid-project
+(amber callout box). MLAG Pairing UI. Non-EOS toggle (EOS badge click). Model & Rack fields.
+Visibility (eye icon).
+
+### What the Sheet Filling section covers
+Progressive column views (Cabling→Mode→Speed/Xcvr→Vlan→Show All). SheetAssist Panel.
+Sheet formatting (auto-applied; re-sync via Save & Sync + Apply GSheet Coloring). Connecting
+interfaces (sheet matrix vs Visual Edit Mode).
+
+### What the Group Rects section covers
+Draw mode (Simple view only, dashed-square toolbar button). Create/edit/delete rect.
+localStorage persistence (not written to sheet).
+
+---
+
 ## Step 1 — What changed this session?
 
 Summarize every file edited this session and what changed. Focus on anything user-facing:

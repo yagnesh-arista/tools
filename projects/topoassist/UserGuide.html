@@ -1,4 +1,4 @@
-<!-- TopoAssist v260503.1 | 2026-05-03 12:38:10 -->
+<!-- TopoAssist v260503.2 | 2026-05-03 12:49:51 -->
 <!DOCTYPE html>
 <html>
 
@@ -350,8 +350,26 @@
 
     <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v<?= APP_VERSION ?></h1>
 
+    <!-- Quick Navigation -->
+    <div class="quick-nav">
+      <a href="#installation">📦 Installation</a>
+      <a href="#typical-workflow">🗺️ Typical Workflow</a>
+      <a href="#device-manager">🖥️ Device Manager</a>
+      <a href="#sheet-filling">📋 Sheet Filling</a>
+      <a href="#topology-toolbar">🔲 Topology Toolbar</a>
+      <a href="#keyboard-shortcuts">⌨️ Keyboard Shortcuts</a>
+      <a href="#visual-color-coding">🎨 Visual Color Coding</a>
+      <a href="#group-rects">⬛ Group Rects</a>
+      <a href="#sheet-schema">🔧 Sheet &amp; Schema Management</a>
+      <a href="#config-generation">⚙️ Configuration Generation</a>
+      <a href="#audit-engine">🛡️ Audit Engine</a>
+      <a href="#device-bridge">🔌 Device Bridge</a>
+      <a href="#tips">💡 Tips &amp; Notes</a>
+      <a href="#appendix">📎 Appendix</a>
+    </div>
+
     <!-- ================================================================ -->
-    <h2>📦 Installation</h2>
+    <h2 id="installation">📦 Installation</h2>
 
     <div class="info-box info-box--dim">
       TopoAssist runs as a Google Apps Script bound to a Google Sheet. Choose the method that suits you — clasp (recommended for developers) or manual copy-paste (no tools required).
@@ -462,53 +480,139 @@ clasp login --no-localhost</pre>
     </div>
 
     <!-- ================================================================ -->
-    <h2>🚀 Quick Start</h2>
+    <h2 id="typical-workflow">🗺️ Typical Workflow</h2>
+
+    <p style="font-size:13px;">A typical TopoAssist project follows this sequence. Each step links to its detailed section below.</p>
 
     <div class="step-box">
-      <span class="step-num">Step 1 — Create Devices</span>
+      <span class="step-num">Step 1 — Add Devices</span>
       <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Device Manager</span>
-      <p>Enter device names like <code>Leaf1</code> or ranges like <code>Leaf[1-4]</code> (zero-padded ranges like <code>Leaf[01-04]</code> are also supported). Select the device type:</p>
-      <ul>
-        <li><b>Arista (full)</b> — gets all attribute columns, config is generated.</li>
-        <li><b>Non-Arista</b> — gets only the <code>int_</code> column (traffic generators, non-Arista switches). Devices assigned the <b>IXIA</b> or <b>SPIRENT</b> role are automatically Non-EOS. Any device can also be toggled manually by clicking the <b>EOS</b> badge in the device list — it switches to <b>Non-EOS</b> and back without requiring a delete/re-add. Changes take effect after Save + Force Sync.</li>
-      </ul>
-      <p>Use the <b>👁 visibility toggle</b> to hide devices from the topology without deleting their data. Drag rows to reorder devices (affects sheet column order).</p>
+      <p>Add device names (<code>Leaf1</code>) or ranges (<code>Leaf[1-4]</code>). Set role (SPINE / LEAF / DUT…), model, rack, and mark MLAG pairs if applicable. Toggle visibility to hide devices from the canvas without deleting data. See <a href="#device-manager">Device Manager</a> for full details.</p>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 2 — Connect Interfaces</span>
-      <div class="info-box blue">
-        <b style="color:#0369a1;">Option A: Spreadsheet Matrix (Fastest)</b><br>
-        Find the column for the <b>Remote Device</b> (e.g. <code>int_Leaf2</code>). In the row for the <b>Local Device</b> (e.g. <code>Leaf1</code>), type the port name (e.g. <code>Et1</code>). The topology refreshes automatically.
-      </div>
-      <div class="info-box pink" style="margin-top:10px;">
-        <b style="color:#be185d;">Option B: Visual Edit Mode</b><br>
-        Enable <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span> Edit Mode</b> in the visualizer toolbar. Click a <b>red dot</b> (disconnected port) on one device, then click a red dot on another device to cable them. Use <b>(+) Link Pair</b> to add a new row.
-      </div>
+      <span class="step-num">Step 2 — Schema Setup (first time only)</span>
+      <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Manage Column &amp; Formatting</span>
+      <p>Choose which attribute columns to include (speed, xcvr, vrf, …) and click <b>Save &amp; Sync</b>. For repeat projects with an existing sheet, this step is already done.</p>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 3 — Set Modes &amp; Attributes</span>
-      <p>Fill in the <code>sp_mode_</code> column for each port. This drives config generation and visual color-coding.</p>
-      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; font-size:12px;">
-        <span class="pill" style="background:#f0fdf4; color:#15803d;">l2-et-access</span>
-        <span class="pill" style="background:#bbf7d0; color:#14532d;">l2-po-access</span>
-        <span class="pill" style="background:#fff7ed; color:#c2410c;">l2-et-trunk</span>
-        <span class="pill" style="background:#fed7aa; color:#7c2d12;">l2-po-trunk</span>
-        <span class="pill" style="background:#f0f9ff; color:#0369a1;">l3-et-int</span>
-        <span class="pill" style="background:#bae6fd; color:#0c4a6e;">l3-po-int</span>
-        <span class="pill" style="background:#faf5ff; color:#7e22ce;">l3-et-sub-int</span>
-        <span class="pill" style="background:#e9d5ff; color:#581c87;">l3-po-sub-int</span>
-      </div>
+      <span class="step-num">Step 3 — Fill the Sheet</span>
+      <span class="menu-path">TopoAssist &gt; Sheet View</span>
+      <p>Use the progressive column views to fill the sheet in stages: <b>Cabling → Mode → Speed/Xcvr → Vlan → Show All</b>. The <b>SheetAssist Panel</b> opens alongside and shows column-level hints. Sheet formatting (color-coding, conditional dimming) is applied automatically. See <a href="#sheet-filling">Sheet Filling</a> for details.</p>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 4 — Generate &amp; Copy Config</span>
-      <p>Click any cable or device in the topology. A <b>Copy Strip</b> appears at the bottom of the toolbar with split buttons for the <b>Device</b>, <b>Left</b> endpoint, and <b>Right</b> endpoint. Click <b>Copy</b> to send EOS config to clipboard, or <b>View</b> to open a scrollable config preview.</p>
+      <span class="step-num">Step 4 — Load Topology</span>
+      <span class="menu-path">TopoAssist &gt; Show Topology</span>
+      <p>Open the sidebar (or click <b>Refresh</b> if already open). The sidebar reads the sheet and draws the cable topology on the canvas.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 5 — Annotate with Group Rects</span>
+      <p>In <b>Simple</b> (◎) view, click the <b>Group Rect</b> toolbar button and drag to draw a labeled rectangle around a logical group — POD, tier, DC. See <a href="#group-rects">Group Rects</a>.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 6 — Configure Technology Stack &amp; IPs</span>
+      <p>Open the <b>Tech Stack</b> modal to enable GW, P2P mode, BGP/OSPF underlay, and VXLAN/EVPN overlay. Open the <b>IP Config</b> modal to set base subnets, loopback base, and BGP ASN base. Details in <a href="#config-generation">Configuration Generation</a>.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 7 — Run Audit</span>
+      <p>Double-click the <b>Audit</b> icon in the toolbar. Design issues (VLAN mismatches, Po asymmetry, mode conflicts) are flagged on the canvas with a red badge count. Details in <a href="#audit-engine">Audit Engine</a>.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 8 — Verify with Device Bridge</span>
+      <p>Run <code>python3 device_bridge.py</code> locally, then open the <b>Device Bridge</b> modal and click <b>Run Checks</b>. LLDP results are overlaid on every port — green = match, amber = mismatch, red = missing. Details in <a href="#device-bridge">Device Bridge</a>.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 9 — Generate &amp; Push Config</span>
+      <p>Click any cable or device to open the <b>Copy Strip</b>. Click <b>View</b> to preview EOS config or <b>Push</b> to send it via SSH in an EOS configure session. Review the diff modal, then click <b>Commit</b>.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 10 — Cleanup Orphans</span>
+      <p>After removing or renaming rows, open <b>Device Bridge → Cleanup</b> to find and remove stale <code>__TA</code>-tagged interfaces that are no longer in the topology.</p>
     </div>
 
     <!-- ================================================================ -->
-    <h2>🖥️ Topology Toolbar</h2>
+    <h2 id="device-manager">🖥️ Device Manager</h2>
+    <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Device Manager</span>
+
+    <p style="font-size:13px;">Device Manager is the master list of every device in the topology. Each row creates a column group in the sheet and a node on the canvas.</p>
+
+    <h3>Adding Devices</h3>
+    <ul style="font-size:13px;">
+      <li>Enter names individually (<code>Leaf1</code>) or as a range (<code>Leaf[1-4]</code>, <code>Spine[01-02]</code> for zero-padded). Ranges expand at save time.</li>
+      <li>Select <b>Arista</b> type for EOS devices — they get all attribute columns and config is generated. Select <b>Non-Arista</b> for traffic generators and third-party devices — they get only the <code>int_</code> column (cabling context, no EOS config).</li>
+      <li>Drag rows to reorder devices — this affects sheet column order and changes Device IDs.</li>
+    </ul>
+
+    <h3>Device ID (DID)</h3>
+    <p style="font-size:13px;">Each Arista device is assigned a <b>sequential Device ID</b> — its position among all Arista devices in the sheet (1-based). DID drives:</p>
+    <ul style="font-size:13px;">
+      <li><b>Loopback0 IP</b> — <code>id.id.id.id/32</code> where <code>id = DID + lo_base</code></li>
+      <li><b>BGP ASN</b> — <code>asn_base + DID</code></li>
+      <li><b>VARP physical IP last octet</b> — same <code>id</code> value</li>
+    </ul>
+    <div class="info-box amber" style="font-size:12px;">
+      <b>Inserting a device mid-project shifts the DID of every Arista device below it.</b> After any insert, run <b>Regenerate All Configs</b> from the Device Bridge modal, then re-push all affected devices. TopoAssist detects a DID shift at push time and shows a yellow banner as a reminder.
+    </div>
+
+    <h3>MLAG Pairing</h3>
+    <p style="font-size:13px;">Select two Arista devices in Device Manager and click <b>Set MLAG Pair</b>. Physical links between the pair are automatically tagged as Peer-Links. MLAG is declared explicitly — TopoAssist never infers it from Port-Channel counts.</p>
+
+    <h3>Non-EOS Toggle</h3>
+    <p style="font-size:13px;">Any device can be toggled between <b>EOS</b> and <b>Non-EOS</b> by clicking the <b>EOS</b> badge in its Device Manager row. Devices with the IXIA or SPIRENT role are Non-EOS automatically. Non-EOS devices appear in the topology for cabling context but no config is generated. Changes take effect after Save + Force Sync.</p>
+
+    <h3>Model &amp; Rack</h3>
+    <ul style="font-size:13px;">
+      <li><b>Model</b> — platform string (e.g. <code>7050CX3-32S</code>). Auto-populated from a Device Bridge check; manual entry overrides. Shown as the first pill under the node in Simple view.</li>
+      <li><b>Rack</b> — physical location (e.g. <code>dm1-rack104-tb38</code>). Manual only. Appears in the Cabling Report.</li>
+    </ul>
+
+    <h3>Visibility</h3>
+    <p style="font-size:13px;">Click the <b>eye icon</b> on any device row to hide it from the topology canvas. The device row and all sheet data are retained — only the visual node and its cables are suppressed. Useful for hiding maintenance or out-of-scope devices during a demo.</p>
+
+    <!-- ================================================================ -->
+    <h2 id="sheet-filling">📋 Sheet Filling</h2>
+
+    <p style="font-size:13px;">The Google Sheet is the primary data source. Filling it in stages — using the column visibility views as a guide — keeps the workflow structured and reduces errors.</p>
+
+    <h3>Progressive Column Views</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet View</span>
+    <p style="font-size:13px;">Work through the views in order to fill the sheet without being overwhelmed by all columns at once:</p>
+    <ol style="font-size:13px;">
+      <li><b>Cabling</b> — shows only <code>int_</code> columns. Fill in which port on each device connects to which port on another device.</li>
+      <li><b>Mode</b> — adds <code>sp_mode_</code> and <code>po_</code>. Mode drives config generation and canvas color-coding. See the mode pills in the Configuration Generation section for valid values.</li>
+      <li><b>Speed / Xcvr</b> — adds <code>et_speed_</code>, <code>xcvr_type_</code>, and <code>xcvr_speed_</code>. Color-coding immediately highlights speed mismatches between port speed and transceiver speed.</li>
+      <li><b>Vlan</b> — adds <code>vlan_</code>, <code>svi_vlan_</code>, and <code>vrf_</code>.</li>
+      <li><b>Show All</b> — unhides all columns for a final review before generating config.</li>
+    </ol>
+
+    <h3>SheetAssist Panel</h3>
+    <p style="font-size:13px;">Opening any Sheet View also opens the <b>SheetAssist Panel</b> alongside the sheet. It shows column-level hints, valid values, and quick-fill guidance for the columns currently visible. Use it while filling to avoid typos and find correct mode, xcvr, and speed values.</p>
+
+    <h3>Sheet Formatting</h3>
+    <p style="font-size:13px;">Connection background colors, conditional dimming, and speed tier colors are applied automatically as you fill the sheet. If formatting drifts (e.g. after adding a column or running a schema change), re-sync it:</p>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Manage Column &amp; Formatting</span>
+    <p style="font-size:13px;">Check the <b>Apply GSheet Coloring</b> checkbox before clicking <b>Save &amp; Sync</b>.</p>
+
+    <h3>Connecting Interfaces</h3>
+    <div class="info-box blue" style="margin-top:8px;">
+      <b style="color:#0369a1;">Option A: Spreadsheet Matrix (fastest)</b><br>
+      Find the column for the remote device (e.g. <code>int_Leaf2</code>). In the row for the local device (e.g. <code>Leaf1</code>), type the port name (e.g. <code>Et1</code>). The topology refreshes automatically.
+    </div>
+    <div class="info-box pink" style="margin-top:10px;">
+      <b style="color:#be185d;">Option B: Visual Edit Mode</b><br>
+      Enable <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span> Edit Mode</b> in the toolbar. Click a red dot (disconnected port) on one device, then click a red dot on another device to cable them.
+    </div>
+
+    <!-- ================================================================ -->
+    <h2 id="topology-toolbar">🖥️ Topology Toolbar</h2>
 
     <h3>Primary Row</h3>
     <table class="legend-table">
@@ -632,7 +736,7 @@ clasp login --no-localhost</pre>
     </table>
 
     <!-- ================================================================ -->
-    <h2>⌨️ Keyboard Shortcuts</h2>
+    <h2 id="keyboard-shortcuts">⌨️ Keyboard Shortcuts</h2>
 
     <div class="two-col">
       <div class="card">
@@ -654,7 +758,7 @@ clasp login --no-localhost</pre>
     </div>
 
     <!-- ================================================================ -->
-    <h2>🎨 Visual Color Coding</h2>
+    <h2 id="visual-color-coding">🎨 Visual Color Coding</h2>
 
     <h3>Sheet — Connection Backgrounds</h3>
     <ul>
@@ -740,7 +844,7 @@ clasp login --no-localhost</pre>
     </ul>
 
     <!-- ================================================================ -->
-    <h2>🔧 Sheet &amp; Schema Management</h2>
+    <h2 id="sheet-schema">🔧 Sheet &amp; Schema Management</h2>
 
     <h3>Column Visibility Views</h3>
     <span class="menu-path">TopoAssist &gt; Sheet View</span>
@@ -819,12 +923,23 @@ clasp login --no-localhost</pre>
       These functions clean <i>format</i> issues only. Configuration logic errors (mode conflicts, VLAN mismatches, duplicate interfaces) are flagged by the Audit Engine — they are intentionally not auto-corrected.
     </div>
 
-    <h3>Checkpoints (Snapshots)</h3>
-    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
-    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Use <b>Restore Sheet Checkpoint</b> to roll back to any saved snapshot.</p>
+    <!-- ================================================================ -->
+    <h2 id="group-rects">⬛ Group Rects</h2>
+
+    <p style="font-size:13px;"><b>Group Rects</b> let you draw labeled rectangles over the <b>Simple (Holistic)</b> topology view to mark logical groups — PODs, tiers, data centers, or any custom grouping. They are purely visual annotations stored in browser localStorage.</p>
+
+    <ol style="font-size:13px;">
+      <li>Switch to <b>Simple</b> view (◎ button in the secondary row of the toolbar).</li>
+      <li>Click the <b>Group Rect</b> button (dashed square icon) in the primary toolbar row to enter rect-draw mode.</li>
+      <li>Click and drag on the canvas to draw a rectangle over the devices you want to group.</li>
+      <li>A label input appears — type a name (e.g. <code>POD-A</code>, <code>DC-West</code>) and press Enter.</li>
+      <li>Click an existing rect to edit its label, text position (inside / outside), or background color. Drag it to reposition. Press Delete or the trash icon to remove it.</li>
+    </ol>
+
+    <div class="info-box blue" style="font-size:12px;">Group Rect positions and labels are saved in browser localStorage per topology. They persist across page refreshes but are local to your browser — they are not written to the sheet.</div>
 
     <!-- ================================================================ -->
-    <h2>⚙️ Configuration Generation</h2>
+    <h2 id="config-generation">⚙️ Configuration Generation</h2>
 
     <h3>1. Interface Naming</h3>
     <p>The system validates and normalises Arista EOS interface names:</p>
@@ -899,7 +1014,7 @@ clasp login --no-localhost</pre>
     <p style="font-size:13px;">MLAG peer pairs must share the same GW First octet (they share a common anycast or virtual-router IP). TopoAssist warns on save if the per-device First overrides for an MLAG pair differ, and highlights mismatched fields amber in the table. You can proceed past the warning, but the generated config will have a mismatch that EOS will reject at push time.</p>
 
     <h3>5. Auto-Description Logic</h3>
-    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>__TA</code> — this ownership marker lets Reconcile identify and clean up stale interfaces on devices. Use <code>show interfaces status | grep __TA</code> on any device to list all managed interfaces.</p>
+    <p style="font-size:13px;">Descriptions are generated automatically unless overridden by a manual <code>desc_</code> value. All TopoAssist-generated descriptions end with <code>__TA</code> — this ownership marker lets the Cleanup tool identify and remove stale interfaces on devices. Use <code>show interfaces status | grep __TA</code> on any device to list all managed interfaces.</p>
 
     <p style="font-size:13px;"><b>Physical / Port-Channel interfaces:</b></p>
     <ul>
@@ -1131,7 +1246,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     </div>
 
     <!-- ================================================================ -->
-    <h2>Audit Engine</h2>
+    <h2 id="audit-engine">Audit Engine</h2>
     <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 24 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. The icon changes color to show audit state at a glance: <b style="color:#94a3b8;">dimmed</b> when audit is disabled, <b style="color:#22c55e;">green</b> when enabled with no issues found, and <b style="color:#ef4444;">red</b> when enabled with issues present. A badge shows the error count when issues are found.</p>
     <ul>
       <li><b>Unsupported Interface</b> — <code>int_</code> value does not start with <code>Et</code> (Ethernet) or <code>Vx</code> (VTEP). All Arista physical ports use the <code>Et</code> prefix regardless of speed; <code>Vx1</code> is the only valid VTEP entry. Other types (<code>Po</code>, <code>Lo</code>, <code>Ma</code>, etc.) do not belong in <code>int_</code>.</li>
@@ -1192,7 +1307,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <p style="font-size:13px;">Each check row has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled and has issues, <b>gray</b> = disabled or audit has not been run yet. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle all checks at once.</p>
 
     <!-- ================================================================ -->
-    <h2>🔌 Device Bridge</h2>
+    <h2 id="device-bridge">🔌 Device Bridge</h2>
     <p style="font-size:13px;">The Device Bridge is a lightweight local Python server (<code>device_bridge.py</code>) that gives TopoAssist live read access to lab devices via SSH, eAPI, REST, or gNMI — without any cloud dependency. Its primary purpose is to <b>reduce lab bring-up time</b> by surfacing cabling errors, device identity issues, and interface state directly in the topology view.</p>
 
     <h3>Setup</h3>
@@ -1396,10 +1511,10 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       Both push-time additions are always visible in the <b>dry-run diff</b> before you click Commit — so the complete picture of what will change on the device is shown upfront, even for commands that come from device state rather than the sheet.
     </div>
 
-    <h3>Reconcile — Orphan Cleanup</h3>
-    <p style="font-size:13px;"><b>Reconcile</b> finds interfaces on real devices that carry a <code>__TA</code> ownership marker but are no longer in the topology. These are <b>orphans</b> — leftover from deleted or renamed rows that were never cleaned up on the device.</p>
+    <h3>Cleanup — Orphan Removal</h3>
+    <p style="font-size:13px;"><b>Cleanup</b> finds interfaces on real devices that carry a <code>__TA</code> ownership marker but are no longer in the topology. These are <b>orphans</b> — leftover from deleted or renamed rows that were never cleaned up on the device.</p>
     <ol style="font-size:13px;">
-      <li>Open the <b>Device Bridge</b> modal and click <b>Reconcile</b>. The bridge queries each device for all interfaces tagged <code>__TA</code> in their description.</li>
+      <li>Open the <b>Device Bridge</b> modal and click <b>Cleanup</b>. The bridge queries each device for all interfaces tagged <code>__TA</code> in their description.</li>
       <li>Any <code>__TA</code>-tagged interface not in the current topology appears as an orphan row with an <b>Unconfigure</b> button.</li>
       <li>Click <b>Unconfigure</b> to remove the interface from the device. The cleanup command sent depends on the interface type:
         <ul style="margin-top:4px;">
@@ -1410,11 +1525,11 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       </li>
     </ol>
     <div class="info-box info-box--dim">
-      Reconcile compares abbreviated interface names (topology uses <code>Et</code>, <code>Po</code>) against the EOS full-form names (<code>Ethernet</code>, <code>Port-Channel</code>) returned by <code>show interfaces description</code> — both are normalized before comparison so no manual name mapping is needed.
+      Cleanup compares abbreviated interface names (topology uses <code>Et</code>, <code>Po</code>) against the EOS full-form names (<code>Ethernet</code>, <code>Port-Channel</code>) returned by <code>show interfaces description</code> — both are normalized before comparison so no manual name mapping is needed.
     </div>
 
     <!-- ================================================================ -->
-    <h2>💡 Tips &amp; Notes</h2>
+    <h2 id="tips">💡 Tips &amp; Notes</h2>
     <ul>
       <li>The topology <b>auto-refreshes</b> when sheet data changes (configurable polling interval via the Refresh settings).</li>
       <li>Layout preferences (card width, gap, theme, sort mode, node positions) are <b>saved in browser localStorage</b> per device.</li>
@@ -1428,6 +1543,20 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Role Pill Filter</b> — click a role badge (e.g. SPINE, LEAF) on any device header to filter the topology to devices with that role. Click the same badge again to clear the filter.</li>
       <li><b>Config Age</b> — the copy/view toolbar shows how long ago each device's config was fetched (e.g. "just now", "3m ago"). The age refreshes automatically every 30 seconds.</li>
     </ul>
+
+    <!-- ================================================================ -->
+    <h2 id="appendix">📎 Appendix</h2>
+
+    <h3>Checkpoints (Snapshots)</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
+    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Use <b>Restore Sheet Checkpoint</b> to roll back to any saved snapshot. Useful as a safety net before running a schema change or a large sheet reorganisation.</p>
+
+    <h3>Snake Test</h3>
+    <p style="font-size:13px;">The Snake Test chains switch ports with external loopback cables to measure forwarding throughput end-to-end. Full setup documentation — supported modes, sheet wiring, EP1/EP2 config, VRF chain, TTL reset — is in the <a href="#config-generation">Configuration Generation</a> section under <b>8. Snake Test (L2 / L3)</b>.</p>
+
+    <h3>Custom View</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet View &gt; Custom View</span>
+    <p style="font-size:13px;">Pick any column combination and save it as a named view. The saved view appears in the Sheet View menu alongside the standard views (Cabling, Mode, Speed, Vlan). Useful for project-specific workflows that need a fixed column set not covered by the built-in views.</p>
 
     <div style="text-align:center; color: #94a3b8; font-size: 11px; margin-top: 40px;">
       Arista EOS Automation Suite &bull; Lab Testing Version
@@ -1447,6 +1576,54 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
+
+    // Auto-wrap top-level h2 sections in collapsible <details>/<summary>
+    document.addEventListener('DOMContentLoaded', function() {
+      var container = document.querySelector('.container');
+      if (!container) return;
+      var defaultOpen = ['Typical Workflow', 'Installation'];
+      var h2s = Array.from(container.querySelectorAll(':scope > h2'));
+      h2s.forEach(function(h2) {
+        var title = h2.textContent.trim();
+        var isOpen = defaultOpen.some(function(t) { return title.indexOf(t) !== -1; });
+        // Collect all sibling elements until next top-level h2
+        var content = [];
+        var next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+          content.push(next);
+          next = next.nextElementSibling;
+        }
+        // Add chevron SVG to h2
+        var svgNS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('class', 'section-chevron');
+        svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+        var chevPath = document.createElementNS(svgNS, 'path');
+        chevPath.setAttribute('d', 'M6 9l6 6 6-6');
+        svg.appendChild(chevPath);
+        h2.appendChild(svg);
+        // Build details > summary > h2 wrapper
+        var details = document.createElement('details');
+        if (isOpen) details.open = true;
+        var summary = document.createElement('summary');
+        details.appendChild(summary);
+        container.insertBefore(details, h2);
+        summary.appendChild(h2);
+        content.forEach(function(node) { details.appendChild(node); });
+      });
+      // Open section when a quick-nav link is clicked
+      document.querySelectorAll('.quick-nav a[href^="#"]').forEach(function(a) {
+        a.addEventListener('click', function() {
+          var target = document.querySelector(this.getAttribute('href'));
+          if (!target) return;
+          var det = target.closest('details');
+          if (det) det.open = true;
+        });
+      });
+    });
   </script>
 </body>
 
