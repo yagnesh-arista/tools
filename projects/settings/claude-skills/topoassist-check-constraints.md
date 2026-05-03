@@ -4,7 +4,7 @@ Run the following checks in order:
 
 1. **canonicalizeInterface() sync**: Grep for `// DUPLICATED` comments in both Code.gs and Sidebar-js.html. Confirm both show the same "last synced" date. If one was changed this session and the date wasn't updated, flag it and fix it.
 
-2. **generateConfig() param count**: Grep for `generateConfig(` in Code.gs. Confirm every call site passes exactly 5 arguments (portName, d, ipPrefs, seenPos, underlayProtocol). Flag any call with fewer than 5.
+2. **generateConfig() param count**: Grep for `generateConfig(` in Code.gs. Confirm every call site passes exactly 6 arguments (portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet). Note: vx1VlanSet is optional (callers from getTopologyData omit it intentionally — that is correct). Flag any call missing netSettings (arg 5).
 
 3. **hasKey() usage**: Grep for `.has(` in Code.gs. Flag any usage where the Set/Map contains device names (those should use hasKey() instead). hasKey() is case-insensitive; .has() is not — device names in Sets are lowercase but sheet names are original-cased.
 
