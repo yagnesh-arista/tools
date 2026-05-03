@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.22 | 2026-05-03 16:22:10 -->
+<!-- TopoAssist v260503.23 | 2026-05-03 16:37:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.22";  // keep in sync with Code.gs
+const APP_VERSION = "260503.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -509,7 +509,7 @@ function initApp() {
   dbg("Initializing App in mode:", currentMode);
 
   if (currentMode === 'manager') {
-    openDeviceManager();
+    initDeviceManager();
   } else if (currentMode === 'schema') {
     initSchemaManager();
   } else if (currentMode === 'view_custom') {
@@ -639,10 +639,7 @@ function startSmartPolling() {
 * ==========================================
 */
 
-function openDeviceManager() {
-  const modal = document.getElementById("reorderModal");
-  modal.style.display = "flex";
-
+function initDeviceManager() {
   document.getElementById("emptyMsg").style.display = "none";
   document.getElementById("reorderList").innerHTML = `
 <div style="padding:40px; text-align:center; color:#94a3b8;">
@@ -692,8 +689,7 @@ function applyDeviceListFromServer(devices) {
 // Called automatically when topology refreshes — silently syncs the device manager
 // if it is open and the user has made no pending edits
 function silentRefreshDeviceManager() {
-  const modal = document.getElementById("reorderModal");
-  if (!modal || modal.style.display === 'none' || isDeviceListDirty) return;
+  if (currentMode !== 'manager' || isDeviceListDirty) return;
 
   google.script.run.withSuccessHandler(devices => {
     // Guard again: user may have started editing while the server call was in-flight

@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-03 (Rename: renderManagerList()→DeviceManager(), showDeviceDataUi()→SheetColumnManager(), updateSaveButtonVisuals()→SheetColumnsManagerSaveButton() — aligns internal names with their actual UI feature names. FILES: Sidebar-js.html, Code.gs)
+  Last updated: 2026-05-03 (Refactor: openDeviceManager()→initDeviceManager() to match initSchemaManager() pattern; removed redundant modal.style.display="flex" (CSS body.mode-reorder already controls visibility); silentRefreshDeviceManager() guard changed from modal.style.display==='none' to currentMode!=='manager'. FILES: Sidebar-js.html)
+  Previous: 2026-05-03 (Rename: renderManagerList()→DeviceManager(), showDeviceDataUi()→SheetColumnManager(), updateSaveButtonVisuals()→SheetColumnsManagerSaveButton(). FILES: Sidebar-js.html, Code.gs)
   Previous: 2026-05-03 (Fix: Device Manager — after applyDeviceEdit(), scroll edited device into view. FILES: Sidebar-js.html)
   Previous: 2026-05-03 (Fix: grey CF formatting lost after force sync — ensureDummyColumn() now runs BEFORE Stage 5 (applyGlobalFormatting) in rebuildSheet(); row1Colors and row2 header background corrected to start at col 2 (device cols). Root cause: CF rules built via headers.indexOf before _sys_ inserted at col 1 → all rules off by one. Also removed console.log from calculateGlobalTopology log helper; removed stale REPLACE comment. FILES: Code.gs)
   Previous: 2026-05-03 (Remove success alert from saveIpPreferences handler — modal closes + setStatus covers feedback; alert was redundant and disruptive. Files: Sidebar-js.html)
