@@ -1932,11 +1932,14 @@ DEVICE DID (Device ID):
   - Used for last-octet IP derivation
   - Non-Arista devices do not get a DID
 
-INLINE RENAME (promptRenameDevice):
-  - Clicking ✎ replaces the name cell with a text <input> pre-filled with current name
-  - Enter or blur → commits (if changed, calls checkForChanges() + renderManagerList())
-  - Escape → cancels, re-renders without change
-  - Uses `committed` flag to prevent double-commit on blur after Enter
+INLINE RENAME (promptRenameDevice / applyDeviceEdit):
+  - Clicking ✎ inserts a <li id="deviceEditRow"> after the target row with two inputs:
+    DNS Name (required) and Hostname (optional)
+  - Apply button → applyDeviceEdit(index): validates, updates currentDeviceList, calls
+    closeDeviceEditor() + checkForChanges() + renderManagerList(), then scrolls the
+    re-rendered item into view via scrollIntoView({block:'nearest',behavior:'smooth'})
+    so the user can see the updated device without manually scrolling back
+  - Cancel button / Escape → closeDeviceEditor() removes the editor row without commit
 
 INLINE DELETE (removeDeviceFromList / confirmRemoveDevice / cancelRemoveDevice):
   - State variable: pendingDeleteIndex (module-level, default -1)
