@@ -148,6 +148,42 @@ Session end (Stop)
 | `topoassist/device_bridge.py` | `scp bus-home:~/claude/projects/topoassist/device_bridge.py ~/device_bridge.py` | Yes — `topoassist-deploy-tracker.sh` prints this |
 | `zshrc_macbook/.zshrc` | `scp bus-home:~/claude/projects/zshrc_macbook/.zshrc ~/.zshrc && source ~/.zshrc` | Yes — always shown after edit |
 | `bashrc_bus-home/.bashrc` | `source ~/.bashrc` in the running shell | No — remind user after edit |
+| TopoAssist demo sheet | `/topoassist-deploy-demo-template` — intentional releases only (see workflow below) | No |
+
+### Demo Sheet Release Workflow
+
+The demo/template sheet (`1mIF9aeQ5oZ1QPkOUpQgGKn55zWAPGIcSjvy7xoapVos`) is a stable copy users make via Drive → File → Make a copy. Push to it intentionally, not on every commit.
+
+**Normal release (auth still valid):**
+```bash
+/topoassist-deploy-demo-template
+```
+
+**If push fails with `invalid_grant` — re-auth first:**
+```bash
+rm -f ~/.clasprc.json
+source ~/.bashrc && cd ~/claude/projects/topoassist && clasp login --no-localhost
+# visit URL, paste back the localhost:8888/?code=... URL
+```
+Then fix the credential format (clasp login writes `tokens.default`, installed clasp reads `token`):
+```bash
+python3 -c "
+import json
+with open('/home/yagnesh/.clasprc.json') as f: d = json.load(f)
+tok = d['tokens']['default']
+json.dump({'token': {'access_token': tok['access_token'], 'refresh_token': tok['refresh_token'],
+  'client_id': tok['client_id'], 'client_secret': tok['client_secret'], 'token_type': 'Bearer'}},
+  open('/home/yagnesh/.clasprc.json','w'), indent=2); print('✓ done')
+"
+```
+Then re-run `/topoassist-deploy-demo-template`. Full instructions: `/topoassist-deploy-inst-gas-clasp`.
+
+**Optional — tag the release:**
+```bash
+cd ~/claude && git tag v260503 -m "Demo release 2026-05-03"
+```
+
+---
 
 ### Lock Safety (parallel SSH sessions)
 
