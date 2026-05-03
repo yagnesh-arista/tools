@@ -674,6 +674,61 @@ grep -n "\.configLoaded" ~/claude/projects/topoassist/Sidebar-js.html
 
 ---
 
+## Check 29 — Function Naming & Documentation
+
+### 29a. Vague or short function names (⚠ warn; ✗ fail if added this session)
+
+```bash
+# Names ≤ 4 chars — may be fine for utilities, judge by body content
+grep -nP "^function [a-zA-Z_$]{1,4}\s*\(" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Lone generic verb with no qualifier — exact name only (not 'openIpConfigModal')
+grep -nP "^function (show|hide|open|close|run|go|do|set|get|init|load|save|reset|update|handle|process)\s*\(" ~/claude/projects/topoassist/Sidebar-js.html ~/claude/projects/topoassist/Code.gs
+```
+
+For each result: read the body. If the function does a non-obvious thing with no clear call-site context, ✗ FAIL for anything added this session — suggest a name that encodes intent. For pre-existing functions, ⚠ WARN only.
+
+### 29b. Single-letter parameters (⚠ warn)
+
+```bash
+grep -nP "^function \w+\(\s*[a-wyz]\s*[,)]" ~/claude/projects/topoassist/Sidebar-js.html
+```
+
+Exempt: `e` (event), `i` / `j` / `k` (loop indices), `cb` (callback), `el` (element), `id`.
+⚠ WARN for any others — suggest a descriptive name.
+
+### 29c. Non-obvious functions without a WHY comment (⚠ warn)
+
+Manually scan functions that:
+- Work around a browser or GAS quirk (e.g. `flex: 1; min-height: 0` for scroll, `scrollIntoView` after re-render)
+- Enforce a non-obvious invariant (ordering, guard condition, fallback)
+- Have a multi-case state machine or multiple early-return branches
+
+For each such function with NO inline `//` comment at the key decision point:
+⚠ WARN — cite function name and the specific non-obvious line that needs a WHY note.
+
+Rule: comments explain **WHY**, not WHAT. Straightforward functions whose intent is clear from names + structure always ✓ PASS — do not add JSDoc or describe what the code obviously does.
+
+### 29d. Stale names from 2026-05-03 rename session (✗ fail)
+
+```bash
+grep -nP "\b(isDeviceListDirty|renderManagerList|showDeviceDataUi|showDeviceManagerUi|\
+openDeviceManager|initSchemaManager|attemptCloseManager|attemptCloseSchema|\
+schemaBody|schemaContainer|btnSaveSchema|isSchemaDirty|isSchemaSaving|\
+schemaLockTimer|currentSchemaList|initialSchemaList|initialSchemaState|\
+initialSchemaKeyOrder|getCleanSchema|saveSchemaChanges|updateSchemaLabel|\
+updateSchemaOption|globalSchema|pendingDeleteIndex|deleteField|addNewField|\
+getOriginalItem|silentRefreshDeviceManager|promptRenameDevice|\
+applyDeviceListFromServer|runSchemaAudit)\b" \
+  ~/claude/projects/topoassist/Sidebar-js.html \
+  ~/claude/projects/topoassist/Sidebar.html \
+  ~/claude/projects/topoassist/Code.gs
+```
+
+✗ FAIL if any stale name is found — cite file and line.
+
+---
+
 ## Output Format
 
 ```
