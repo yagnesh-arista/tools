@@ -106,7 +106,7 @@ Session end (Stop)
 | `/project:topoassist-deploy-git` | Push TopoAssist changes to GitHub |
 | `/project:topoassist-deploy-inst-device_bridge` | Instructions: `scp device_bridge.py` to Mac |
 | `/project:topoassist-deploy-inst-gas-clasp` | Instructions: re-authenticate `clasp` for headless/SSH sessions |
-| `/project:topoassist-deploy-template` | Push current code to template/demo sheet (intentional releases only) |
+| `/project:topoassist-deploy-demo-template` | Push current code to demo/template sheet (intentional releases only) |
 | `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
 
 ---
