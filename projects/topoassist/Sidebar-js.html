@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.17 | 2026-05-03 16:00:24 -->
+<!-- TopoAssist v260503.20 | 2026-05-03 16:13:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.17";  // keep in sync with Code.gs
+const APP_VERSION = "260503.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1201,6 +1201,8 @@ function applyDeviceEdit(index) {
   closeDeviceEditor();
   checkForChanges();
   renderManagerList();
+  const items = document.querySelectorAll('#reorderList .reorder-item');
+  if (items[index]) items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 /**
