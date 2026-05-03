@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.25 | 2026-05-03 16:43:59 -->
+<!-- TopoAssist v260503.26 | 2026-05-03 16:49:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.25";  // keep in sync with Code.gs
+const APP_VERSION = "260503.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -683,7 +683,7 @@ function applyDeviceListFromServer(devices) {
   });
   initialDeviceState = JSON.stringify(currentDeviceList);
   isDeviceListDirty = false;
-  updateDeviceSaveButton();
+  DeviceManagerSaveButton();
 }
 
 // Called automatically when topology refreshes — silently syncs the device manager
@@ -1021,7 +1021,7 @@ function toggleDeviceLabel(index, label) {
 function checkForChanges() {
   const currentState = JSON.stringify(currentDeviceList);
   isDeviceListDirty = (currentState !== initialDeviceState);
-  updateDeviceSaveButton();
+  DeviceManagerSaveButton();
 }
 
 function addDevicesToList() {
@@ -1419,7 +1419,7 @@ function saveDeviceChanges() {
   }
 }
 
-function attemptCloseManager() {
+function DeviceManagerCloseButton() {
   // 1. Check for Unsaved Changes
   if (typeof isDeviceListDirty !== 'undefined' && isDeviceListDirty) {
     if (!confirm("△ You have unsaved changes in the Device Manager.\n\nClose anyway? (Changes will be lost)")) {
@@ -1456,7 +1456,7 @@ function initSheetColumnManager() {
     // TAKE SNAPSHOT (This replaces your old _originalLabel logic)
     initialSchemaState = JSON.stringify(getCleanSchema(currentSchemaList));
 
-    renderSchemaList();
+    SheetColumnManager();
   }).getSchemaConfig();
 
   // Pre-scan for orphaned columns — updates Force Sync warning badge (read-only, non-blocking)
@@ -1554,7 +1554,7 @@ function getOriginalItem(key) {
 function deleteField(key) {
   if (!confirm(`Delete field '${key}'?`)) return;
   currentSchemaList = currentSchemaList.filter(i => i.key !== key);
-  renderSchemaList();
+  SheetColumnManager();
   checkSchemaChanges();
 }
 
@@ -1588,13 +1588,13 @@ function addNewField() {
   labelInput.value = "";
 
   checkSchemaChanges();
-  renderSchemaList();
+  SheetColumnManager();
 
   const body = document.getElementById("schemaBody");
   body.scrollTop = body.scrollHeight;
 }
 
-function renderSchemaList() {
+function SheetColumnManager() {
   const body = document.getElementById("schemaBody");
   body.innerHTML = "";
 
@@ -1693,14 +1693,14 @@ onchange="updateSchemaOption('${item.key}', this.value, this)">${valStr}</textar
         checkSchemaChanges();
 
         // Re-render (Updates Index Numbers)
-        renderSchemaList();
+        SheetColumnManager();
       }
     });
   }
 }
 
 // Controls Device Manager Button Colors
-function updateDeviceSaveButton() {
+function DeviceManagerSaveButton() {
   const btn = document.getElementById("btnSaveOrder");
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
@@ -1783,7 +1783,7 @@ function saveSchemaChanges() {
         btn.style.background = "#10b981"; // Green
 
         setUiBusy(false); // Unlock UI
-        renderSchemaList();
+        SheetColumnManager();
 
         // Reset Button Text after delay
         setTimeout(() => {
@@ -2010,13 +2010,13 @@ function resetSchemaToDefaults() {
       currentSchemaList = schemaArray;
       initialSchemaState = JSON.stringify(schemaArray.map(({ key, label, options }) => ({ key, label, options })));
       isSchemaDirty = false;
-      renderSchemaList();
+      SheetColumnManager();
     })
     .withFailureHandler(err => alert("✗ Reset Failed: " + err.message))
     .resetSchemaToDefaults();
 }
 
-function attemptCloseSchema() {
+function SheetColumnManagerCloseButton() {
   // 1. Safety Check & Dirty Flag Check
   if (typeof isSchemaDirty !== 'undefined' && isSchemaDirty) {
     if (!confirm("△ You have unsaved changes in the Data Manager.\n\nClose anyway? (Changes will be lost)")) {
