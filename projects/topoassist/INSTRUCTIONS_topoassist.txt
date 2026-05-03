@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-03 (Rename: renderSchemaList()→SheetColumnManager(), updateDeviceSaveButton()→DeviceManagerSaveButton(), attemptCloseManager()→DeviceManagerCloseButton(), attemptCloseSchema()→SheetColumnManagerCloseButton() — full symmetry between Device Manager and Sheet Column Manager. FILES: Sidebar-js.html, Sidebar.html)
+  Last updated: 2026-05-03 (Rename: initDeviceManager()→DeviceManagerOpenButton(), initSheetColumnManager()→SheetColumnManagerOpenButton(). FILES: Sidebar-js.html)
+  Previous: 2026-05-03 (Rename: renderSchemaList()→SheetColumnManager(), updateDeviceSaveButton()→DeviceManagerSaveButton(), attemptCloseManager()→DeviceManagerCloseButton(), attemptCloseSchema()→SheetColumnManagerCloseButton(). FILES: Sidebar-js.html, Sidebar.html)
   Previous: 2026-05-03 (Rename: initSchemaManager()→initSheetColumnManager(). FILES: Sidebar-js.html)
   Previous: 2026-05-03 (Fix: SheetColumnsManagerSaveButton→SheetColumnManagerSaveButton. FILES: Sidebar-js.html)
   Previous: 2026-05-03 (Refactor: openDeviceManager()→initDeviceManager() to match initSchemaManager() pattern; removed redundant modal.style.display="flex" (CSS body.mode-reorder already controls visibility); silentRefreshDeviceManager() guard changed from modal.style.display==='none' to currentMode!=='manager'. FILES: Sidebar-js.html)

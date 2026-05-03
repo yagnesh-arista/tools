@@ -509,9 +509,9 @@ function initApp() {
   dbg("Initializing App in mode:", currentMode);
 
   if (currentMode === 'manager') {
-    initDeviceManager();
+    DeviceManagerOpenButton();
   } else if (currentMode === 'schema') {
-    initSheetColumnManager();
+    SheetColumnManagerOpenButton();
   } else if (currentMode === 'view_custom') {
     initCustomViewManager();
   } else {
@@ -639,7 +639,7 @@ function startSmartPolling() {
 * ==========================================
 */
 
-function initDeviceManager() {
+function DeviceManagerOpenButton() {
   document.getElementById("emptyMsg").style.display = "none";
   document.getElementById("reorderList").innerHTML = `
 <div style="padding:40px; text-align:center; color:#94a3b8;">
@@ -1439,7 +1439,7 @@ function DeviceManagerCloseButton() {
 // ==========================================
 
 // 1. INIT
-function initSheetColumnManager() {
+function SheetColumnManagerOpenButton() {
   const body = document.getElementById("schemaBody");
   body.innerHTML = `<div style="padding:40px; text-align:center; color:#94a3b8;">
 <div style="display:inline-block; animation:spin 1s linear infinite;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
@@ -2004,7 +2004,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
 
 function resetSchemaToDefaults() {
   if (!confirm("Reset column schema to built-in defaults?\n\nThis resets column definitions only — sheet data is not affected.")) return;
-  initSheetColumnManager();
+  SheetColumnManagerOpenButton();
   google.script.run
     .withSuccessHandler(schemaArray => {
       currentSchemaList = schemaArray;
