@@ -325,7 +325,13 @@ Apply only what was approved in Steps 5 and 6. Order:
 1. **Delete approved files** — `rm` each confirmed file + remove its MEMORY.md line
 2. **Fix stale entries** — edit memory files / INSTRUCTIONS / CLAUDE.md in-place; remove orphaned MEMORY.md lines
 3. **Apply updates** — edit INSTRUCTIONS in-place (keep "Last updated" chain); edit memory files (keep frontmatter)
-4. **Add missing entries** — decide tier first; Tier 1 → CLAUDE.md or rules/*.md; Tier 2 → new memory file + MEMORY.md line; never add to both
+4. **Add missing entries** — decide tier first; Tier 1 → CLAUDE.md or rules/*.md; Tier 2 → new memory file + MEMORY.md line; never add to both.
+   **Before creating any new memory file**, run this duplicate-detection check:
+   - Search CLAUDE.md (global + project) and all `rules/*.md` for the same topic
+   - Search all existing `memory/*.md` files for overlapping content
+   - If overlap found in Tier 1: do NOT create the memory file; the rule already fires every session
+   - If overlap found in another Tier 2 file: merge into the more detailed one; never create a parallel file
+   - If genuinely new and Tier 2: present a one-line summary to the user and ask "Add this to memory? [yes/no]" before writing
 5. **Resolve duplicates** — keep authoritative; delete the other (only if approved in Step 5)
 6. **Update INSTRUCTIONS Last updated** to today's date with review summary
 
