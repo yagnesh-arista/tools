@@ -1,10 +1,10 @@
-// TopoAssist v260503.14 | 2026-05-03 15:53:16
+// TopoAssist v260503.15 | 2026-05-03 15:53:58
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.14";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.15";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1501,10 +1501,8 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
     }
 
     // Re-apply column visibility + recreate _sys_ after full sheet rebuild.
-    // ensureDummyColumn() is called unconditionally here because refreshSheetRowVisibility()
-    // returns early when lastRow < 3 (new project with no data rows yet), skipping its own
-    // ensureDummyColumn call. Calling it directly guarantees _sys_ is at col 1 regardless
-    // of whether any data rows exist. ensureDummyColumn is idempotent — safe for all paths.
+    // refreshSheetRowVisibility() now calls ensureDummyColumn unconditionally before its
+    // lastRow < 3 guard, so the explicit call here is belt-and-suspenders only.
     safeCachePut(syncCache, 'SYNC_STATUS', '👁️ Phase 4/4: Restoring column view...', 60);
     try {
       ensureDummyColumn(mappingSheet);
