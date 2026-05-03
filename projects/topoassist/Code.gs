@@ -1,10 +1,10 @@
-// TopoAssist v260503.13 | 2026-05-03 15:44:21
+// TopoAssist v260503.14 | 2026-05-03 15:53:16
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -482,11 +482,14 @@ function refreshSheetRowVisibility() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_DATA);
   if (!sheet) return;
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 3) return;
 
-  // Ensure _sys_ is at col 1 FIRST — may insert a column, shifting others
+  // ensureDummyColumn runs unconditionally — before any early return — so _sys_ is always
+  // restored even when the sheet has no data rows (e.g. brand-new project after rebuildSheet).
   const visColIdx = ensureDummyColumn(sheet);
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 3) return; // no data rows — _sys_ is ensured above; skip row hide/show logic
+
   const lastCol = sheet.getLastColumn(); // re-read after possible insert
   if (lastCol < 2) return; // need at least _sys_ + one device column
 

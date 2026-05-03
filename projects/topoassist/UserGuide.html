@@ -1,4 +1,4 @@
-<!-- TopoAssist v260503.13 | 2026-05-03 15:44:21 -->
+<!-- TopoAssist v260503.14 | 2026-05-03 15:53:40 -->
 <!DOCTYPE html>
 <html>
 
@@ -372,10 +372,28 @@
     <h2 id="installation">📦 Installation</h2>
 
     <div class="info-box info-box--dim">
-      TopoAssist runs as a Google Apps Script bound to a Google Sheet. Choose the method that suits you — clasp (recommended for developers) or manual copy-paste (no tools required).
+      TopoAssist runs as a Google Apps Script bound to a Google Sheet. Choose the method that suits you — template copy (fastest), clasp (recommended for developers), or manual copy-paste (no tools required).
     </div>
 
-    <h3>Option A — clasp (recommended)</h3>
+    <h3>Option A — Template copy (fastest, 1 click)</h3>
+
+    <div class="step-box">
+      <span class="step-num">Step 1 — Make a copy of the template sheet</span>
+      <p>Click the link below. Google Drive will prompt you to make a copy — click <b>Make a copy</b>. The new sheet is immediately ready with TopoAssist installed.</p>
+      <p style="margin-top:8px;"><a href="https://docs.google.com/spreadsheets/d/1mIF9aeQ5oZ1QPkOUpQgGKn55zWAPGIcSjvy7xoapVos/copy" target="_blank" style="font-family:'JetBrains Mono',monospace;font-size:11px;">📋 Make a copy of the TopoAssist template</a></p>
+      <p style="margin-top:6px;">The copy is owned by your Google account — no sharing permissions are inherited from the original.</p>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">Step 2 — Grant permissions</span>
+      <ol style="margin-top:6px;">
+        <li>Open <span class="menu-path">TopoAssist &gt; Show Topology</span> — Google will ask to authorize the script.</li>
+        <li>Click <b>Review permissions</b> → choose your account → <b>Allow</b>.</li>
+        <li>The sidebar opens and TopoAssist is ready to use.</li>
+      </ol>
+    </div>
+
+    <h3>Option B — clasp (recommended for developers)</h3>
 
     <div class="step-box">
       <span class="step-num">Step 1 — Get the source</span>
@@ -417,7 +435,7 @@ clasp login --no-localhost</pre>
       </ol>
     </div>
 
-    <h3>Option B — Manual (no tools required)</h3>
+    <h3>Option C — Manual (no tools required)</h3>
 
     <div class="step-box">
       <span class="step-num">Step 1 — Create a Google Sheet &amp; Apps Script project</span>
@@ -904,7 +922,7 @@ clasp login --no-localhost</pre>
       <li>
         <b>onEdit (real-time)</b> — fires on every manual cell change:
         <ul style="margin-top:4px;">
-          <li><b>Column A guard</b> — Column A is reserved for row visibility markers. Any accidental edit is automatically reverted.</li>
+          <li><b>Column A guard</b> — Column A is reserved for internal row visibility tracking. Any accidental edit is automatically reverted; if column A is deleted entirely, TopoAssist restores it automatically with a notification.</li>
           <li><b>Format validation</b> — VLAN format (<code>10</code>, <code>10,20</code>, <code>10-20</code>, <code>nv100</code>, or blank) and PO format (<code>Po10</code> pattern) are checked on edit with a toast warning. Interface type (<code>int_</code>) is not restricted on edit — unsupported prefixes are flagged in Audit mode only.</li>
           <li><b>Cell background rules</b> — <code>po_</code> is grayed when the mode is Ethernet (N/A); <code>svi_vlan_</code> is grayed when the mode is L3 (N/A). Applied automatically after each edit.</li>
         </ul>

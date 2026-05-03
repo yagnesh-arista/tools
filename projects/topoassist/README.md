@@ -13,7 +13,20 @@ Build topologies visually, generate EOS configs, audit cabling via LLDP, and pus
 
 ---
 
-### Option A — clasp (recommended for developers)
+### Option A — Template copy (fastest, 1 click)
+
+**[📋 Make a copy of the TopoAssist template](https://docs.google.com/spreadsheets/d/1mIF9aeQ5oZ1QPkOUpQgGKn55zWAPGIcSjvy7xoapVos/copy)**
+
+Click the link above → Google Drive prompts **Make a copy** → done. The copy is owned by your account with TopoAssist already installed.
+
+**Grant permissions on first use:**
+1. Open **TopoAssist → Show Topology** — Google will ask to authorize the script
+2. Click **Review permissions** → choose your account → **Allow**
+3. The sidebar opens and TopoAssist is ready to use
+
+---
+
+### Option B — clasp (recommended for developers)
 
 **1. Clone the repo**
 ```bash
@@ -52,7 +65,7 @@ clasp push --force
 
 ---
 
-### Option B — Manual (no tools required)
+### Option C — Manual (no tools required)
 
 **1. Create a Google Sheet & Apps Script project**
 1. Open [sheets.new](https://sheets.new)
