@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.24 | 2026-05-03 16:40:01 -->
+<!-- TopoAssist v260503.25 | 2026-05-03 16:43:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.24";  // keep in sync with Code.gs
+const APP_VERSION = "260503.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -511,7 +511,7 @@ function initApp() {
   if (currentMode === 'manager') {
     initDeviceManager();
   } else if (currentMode === 'schema') {
-    initSchemaManager();
+    initSheetColumnManager();
   } else if (currentMode === 'view_custom') {
     initCustomViewManager();
   } else {
@@ -1439,7 +1439,7 @@ function attemptCloseManager() {
 // ==========================================
 
 // 1. INIT
-function initSchemaManager() {
+function initSheetColumnManager() {
   const body = document.getElementById("schemaBody");
   body.innerHTML = `<div style="padding:40px; text-align:center; color:#94a3b8;">
 <div style="display:inline-block; animation:spin 1s linear infinite;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
@@ -2004,7 +2004,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
 
 function resetSchemaToDefaults() {
   if (!confirm("Reset column schema to built-in defaults?\n\nThis resets column definitions only — sheet data is not affected.")) return;
-  initSchemaManager();
+  initSheetColumnManager();
   google.script.run
     .withSuccessHandler(schemaArray => {
       currentSchemaList = schemaArray;
