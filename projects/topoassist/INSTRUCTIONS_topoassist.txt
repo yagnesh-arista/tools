@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-03 (Docs: added template copy link (Option A) to UserGuide.html Installation section and README.md; renamed existing options A→B (clasp) and B→C (manual). No logic change. FILES: UserGuide.html, README.md)
+  Last updated: 2026-05-03 (Fix: refreshSheetRowVisibility() now calls ensureDummyColumn() unconditionally BEFORE the lastRow < 3 early-return guard — _sys_ is always restored regardless of row count. Comment in rebuildSheet() Stage 4 updated (belt-and-suspenders note). UserGuide Column A guard note expanded to mention deletion + auto-restore. FILES: Code.gs, UserGuide.html)
   Previous: 2026-05-03 (Remove success alert from saveIpPreferences handler — modal closes + setStatus covers feedback; alert was redundant and disruptive. Files: Sidebar-js.html)
   Previous: 2026-05-03 (Docs: updated Code.gs cabling-helpers block header sync date from 2026-04-19 → 2026-04-26 to match the most recent individual function sync date (_buildCableGroupsForTest). Comment-only change, no logic. FILES: Code.gs)
   Previous: 2026-05-03 (Bug fix: rebuildSheet() now calls ensureDummyColumn(mappingSheet) unconditionally before refreshSheetRowVisibility() — fixes _sys_ deletion on new project with no data rows. Root cause: refreshSheetRowVisibility() returns early when lastRow < 3, skipping its own ensureDummyColumn call. Also removed stale console.log from savePreferences(). FILES: Code.gs)
