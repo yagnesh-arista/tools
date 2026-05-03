@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-03 (Rename: initDeviceManager()→DeviceManagerOpenButton(), initSheetColumnManager()→SheetColumnManagerOpenButton(). FILES: Sidebar-js.html)
+  Last updated: 2026-05-03 (Rename: checkForChanges→DeviceManagerCheckChanges, checkSchemaChanges→SheetColumnManagerCheckChanges, saveSchemaChanges→SheetColumnManagerSave, resetSchemaToDefaults→SheetColumnManagerResetDefaults (client only; GAS call preserved), updateSchemaLabel→SheetColumnManagerUpdateLabel, updateSchemaOption→SheetColumnManagerUpdateOption, getCleanSchema→SheetColumnManagerCleanState, showDeviceManagerUi→DeviceManager (Code.gs). FILES: Sidebar-js.html, Sidebar.html, Code.gs)
+  Previous: 2026-05-03 (Rename: initDeviceManager()→DeviceManagerOpenButton(), initSheetColumnManager()→SheetColumnManagerOpenButton(). FILES: Sidebar-js.html)
   Previous: 2026-05-03 (Rename: renderSchemaList()→SheetColumnManager(), updateDeviceSaveButton()→DeviceManagerSaveButton(), attemptCloseManager()→DeviceManagerCloseButton(), attemptCloseSchema()→SheetColumnManagerCloseButton(). FILES: Sidebar-js.html, Sidebar.html)
   Previous: 2026-05-03 (Rename: initSchemaManager()→initSheetColumnManager(). FILES: Sidebar-js.html)
   Previous: 2026-05-03 (Fix: SheetColumnsManagerSaveButton→SheetColumnManagerSaveButton. FILES: Sidebar-js.html)
