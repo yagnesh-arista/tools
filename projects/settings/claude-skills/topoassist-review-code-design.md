@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-04-29 (Check 17 updated: full-data-load 60s tier added; _fetchGuardFired pattern; column sync guard; Check 29 added: GAS guard timeout tier enforcement) -->
+<!-- rules-synced: 2026-05-03 (Check 29 added: Function naming & documentation — vague names, single-letter params, WHY comments, stale rename detection) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
