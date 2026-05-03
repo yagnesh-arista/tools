@@ -1,10 +1,10 @@
-// TopoAssist v260503.10 | 2026-05-03 15:06:18
+// TopoAssist v260503.11 | 2026-05-03 15:26:10
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260503.10";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260503.11";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -7193,7 +7193,7 @@ function activateRow(rowNum) {
 // ─────────────────────────────────────────────────────────────────
 // CABLING HELPERS — server-side copies for unit testing
 // DUPLICATED from Sidebar-js.html (intentional — Tests.gs is server-side and cannot
-// call client-side JS). Keep in sync with Sidebar-js.html. Last synced: 2026-04-19
+// call client-side JS). Keep in sync with Sidebar-js.html. Last synced: 2026-04-26
 // ─────────────────────────────────────────────────────────────────
 
 /**

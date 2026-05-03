@@ -164,7 +164,15 @@ grep -n "APP_VERSION\|generateConfig\|generateBGP\|getNetworkSettings" \
 grep -n "DUPLICATED\|last synced" \
   ~/claude/projects/topoassist/Code.gs \
   ~/claude/projects/topoassist/Sidebar-js.html
+
+# Internal consistency: block-level header date must match the most recent per-function date.
+# Extract all "last synced: DATE" values from each file and find the max.
+# If the block header date < any individual function date → FAIL (block header is stale).
+echo "=== Code.gs sync dates ===" && grep -i "last synced" ~/claude/projects/topoassist/Code.gs | sort -t: -k2 -r | head -10
+echo "=== Sidebar-js.html sync dates ===" && grep -i "last synced" ~/claude/projects/topoassist/Sidebar-js.html | sort -t: -k2 -r | head -10
 ```
+
+**Sync date check rule:** The block-level `Last synced: DATE` comment at a DUPLICATED section header must be ≥ the most recent per-function `Last synced: DATE` within that block. If any individual function date is newer than the block header, the block header is stale — update it to the most recent date.
 
 ### Step 2b — Settings Hook vs Reference Card Consistency
 
