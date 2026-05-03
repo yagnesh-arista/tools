@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.11 | 2026-05-03 15:26:10 -->
+<!-- TopoAssist v260503.13 | 2026-05-03 15:44:21 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.11";  // keep in sync with Code.gs
+const APP_VERSION = "260503.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5098,10 +5098,6 @@ function saveIpConfig() {
       setStatus('IP prefs saved \u2014 ' + selectedDeviceId + ' config refresh\u2026', 'status-info');
       fetchFullConfig(selectedDeviceId);
     }
-
-    setTimeout(() => {
-      alert("✓ IP Preferences Saved.\n\nConfigurations have been updated.");
-    }, 50);
 
     // Use smart scheduler instead of setTimeout; force=true because save wiped configCache
     if (typeof scheduleBackgroundPrefetch === 'function') scheduleBackgroundPrefetch(true);
