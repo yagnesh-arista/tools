@@ -262,7 +262,10 @@ The knowledge system has three tiers:
 - **Tier 2** (on recall only): `memory/*.md` files
 - **Tier 3** (on demand): `INSTRUCTIONS_<project>.txt`
 
-**Before writing a memory file:** verify the content is NOT already in any Tier 1 source. If it is, do NOT create a memory file — Tier 1 already enforces it every session. Memory files that restate Tier 1 rules create drift risk and wasted context with no benefit.
+**Before writing a memory file — mandatory duplicate check:**
+1. Search CLAUDE.md (global + project) and all `rules/*.md` for the same topic. If found → do NOT write; Tier 1 already fires every session.
+2. Search existing `memory/*.md` files for overlapping content. If found → update the existing file; never create a parallel one.
+3. If genuinely new and Tier 2 appropriate: state the one-line summary to the user and ask "Add this to memory?" before writing.
 
 **"Missing from memory" ≠ undocumented** — check Tier 1 first. If it's there, it's correctly in Tier 1.
 
