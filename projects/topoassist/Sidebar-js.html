@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.23 | 2026-05-03 16:37:08 -->
+<!-- TopoAssist v260503.24 | 2026-05-03 16:40:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.23";  // keep in sync with Code.gs
+const APP_VERSION = "260503.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1448,7 +1448,7 @@ function initSchemaManager() {
 
   // Reset Flag
   isSchemaDirty = false;
-  SheetColumnsManagerSaveButton();
+  SheetColumnManagerSaveButton();
 
   google.script.run.withSuccessHandler(schemaArray => {
     currentSchemaList = schemaArray || [];
@@ -1480,11 +1480,11 @@ function getCleanSchema(list) {
 function checkSchemaChanges() {
   const currentState = JSON.stringify(getCleanSchema(currentSchemaList));
   isSchemaDirty = (currentState !== initialSchemaState);
-  SheetColumnsManagerSaveButton();
+  SheetColumnManagerSaveButton();
 }
 
 // 4. VISUALS: Toggles Button Color
-function SheetColumnsManagerSaveButton() {
+function SheetColumnManagerSaveButton() {
   const btn = document.getElementById("btnSaveSchema");
   if (!btn) return;
   if (!btn.dataset.cleanLabel) btn.dataset.cleanLabel = btn.innerText.replace(/ \*$/, '').trim();
@@ -1787,7 +1787,7 @@ function saveSchemaChanges() {
 
         // Reset Button Text after delay
         setTimeout(() => {
-          SheetColumnsManagerSaveButton(); // Will set text to "Save & Sync"
+          SheetColumnManagerSaveButton(); // Will set text to "Save & Sync"
           btn.disabled = false;
         }, 1500);
 
@@ -1808,7 +1808,7 @@ function saveSchemaChanges() {
         schemaLockTimer = null;
         setUiBusy(false);
         btn.innerText = origText;
-        SheetColumnsManagerSaveButton();
+        SheetColumnManagerSaveButton();
         alert("Save OK, but Sync Failed: " + err.message);
       };
 
@@ -1874,7 +1874,7 @@ function saveSchemaChanges() {
       schemaLockTimer = null;
       setUiBusy(false);
       btn.innerText = origText;
-      SheetColumnsManagerSaveButton();
+      SheetColumnManagerSaveButton();
       alert("✗ Save Failed: " + err.message);
     })
     .saveSchemaConfig(cleanList);
