@@ -1,4 +1,4 @@
-<!-- TopoAssist v260502.9 | 2026-05-02 15:00:16 -->
+<!-- TopoAssist v260503.1 | 2026-05-03 12:38:10 -->
 <!DOCTYPE html>
 <html>
 
@@ -263,6 +263,52 @@
     }
     .doc-btn-download:hover { background: #dcfce7; }
 
+    /* ── Collapsible sections ─────────────────────────────────────────────── */
+    details { margin-bottom: 0; }
+    details > summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::marker { display: none; }
+    details > summary h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    details > summary h2 .section-chevron {
+      flex-shrink: 0;
+      color: #94a3b8;
+      transition: transform 0.18s;
+      margin-left: auto;
+      padding-left: 8px;
+    }
+    details[open] > summary h2 .section-chevron { transform: rotate(180deg); }
+    details > summary:hover h2 { background: #e0eaff; }
+
+    /* ── Quick navigation table ──────────────────────────────────────────── */
+    .quick-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin: 20px 0 30px 0;
+    }
+    .quick-nav a {
+      display: block;
+      padding: 6px 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #1e40af;
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .quick-nav a:hover { background: #eff6ff; border-color: #93c5fd; }
+
     /* ── Print layout ─────────────────────────────────────────────────────── */
     @page { size: 260mm 5000mm; margin: 15mm; }
     @media print {
@@ -275,6 +321,8 @@
         max-width: 100% !important;
       }
       a { text-decoration: none; color: inherit; }
+      details { display: block !important; }
+      details > summary .section-chevron { display: none; }
     }
   </style>
 </head>
