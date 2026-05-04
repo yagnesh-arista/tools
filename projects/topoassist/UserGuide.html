@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.9 | 2026-05-04 12:17:44 -->
+<!-- TopoAssist v260504.10 | 2026-05-04 12:27:41 -->
 <!DOCTYPE html>
 <html>
 
@@ -225,14 +225,73 @@
     .info-box.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
     .info-box.slate { background: #f8fafc; border: 1px solid #e2e8f0; }
 
-    /* ── Print / Download action bar ─────────────────────────────────────── */
+    /* ── Top control bar ─────────────────────────────────────────────────── */
     .doc-actions {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
       gap: 8px;
       margin-bottom: 28px;
       user-select: none;
       -webkit-user-select: none;
+    }
+    .doc-actions-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .doc-actions-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    .ug-search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .ug-search-input {
+      height: 30px;
+      padding: 0 28px 0 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #334155;
+      background: #fff;
+      outline: none;
+      width: 200px;
+      box-sizing: border-box;
+      line-height: 30px;
+    }
+    .ug-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+    .ug-search-input::placeholder { color: #94a3b8; font-style: italic; }
+    .ug-search-clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #94a3b8;
+      padding: 0;
+      border-radius: 3px;
+    }
+    .ug-search-clear:hover { color: #334155; background: #f1f5f9; }
+    .ug-match-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      min-width: 64px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    mark.ug-mark {
+      background: #fef08a;
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+      font-family: inherit;
+      font-style: inherit;
     }
 
     .doc-btn {
@@ -262,6 +321,15 @@
       background: #f0fdf4;
     }
     .doc-btn-download:hover { background: #dcfce7; }
+
+    .doc-btn-toggle {
+      color: #475569;
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      font-weight: 500;
+      padding: 5px 10px;
+    }
+    .doc-btn-toggle:hover { background: #f1f5f9; }
 
     /* ── Collapsible sections ─────────────────────────────────────────────── */
     details { margin-bottom: 0; }
