@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.10 | 2026-05-04 12:27:41 -->
+<!-- TopoAssist v260504.11 | 2026-05-04 12:30:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -225,13 +225,20 @@
     .info-box.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
     .info-box.slate { background: #f8fafc; border: 1px solid #e2e8f0; }
 
-    /* ── Top control bar ─────────────────────────────────────────────────── */
+    /* ── Top control bar — sticky, always visible ────────────────────────── */
     .doc-actions {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
-      margin-bottom: 28px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #fff;
+      margin: -40px -40px 28px -40px;
+      padding: 10px 40px;
+      border-bottom: 1px solid #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       user-select: none;
       -webkit-user-select: none;
     }
@@ -398,22 +405,45 @@
 <body>
   <div class="container">
 
-    <!-- Print / Download actions -->
+    <!-- Sticky control bar: search · expand/collapse · jump-to-top · print · download -->
     <div class="doc-actions">
-      <button class="doc-btn doc-btn-print" onclick="window.print()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-          <rect x="6" y="14" width="12" height="8"/>
-        </svg>
-        Print / Save as PDF
-      </button>
-      <button class="doc-btn doc-btn-download" onclick="downloadHTML()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download HTML
-      </button>
+      <div class="doc-actions-left">
+        <div class="ug-search-wrap">
+          <input id="ugSearchInput" class="ug-search-input" type="text" placeholder="Search guide…" oninput="ugSearchInput(this.value)" autocomplete="off" spellcheck="false">
+          <button id="ugSearchClear" class="ug-search-clear" onclick="ugClear()" title="Clear search">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <span id="ugMatchCount" class="ug-match-count"></span>
+        <button class="doc-btn doc-btn-toggle" onclick="ugExpandAll(true)" title="Expand all sections">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+          Expand All
+        </button>
+        <button class="doc-btn doc-btn-toggle" onclick="ugExpandAll(false)" title="Collapse all sections">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/></svg>
+          Collapse All
+        </button>
+      </div>
+      <div class="doc-actions-right">
+        <button class="doc-btn doc-btn-toggle" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Jump to top">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          Top
+        </button>
+        <button class="doc-btn doc-btn-print" onclick="window.print()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Print / PDF
+        </button>
+        <button class="doc-btn doc-btn-download" onclick="downloadHTML()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download
+        </button>
+      </div>
     </div>
 
     <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v<?= APP_VERSION ?></h1>
@@ -1669,8 +1699,12 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
   </div>
 
   <script>
+    // ── Download (all sections expanded) ─────────────────────────────────────
     function downloadHTML() {
+      // Mark body so DOMContentLoaded in the downloaded file opens all sections
+      document.body.dataset.ugExpandAll = '1';
       var html = document.documentElement.outerHTML;
+      delete document.body.dataset.ugExpandAll;
       var blob = new Blob([html], { type: 'text/html' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -1682,23 +1716,82 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       URL.revokeObjectURL(url);
     }
 
-    // Auto-wrap top-level h2 sections in collapsible <details>/<summary>
+    // ── Expand / Collapse All ─────────────────────────────────────────────────
+    function ugExpandAll(open) {
+      document.querySelectorAll('.container details').forEach(function(d) { d.open = open; });
+    }
+
+    // ── Search ────────────────────────────────────────────────────────────────
+    var _ugTimer = null;
+    function ugSearchInput(val) {
+      var clr = document.getElementById('ugSearchClear');
+      if (clr) clr.style.display = val ? 'flex' : 'none';
+      clearTimeout(_ugTimer);
+      _ugTimer = setTimeout(function() { _ugRunSearch(val); }, 140);
+    }
+    function ugClear() {
+      var inp = document.getElementById('ugSearchInput');
+      if (inp) { inp.value = ''; ugSearchInput(''); inp.focus(); }
+    }
+    function _ugRunSearch(query) {
+      var container = document.querySelector('.container');
+      if (!container) return;
+      var countEl = document.getElementById('ugMatchCount');
+      // Remove previous highlights
+      container.querySelectorAll('mark.ug-mark').forEach(function(m) {
+        m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+        m.parentNode.normalize();
+      });
+      if (!query || !query.trim()) {
+        if (countEl) countEl.textContent = '';
+        return;
+      }
+      var escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var re = new RegExp('(' + escaped + ')', 'gi');
+      var hits = 0;
+      var skipTags = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'BUTTON', 'MARK']);
+      function walk(node) {
+        if (node.nodeType === 3) {
+          re.lastIndex = 0;
+          if (!re.test(node.textContent)) return;
+          re.lastIndex = 0;
+          var parts = node.textContent.split(re);
+          if (parts.length <= 1) return;
+          var frag = document.createDocumentFragment();
+          parts.forEach(function(p, i) {
+            if (i % 2 === 0) { frag.appendChild(document.createTextNode(p)); }
+            else { var m = document.createElement('mark'); m.className = 'ug-mark'; m.textContent = p; frag.appendChild(m); hits++; }
+          });
+          node.parentNode.replaceChild(frag, node);
+        } else if (node.nodeType === 1) {
+          if (skipTags.has(node.tagName)) return;
+          if (node.classList && (node.classList.contains('doc-actions') || node.classList.contains('quick-nav'))) return;
+          Array.from(node.childNodes).forEach(walk);
+        }
+      }
+      walk(container);
+      // Open sections with matches, close those without
+      container.querySelectorAll('details').forEach(function(d) {
+        d.open = !!d.querySelector('mark.ug-mark');
+      });
+      if (countEl) countEl.textContent = hits > 0 ? hits + (hits === 1 ? ' match' : ' matches') : 'no match';
+      var first = container.querySelector('mark.ug-mark');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ── Section collapsing ────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
       var container = document.querySelector('.container');
       if (!container) return;
+      var expandAll = document.body.dataset.ugExpandAll === '1';
       var defaultOpen = ['Typical Workflow', 'Installation'];
       var h2s = Array.from(container.querySelectorAll(':scope > h2'));
       h2s.forEach(function(h2) {
         var title = h2.textContent.trim();
-        var isOpen = defaultOpen.some(function(t) { return title.indexOf(t) !== -1; });
-        // Collect all sibling elements until next top-level h2
+        var isOpen = expandAll || defaultOpen.some(function(t) { return title.indexOf(t) !== -1; });
         var content = [];
         var next = h2.nextElementSibling;
-        while (next && next.tagName !== 'H2') {
-          content.push(next);
-          next = next.nextElementSibling;
-        }
-        // Add chevron SVG to h2
+        while (next && next.tagName !== 'H2') { content.push(next); next = next.nextElementSibling; }
         var svgNS = 'http://www.w3.org/2000/svg';
         var svg = document.createElementNS(svgNS, 'svg');
         svg.setAttribute('class', 'section-chevron');
@@ -1710,7 +1803,6 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         chevPath.setAttribute('d', 'M6 9l6 6 6-6');
         svg.appendChild(chevPath);
         h2.appendChild(svg);
-        // Build details > summary > h2 wrapper
         var details = document.createElement('details');
         if (isOpen) details.open = true;
         var summary = document.createElement('summary');
@@ -1719,7 +1811,6 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         summary.appendChild(h2);
         content.forEach(function(node) { details.appendChild(node); });
       });
-      // Open section when a quick-nav link is clicked
       document.querySelectorAll('.quick-nav a[href^="#"]').forEach(function(a) {
         a.addEventListener('click', function() {
           var target = document.querySelector(this.getAttribute('href'));
