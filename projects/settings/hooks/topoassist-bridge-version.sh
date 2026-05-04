@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260504.16 | 2026-05-04 17:14:20
 # topoassist-bridge-version.sh
 # Fires after device_bridge.py is edited.
 # Auto-bumps VERSION = "YYMMDD.N" in device_bridge.py AND the embedded
