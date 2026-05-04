@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.20 | 2026-05-04 16:58:25 -->
+<!-- TopoAssist v260504.22 | 2026-05-04 17:04:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.20";  // keep in sync with Code.gs
+const APP_VERSION = "260504.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4709,7 +4709,7 @@ function updateDirtyButton(btnSelector, isDirty) {
 // --- IP MODAL: STATE HELPERS ---
 function getCurrentIpState() {
   // Capture value of every text input in the modal
-  const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
+  const inputs = document.querySelectorAll("#autoConfigModal input[type='text']");
   const state = {};
   inputs.forEach(el => state[el.id] = el.value.trim());
   return JSON.stringify(state);
@@ -4718,7 +4718,7 @@ function getCurrentIpState() {
 function checkIpDirty() {
   const currentState = getCurrentIpState();
   const isDirty = (currentState !== initialIpState);
-  updateDirtyButton("#ipConfigModal .btn-success-mono", isDirty);
+  updateDirtyButton("#autoConfigModal .btn-success-mono", isDirty);
 }
 
 function checkSnakeTrafficWarning() {
@@ -4910,7 +4910,7 @@ function _updateGwExample() {
 
 // --- UPDATED OPEN FUNCTION ---
 function openIpConfigModal(btn) {
-  showModalLoading("ipConfigModal");
+  showModalLoading("autoConfigModal");
 
   const _guard = setTimeout(() => {
     hideGlobalLoading();
@@ -4951,7 +4951,7 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_ep2_subnet").value = prefs.ep2_subnet || "";
 
     // 2. Bind Listeners to ALL inputs (per-device override table excluded — _buildGwDeviceOverrideTable sets those)
-    const inputs = document.querySelectorAll("#ipConfigModal input[type='text']");
+    const inputs = document.querySelectorAll("#autoConfigModal input[type='text']");
     inputs.forEach(el => { if (!el.closest('#gwDeviceOverrideTable')) el.oninput = checkIpDirty; });
     // EP NH fields also trigger snake warning re-check
     ['ip_ep1_nh', 'ip_ep2_nh'].forEach(id => {
@@ -4984,7 +4984,7 @@ function openIpConfigModal(btn) {
     _updateGwExample();
 
     document.getElementById("editOverlay").style.display = "block";
-    document.getElementById("ipConfigModal").style.display = "flex";
+    document.getElementById("autoConfigModal").style.display = "flex";
 
   }).withFailureHandler(err => {
     clearTimeout(_guard);
@@ -5081,7 +5081,7 @@ function saveIpConfig() {
     initialIpState = getCurrentIpState();
     checkIpDirty(); // This turns the button Green again
 
-    document.getElementById("ipConfigModal").style.display = 'none';
+    document.getElementById("autoConfigModal").style.display = 'none';
     document.getElementById("editOverlay").style.display = 'none';
 
     configCache = {};
@@ -6020,7 +6020,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -6051,9 +6051,9 @@ window.topologyKeyHandler = function (event) {
         // Standard Close Logic
         const closeFuncs = {
           "helpModal": closeHelpModal, "reorderModal": DeviceManagerCloseButton,
-          "editModal": closeEditModal, "ipConfigModal": closeIpModal,
+          "guiEditModal": closeEditModal, "autoConfigModal": closeIpModal,
           "pushConfirmModal": cancelPushConfig,
-          "bridgeModal": closeBridgeModal,
+          "deviceBridgeModal": closeBridgeModal,
           "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
           "auditSettingsModal": closeAuditSettingsModal,
           "techModal": closeTechModal, "configModal": closeConfigModal,
@@ -6934,7 +6934,7 @@ function openEditModal(domId, portObj) {
   let peerPort = peerId ? (peerId.split(":")[1] || "") : "";
 
   // Setup Modal
-  let modal = document.getElementById("editModal");
+  let modal = document.getElementById("guiEditModal");
   let overlay = document.getElementById("editOverlay");
   if (!modal || !overlay) return;
 
@@ -7000,7 +7000,7 @@ function openConnectModal(domId, portObj) {
   let parts = domId.split(":");
   let devA = parts[0]; let portA = parts[1];
 
-  let modal = document.getElementById("editModal");
+  let modal = document.getElementById("guiEditModal");
   let overlay = document.getElementById("editOverlay");
   if (!modal || !overlay) return;
 
@@ -7046,7 +7046,7 @@ function openConnectModal(domId, portObj) {
 function openAddLinkModal() {
   isAddMode = true; isConnectMode = false;
 
-  let modal = document.getElementById("editModal");
+  let modal = document.getElementById("guiEditModal");
   let overlay = document.getElementById("editOverlay");
   if (!modal || !overlay) return;
 
@@ -7100,7 +7100,7 @@ function openAddModal(deviceId) {
 
 function closeEditModal() {
   document.getElementById("editOverlay").style.display = "none";
-  document.getElementById("editModal").style.display = "none";
+  document.getElementById("guiEditModal").style.display = "none";
   editingPortId = null; isAddMode = false; isConnectMode = false;
 }
 
@@ -7126,7 +7126,7 @@ function saveEdit() {
   let btn = document.getElementById("btnSaveEdit");
 
   // Fallback just in case, though ID is safer
-  if (!btn) btn = document.querySelector("#editModal .btn-success-mono");
+  if (!btn) btn = document.querySelector("#guiEditModal .btn-success-mono");
 
   let originalText = btn.innerText;
   btn.innerText = "Saving...";
@@ -10951,6 +10951,24 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
                     return {"ok": False, "error": "\\n".join(eos_errs)}
                 raise
+            except OSError as e:
+                _msg = str(e).lower()
+                if not (isinstance(e, TimeoutError) or 'timed out' in _msg or 'time out' in _msg):
+                    raise
+                if not open_only and not dry_run:
+                    time.sleep(2)
+                    try:
+                        _chk = self._eapi_push(ip, "show configuration sessions")[0]
+                        if session not in _chk:
+                            return {"ok": True, "diff": "", "late_response": True, **_asn_extra}
+                        raise RuntimeError(
+                            f"Push timed out -- session '{session}' still pending. Try again.") from e
+                    except RuntimeError:
+                        raise
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    "Push timed out -- verify: show running-config | grep __TA") from e
             if open_only:
                 diff = results[-1].strip() if results else ""
             else:
@@ -10959,7 +10977,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if eos_errs:
                 eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
-                _asn_extra["eos_errors"] = eos_errs
+                _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
+                _real_errs, _cleanup_notes = [], []
+                for err in eos_errs:
+                    if any(cmd in err for cmd in _IDEMPOTENCY_CMDS) and 'invalid command' in err.lower():
+                        _cleanup_notes.append(err)
+                    else:
+                        _real_errs.append(err)
+                eos_errs = _real_errs
+                if _cleanup_notes:
+                    eos_warns = eos_warns + _cleanup_notes
+                if eos_errs:
+                    _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
@@ -11016,7 +11045,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 raise RuntimeError(
                     f"Configure session '{session_name}' not found -- "
                     "it may have timed out. Push again.")
-            self._eapi_push(ip, f"configure session {session_name}", action)
+            try:
+                self._eapi_push(ip, f"configure session {session_name}", action)
+            except OSError as e:
+                _msg = str(e).lower()
+                if not (isinstance(e, TimeoutError) or 'timed out' in _msg or 'time out' in _msg):
+                    raise
+                if action == "commit":
+                    time.sleep(2)
+                    try:
+                        _chk = self._eapi_push(ip, "show configuration sessions")[0]
+                        if session_name not in _chk:
+                            return {"ok": True, "action": action, "late_response": True}
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    f"Finalize timed out -- verify: show configuration sessions") from e
             return {"ok": True, "action": action}
         raise NotImplementedError(f"Finalize not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
 
@@ -11351,7 +11395,7 @@ if __name__ == "__main__":
 }
 
 function openBridgeModal() {
-  const modal = document.getElementById('bridgeModal');
+  const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
@@ -11686,7 +11730,7 @@ function _checkBridgeHealth() {
 }
 
 function closeBridgeModal() {
-  document.getElementById('bridgeModal').style.display = 'none';
+  document.getElementById('deviceBridgeModal').style.display = 'none';
   // No editOverlay to hide — floating modal
 }
 
@@ -11905,11 +11949,11 @@ function _autoRunBridge() {
   }).catch(err => { _done(); dbg('Auto-Bridge: unexpected error —', err); setStatus(getReadyStatus()); });
 }
 
-function toggleBridgeMinimize() { toggleModalMinimize('bridgeModal'); } // legacy alias
+function toggleBridgeMinimize() { toggleModalMinimize('deviceBridgeModal'); } // legacy alias
 
 // Make the bridge modal draggable — delegates to unified _makeDraggable.
 function _initLldpModalDrag() {
-  _makeDraggable('bridgeModal', { saveKey: 'bridgeModalPos', noReset: true, toolbarGap: true });
+  _makeDraggable('deviceBridgeModal', { saveKey: 'deviceBridgeModalPos', noReset: true, toolbarGap: true });
 }
 
 // Auto-detect management IPs from Ma0/Management0 entries in allNodesData.
@@ -13757,10 +13801,12 @@ async function pushAllConfigs() {
         return;
       }
 
+      const _lateResponse = !!(res.late_response);  // eAPI timed out but session verified committed
+
       // EOS rejected commands during push — nothing staged means nothing committed
       const _pushEosErrs = _eosErrors(res);
       const _pushEosWarns = _eosWarnings(res);
-      if (_pushEosErrs && (!res.diff || !res.diff.trim())) {
+      if (_pushEosErrs && (!res.diff || !res.diff.trim()) && !_lateResponse) {
         completed++;
         _updateSummary();
         _setResultRow(rowId, safeName, '#f87171', 'All rejected — device unchanged', null, _formatEosErrors(_pushEosErrs));
@@ -13822,9 +13868,14 @@ async function pushAllConfigs() {
       const orphanInfoText = _orphanDetailText(pushOrphans);
 
       if (vDiff === null) {
-        _setResultRow(rowId, safeName, '#f59e0b', 'Committed — verify failed', null, vError, combinedWarnText, orphanInfoText);
+        const _failLbl = _lateResponse ? 'Committed — eAPI timed out (verify failed)' : 'Committed — verify failed';
+        _setResultRow(rowId, safeName, '#f59e0b', _failLbl, null, vError, combinedWarnText, orphanInfoText);
       } else if (vDiff === '') {
-        if (pushDiff) {
+        if (_lateResponse) {
+          const warnSuffix = allWarns.length > 0 ? ` · ${allWarns.length} note${allWarns.length !== 1 ? 's' : ''}` : '';
+          _setResultRow(rowId, safeName, '#f59e0b',
+            `Committed — eAPI timed out (verified clean)${warnSuffix}`, null, null, combinedWarnText, orphanInfoText);
+        } else if (pushDiff) {
           const added   = pushDiff.split('\n').filter(l => l.startsWith('+')).length;
           const removed = pushDiff.split('\n').filter(l => l.startsWith('-')).length;
           const allWarnCount = allWarns.length;
@@ -13843,9 +13894,10 @@ async function pushAllConfigs() {
         }
       } else {
         const remLines = vDiff.split('\n').filter(l => l.startsWith('+') || l.startsWith('-')).length;
-        _setResultRow(rowId, safeName, '#f59e0b',
-          `Committed — ${remLines} line${remLines !== 1 ? 's' : ''} still differ`, vDiff,
-          null, combinedWarnText, orphanInfoText);
+        const _diffLbl = _lateResponse
+          ? `Committed — eAPI timed out, ${remLines} line${remLines !== 1 ? 's' : ''} still differ`
+          : `Committed — ${remLines} line${remLines !== 1 ? 's' : ''} still differ`;
+        _setResultRow(rowId, safeName, '#f59e0b', _diffLbl, vDiff, null, combinedWarnText, orphanInfoText);
       }
     } finally {
       _semRelease();  // always release slot so next queued device can start
@@ -15970,7 +16022,7 @@ function _isOperationActive() {
 
 function closeAllModals() {
   if (_isOperationActive()) return; // never dismiss during an active push/generate/cleanup
-  const modals = ['editModal', 'ipConfigModal', 'bridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
+  const modals = ['guiEditModal', 'autoConfigModal', 'deviceBridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.classList.contains('modal-minimized')) el.style.display = 'none';
@@ -16003,7 +16055,7 @@ function closeCablingModal() {
 }
 
 function closeIpModal() {
-  document.getElementById('ipConfigModal').style.display = 'none';
+  document.getElementById('autoConfigModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
 
