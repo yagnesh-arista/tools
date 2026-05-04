@@ -3,6 +3,34 @@ Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line
 
 ---
 
+## Step 0 — Load Project Memory
+
+Before running any checks, read ALL TopoAssist memory files. Design memory informs UI/UX checks;
+code memory informs correctness, safety, and invariant checks.
+
+```bash
+ls ~/.claude/projects/-home-yagnesh-claude/memory/feedback_topoassist_*.md 2>/dev/null
+```
+
+Read each file found. Apply patterns as additional checks against this session's changes:
+
+**Design memory** (UI/UX patterns):
+- `feedback_topoassist_change_indicators.md` — was-spans, .changed, .modified-highlight
+- `feedback_topoassist_editor_light_mode.md` — config textarea always light mode
+- `feedback_topoassist_strip_dividers.md` — non-EOS strip divider/button parity
+- `feedback_topoassist_view_terminology.md` — DevVis / SheetVis / SheetViewMenu taxonomy
+
+**Code memory** (correctness, safety, invariants):
+- `feedback_topoassist_data_safety.md` — backup-before-write, rollback-on-error
+- `feedback_topoassist_tests.md` — pytest for device_bridge; Tests.gs for Code.gs
+- `feedback_topoassist_audit_tests.md` — audit logic must be extracted to pure helpers + tested
+- `feedback_topoassist_refresh_status.md` — setStatus(reason+host) before every fetchData call
+- `feedback_topoassist_gray_audit_sync.md` — N/A gray CF rules need paired A-rule + audit check
+
+For each memory pattern: if this session's code violates it, report ✗ FAIL citing the memory file.
+
+---
+
 # Part 1 — TopoAssist-Specific Checks
 
 ## Check 1 — JetBrains Mono (CLAUDE.md Rule 2)
