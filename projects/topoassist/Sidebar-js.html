@@ -5987,10 +5987,10 @@ function setActiveModalChip(modalId) {
   if (!modalId && _activeModalChipId) {
     const prev = document.getElementById(_activeModalChipId);
     if (prev) { prev.classList.remove('modal-minimized'); delete prev.dataset.preMinDisplay; }
-    _updateModalDock();
+    _updateMinimizedDockChip();
   }
   _activeModalChipId = modalId;
-  _refreshModalChip();
+  _updateActiveChip();
 }
 
 
@@ -6007,7 +6007,7 @@ function _autoMinimizeOpenModal() {
     }
   }
 }
-function _refreshModalChip() {
+function _updateActiveChip() {
   const chip = document.getElementById('activeModalChip');
   if (!chip) return;
   if (!_activeModalChipId) { chip.style.display = 'none'; return; }
@@ -13467,12 +13467,12 @@ function _makeDraggable(elOrId, opts) {
 // Strip minimize state when a modal is closed. Call at the top of every close function.
 function _onModalClose(el) {
   if (!el) return;
-  if (el.id && el.id === _activeModalChipId) { _activeModalChipId = null; _refreshModalChip(); }
+  if (el.id && el.id === _activeModalChipId) { _activeModalChipId = null; _updateActiveChip(); }
   if (!el.classList.contains('modal-minimized')) return;
   el.classList.remove('modal-minimized');
   delete el.dataset.preMinDisplay;
   delete el.dataset.hadOverlay;
-  _updateModalDock();
+  _updateMinimizedDockChip();
 }
 function toggleModalMinimize(modalId) {
   const modal = document.getElementById(modalId);
@@ -13521,13 +13521,13 @@ function toggleModalMinimize(modalId) {
       }
     }
   }
-  _refreshModalChip();
-  _updateModalDock();
+  _updateActiveChip();
+  _updateMinimizedDockChip();
 }
 
 // Rebuild the modal dock chip strip from current minimized modals.
 // Called by toggleModalMinimize() on every minimize/restore.
-function _updateModalDock() {
+function _updateMinimizedDockChip() {
   const dock = document.getElementById('modalDock');
   if (!dock) return;
   dock.innerHTML = '';
