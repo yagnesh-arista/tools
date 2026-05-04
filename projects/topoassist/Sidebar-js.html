@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.40 | 2026-05-04 18:47:43 -->
+<!-- TopoAssist v260504.41 | 2026-05-04 18:48:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.40";  // keep in sync with Code.gs
+const APP_VERSION = "260504.41";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13551,7 +13551,11 @@ function _updateMinimizedDockChip() {
   const dock = document.getElementById('modalDock');
   if (!dock) return;
   dock.innerHTML = '';
+  // Full-screen mode modals collapse via setHeight — header stays visible as the restore affordance.
+  // Skip them here so there's no redundant dock chip alongside the header [chevron] button.
+  const fullScreenIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
   document.querySelectorAll('.modal-std.modal-minimized').forEach(modal => {
+    if (fullScreenIds.has(modal.id)) return;
     const title = modal.querySelector('.modal-header-title')?.textContent.trim() || modal.id;
     const chip = document.createElement('button');
     chip.className = 'modal-dock-chip';
