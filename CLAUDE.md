@@ -222,8 +222,26 @@ panel.style.height = header.offsetHeight + 'px';  // minimize
 panel.style.overflow = 'hidden';
 // restore: clear both inline styles
 ```
-`.modal-std` modals use the CSS-only `.modal-minimized > *:not(.modal-header) { display:none }` approach (sufficient for non-floating).
+**`.modal-std` minimize = fully hidden + dock chip only.** When `toggleModalMinimize()` collapses a non-floating modal, it must: (1) set `modal.style.display = 'none'` (store the prior display in `data-pre-min-display`); (2) add class `modal-minimized`; (3) call `_updateModalDock()` — which reads `.modal-std.modal-minimized` and renders a clickable chip in `#modalDock` at the bottom of the page. The minimized-header must NOT remain visible anywhere in the layout. Clicking the dock chip calls `toggleModalMinimize(id)` again to restore.
+
+**On restore**: remove `modal-minimized`, restore `modal.style.display` from `data-pre-min-display`, delete the dataset key, call `_updateModalDock()`.
+
+**On close**: every close function (and `closeAllModals`) must call `_onModalClose(el)` before setting `display:none`. `_onModalClose(el)` strips `modal-minimized`, deletes `preMinDisplay`/`hadOverlay` datasets, and calls `_updateModalDock()`. Without this, closing a minimized modal leaves a stale dock chip.
+
+```javascript
+function _onModalClose(el) {
+  if (!el || !el.classList.contains('modal-minimized')) return;
+  el.classList.remove('modal-minimized');
+  delete el.dataset.preMinDisplay;
+  delete el.dataset.hadOverlay;
+  _updateModalDock();
+}
+```
+
 **Overlay rule**: `toggleModalMinimize()` must hide `editOverlay` on minimize and restore it on un-minimize using `data-had-overlay` to remember whether the overlay was visible before. Never write a modal-specific minimize that bypasses this. Modals opened with overlay (configModal, generateAllModal, editModal, pushConfirmModal) would otherwise leave the dim backdrop blocking all background interaction.
+
+**`.modal-floating` exception**: floating panels (deviceBridgeModal, DevView) stay visible as a collapsed header when minimized — they do NOT use `display:none`. `toggleModalMinimize` checks `modal.classList.contains('modal-floating')` and skips the hide logic for floating panels. Floating panels also do NOT appear in `#modalDock`.
+
 Full pattern: `~/.claude/rules/ui.md` (Rule 24)
 
 ## 25. Minimize Button Position Standard

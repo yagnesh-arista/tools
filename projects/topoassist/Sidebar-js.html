@@ -4678,6 +4678,7 @@ function zoomToFit() {
 
 function closeAuditModal() {
   const modal = document.getElementById('auditModal');
+  _onModalClose(modal);
   const overlay = document.getElementById('editOverlay');
 
   if (modal) modal.style.display = 'none';
@@ -5662,6 +5663,7 @@ function openTechModal() {
 }
 
 function closeTechModal() {
+  _onModalClose(document.getElementById('techModal'));
   document.querySelectorAll('.info-popup-box.visible').forEach(function(el) { el.classList.remove('visible'); });
   document.querySelectorAll('.btn-info-popup.active').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('techModal').style.display = 'none';
@@ -11647,6 +11649,7 @@ function openAuditSettingsModal() {
 }
 
 function closeAuditSettingsModal() {
+  _onModalClose(document.getElementById('auditSettingsModal'));
   document.getElementById('auditSettingsModal').style.display = 'none';
 }
 
@@ -13434,6 +13437,15 @@ function _makeDraggable(elOrId, opts) {
   });
 }
 
+
+// Strip minimize state when a modal is closed. Call at the top of every close function.
+function _onModalClose(el) {
+  if (!el || !el.classList.contains('modal-minimized')) return;
+  el.classList.remove('modal-minimized');
+  delete el.dataset.preMinDisplay;
+  delete el.dataset.hadOverlay;
+  _updateModalDock();
+}
 function toggleModalMinimize(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
@@ -13563,6 +13575,7 @@ function cancelPushConfig() {
 
 
 function closePushConfirmModal() {
+  _onModalClose(document.getElementById('pushConfirmModal'));
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
   _clearPushSessionGuard();
   const m = document.getElementById('pushConfirmModal');
@@ -16069,13 +16082,16 @@ function closeAllModals() {
   const modals = ['guiEditModal', 'autoConfigModal', 'deviceBridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
-    if (el && !el.classList.contains('modal-minimized')) el.style.display = 'none';
+    if (!el) return;
+    _onModalClose(el);
+    el.style.display = 'none';
   });
   const overlay = document.getElementById('editOverlay');
   if (overlay) overlay.style.display = 'none';
 }
 
 function closeConfigModal() {
+  _onModalClose(document.getElementById('configModal'));
   cancelPushConfig();  // clears _pendingPush, restores push btn, cancels auto-close timer
   document.getElementById("configModal").style.display = "none";
   document.getElementById("editOverlay").style.display = "none";
@@ -16089,11 +16105,13 @@ function closeConfigModal() {
 }
 
 function closeHelpModal() {
+  _onModalClose(document.getElementById('helpModal'));
   document.getElementById('helpModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
 
 function closeCablingModal() {
+  _onModalClose(document.getElementById('cablingModal'));
   document.getElementById('cablingModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
@@ -16287,6 +16305,7 @@ function closeGenerateAllModal() {
     }
     return;
   }
+  _onModalClose(document.getElementById('generateAllModal'));
   document.getElementById('generateAllModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
@@ -16523,6 +16542,7 @@ function openVlanSummaryModal() {
 }
 
 function closeVlanSummaryModal() {
+  _onModalClose(document.getElementById('vlanSummaryModal'));
   document.getElementById('vlanSummaryModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
@@ -17076,6 +17096,7 @@ function openGroupRectModal() {
 }
 
 function closeGroupRectModal() {
+  _onModalClose(document.getElementById("groupRectModal"));
   document.getElementById("groupRectModal").style.display = "none";
   document.getElementById("editOverlay").style.display = "none";
   pendingGroupRectGeom = null;
