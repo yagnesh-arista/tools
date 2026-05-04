@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.13 | 2026-05-04 12:35:27 -->
+<!-- TopoAssist v260504.14 | 2026-05-04 12:36:09 -->
 <!DOCTYPE html>
 <html>
 
@@ -433,9 +433,27 @@
 <body>
   <div class="container">
 
-    <!-- Sticky control bar: search · expand/collapse · jump-to-top · print · download -->
+    <!-- Sticky control bar: [Top|Expand|Collapse] · [─── Search ───] · [Print][Download] -->
     <div class="doc-actions">
-      <div class="doc-actions-left">
+
+      <!-- Left: segmented navigation pill -->
+      <div class="seg-group">
+        <button class="seg-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Jump to top">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          Top
+        </button>
+        <button class="seg-btn" onclick="ugExpandAll(true)" title="Expand all sections">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+          Expand
+        </button>
+        <button class="seg-btn" onclick="ugExpandAll(false)" title="Collapse all sections">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/></svg>
+          Collapse
+        </button>
+      </div>
+
+      <!-- Centre: search — grows to fill all available space -->
+      <div class="ug-search-center">
         <div class="ug-search-wrap">
           <input id="ugSearchInput" class="ug-search-input" type="text" placeholder="Search guide…" oninput="ugSearchInput(this.value)" autocomplete="off" spellcheck="false">
           <button id="ugSearchClear" class="ug-search-clear" onclick="ugClear()" title="Clear search">
@@ -443,29 +461,19 @@
           </button>
         </div>
         <span id="ugMatchCount" class="ug-match-count"></span>
-        <button class="doc-btn doc-btn-toggle" onclick="ugExpandAll(true)" title="Expand all sections">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
-          Expand All
-        </button>
-        <button class="doc-btn doc-btn-toggle" onclick="ugExpandAll(false)" title="Collapse all sections">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/></svg>
-          Collapse All
-        </button>
       </div>
+
+      <!-- Right: print / download -->
       <div class="doc-actions-right">
-        <button class="doc-btn doc-btn-toggle" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Jump to top">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-          Top
-        </button>
         <button class="doc-btn doc-btn-print" onclick="window.print()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
             <rect x="6" y="14" width="12" height="8"/>
           </svg>
           Print / PDF
         </button>
         <button class="doc-btn doc-btn-download" onclick="downloadHTML()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
