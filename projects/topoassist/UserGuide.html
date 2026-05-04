@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.14 | 2026-05-04 12:36:09 -->
+<!-- TopoAssist v260504.15 | 2026-05-04 12:42:04 -->
 <!DOCTYPE html>
 <html>
 
@@ -662,7 +662,7 @@ clasp login --no-localhost</pre>
 
     <div class="step-box">
       <span class="step-num">Step 5 — Annotate with Group Rects</span>
-      <p>Click the <b>Group Rect</b> toolbar button and drag to draw a labeled rectangle around a logical group — POD, tier, DC. Works in any topology view. See <a href="#group-rects">Group Rects</a>.</p>
+      <p>Switch to <b>Simple (Holistic)</b> view. Click the <b>Group Rect</b> button in the <b>TOPO EDIT</b> floating panel (bottom-right of the canvas) and drag to draw a labeled rectangle around a logical group — POD, tier, DC. See <a href="#group-rects">Group Rects</a>.</p>
     </div>
 
     <div class="step-box">
@@ -784,89 +784,94 @@ clasp login --no-localhost</pre>
     <h2 id="topology-toolbar">🖥️ Topology Toolbar</h2>
 
     <h3>Primary Row</h3>
+    <p style="font-size:12px; color:#64748b; margin:0 0 8px 0;">Left side: LAYOUT + CABLE controls. Right side: CABLING · CONFIG · VIEW · AUDIT · THEME · HELP sections.</p>
     <table class="legend-table">
       <tr>
         <td><span class="icon-cell text-icon btn-yellow">－</span></td>
-        <td><b>Minimize</b> — collapses the window to a thin title bar. Click ＋ to restore.</td>
-      </tr>
-      <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span></td>
-        <td><b>Refresh</b> — pulls latest data from the Google Sheet. Also triggers auto-coloring.</td>
+        <td><b>Minimize</b> (APP) — collapses the window to a thin title bar. Click ＋ to restore.</td>
       </tr>
       <tr>
         <td style="font-size:11px; font-weight:bold; color:#475569;">W G</td>
-        <td><b>Card Width / Device Gap</b> — adjust the width of device cards and horizontal spacing between them. Changes apply live.</td>
+        <td><b>Card Width / Device Gap</b> (LAYOUT) — adjust the width of device cards and horizontal spacing between them. Changes apply live.</td>
       </tr>
       <tr>
         <td style="font-size:11px; font-weight:bold; color:#475569;">O T</td>
-        <td><b>Cable Offset / Top Margin</b> — fine-tune where cables start on each card and their top clearance.</td>
-      </tr>
-      <tr>
-        <td><span class="pill" style="font-size:9px;">SORT</span></td>
-        <td><b>Port Sort</b> — <span class="pill">SHEET</span> <span class="pill">MODE</span> <span class="pill">IP</span> <span class="pill">ALPHA</span> — sort ports within each device card by sheet row order, interface mode, IP priority, or alphabetically.</td>
+        <td><b>Cable Offset / Top Margin</b> (CABLE) — fine-tune where cables start on each card and their top clearance.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span></td>
-        <td><b>Edit Mode</b> — enables interactive cabling. Red dots = unconnected ports. Click two to link them.</td>
+        <td><b>Edit Mode</b> (CABLING) — enables interactive cabling. Red dots = unconnected ports. Click two to link them.</td>
       </tr>
       <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="5 3"/><path d="M12 8v8M8 12h8"/></svg></span></td>
-        <td><b>Group Rect</b> — draw labeled rectangles over the Holistic view to mark logical groups (POD, DC, tier). Only active in ◎ Simple mode.</td>
-      </tr>
-      <tr>
-        <td><span class="icon-cell text-icon">B</span></td>
-        <td><b>Bold Labels</b> — toggles bold font on device node labels.</td>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span></td>
+        <td><b>Refresh</b> (CONFIG) — pulls latest data from the Google Sheet. Also triggers auto-coloring.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span></td>
-        <td><b>Technology Stack</b> — configure GW interface, P2P mode, Protocol Underlay (BGP/OSPF), and Protocol Overlay (VXLAN/EVPN with SERVICE and VGW options). Affects config generation output.</td>
+        <td><b>Technology Stack</b> (CONFIG) — configure GW interface, P2P mode, Protocol Underlay (BGP/OSPF), and Protocol Overlay (VXLAN/EVPN with SERVICE and VGW options). Affects config generation output.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span></td>
-        <td><b>IP Configuration</b> — set base subnets, VRF mappings, and IP preferences used during config generation.</td>
+        <td><b>IP Configuration</b> (CONFIG) — set base subnets, VRF mappings, and IP preferences used during config generation.</td>
       </tr>
       <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span></td>
-        <td><b>Snapshot</b> — exports the current topology view as a PNG image.</td>
-      </tr>
-      <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg></span></td>
-        <td><b>Cabling Export</b> — generates a structured cabling table. Download as formatted text, or use <b>Copy CSV</b> / <b>Copy Markdown</b> to copy all connections (DeviceA, PortA, DeviceB, PortB, Speed) directly to clipboard. The <b>AI Validate</b> section copies the cabling table and a validation prompt to clipboard, then opens your NotebookLM notebook — paste in the chat to check xcvr compatibility, speed mismatches, and breakout consistency.</td>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg></span></td>
+        <td><b>Global Config Template</b> (CONFIG) — view and copy the raw EOS config that TopoAssist generates for any device, without writing it to the sheet. Useful for previewing changes before committing. See <a href="#config-generation">Configuration Generation §6</a>.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span></td>
-        <td><b>Generate All Configs</b> — generates EOS config for all visible Arista devices and writes to the <b>Configs</b> sheet tab. Shows a per-device summary with line counts. Use <b>Copy All</b> to copy every config to clipboard at once.</td>
+        <td><b>Generate All Configs</b> (CONFIG) — generates EOS config for all visible Arista devices and writes to the <b>Configs</b> sheet tab. Shows a per-device summary with line counts. Use <b>Copy All</b> to copy every config to clipboard at once.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span></td>
+        <td><b>Collapse / Expand All Cards</b> (VIEW) — collapses every device card to its title bar (cables hidden). Click again to expand all. Individual cards can also be double-clicked to toggle. State is saved in localStorage per device.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg></span></td>
-        <td><b>VLAN Summary</b> — shows all VLANs in the topology with type (L2/L3/INT), VRF, and the ports carrying each VLAN. Click any row to run a VLAN trace for that VLAN. Use the filter box to search by VLAN ID, VRF, device name, or internal device name.
+        <td><b>VLAN Summary</b> (VIEW) — shows all VLANs in the topology with type (L2/L3/INT), VRF, and the ports carrying each VLAN. Click any row to run a VLAN trace. Filter by VLAN ID, VRF, or device name.
           <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;">
             <li><b>L2</b> (blue) — VLAN carried on one or more trunk/access ports in the topology.</li>
             <li><b>L3</b> (amber) — VLAN associated with an L3, routed, or SVI port.</li>
             <li><b>INT</b> (purple) — EOS-internal VLAN auto-allocated by the device (<code>show vlan internal</code>); not user-configured. Only visible after a Device Bridge check.</li>
-            <li><b>[CONFLICT]</b> (red) — a user-configured VLAN also appears as an EOS-internal VLAN on a device. This will cause the port to fail on EOS — change the VLAN to one outside the internal range.</li>
+            <li><b>[CONFLICT]</b> (red) — a user-configured VLAN also appears as an EOS-internal VLAN on a device. Change the VLAN to one outside the internal range.</li>
           </ul>
         </td>
       </tr>
       <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></td>
+        <td><b>Device Visibility Panel</b> (VIEW) — opens a floating panel to show or hide individual devices on the canvas without deleting data. Complements the per-device eye toggle in Device Manager.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span></td>
+        <td><b>Snapshot</b> (VIEW) — exports the current topology view as a PNG image.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg></span></td>
+        <td><b>Cabling Export</b> (VIEW) — generates a structured cabling table. Download as formatted text, or use <b>Copy CSV</b> / <b>Copy Markdown</b> to copy all connections (DeviceA, PortA, DeviceB, PortB, Speed) directly to clipboard. The <b>AI Validate</b> section copies the cabling table and a validation prompt to clipboard, then opens your NotebookLM notebook — paste in the chat to check xcvr compatibility, speed mismatches, and breakout consistency.</td>
+      </tr>
+      <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span></td>
-        <td><b>Device Bridge</b> — SSH bridge to lab devices. Verifies LLDP cabling, reads EOS version &amp; platform, checks interface op-status, and verifies device hostnames. Requires <code>device_bridge.py</code> running locally. See the <b>Device Bridge</b> section below. <b>Double-click</b> the icon to toggle auto-check (runs automatically after each topology load when enabled).</td>
-      </tr>
-      <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span></td>
-        <td><b>Shortcuts</b> — inline keyboard shortcut reference.</td>
-      </tr>
-      <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></td>
-        <td><b>Dark / Light Theme</b> — toggles between themes. Preference is saved across sessions.</td>
+        <td><b>Device Bridge</b> (AUDIT) — SSH bridge to lab devices. Verifies LLDP cabling, reads EOS version &amp; platform, checks interface op-status, and verifies device hostnames. Requires <code>device_bridge.py</code> running locally. See <a href="#device-bridge">Device Bridge</a> below. <b>Double-click</b> to toggle auto-check on topology load.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span></td>
-        <td><b>Audit Mode</b> — runs topology integrity checks. Badge shows error count. Click flagged ports to highlight them.</td>
+        <td><b>Audit Mode</b> (AUDIT) — runs topology integrity checks. Badge shows error count. Click to open audit details and configure which checks are enabled. <b>Double-click</b> to enable/disable the audit engine entirely.</td>
       </tr>
       <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></td>
-        <td><b>Collapse Secondary Row</b> — hides the search bar / view mode row to maximise canvas height.</td>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span></td>
+        <td><b>Errors Only</b> (AUDIT) — only active while Audit Mode is on. Hides devices with no errors so you can focus on problem nodes. Click again to restore all. Resets automatically when Audit Mode is turned off.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell text-icon">B</span></td>
+        <td><b>Bold Labels</b> (THEME) — toggles bold font on device node labels.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></td>
+        <td><b>Dark / Light Theme</b> (THEME) — toggles between themes. Preference is saved across sessions.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span></td>
+        <td><b>Shortcuts</b> (HELP) — inline keyboard shortcut reference.</td>
       </tr>
     </table>
 
@@ -885,22 +890,35 @@ clasp login --no-localhost</pre>
         <td><b>Flexible</b> — D3 force-directed graph. Nodes are freely draggable; positions are saved per session.</td>
       </tr>
       <tr>
-        <td><span class="pill">▾</span> <span class="pill">▴</span></td>
-        <td><b>Collapse / Expand All</b> — ▾ collapses every device card to just its title bar (cables hidden); ▴ expands all. Individual cards can also be double-clicked to toggle. Collapsed state is saved in localStorage per device.</td>
-      </tr>
-      <tr>
-        <td><span class="pill">ERR</span></td>
-        <td><b>Errors Only (Audit filter)</b> — only active in Audit Mode. Hides devices with no errors so you can focus on problem nodes. Click again to restore all. Automatically resets when Audit Mode is turned off.</td>
+        <td><span class="pill">SHEET</span> <span class="pill">MODE</span> <span class="pill">CAT</span> <span class="pill">A-Z</span></td>
+        <td><b>Interface Sort</b> (INT SORT) — sort ports within each device card by sheet row order, interface mode, category (P2P → GW → L2), or alphabetically. The selected sort persists across sessions.</td>
       </tr>
       <tr>
         <td><span style="display:inline-block;border:1px solid #cbd5e1;border-radius:4px;padding:1px 4px;font-size:10px;color:#94a3b8;background:#f8fafc;">Filter…</span></td>
         <td>
-          <b>Search / Filter</b> — type to filter by device name, port, role label, VLAN, mode, IP, or VRF. Special syntax:<br>
+          <b>Search / Filter</b> (SEARCH) — type to filter by device name, port, role label, VLAN, mode, IP, or VRF. Special syntax:<br>
           &nbsp;&nbsp;<code>v10</code> or <code>v1050</code> — trace all ports carrying that VLAN (highlighted across the topology).<br>
           &nbsp;&nbsp;Press <b>Enter</b> (with no autocomplete item selected) to pan and scroll to the first matching device.<br>
           &nbsp;&nbsp;Click any <b>role pill</b> on a device header to filter the topology to devices with that role (click again to clear).<br>
           Enable <b>Strict</b> checkbox for exact-match only (no substring).
         </td>
+      </tr>
+      <tr>
+        <td><span class="pill" style="background:#334155;color:#e2e8f0;">HISTORY</span></td>
+        <td><b>Status Log</b> — opens the log drawer showing all messages from the current session across five tabs: All · Config · Bridge · Errors · Audit. Use the filter box to search within the log.</td>
+      </tr>
+    </table>
+
+    <h3>Holistic-View Floating Controls</h3>
+    <p style="font-size:13px;">When in <b>Simple (Holistic)</b> view, a <b>TOPO EDIT</b> panel floats at the bottom-right of the canvas. These controls are only present in Simple mode:</p>
+    <table class="legend-table">
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="5 3"/><path d="M12 8v8M8 12h8"/></svg></span></td>
+        <td><b>Group Rect</b> — draw a labeled rectangle over the canvas to mark a logical group (POD, DC, tier). Click to enter draw mode, then drag to size the rect. See <a href="#group-rects">Group Rects</a> for full details.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span> <span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg></span></td>
+        <td><b>Node Size −/+</b> — shrink or grow all holistic-view nodes. Useful for fitting large topologies on screen.</td>
       </tr>
     </table>
 
@@ -1101,7 +1119,7 @@ clasp login --no-localhost</pre>
 
     <ol style="font-size:13px;">
       <li>Switch to <b>Simple</b> view (◎ button in the secondary row of the toolbar).</li>
-      <li>Click the <b>Group Rect</b> button (dashed square icon) in the primary toolbar row to enter rect-draw mode.</li>
+      <li>Click the <b>Group Rect</b> button (dashed square icon) in the <b>TOPO EDIT</b> floating panel at the bottom-right of the canvas to enter draw mode.</li>
       <li>Click and drag on the canvas to draw a rectangle over the devices you want to group.</li>
       <li>A label input appears — type a name (e.g. <code>POD-A</code>, <code>DC-West</code>) and press Enter.</li>
       <li>Click an existing rect to edit its label, text position (inside / outside), or background color. Drag it to reposition. Press Delete or the trash icon to remove it.</li>
@@ -1773,43 +1791,73 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       var container = document.querySelector('.container');
       if (!container) return;
       var countEl = document.getElementById('ugMatchCount');
-      // Remove previous highlights
+
+      // Unwrap previous marks (move text children to parent, remove mark element)
       container.querySelectorAll('mark.ug-mark').forEach(function(m) {
-        m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
-        m.parentNode.normalize();
+        var p = m.parentNode;
+        if (!p) return;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
       });
+
       if (!query || !query.trim()) {
         if (countEl) countEl.textContent = '';
         return;
       }
+
       var escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      var re = new RegExp('(' + escaped + ')', 'gi');
+      // No capturing group in the regex — split with capturing group separately
+      var re = new RegExp(escaped, 'gi');
+      var reSplit = new RegExp('(' + escaped + ')', 'gi');
       var hits = 0;
-      var skipTags = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'BUTTON', 'MARK']);
-      function walk(node) {
-        if (node.nodeType === 3) {
-          re.lastIndex = 0;
-          if (!re.test(node.textContent)) return;
-          re.lastIndex = 0;
-          var parts = node.textContent.split(re);
-          if (parts.length <= 1) return;
-          var frag = document.createDocumentFragment();
-          parts.forEach(function(p, i) {
-            if (i % 2 === 0) { frag.appendChild(document.createTextNode(p)); }
-            else { var m = document.createElement('mark'); m.className = 'ug-mark'; m.textContent = p; frag.appendChild(m); hits++; }
-          });
-          node.parentNode.replaceChild(frag, node);
-        } else if (node.nodeType === 1) {
-          if (skipTags.has(node.tagName)) return;
-          if (node.classList && (node.classList.contains('doc-actions') || node.classList.contains('quick-nav'))) return;
-          Array.from(node.childNodes).forEach(walk);
+
+      // Collect text nodes first via TreeWalker (collect-then-modify avoids
+      // iterator invalidation). FILTER_REJECT prunes entire subtrees.
+      var rejectTags = new Set(['script', 'style', 'input', 'textarea', 'button', 'select', 'mark', 'svg']);
+      var textNodes = [];
+      var walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+        acceptNode: function(n) {
+          if (n.nodeType === 1) {
+            var tag = n.tagName.toLowerCase();
+            if (rejectTags.has(tag)) return NodeFilter.FILTER_REJECT;
+            if (n.classList && (n.classList.contains('doc-actions') || n.classList.contains('quick-nav'))) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_SKIP;
+          }
+          return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         }
-      }
-      walk(container);
-      // Open sections with matches, close those without
+      });
+      var wn;
+      while ((wn = walker.nextNode())) textNodes.push(wn);
+
+      // Apply marks to collected text nodes
+      textNodes.forEach(function(node) {
+        if (!node.parentNode) return;
+        re.lastIndex = 0;
+        if (!re.test(node.nodeValue)) return;
+        reSplit.lastIndex = 0;
+        var parts = node.nodeValue.split(reSplit);
+        if (parts.length <= 1) return;
+        var frag = document.createDocumentFragment();
+        parts.forEach(function(p, i) {
+          if (i % 2 === 0) {
+            frag.appendChild(document.createTextNode(p));
+          } else {
+            var m = document.createElement('mark');
+            m.className = 'ug-mark';
+            m.textContent = p;
+            frag.appendChild(m);
+            hits++;
+          }
+        });
+        node.parentNode.replaceChild(frag, node);
+      });
+
+      // Open sections that have matches; close those that don't
       container.querySelectorAll('details').forEach(function(d) {
         d.open = !!d.querySelector('mark.ug-mark');
       });
+
       if (countEl) countEl.textContent = hits > 0 ? hits + (hits === 1 ? ' match' : ' matches') : 'no match';
       var first = container.querySelector('mark.ug-mark');
       if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
