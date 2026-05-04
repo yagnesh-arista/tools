@@ -290,6 +290,7 @@ Mode   : [Git / Local]
 8 — INSTRUCTIONS Updated  ✓ / ✗ / ⚠
 9 — Modal Button Standard ✓ / ✗ / ⚠
 29 — Naming & docs        ✓ / ✗ / ⚠
+30 — Change indicators    ✓ / ✗ / ⚠
 
 ── Part 2: Global ──────────────────────
 A — Scope & Hygiene       ✓ / ✗ / ⚠
