@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.2 | 2026-05-04 11:17:23 -->
+<!-- TopoAssist v260504.3 | 2026-05-04 11:28:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.2";  // keep in sync with Code.gs
+const APP_VERSION = "260504.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -773,7 +773,7 @@ function DeviceManager() {
     } else if (isNonArista) {
       typeBadge = `<button class="type-toggle-btn type-toggle-nonarista" onclick="setDeviceType(${index})" title="Non-EOS — click to restore as EOS (requires Force Sync)">Non-EOS</button>`;
     } else {
-      typeBadge = `<button class="type-toggle-btn" onclick="setDeviceType(${index})" title="EOS — click to mark as Non-EOS (requires Force Sync)">EOS</button>`;
+      typeBadge = `<span class="type-eos-label" onclick="setDeviceType(${index})" title="EOS — click to mark as Non-EOS (requires Force Sync)" style="cursor:pointer;">EOS</span>`;
     }
 
     const isPendingDelete = (index === pendingDeviceManagerDeleteIndex);
@@ -812,7 +812,6 @@ onchange="toggleDeviceVisibility(${index})">
 <div class="col-center">${tidHtml}</div>
 <div class="col-center">${didHtml}</div>
 <div class="col-left"><div class="dev-name-cell">${nameDisplay}${hostnameHtml}</div></div>
-<div class="col-center"><button class="btn-icon-edit" onclick="DeviceManagerRenameDevice(${index})" style="display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
 <div class="col-center">${typeBadge}</div>
 <div class="dev-role-cell"><select class="role-select" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
 <div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>

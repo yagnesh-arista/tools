@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.2 | 2026-05-04 11:16:58 -->
+<!-- TopoAssist v260504.3 | 2026-05-04 11:27:13 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -4331,8 +4331,8 @@
 
   .reorder-grid {
     display: grid;
-    grid-template-columns: 30px 50px 60px 1fr 30px 60px 70px 90px 110px 30px;
-    gap: 8px;
+    grid-template-columns: 30px 50px 60px 1fr 60px 70px 90px 110px 30px;
+    gap: 6px;
     align-items: center
   }
 
@@ -4370,7 +4370,7 @@
   }
 
   .reorder-item {
-    padding: 8px 15px;
+    padding: 6px 10px;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border-light);
     font-size: 12px;
@@ -4435,6 +4435,17 @@
     border: 1px solid #e2e8f0;
   }
   .type-toggle-btn.type-toggle-nonarista:hover { background: #e2e8f0; border-color: #cbd5e1; }
+
+  .type-eos-label {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #cbd5e1;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 
   .dev-name-cell {
     display: flex;
@@ -4721,12 +4732,12 @@
   .reorder-list-header,
   .reorder-grid {
     display: grid !important;
-    /* Columns: Handle(30) | Vis(40) | #(40) | ID(40) | Name(Flex) | Edit(30) | Type(70) | Role(80) | MLAG(90) | Labels(200) | Del(30) */
-    grid-template-columns: 30px 40px 40px 40px 1fr 30px 70px 80px 90px 200px 30px;
-    gap: 8px;
-    min-height: 40px;
+    /* Columns: Handle(30) | Vis(40) | #(40) | ID(40) | Name(Flex) | Type(70) | Role(80) | MLAG(90) | Labels(200) | Del(30) */
+    grid-template-columns: 30px 40px 40px 40px 1fr 70px 80px 90px 200px 30px;
+    gap: 6px;
+    min-height: 36px;
     align-items: center;
-    padding: 0 15px;
+    padding: 0 10px;
   }
 
   /* Data rows (not header) grow to fit wrapped label pills */
