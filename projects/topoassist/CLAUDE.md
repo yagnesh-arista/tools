@@ -118,4 +118,4 @@ When `delete configCache[devName]` is called (eviction, clear), that is the comp
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
 - If editing `buildConditionalRules` in Code.gs: immediately note that the user must do **Save & Sync** in the sheet for conditional format changes to take effect
-- Use `/topoassist-review-deploy`, `/topoassist-review-userguide`, `/topoassist-review-code-design`, `/topoassist-review-code-full` slash commands as needed
+- Use `/topoassist-review-deploy-sync`, `/topoassist-review-userguide-update`, `/topoassist-review-code-design`, `/topoassist-review-code-full` slash commands as needed

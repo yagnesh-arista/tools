@@ -104,8 +104,8 @@ Session end (Stop)
 |---|---|
 | `/project:topoassist-review-code-design` | TopoAssist-specific compliance review (Sidebar-js, CSS, Code.gs, UI rules) |
 | `/project:topoassist-review-code-full` | Full review: 9 TopoAssist checks (JetBrains Mono, SVG icons, user-select, canvas bounds, symmetry, VERSION, canonicalizeInterface, INSTRUCTIONS, **Modal Button Standard**) + global review |
-| `/project:topoassist-review-deploy` | Three-way sync check: git → local → GAS remote + commit history |
-| `/project:topoassist-review-userguide` | Update UserGuide.html to match current session changes |
+| `/project:topoassist-review-deploy-sync` | Three-way sync check: git → local → GAS remote + commit history |
+| `/project:topoassist-review-userguide-update` | Update UserGuide.html to match current session changes |
 | `/project:topoassist-deploy-gas-clasp` | Deploy TopoAssist to Google Apps Script via `clasp push` |
 | `/project:topoassist-deploy-git` | Push TopoAssist changes to GitHub |
 | `/project:topoassist-deploy-inst-device_bridge` | Instructions: `scp device_bridge.py` to Mac |
@@ -113,6 +113,7 @@ Session end (Stop)
 | `/project:topoassist-deploy-demo-template` | Push current code to demo/template sheet (intentional releases only) |
 | `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
 | `/project:topoassist-check-constraints` | Verify design invariants: canonicalizeInterface sync, generateConfig param count, hasKey usage, device_bridge↔template sync, VERSION sync, no MLAG heuristics |
+| `/project:eos-tricks` | Search EOS_CLI_Tricks.md — with arg: grep filtered; without arg: fzf fuzzy search |
 
 ---
 
@@ -132,6 +133,7 @@ Session end (Stop)
 | Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in Tests.gs; lists gaps |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
+| Edit `eos-tricks/` files | `eos-tricks-publish.sh` | Publishes `eos-tricks.html` to `public_html/` |
 | Edit tmux-studio file | Inline hook | Copy to `~/.tmux-studio/tmux_studio.py` |
 | Edit `tmux.conf` project files | Inline hook | Copy to `~/.tmux/` + `tmux source-file` reload |
 | Edit `bashrc_bus-home/.bashrc` | Inline hook | Copy to `~/.bashrc` |
