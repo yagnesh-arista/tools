@@ -161,6 +161,32 @@ Verify:
 - [ ] Create/edit/delete flow matches current modal
 - [ ] localStorage persistence note is accurate
 
+### 2g — Enumeration Completeness
+
+Any list or table in UserGuide.html that enumerates a set of values (interface types, column names, config blocks, SP modes, roles, etc.) must not just name the values — it must explain for each value whether it is:
+- **User-entered** (which column or field)
+- **Auto-generated** (from which settings or columns)
+- **Not configured by TopoAssist** (out of scope)
+
+**The canonical failure pattern**: listing all recognized values in a flat bullet list without saying which ones the user actually touches. A user reading the list cannot tell what they need to enter vs. what happens automatically.
+
+Checks to run:
+
+```bash
+# Find <ul> lists and <table> blocks in UserGuide.html that enumerate values
+# (interface types, sp_mode_ values, ip_type_ values, roles, etc.)
+grep -n "Et\|Vl\|Lo\|Ma\|Po\|Vx\|l2-et\|l3-et\|gw-et\|int_\|sp_mode_\|ip_type_\|svi_vlan_\|vlan_\|po_\|tag_\|role_" \
+  ~/claude/projects/topoassist/UserGuide.html | head -40
+```
+
+For every enumeration found, check:
+- [ ] Interface type table — each of `Et`, `Vx`, `Po`, `Lo`, `Vl`, `Ma` has an explicit "how configured" column or annotation
+- [ ] `sp_mode_` values (l2-et-access, l3-et-int, etc.) — each explains what columns pair with it
+- [ ] `ip_type_` values — each explains what columns are relevant
+- [ ] Any other "code value → meaning" table — does it say where the value comes from?
+
+✗ FAIL if any enumeration table or list names values without explaining which are user-entered vs. auto-generated vs. out of scope.
+
 ---
 
 ## Step 3 — Menu Path Accuracy
