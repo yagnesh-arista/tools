@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260504.39 | 2026-05-04 18:43:46
+# topoassist v260504.40 | 2026-05-04 18:45:34
 """
 TopoAssist Device Bridge
 ========================
@@ -1258,6 +1258,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             _cleanup_notes.append(err)
                         else:
                             _real_errs.append(err)
+                    # _annotate_eapi_errors injects block-context lines (e.g. "interface Vlan100")
+                    # before errors. When all actual errors are idempotency cleanup notes,
+                    # these orphaned context lines remain in _real_errs but are not errors.
+                    # Strip them so the "all idempotency" check is accurate.
+                    _real_errs = [
+                        e for e in _real_errs
+                        if not (_BLOCK_CMD_RE.match(e.strip()) and not _EAPI_FAILED_CMD_RE.search(e))
+                    ]
                     if _cleanup_notes and not _real_errs:
                         # All errors were idempotency cleanup — EOS committed the session
                         # (stopOnError:False runs commit regardless). Diff is unavailable

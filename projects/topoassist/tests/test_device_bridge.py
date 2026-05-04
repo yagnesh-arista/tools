@@ -1,4 +1,4 @@
-# topoassist v260429.12 | 2026-04-29 12:04:10
+# topoassist v260504.40 | 2026-05-04 18:44:56
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -624,3 +624,212 @@ class TestNormIface:
     def test_case_insensitive(self):
         assert db._norm_iface("ETHERNET4/1") == "et4/1"
         assert db._norm_iface("port-channel5") == "po5"
+
+
+# ── _push_config: idempotency reclassification (eAPI RuntimeError path) ────────
+
+from unittest import mock
+
+
+def _make_push_handler():
+    """Bare BridgeHandler with no real __init__ — all network methods mocked."""
+    h = object.__new__(db.BridgeHandler)
+    h._abort_stale_sessions = mock.Mock()
+    h._find_bgp_asn_change = mock.Mock(return_value=([], None))
+    h._diagnose_eapi_errors = mock.Mock(side_effect=lambda ip, lines, errs: errs)
+    db._cfg['transport'] = 'eapi'
+    return h
+
+
+class TestPushConfigIdempotencyFilter:
+    """GW SVI cleanup commands ('default ip address virtual' / 'default ipv6 address
+    virtual') return 'invalid command' when the feature isn't configured — harmless
+    no-ops. _push_config must demote them to eos_warnings and return ok=True.
+
+    The real error path is the eAPI RuntimeError path: EOS returns a top-level
+    JSON-RPC error with 'CLI command N of M <cmd> failed: invalid command', which
+    includes the command name — the substring match is reliable there.
+    """
+
+    def test_only_idempotency_errors_returns_ok_true(self):
+        h = _make_push_handler()
+        raw_msg = (
+            "CLI command 558 of 854 ' default ip address virtual' failed: invalid command\n"
+            "CLI command 561 of 854 ' default ipv6 address virtual' failed: invalid command"
+        )
+        h._eapi_push = mock.Mock(side_effect=RuntimeError(raw_msg))
+        config = "interface Vlan100\n description GW __TA\n default ip address virtual\n default ipv6 address virtual"
+
+        result = h._push_config("192.168.1.1", config)
+
+        assert result.get("ok") is True
+        assert result.get("diff") is None  # diff unavailable from error path
+        warns = result.get("eos_warnings", [])
+        assert any("default ip address virtual" in w for w in warns)
+        assert "eos_errors" not in result
+
+    def test_mixed_errors_real_errors_preserved_idempotency_demoted(self):
+        h = _make_push_handler()
+        raw_msg = (
+            "CLI command 1 of 5 ' default ip address virtual' failed: invalid command\n"
+            "CLI command 2 of 5 ' router bgp 1' failed: BGP already running with AS 65002"
+        )
+        h._eapi_push = mock.Mock(side_effect=RuntimeError(raw_msg))
+        config = "default ip address virtual\n router bgp 1"
+
+        result = h._push_config("192.168.1.1", config)
+
+        assert result.get("ok") is False
+        assert "BGP" in result.get("error", "")
+        warns = result.get("eos_warnings", [])
+        assert any("default ip address virtual" in w for w in warns)
+
+    def test_ipv6_virtual_only_returns_ok_true(self):
+        h = _make_push_handler()
+        raw_msg = "CLI command 3 of 10 ' default ipv6 address virtual' failed: invalid command"
+        h._eapi_push = mock.Mock(side_effect=RuntimeError(raw_msg))
+        config = "interface Vlan200\n default ipv6 address virtual\n ipv6 address virtual 2001:db8::1/64"
+
+        result = h._push_config("192.168.1.1", config)
+
+        assert result.get("ok") is True
+        warns = result.get("eos_warnings", [])
+        assert any("default ipv6 address virtual" in w for w in warns)
+
+    def test_non_idempotency_runtime_error_returns_ok_false(self):
+        h = _make_push_handler()
+        raw_msg = "CLI command 1 of 3 ' router bgp 1' failed: BGP already running with AS 65002"
+        h._eapi_push = mock.Mock(side_effect=RuntimeError(raw_msg))
+        config = "router bgp 1\n neighbor 10.0.0.1 remote-as 65001"
+
+        result = h._push_config("192.168.1.1", config)
+
+        assert result.get("ok") is False
+        assert "BGP" in result.get("error", "")
+        assert "eos_warnings" not in result
+
+    def test_success_path_per_cmd_idempotency_suppressed(self):
+        # When EOS embeds the error in per-command output (stopOnError=False, no top-level
+        # error), the pre-scan pairs command with output to identify the idempotency error.
+        h = _make_push_handler()
+        # Simulate: 4-command session — configure session, idempotency cmd, show diffs, commit
+        h._eapi_push = mock.Mock(return_value=[
+            "",                                    # configure session <name>
+            "% Invalid command\n",                 # default ip address virtual → no-op
+            "--- diffs ---\n+ ip address 10.0.0.1/24",  # show session-config diffs
+            "",                                    # commit
+        ])
+        # core_cmds will include these in the middle; use open_only=False, dry_run=False
+        # The handler builds core_cmds internally — config must be minimal (1 line)
+        config = "default ip address virtual"
+
+        result = h._push_config("192.168.1.1", config)
+
+        assert result.get("ok") is True
+        warns = result.get("eos_warnings", [])
+        assert any("default ip address virtual" in w for w in warns)
+        assert "eos_errors" not in result
+
+
+# ── _push_config: eAPI timeout recovery (late_response) ─────────────────────────
+
+class TestPushConfigTimeoutRecovery:
+    """When the eAPI push read times out, _push_config verifies whether EOS
+    committed the session. Session absent → ok=True + late_response=True.
+    Session still present → RuntimeError. Non-timeout OSError → reraise."""
+
+    def test_timeout_session_absent_returns_late_response(self):
+        h = _make_push_handler()
+        with mock.patch('device_bridge.time') as mock_time:
+            mock_time.sleep = mock.Mock()
+            mock_time.time = mock.Mock(return_value=1_000_000)
+            h._eapi_push = mock.Mock(side_effect=[
+                TimeoutError("timed out"),          # push call
+                ["active sessions:\n"],             # verify: session name absent
+            ])
+            result = h._push_config("192.168.1.1", "interface Ethernet1\n description test __TA")
+
+        assert result.get("ok") is True
+        assert result.get("late_response") is True
+        assert result.get("diff") == ""
+
+    def test_timeout_session_still_present_raises(self):
+        h = _make_push_handler()
+        with mock.patch('device_bridge.time') as mock_time:
+            mock_time.sleep = mock.Mock()
+            mock_time.time = mock.Mock(return_value=1_000_000)
+            expected_session = "topoassist_1000000"
+            h._eapi_push = mock.Mock(side_effect=[
+                TimeoutError("timed out"),
+                [f"{expected_session} pending"],    # session still present
+            ])
+            import pytest
+            with pytest.raises(RuntimeError, match="still pending"):
+                h._push_config("192.168.1.1", "interface Ethernet1\n description test __TA")
+
+    def test_urlerror_timeout_treated_as_timeout(self):
+        import urllib.error
+        h = _make_push_handler()
+        with mock.patch('device_bridge.time') as mock_time:
+            mock_time.sleep = mock.Mock()
+            mock_time.time = mock.Mock(return_value=1_000_000)
+            h._eapi_push = mock.Mock(side_effect=[
+                urllib.error.URLError("timed out"),  # wraps socket.timeout; str has 'timed out'
+                ["other sessions only"],
+            ])
+            result = h._push_config("192.168.1.1", "interface Ethernet1\n description test __TA")
+
+        assert result.get("ok") is True
+        assert result.get("late_response") is True
+
+    def test_non_timeout_oserror_reraises(self):
+        h = _make_push_handler()
+        h._eapi_push = mock.Mock(side_effect=OSError("Connection refused"))
+        import pytest
+        with pytest.raises(OSError, match="Connection refused"):
+            h._push_config("192.168.1.1", "interface Ethernet1\n description test __TA")
+
+    def test_dry_run_timeout_raises_without_verify(self):
+        # dry_run=True — session aborted immediately; no commit to verify
+        h = _make_push_handler()
+        h._eapi_push = mock.Mock(side_effect=TimeoutError("timed out"))
+        import pytest
+        with pytest.raises(RuntimeError, match="timed out"):
+            h._push_config("192.168.1.1", "interface Ethernet1\n description test __TA",
+                           dry_run=True)
+
+
+# ── _finalize_session: eAPI timeout recovery ─────────────────────────────────────
+
+class TestFinalizeSessionTimeoutRecovery:
+    """Timeout during _finalize_session commit: check if session is absent → late_response.
+    Timeout during abort: nothing to verify, just raise. Non-commit action after timeout: raise."""
+
+    def test_timeout_commit_session_absent_returns_late_response(self):
+        h = object.__new__(db.BridgeHandler)
+        db._cfg['transport'] = 'eapi'
+        with mock.patch('device_bridge.time') as mock_time:
+            mock_time.sleep = mock.Mock()
+            h._eapi_push = mock.Mock(side_effect=[
+                ["topoassist_123 pending"],    # show configuration sessions (session exists check)
+                TimeoutError("timed out"),     # commit call
+                ["active sessions:\n"],        # verify: session absent → committed
+            ])
+            result = h._finalize_session("192.168.1.1", "topoassist_123", "commit")
+
+        assert result.get("ok") is True
+        assert result.get("late_response") is True
+        assert result.get("action") == "commit"
+
+    def test_timeout_abort_raises(self):
+        h = object.__new__(db.BridgeHandler)
+        db._cfg['transport'] = 'eapi'
+        with mock.patch('device_bridge.time') as mock_time:
+            mock_time.sleep = mock.Mock()
+            h._eapi_push = mock.Mock(side_effect=[
+                ["topoassist_123 pending"],    # session exists check
+                TimeoutError("timed out"),     # abort call — no verify logic for abort
+            ])
+            import pytest
+            with pytest.raises(RuntimeError, match="Finalize timed out"):
+                h._finalize_session("192.168.1.1", "topoassist_123", "abort")

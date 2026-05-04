@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.39 | 2026-05-04 18:43:44 -->
+<!-- TopoAssist v260504.40 | 2026-05-04 18:48:05 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -64,7 +64,7 @@
   /* ================= 1. CORE VISIBILITY & RESET ================= */
   #sheetColumnManagerContainer,
   #sheetVisContainer,
-  #reorderModal,
+  #deviceManagerContainer,
   #autoConfigModal,
   #cablingModal,
   #auditModal,
@@ -108,14 +108,14 @@
 
   /* MODE: VIEW CUSTOM */
   body.mode-view_custom #app-topology,
-  body.mode-view_custom #reorderModal,
+  body.mode-view_custom #deviceManagerContainer,
   body.mode-view_custom #sheetColumnManagerContainer {
     display: none !important
   }
 
   /* MODE: SCHEMA MANAGER */
   body.mode-schema #app-topology,
-  body.mode-schema #reorderModal,
+  body.mode-schema #deviceManagerContainer,
   body.mode-schema #sheetVisContainer {
     display: none !important
   }
@@ -127,10 +127,10 @@
 
   /* Hide background apps when in specific modes */
   body.mode-view_custom #app-topology,
-  body.mode-view_custom #reorderModal,
+  body.mode-view_custom #deviceManagerContainer,
   body.mode-view_custom #sheetColumnManagerContainer,
   body.mode-schema #app-topology,
-  body.mode-schema #reorderModal,
+  body.mode-schema #deviceManagerContainer,
   body.mode-schema #sheetVisContainer,
   body.mode-reorder #app-topology,
   body.mode-reorder #sheetColumnManagerContainer,
@@ -139,7 +139,7 @@
   }
 
   body.mode-schema #sheetColumnManagerContainer,
-  body.mode-reorder #reorderModal,
+  body.mode-reorder #deviceManagerContainer,
   body.mode-view_custom #sheetVisContainer {
     display: flex !important;
     flex-direction: column !important;
@@ -167,7 +167,7 @@
      .modal-minimized height:auto wins. JS toggleModalMinimize() also calls
      google.script.host.setHeight() to shrink the GAS dialog window itself. */
   body.mode-schema #sheetColumnManagerContainer.modal-minimized,
-  body.mode-reorder #reorderModal.modal-minimized,
+  body.mode-reorder #deviceManagerContainer.modal-minimized,
   body.mode-view_custom #sheetVisContainer.modal-minimized {
     height: auto !important;
   }
@@ -205,7 +205,7 @@
   /* --- Layer 4: Full Screen Managers (Level 10000) --- */
   /* Managers sit below the overlay so they get dimmed when a popup opens */
   body.mode-schema #sheetColumnManagerContainer,
-  body.mode-reorder #reorderModal,
+  body.mode-reorder #deviceManagerContainer,
   body.mode-view_custom #sheetVisContainer {
     z-index: 10000 !important;
   }
