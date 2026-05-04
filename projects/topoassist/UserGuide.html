@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.18 | 2026-05-04 14:14:56 -->
+<!-- TopoAssist v260504.19 | 2026-05-04 14:16:15 -->
 <!DOCTYPE html>
 <html>
 
@@ -757,7 +757,7 @@ clasp login --no-localhost</pre>
       <li><b>L1.5: Mode</b> — <code>int_</code> + <code>sp_mode_</code>. Mode drives config generation and canvas color-coding. See the mode pills in the Configuration Generation section for valid values.</li>
       <li><b>L1.5: Port Channel</b> — adds <code>po_</code>. Assign Po numbers for trunk and Po-mode ports.</li>
       <li><b>L2/L3: Vlan</b> — adds <code>vlan_</code>. Fill allowed/access VLANs and dot1q encap VLANs for sub-interfaces.</li>
-      <li><b>L2/L3: SVI</b> — adds <code>svi_vlan_</code>. Specify which VLANs get a routed SVI (<code>all</code>, a list, or blank).</li>
+      <li><b>L2/L3: SVI</b> — adds <code>svi_vlan_</code>. Specify which VLANs get a routed SVI (Switched Virtual Interface) (<code>all</code>, a list, or blank).</li>
       <li><b>L2/L3: IP</b> — adds <code>ip_type_</code>. Set the IP role for each port (<code>p2p</code>, <code>gw</code>, etc.).</li>
       <li><b>Show All</b> — unhides all columns for a final review before generating config.</li>
     </ol>
@@ -1011,7 +1011,7 @@ clasp login --no-localhost</pre>
     </div>
     <p style="font-size:13px; margin-top:8px;">Assign labels in <b>Device Manager</b> via the Tags column. Multiple labels per device are supported.</p>
 
-    <h3>Loopback &amp; VTEP Pinned Rows</h3>
+    <h3>Loopback &amp; VTEP (Virtual Tunnel Endpoint) Pinned Rows</h3>
     <p style="font-size:13px;">Every Arista device card shows pinned rows above the physical port list for logical interfaces — <b>Loopback</b> and <b>Vx1</b>. These rows have no cabling association and never trigger audit checks. Click any pinned row to view, copy, or push its generated config.</p>
 
     <h4 style="font-size:13px; margin:10px 0 4px;">Loopback rows (blue)</h4>
@@ -1149,7 +1149,7 @@ clasp login --no-localhost</pre>
         <tr style="background:#f8fafc;">
           <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Vx</code></td>
           <td style="padding:6px 10px; border:1px solid #e2e8f0;">VXLAN (VTEP)</td>
-          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Enter <code>Vx1</code> in <code>int_</code> — the VTEP row; VXLAN block is auto-generated from VLAN/VNI settings</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Enter <code>Vx1</code> in <code>int_</code> — the VTEP row; VXLAN block is auto-generated from VLAN/VNI (Virtual Network Identifier) settings</td>
         </tr>
         <tr>
           <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Po</code></td>
@@ -1762,7 +1762,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li>Layout preferences (card width, gap, theme, sort mode, node positions) are <b>saved in browser localStorage</b> per device.</li>
       <li>In <b>Flexible mode</b>, drag nodes to arrange the topology. Positions are saved automatically.</li>
       <li>In <b>Simple mode</b>, use <b>Group Rects</b> to annotate logical groups (PODs, tiers). Click an existing rect to edit its label, color, and text position.</li>
-      <li>The <b>Rename Sheet</b> option (<span class="menu-path">Sheet Manager &gt; Change Sheet Name</span>) safely renames the working tab and updates all internal references.</li>
+      <li>The <b>Rename Sheet</b> option (<span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Change Sheet Name</span>) safely renames the working tab and updates all internal references.</li>
       <li>Non-Arista devices (IXIA, Spirent) appear in the topology for cabling context but no EOS config is generated for them.</li>
       <li><b>Card Collapse</b> — double-click any device's header bar to collapse it to just its title row. Cables to/from that device are hidden while collapsed. Double-click again to expand. Single click still selects the device. Collapsed state is saved in browser localStorage per device.</li>
       <li><b>Card Resize</b> — drag the right edge of any device card to adjust its width. Width is saved per card in browser localStorage and restored on the next load.</li>
