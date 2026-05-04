@@ -729,6 +729,84 @@ applyDeviceListFromServer|runSchemaAudit)\b" \
 
 ---
 
+## Check 30 — Change Indicators on Editable Fields
+
+Every editable field in any manager panel (Device Manager, SheetColumnManager, or any future panel)
+must provide visual change feedback when its value differs from the originally loaded state.
+
+### Pattern by field type
+
+| Field type | Required indicator |
+|---|---|
+| Short text input (name, label, hostname) | Green border via `.dev-name-changed` or `.modified-highlight` + dim italic "was: [original]" span below |
+| Select / dropdown (role, MLAG peer) | `.changed` CSS class → green border + green text |
+| Textarea / options list | `.modified-highlight` CSS class → amber bottom-border + amber tint |
+
+### 30a — `_orig*` fields at load time
+
+Every manager panel must store original values on each item at load time so change detection
+is possible without a server round-trip.
+
+```bash
+# Device Manager — check _orig* fields are set in DeviceManagerLoadDevices
+grep -n "_origHostname\|_origRole\|_origMlagPeer" ~/claude/projects/topoassist/Sidebar-js.html | head -10
+
+# SheetColumnManager uses initialSheetColumnManagerState snapshot instead of per-field _orig*
+grep -n "initialSheetColumnManagerState" ~/claude/projects/topoassist/Sidebar-js.html | head -5
+```
+
+✗ FAIL if a manager panel has editable fields but no original-value storage mechanism.
+
+### 30b — Was-spans rendered and updated in-place
+
+Text inputs must have a `<span>` with a stable DOM ID rendered in the HTML (hidden when
+unchanged), updated in-place by the `oninput`/`onchange` handler — NOT by re-rendering the
+whole list (breaks focus/cursor).
+
+```bash
+# Device Manager was-spans
+grep -n "devHostnameWas_\|dev-name-was" ~/claude/projects/topoassist/Sidebar-js.html | head -10
+
+# SheetColumnManager was-spans
+grep -n "schemaWas_" ~/claude/projects/topoassist/Sidebar-js.html | head -10
+
+# In-place update in handlers (not DeviceManager() re-render)
+grep -n "devHostnameWas\|schemaWas" ~/claude/projects/topoassist/Sidebar-js.html | head -10
+```
+
+✗ FAIL if a text input field changes the underlying data but has no was-span shown to the user.
+✗ FAIL if the was-span is updated by calling a full re-render function instead of a targeted DOM update.
+
+### 30c — `.changed` CSS class exists for selects
+
+```bash
+grep -n "role-select.changed\|mlag-peer-select.changed\|\.changed" \
+  ~/claude/projects/topoassist/Sidebar-css.html | head -10
+```
+
+✗ FAIL if a select/dropdown is changed and re-rendered but no `.changed` CSS rule gives it a visual cue.
+
+### 30d — `.modified-highlight` CSS class exists for textareas
+
+```bash
+grep -n "modified-highlight" ~/claude/projects/topoassist/Sidebar-css.html
+```
+
+✗ FAIL if `.modified-highlight` rule is missing (amber underline + tint).
+✗ FAIL if a textarea in a manager panel has no `modified-highlight` applied when its value changes.
+
+### 30e — New editable fields in any manager panel
+
+When reviewing code added this session: identify every new `<input>`, `<select>`, or `<textarea>`
+inside a manager panel. For each one:
+- Is there a change indicator wired up?
+- Is the original value stored at load time?
+- Is the was-span or `.changed` class applied both at render time AND in the update handler?
+
+✗ FAIL if a new editable field in a manager panel has no change indicator.
+
+---
+
 ## Output Format
 
 ```
