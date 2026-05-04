@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.28 | 2026-05-04 17:23:50 -->
+<!-- TopoAssist v260504.29 | 2026-05-04 17:25:36 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.28";  // keep in sync with Code.gs
+const APP_VERSION = "260504.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16155,13 +16155,51 @@ function _populateGenAllDeviceList() {
   if (!devices.length) {
     container.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted);font-style:italic;">No EOS devices.</span>';
     _updateGenAllSelCount();
+    _buildRoleFilters();
     return;
   }
   container.innerHTML = devices.map(name => {
     const safeName = escapeHtml(_fmtDev(name));
     const safeAttr = escapeHtml(name);
-    return `<button class="genall-dev-pill selected" data-dev="${safeAttr}" onclick="_toggleGenAllPill(this)">${safeName}</button>`;
+    const role = escapeHtml((allDevicesData[name] && allDevicesData[name].role) || '');
+    return `<button class="genall-dev-pill selected" data-dev="${safeAttr}" data-role="${role}" onclick="_toggleGenAllPill(this)">${safeName}</button>`;
   }).join('');
+  _updateGenAllSelCount();
+  _buildRoleFilters();
+}
+
+function _buildRoleFilters() {
+  const rf = document.getElementById('genAllRoleFilters');
+  if (!rf) return;
+  const container = document.getElementById('genAllDeviceList');
+  const roles = new Set();
+  if (container) {
+    container.querySelectorAll('.genall-dev-pill[data-role]').forEach(pill => {
+      const r = pill.dataset.role;
+      if (r) roles.add(r.toUpperCase());
+    });
+  }
+  if (roles.size === 0) { rf.style.display = 'none'; return; }
+  rf.style.display = 'flex';
+  rf.innerHTML = Array.from(roles).sort().map(role => {
+    const safeRole = escapeHtml(role);
+    return `<button class="genall-role-chip" data-role="${safeRole}" onclick="_selectByRole('${safeRole}',event.shiftKey)" title="Click: select only ${safeRole} · Shift+click: toggle ${safeRole}">${safeRole}</button>`;
+  }).join('');
+}
+
+function _selectByRole(role, shiftKey) {
+  const container = document.getElementById('genAllDeviceList');
+  if (!container) return;
+  const pills = container.querySelectorAll('.genall-dev-pill');
+  if (shiftKey) {
+    // Toggle: if ALL matching are selected → deselect them; else → select them
+    const matching = Array.from(pills).filter(p => (p.dataset.role || '').toUpperCase() === role);
+    const allSelected = matching.every(p => p.classList.contains('selected'));
+    matching.forEach(p => p.classList.toggle('selected', !allSelected));
+  } else {
+    // Exclusive select: only devices of this role
+    pills.forEach(p => p.classList.toggle('selected', (p.dataset.role || '').toUpperCase() === role));
+  }
   _updateGenAllSelCount();
 }
 
@@ -16219,7 +16257,7 @@ function openGenerateAllModal(panel) {
   const btn = document.getElementById('btnRunGenerateAll');
   btn.disabled = false;
   btn.innerText = 'Generate Configs';
-  _switchCfgPanel(panel || 'generate');
+  _switchCfgPanel(panel || 'push');
   document.getElementById('generateAllModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
   _loadGlobalCfgTemplate();
