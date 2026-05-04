@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.15 | 2026-05-04 12:42:04 -->
+<!-- TopoAssist v260504.16 | 2026-05-04 12:48:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -1901,6 +1901,23 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
           if (!target) return;
           var det = target.closest('details');
           if (det) det.open = true;
+        });
+      });
+
+      // Print: open all sections before print, restore after.
+      // CSS `details { display: block }` alone doesn't reach content in
+      // modern browsers — they hide closed <details> via content-visibility,
+      // not display. JS beforeprint/afterprint is reliable across all engines.
+      window.addEventListener('beforeprint', function() {
+        document.querySelectorAll('.container details').forEach(function(d) {
+          d.dataset.printWasClosed = d.open ? '' : '1';
+          d.open = true;
+        });
+      });
+      window.addEventListener('afterprint', function() {
+        document.querySelectorAll('.container details').forEach(function(d) {
+          if (d.dataset.printWasClosed === '1') d.open = false;
+          delete d.dataset.printWasClosed;
         });
       });
     });
