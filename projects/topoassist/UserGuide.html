@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.17 | 2026-05-04 12:52:52 -->
+<!-- TopoAssist v260504.18 | 2026-05-04 14:14:56 -->
 <!DOCTYPE html>
 <html>
 
@@ -638,7 +638,7 @@ clasp login --no-localhost</pre>
 
     <div class="step-box">
       <span class="step-num">Step 1 — Add Devices</span>
-      <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Device Manager</span>
+      <span class="menu-path">TopoAssist &gt; Device Manager</span>
       <p>Add device names (<code>Leaf1</code>) or ranges (<code>Leaf[1-4]</code>). Set role (SPINE / LEAF / DUT…), model, rack, and mark MLAG pairs if applicable. Toggle visibility to hide devices from the canvas without deleting data. See <a href="#device-manager">Device Manager</a> for full details.</p>
     </div>
 
@@ -692,7 +692,7 @@ clasp login --no-localhost</pre>
 
     <!-- ================================================================ -->
     <h2 id="device-manager">🖥️ Device Manager</h2>
-    <span class="menu-path">TopoAssist &gt; Topology Manager &gt; Device Manager</span>
+    <span class="menu-path">TopoAssist &gt; Device Manager</span>
 
     <p style="font-size:13px;">Device Manager is the master list of every device in the topology. Each row creates a column group in the sheet and a node on the canvas.</p>
 
@@ -1351,8 +1351,8 @@ clasp login --no-localhost</pre>
     </table>
     <p style="font-size:13px;">By sharing the VRF with the first/last snake port, traffic enters the routing chain directly from either endpoint. If either description is missing and snake pairs are present, the config viewer flags it in the <code>080_SNAKE</code> block status.</p>
 
-    <h4 style="font-size:12px; margin:10px 0 4px;">Auto Config — Snake Test Fields</h4>
-    <p style="font-size:13px;">Open <span class="menu-path">Auto Config</span> → <b>Snake Test</b> to configure these fields. The <b>Bridge MAC</b> is required. EP1/EP2 fields are only needed if the traffic generator ports are <em>not</em> directly connected to the switch — i.e., there is a router or another device between the generator and the snake port:</p>
+    <h4 style="font-size:12px; margin:10px 0 4px;">IP Config Modal — Snake Test Fields</h4>
+    <p style="font-size:13px;">Open the <b>IP Config</b> toolbar button → <b>Snake Test</b> tab to configure these fields. The <b>Bridge MAC</b> is required. EP1/EP2 fields are only needed if the traffic generator ports are <em>not</em> directly connected to the switch — i.e., there is a router or another device between the generator and the snake port:</p>
     <table class="legend-table" style="font-size:12px;">
       <tr><th>Field</th><th>Required?</th><th>What it means</th><th>Where used</th></tr>
       <tr><td><b>Bridge MAC</b></td><td>Yes</td><td>System MAC of the switch under test (<code>show version | grep "System MAC"</code> on EOS, or auto-detected by Device Bridge).</td><td>Static ARP entries — <code>arp vrf SNAKE_* {remoteIp} {bridgeMac} arpa</code> on every VRF pair. Without it, the <code>080_SNAKE</code> block is replaced by a warning comment.</td></tr>
@@ -1428,7 +1428,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <h4 style="font-size:12px; margin:10px 0 4px;">Manual Steps Required</h4>
     <ol style="font-size:13px;">
       <li><b>Loopback cables</b> — one patch cable per snake pair (Et2↔Et3, Et4↔Et5, …).</li>
-      <li><b>Bridge MAC</b> — set in <span class="menu-path">Auto Config</span> → Snake Test. Auto-detected if Device Bridge is running; otherwise read from EOS with <code style="font-size:11px;">show version | grep "System MAC"</code>.</li>
+      <li><b>Bridge MAC</b> — set in the <b>IP Config</b> toolbar button → Snake Test tab. Auto-detected if Device Bridge is running; otherwise read from EOS with <code style="font-size:11px;">show version | grep "System MAC"</code>.</li>
       <li><b>EP1/EP2 NH + MAC</b> (if indirect) — if the traffic generator is not directly cabled to the snake port (there is a router in between), set the NH IP and MAC for that endpoint. If directly connected, leave blank — the switch ARPs dynamically.</li>
       <li><b>EP1/EP2 Subnets</b> (optional) — enter one or more comma-separated CIDRs (e.g. <code>10.1.1.0/24, 10.2.2.2/32, 10.3.0.0/16</code>). Legacy 3-octet prefixes (e.g. <code>10.99.99</code>) are also accepted. One <code>ip route</code> is generated per subnet at every VRF hop in the chain. EP2 Subnets drive forward routes (EP1→EP2); EP1 Subnets drive reverse routes (EP2→EP1). Leave blank for no static routes in that direction.</li>
       <li><b>EP1 / EP2 descriptions</b> — set <code>desc_=TRAFFIC_SNAKE_EP1_L3</code> on one generator-connected port row and <code>desc_=TRAFFIC_SNAKE_EP2_L3</code> on the other. The snake VRF chain is built relative to these two anchors.</li>
