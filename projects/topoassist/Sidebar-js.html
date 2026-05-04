@@ -4911,6 +4911,7 @@ function _updateGwExample() {
 
 // --- UPDATED OPEN FUNCTION ---
 function openIpConfigModal(btn) {
+  _autoMinimizeOpenModal();
   showModalLoading("autoConfigModal");
 
   const _guard = setTimeout(() => {
@@ -5541,6 +5542,7 @@ function validateTechSettings() {
 
 /* --- TECHNOLOGY MODAL LOGIC --- */
 function openTechModal() {
+  _autoMinimizeOpenModal();
   showModalLoading("techModal");
 
   // Safety net: if the GAS call hangs (auth expiry, quota, network error at framework level),
@@ -5652,7 +5654,8 @@ function openTechModal() {
       const modal   = document.getElementById('techModal');
       if (overlay) { overlay.style.display = 'block'; overlay.style.zIndex = '29999'; }
       if (modal)   { modal.style.display = 'flex';   modal.style.zIndex = '30000';
-                     modal.style.opacity = '1'; modal.style.visibility = 'visible'; }
+                     modal.style.opacity = '1'; modal.style.visibility = 'visible';
+                     setActiveModalChip('techModal'); }
     })
     .withFailureHandler(err => {
       clearTimeout(_guard);
@@ -5979,7 +5982,14 @@ function hideGlobalLoading() {
 }
 
 let _activeModalChipId = null;
-const _chipNames = { guiEditModal: 'Edit Interface', autoConfigModal: 'Auto Config', deviceBridgeModal: 'Device Bridge' };
+const _chipNames = {
+  guiEditModal: 'Edit Interface', autoConfigModal: 'Auto Config', deviceBridgeModal: 'Device Bridge',
+  techModal: 'Tech Stack', cablingModal: 'Cabling Export', helpModal: 'Shortcuts',
+  auditModal: 'Audit', auditSettingsModal: 'Audit Checks', groupRectModal: 'Group Rect',
+  configModal: 'Config View', generateAllModal: 'Generate All', vlanSummaryModal: 'VLAN Summary',
+  pushConfirmModal: 'Config Push',
+  reorderModal: 'Device Manager'
+};
 
 function setActiveModalChip(modalId) {
   if (!modalId && _activeModalChipId) {
@@ -5991,6 +6001,20 @@ function setActiveModalChip(modalId) {
   _refreshModalChip();
 }
 
+
+function _autoMinimizeOpenModal() {
+  const candidates = ['guiEditModal','autoConfigModal','cablingModal','auditModal',
+    'auditSettingsModal','techModal','configModal','groupRectModal',
+    'generateAllModal','vlanSummaryModal','helpModal','pushConfirmModal','deviceBridgeModal'];
+  for (const id of candidates) {
+    const el = document.getElementById(id);
+    if (el && !el.classList.contains('modal-minimized') &&
+        el.style.display && el.style.display !== 'none') {
+      toggleModalMinimize(id);
+      break;
+    }
+  }
+}
 function _refreshModalChip() {
   const chip = document.getElementById('activeModalChip');
   if (!chip) return;
@@ -6947,6 +6971,7 @@ function buildModalColumn(title, config) {
 }
 
 function openEditModal(domId, portObj) {
+  _autoMinimizeOpenModal();
   isAddMode = false; isConnectMode = false;
   editingPortId = domId;
 
@@ -7024,6 +7049,7 @@ No peer connected.<br>Use 'Connect' to add a link.
 }
 
 function openConnectModal(domId, portObj) {
+  _autoMinimizeOpenModal();
   isAddMode = false; isConnectMode = true;
   editingPortId = domId;
   let parts = domId.split(":");
@@ -7068,11 +7094,13 @@ function openConnectModal(domId, portObj) {
   const _bdu1 = document.getElementById("btnDeleteUnconfigure");
   if (_bdu1) _bdu1.style.display = "none";
 
+  setActiveModalChip('guiEditModal');
   overlay.style.display = "block";
   modal.style.display = "flex";
 }
 
 function openAddLinkModal() {
+  _autoMinimizeOpenModal();
   isAddMode = true; isConnectMode = false;
 
   let modal = document.getElementById("guiEditModal");
@@ -7117,6 +7145,7 @@ function openAddLinkModal() {
   const _bdu2 = document.getElementById("btnDeleteUnconfigure");
   if (_bdu2) _bdu2.style.display = "none";
 
+  setActiveModalChip('guiEditModal');
   overlay.style.display = "block";
   modal.style.display = "flex";
 }
@@ -7453,6 +7482,8 @@ ${debugLogs.map(l => `<div>> ${l}</div>`).join("")}
   }
 
   content.innerHTML = html;
+  _autoMinimizeOpenModal();
+  setActiveModalChip('auditModal');
   overlay.style.display = "block";
   modal.style.display = "flex";
 
@@ -11425,6 +11456,7 @@ if __name__ == "__main__":
 }
 
 function openBridgeModal() {
+  _autoMinimizeOpenModal();
   const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
   setActiveModalChip('deviceBridgeModal');
@@ -11644,6 +11676,8 @@ function _setAuditFlag(name, val) {
 }
 
 function openAuditSettingsModal() {
+  _autoMinimizeOpenModal();
+  setActiveModalChip('auditSettingsModal');
   document.getElementById('auditSettingsModal').style.display = 'flex';
   refreshAuditSettings();
 }
@@ -13440,7 +13474,9 @@ function _makeDraggable(elOrId, opts) {
 
 // Strip minimize state when a modal is closed. Call at the top of every close function.
 function _onModalClose(el) {
-  if (!el || !el.classList.contains('modal-minimized')) return;
+  if (!el) return;
+  if (el.id && el.id === _activeModalChipId) { _activeModalChipId = null; _refreshModalChip(); }
+  if (!el.classList.contains('modal-minimized')) return;
   el.classList.remove('modal-minimized');
   delete el.dataset.preMinDisplay;
   delete el.dataset.hadOverlay;
@@ -14270,11 +14306,13 @@ function _onAddDiscoveredDone(btn, added, errors) {
 
 // --- CABLING MODAL ---
 function openCablingModal() {
+  _autoMinimizeOpenModal();
   const modal = document.getElementById('cablingModal');
   const overlay = document.getElementById('editOverlay');
 
   if (modal && overlay) {
     modal.style.display = 'block';
+    setActiveModalChip('cablingModal');
     overlay.style.display = 'block';
     loadNotebookLMQuestions();
     // Lazily load device metadata if not already populated (Device Manager may not have been opened)
@@ -14289,6 +14327,7 @@ function openCablingModal() {
 }
 
 function openHelpModal() {
+  _autoMinimizeOpenModal();
   const modal = document.getElementById('helpModal');
   const overlay = document.getElementById('editOverlay');
 
@@ -14299,6 +14338,7 @@ function openHelpModal() {
   }
 
   modal.style.display = 'block';
+  setActiveModalChip('helpModal');
   overlay.style.display = 'block';
 }
 /**
@@ -15276,6 +15316,8 @@ function showConfigModal(deviceName, configText) {
   body.innerHTML = _renderWithLineNums(configText.split('\n').map((text, i) => ({text, lineNum: i + 1})));
 
   // Display Modal
+  _autoMinimizeOpenModal();
+  setActiveModalChip('configModal');
   overlay.style.display = "block";
   modal.style.display = "flex";
   searchInput.focus();
@@ -16280,6 +16322,7 @@ function _switchGenTab(tab) {
 }
 
 function openGenerateAllModal(panel) {
+  _autoMinimizeOpenModal();
   const left = document.getElementById('generateAllLeft');
   if (left && !left.dataset.generated) {
     left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
@@ -16292,6 +16335,7 @@ function openGenerateAllModal(panel) {
   btn.innerText = 'Generate Configs';
   _switchCfgPanel(panel || 'push');
   document.getElementById('generateAllModal').style.display = 'flex';
+  setActiveModalChip('generateAllModal');
   document.getElementById('editOverlay').style.display = 'block';
   _loadGlobalCfgTemplate();
 }
@@ -16532,12 +16576,14 @@ function _applyVlanFilterSort(sorted, vlanMap, q) {
 }
 
 function openVlanSummaryModal() {
+  _autoMinimizeOpenModal();
   document.getElementById('vlanSummaryFilter').value = '';
   _vlanSortKey       = 'id';
   _vlanConflictsOnly = false;
   buildVlanSummary();
   _updateVlanSortBtns();
   document.getElementById('vlanSummaryModal').style.display = 'flex';
+  setActiveModalChip('vlanSummaryModal');
   document.getElementById('editOverlay').style.display = 'block';
 }
 
@@ -17024,6 +17070,7 @@ function refreshGroupRects() {
 
 // --- MODAL ---
 function openGroupRectModal() {
+  _autoMinimizeOpenModal();
   const modal = document.getElementById("groupRectModal");
   const overlay = document.getElementById("editOverlay");
   if (!modal || !overlay) return;
@@ -17090,6 +17137,7 @@ function openGroupRectModal() {
     }
   }
 
+  setActiveModalChip('groupRectModal');
   modal.style.display = "flex";
   overlay.style.display = "block";
   setTimeout(() => document.getElementById("groupRectLabelInp").focus(), 50);

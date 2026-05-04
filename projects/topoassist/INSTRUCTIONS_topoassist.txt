@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-04 (Targets strip hint text updated: "Blue = Selected | Shift+Role = Select Multiple Roles". FILES: Sidebar.html)
+  Last updated: 2026-05-04 (Auto-minimize + universal chip: _autoMinimizeOpenModal() minimizes any open modal when a new one opens. _chipNames expanded to all modals incl. reorderModal→'Device Manager'. _onModalClose() now also clears chip for the closing modal. setActiveModalChip(id) added to all open paths. FILES: Sidebar-js.html)
+  Previous: 2026-05-04 (Targets strip hint text updated: "Blue = Selected | Shift+Role = Select Multiple Roles". FILES: Sidebar.html)
   Previous: 2026-05-04 (Global minimize rule enforced on all modals: _onModalClose(el) helper strips modal-minimized class + datasets + calls _updateModalDock(); added to all 10 non-tracked close functions and closeAllModals. CLAUDE.md Rule 24 updated with full minimize/close contract. FILES: Sidebar-js.html, CLAUDE.md)
   Previous: 2026-05-04 (Config Center targets strip: role chips moved inline to first row (same line as All/None). genAllRoleFilters is now a flex div inside the header row, hidden until roles load. Hint updated to "Shift+role = toggle · blue = included". FILES: Sidebar.html)
   Previous: 2026-05-04 (Config Center nav reorder + Deploy rename + role filter chips. Nav order: Cleanup → Deploy → Generate → Template. Push renamed to "Deploy" (sub: "Cleanup + push to devices"). Default panel changed from 'generate' to 'push'. Role filter pills (.genall-role-chip, amber) added below device chips: _buildRoleFilters() reads unique roles from data-role attrs; _selectByRole(role, shiftKey): click=exclusive select that role, Shift+click=toggle. genAllRoleFilters div added to Sidebar.html targets strip. FILES: Sidebar.html, Sidebar-css.html, Sidebar-js.html)
