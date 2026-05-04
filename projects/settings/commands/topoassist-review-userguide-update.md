@@ -187,6 +187,28 @@ For every enumeration found, check:
 
 ✗ FAIL if any enumeration table or list names values without explaining which are user-entered vs. auto-generated vs. out of scope.
 
+### 2h — Contextual Completeness
+
+Every instruction, step, or reference in the guide must be self-contained — a user must not need to already know the answer to follow the step.
+
+For every column name, button, field, or value mentioned:
+- [ ] Is it clear WHERE to find it? (which modal, which row of the sheet, which toolbar section)
+- [ ] Is it clear WHAT to put in it? (format, example value, valid range)
+- [ ] Is it clear WHAT HAPPENS as a result? (auto-generated output, downstream effect)
+- [ ] Is it clear what NOT to do? (common mistakes — e.g. "do not put Lo in int_")
+
+**The canonical failure pattern**: mentioning a column name (`int_`, `sp_mode_`, `vlan_`) without saying what format it accepts, what values are valid, or what the column controls. A user seeing `vlan_` for the first time should not have to guess.
+
+Check every `<code>` tag that names a column or field:
+```bash
+grep -o '<code>[a-z_]*_</code>' ~/claude/projects/topoassist/UserGuide.html | sort -u
+```
+
+For each column code tag found, verify the surrounding paragraph or a linked section answers: where, what format, what effect, and what to avoid.
+
+✗ FAIL if a column/field is referenced without enough context for a first-time user to fill it correctly.
+⚠ WARN if context exists but is in a different section with no cross-reference or link.
+
 ---
 
 ## Step 3 — Menu Path Accuracy
@@ -225,7 +247,44 @@ For each changed file, identify whether any user-facing feature was added, remov
 
 ---
 
-## Step 5 — Report
+## Step 5 — Readability & First-User Quality
+
+Read UserGuide.html from the perspective of a new user opening it for the first time — someone who knows EOS but has never used TopoAssist before.
+
+### 5a — Navigation and flow
+- [ ] Is there a clear "start here" entry point? (Installation → Typical Workflow should be obvious)
+- [ ] Does the Typical Workflow give a complete end-to-end path without assuming prior knowledge?
+- [ ] Are sections in the order a user naturally encounters them? (e.g. Device Manager before Config Generation)
+- [ ] Does the table of contents (quick-nav or section order) match the actual section sequence?
+
+### 5b — Terminology consistency
+- [ ] Is every term used consistently throughout? (e.g. always "Device Manager", never "device manager" or "DM")
+- [ ] Are abbreviations expanded on first use? (DID, ASN, VTEP, MLAG, VNI, SVI — are these explained?)
+- [ ] Are column names always shown in `<code>` tags? (never bare `int_` without code formatting)
+
+### 5c — Example coverage
+- [ ] Does every complex field or column have at least one example value? (e.g. `Et5/1`, `l2-et-trunk`, `10,20,nv100`)
+- [ ] Do workflow steps show what the user should see/click, not just what they should do?
+- [ ] Are error cases and common mistakes called out? (what happens if you put Lo in int_, what if MLAG + L3, etc.)
+
+### 5d — Completeness of warnings and constraints
+- [ ] Is every known constraint mentioned at the point of use, not just buried in Tips?
+  - MLAG + L3 is invalid → mentioned in Config Generation section?
+  - Only Et and Vx1 go in `int_` → mentioned in Sheet Filling section?
+  - Audit errors for wrong interface types → mentioned alongside the interface table?
+- [ ] Are audit error conditions explained so the user knows how to fix them, not just that they exist?
+
+### 5e — Readability
+- [ ] No paragraph longer than ~5 lines without a break, list, or header
+- [ ] No step that requires reading a different section to complete it (or has a visible cross-reference)
+- [ ] No jargon used before it is defined in the same section
+
+⚠ WARN for each quality issue found — these are not correctness failures but make the guide harder to use.
+✗ FAIL only if a critical path (Installation, Typical Workflow, Sheet Filling) is missing steps or uses undefined terms that would block a new user from completing the task.
+
+---
+
+## Step 6 — Report
 
 ```
 USERGUIDE AUDIT
@@ -237,24 +296,33 @@ Step 1 — Toolbar
   Icon SVG accuracy: ✓ / ✗ [list mismatches]
 
 Step 2 — Section Content
-  Device Manager : ✓ / ✗ [missing items]
-  Config Generation: ✓ / ✗
-  Device Bridge : ✓ / ✗
-  Audit Engine : ✓ / ✗
-  Sheet & Schema : ✓ / ✗
-  Group Rects : ✓ / ✗
+  2a Device Manager       : ✓ / ✗ [missing items]
+  2b Config Generation    : ✓ / ✗
+  2c Device Bridge        : ✓ / ✗
+  2d Audit Engine         : ✓ / ✗
+  2e Sheet & Schema       : ✓ / ✗
+  2f Group Rects          : ✓ / ✗
+  2g Enumeration complete : ✓ / ✗ [which enumerations are incomplete]
+  2h Contextual complete  : ✓ / ✗ [which columns/fields lack context]
 
-Step 3 — Menu Paths: ✓ / ✗ [mismatches]
-Step 4 — Session Changes: ✓ none / ✗ [gaps]
+Step 3 — Menu Paths       : ✓ / ✗ [mismatches]
+Step 4 — Session Changes  : ✓ none / ✗ [gaps]
+
+Step 5 — Readability
+  5a Navigation/flow      : ✓ / ⚠ [issues]
+  5b Terminology          : ✓ / ⚠ [inconsistencies]
+  5c Examples             : ✓ / ⚠ [missing examples]
+  5d Warnings/constraints : ✓ / ⚠ / ✗ [critical path failures]
+  5e Readability          : ✓ / ⚠
 
 ──────────────────────────────────────────
-Status: CLEAN — UserGuide matches code.
-        (or: GAPS FOUND — N issues fixed.)
+Status: CLEAN — UserGuide matches code and is user-navigable.
+        (or: GAPS FOUND — N correctness failures, M quality warnings fixed/flagged.)
 ```
 
 ---
 
-## Step 6 — Apply Fixes + Update INSTRUCTIONS + Commit
+## Step 7 — Apply Fixes + Update INSTRUCTIONS + Commit
 
 After all fixes are applied:
 
