@@ -858,6 +858,7 @@ TOPOASSIST CODE REVIEW
 27 — Non-EOS strip EOS guard   ✓ / ✗ / ⚠
 28 — configCache sole store    ✓ / ✗ / ⚠
 29 — Naming & documentation    ✓ / ✗ / ⚠
+30 — Change indicators         ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
