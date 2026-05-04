@@ -4983,6 +4983,7 @@ function openIpConfigModal(btn) {
     checkSnakeTrafficWarning();
     _updateGwExample();
 
+    setActiveModalChip('Auto Config');
     document.getElementById("editOverlay").style.display = "block";
     document.getElementById("autoConfigModal").style.display = "flex";
 
@@ -5973,6 +5974,13 @@ function hideGlobalLoading() {
     overlay.style.display = 'none';
     overlay.classList.add('hidden');
   }
+}
+
+function setActiveModalChip(name) {
+  const chip = document.getElementById('activeModalChip');
+  if (!chip) return;
+  if (name) { chip.textContent = name; chip.style.display = 'inline-flex'; }
+  else { chip.textContent = ''; chip.style.display = 'none'; }
 }
 
 /**
@@ -6989,6 +6997,7 @@ No peer connected.<br>Use 'Connect' to add a link.
     if (btnDelUnconf) btnDelUnconf.style.display = "none";
   }
 
+  setActiveModalChip('Edit Interface');
   overlay.style.display = "block";
   modal.style.display = "flex";
 }
@@ -7098,6 +7107,7 @@ function openAddModal(deviceId) {
 }
 
 function closeEditModal() {
+  setActiveModalChip(null);
   document.getElementById("editOverlay").style.display = "none";
   document.getElementById("guiEditModal").style.display = "none";
   editingPortId = null; isAddMode = false; isConnectMode = false;
@@ -11396,6 +11406,7 @@ if __name__ == "__main__":
 function openBridgeModal() {
   const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
+  setActiveModalChip('Device Bridge');
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
   // Preserve results from a previous run — only hide if no results exist yet
@@ -11729,6 +11740,7 @@ function _checkBridgeHealth() {
 }
 
 function closeBridgeModal() {
+  setActiveModalChip(null);
   document.getElementById('deviceBridgeModal').style.display = 'none';
   // No editOverlay to hide — floating modal
 }
@@ -16057,6 +16069,7 @@ function closeCablingModal() {
 }
 
 function closeIpModal() {
+  setActiveModalChip(null);
   document.getElementById('autoConfigModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
