@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.19 | 2026-05-04 14:15:11 -->
+<!-- TopoAssist v260504.20 | 2026-05-04 16:58:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.19";  // keep in sync with Code.gs
+const APP_VERSION = "260504.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5670,6 +5670,15 @@ function closeTechModal() {
 // ─── GLOBAL CONFIG MODAL ────────────────────────────────────────────────────
 
 function openGlobalCfgModal() {
+  // Config Template panel lives inside Config Center — open the modal and load content
+  openGenerateAllModal();
+}
+
+function closeGlobalCfgModal() {
+  closeGenerateAllModal();
+}
+
+function _loadGlobalCfgTemplate() {
   const textarea = document.getElementById('globalCfgTextarea');
   const status   = document.getElementById('globalCfgStatus');
   const btn      = document.getElementById('btnSaveGlobalCfg');
@@ -5679,22 +5688,17 @@ function openGlobalCfgModal() {
   btn.disabled = true;
   btn.textContent = btn.dataset.cleanLabel;
   status.textContent = '';
-  // Reset find bar
   var srch = document.getElementById('globalCfgSearch');
   if (srch) srch.value = '';
   var srchCnt = document.getElementById('globalCfgSearchCount');
   if (srchCnt) srchCnt.textContent = '';
   _gcfgMatches = [];
   _gcfgMatchIdx = 0;
-  document.getElementById('globalCfgModal').style.display = 'flex';
-  document.getElementById('editOverlay').style.display = 'block';
-
   google.script.run
     .withSuccessHandler(function(text) {
       textarea.value = text || '';
       textarea.disabled = false;
       btn.disabled = false;
-      textarea.focus();
     })
     .withFailureHandler(function(err) {
       textarea.value = '';
@@ -5704,11 +5708,6 @@ function openGlobalCfgModal() {
       status.textContent = 'Load failed: ' + err.message;
     })
     .getGlobalConfig();
-}
-
-function closeGlobalCfgModal() {
-  document.getElementById('globalCfgModal').style.display = 'none';
-  document.getElementById('editOverlay').style.display = 'none';
 }
 
 // ── Global Config find-in-textarea ───────────────────────────────────────────
@@ -6021,31 +6020,31 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "globalCfgModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "editModal", "ipConfigModal", "bridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
       if (el && getComputedStyle(el).display !== "none" && !el.classList.contains('modal-minimized')) {
 
-        // 🛑 FIX: If Config Modal is open & Search has text -> Clear text first!
+        // If Config Modal is open & search has text → clear first, don't close
         if (id === "configModal") {
           const cfgSearch = document.getElementById("configSearch");
           if (cfgSearch && cfgSearch.value.trim() !== "") {
             cfgSearch.value = "";
-            cfgSearch.dispatchEvent(new Event('input')); // Update the list
-            cfgSearch.focus(); // Keep focus
-            return; // Stop here, do NOT close the modal
+            cfgSearch.dispatchEvent(new Event('input'));
+            cfgSearch.focus();
+            return;
           }
         }
 
-        // 🛑 FIX: If Global Config Modal is open & Find bar has text -> Clear first!
-        if (id === "globalCfgModal") {
+        // If Config Center is open & find bar has text → clear first, don't close
+        if (id === "generateAllModal") {
           const gcfgSearch = document.getElementById("globalCfgSearch");
           if (gcfgSearch && gcfgSearch.value.trim() !== "") {
             gcfgSearch.value = "";
             gcfgSearch.dispatchEvent(new Event('input'));
             gcfgSearch.focus();
-            return; // Stop here, do NOT close the modal
+            return;
           }
         }
 
@@ -6053,7 +6052,6 @@ window.topologyKeyHandler = function (event) {
         const closeFuncs = {
           "helpModal": closeHelpModal, "reorderModal": DeviceManagerCloseButton,
           "editModal": closeEditModal, "ipConfigModal": closeIpModal,
-          "globalCfgModal": closeGlobalCfgModal,
           "pushConfirmModal": cancelPushConfig,
           "bridgeModal": closeBridgeModal,
           "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
@@ -15972,7 +15970,7 @@ function _isOperationActive() {
 
 function closeAllModals() {
   if (_isOperationActive()) return; // never dismiss during an active push/generate/cleanup
-  const modals = ['editModal', 'ipConfigModal', 'globalCfgModal', 'bridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
+  const modals = ['editModal', 'ipConfigModal', 'bridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.classList.contains('modal-minimized')) el.style.display = 'none';
@@ -16109,19 +16107,14 @@ function _genAllSelectAll(state) {
 }
 
 function _switchGenTab(tab) {
-  const panels = { generate: 'generateAllLeft', push: 'generateAllRight', cleanup: 'reconResultsBody' };
-  ['generate', 'push', 'cleanup'].forEach(t => {
-    const tabBtn = document.getElementById('genTab-' + t);
-    if (tabBtn) tabBtn.classList.toggle('active', t === tab);
-    const panel = document.getElementById(panels[t]);
-    if (panel) panel.style.display = (t === tab) ? '' : 'none';
-  });
+  // All panels are permanently visible in the 2×2 Config Center layout — no-op
 }
 
 function openGenerateAllModal() {
-  document.getElementById('generateAllLeft').innerHTML =
-    '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">No configs generated yet.</div>';
-  _switchGenTab('generate');
+  const left = document.getElementById('generateAllLeft');
+  if (left && !left.dataset.generated) {
+    left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
+  }
   _populateGenAllDeviceList();
   _resetStopGenerateBtn();
   _resetStopPushBtn();
@@ -16130,6 +16123,7 @@ function openGenerateAllModal() {
   btn.innerText = 'Generate Configs';
   document.getElementById('generateAllModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
+  _loadGlobalCfgTemplate();
 }
 
 function closeGenerateAllModal() {
