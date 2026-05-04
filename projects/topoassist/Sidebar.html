@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.29 | 2026-05-04 17:25:22 -->
+<!-- TopoAssist v260504.31 | 2026-05-04 17:29:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -1313,15 +1313,15 @@
     </div>
     <!-- Targets strip (always visible; blue chip = device included in operation) -->
     <div id="genallDeviceFilter" style="padding:7px 16px 8px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;user-select:none;-webkit-user-select:none;">Targets</span>
         <button class="genall-sel-chip" onclick="_genAllSelectAll(true)">All</button>
         <button class="genall-sel-chip" onclick="_genAllSelectAll(false)">None</button>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);font-style:italic;user-select:none;-webkit-user-select:none;">Click to toggle · blue = included</span>
+        <div id="genAllRoleFilters" style="display:none;align-items:center;gap:4px;"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);font-style:italic;user-select:none;-webkit-user-select:none;">Shift+role = toggle · blue = included</span>
         <span id="genAllSelCount" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;user-select:none;-webkit-user-select:none;"></span>
       </div>
       <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 6px;max-height:60px;overflow-y:auto;"></div>
-      <div id="genAllRoleFilters" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;min-height:0;"></div>
     </div>
     <!-- Left nav + full-width content panels -->
     <div class="cfg-center-layout">
