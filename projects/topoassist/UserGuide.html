@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.16 | 2026-05-04 12:48:16 -->
+<!-- TopoAssist v260504.17 | 2026-05-04 12:52:52 -->
 <!DOCTYPE html>
 <html>
 
@@ -1131,11 +1131,49 @@ clasp login --no-localhost</pre>
     <h2 id="config-generation">⚙️ Configuration Generation</h2>
 
     <h3>1. Interface Naming</h3>
-    <p>The system validates and normalises Arista EOS interface names:</p>
-    <ul>
-      <li><code>Et</code> — Ethernet &nbsp;|&nbsp; <code>Po</code> — Port-Channel &nbsp;|&nbsp; <code>Vl</code> — Vlan SVI</li>
-      <li><code>Lo</code> — Loopback &nbsp;|&nbsp; <code>Ma</code> — Management &nbsp;|&nbsp; <code>Vx</code> — VXLAN (VTEP)</li>
-    </ul>
+    <p>The system validates and normalises Arista EOS interface names. Not all interface types are entered in the sheet — the table below shows where each is configured:</p>
+    <table style="width:100%; border-collapse:collapse; font-size:12px; margin:10px 0;">
+      <thead>
+        <tr style="background:#f1f5f9; text-align:left;">
+          <th style="padding:6px 10px; border:1px solid #e2e8f0; font-weight:600;">Abbrev</th>
+          <th style="padding:6px 10px; border:1px solid #e2e8f0; font-weight:600;">Type</th>
+          <th style="padding:6px 10px; border:1px solid #e2e8f0; font-weight:600;">How it is configured</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Et</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Ethernet</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Enter in the <code>int_</code> column (e.g. <code>Et1</code>, <code>Et5/1</code>)</td>
+        </tr>
+        <tr style="background:#f8fafc;">
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Vx</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">VXLAN (VTEP)</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Enter <code>Vx1</code> in <code>int_</code> — the VTEP row; VXLAN block is auto-generated from VLAN/VNI settings</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Po</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Port-Channel</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Po number goes in the <code>po_</code> column (not <code>int_</code>); member ports are listed in <code>int_</code></td>
+        </tr>
+        <tr style="background:#f8fafc;">
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Lo</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Loopback</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><b>Auto-generated</b> — derived from <b>IP Config</b> settings (loopback base + device DID formula); not entered in <code>int_</code></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Vl</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">VLAN SVI</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><b>Auto-generated</b> — built from the <code>vlan_</code>, <code>svi_vlan_</code>, and <code>ip_type_</code> columns; not entered in <code>int_</code></td>
+        </tr>
+        <tr style="background:#f8fafc;">
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><code>Ma</code></td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;">Management</td>
+          <td style="padding:6px 10px; border:1px solid #e2e8f0;"><b>Not configured by TopoAssist</b> — management addressing is outside the lab topology scope</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box info-box--dim" style="font-size:12px; margin-top:8px;">Only <code>Et</code> and <code>Vx1</code> are entered in the <code>int_</code> column. Putting <code>Lo</code>, <code>Vl</code>, <code>Ma</code>, or <code>Po</code> in <code>int_</code> will trigger an audit error.</div>
 
     <h3>2. Device Model &amp; Rack</h3>
     <p>Each device in <b>Device Manager</b> has optional <b>Model</b> and <b>Rack</b> fields (shown as a compact sub-row below the device name).</p>
