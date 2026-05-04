@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.11 | 2026-05-04 12:30:24 -->
+<!-- TopoAssist v260504.13 | 2026-05-04 12:35:27 -->
 <!DOCTYPE html>
 <html>
 
@@ -228,31 +228,66 @@
     /* ── Top control bar — sticky, always visible ────────────────────────── */
     .doc-actions {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      gap: 14px;
       position: sticky;
       top: 0;
       z-index: 10;
       background: #fff;
       margin: -40px -40px 28px -40px;
-      padding: 10px 40px;
+      padding: 9px 40px;
       border-bottom: 1px solid #e2e8f0;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       user-select: none;
       -webkit-user-select: none;
     }
-    .doc-actions-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .doc-actions-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
+    /* Segmented pill — Top | Expand All | Collapse All */
+    .seg-group {
+      display: flex;
+      flex-shrink: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .seg-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: #475569;
+      background: #f8fafc;
+      border: none;
+      border-right: 1px solid #cbd5e1;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+      white-space: nowrap;
+    }
+    .seg-btn:last-child { border-right: none; }
+    .seg-btn:hover { background: #eff6ff; color: #1e40af; }
+
+    /* Search — takes all remaining centre space */
+    .ug-search-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
     .ug-search-wrap {
       position: relative;
       display: flex;
       align-items: center;
+      flex: 1;
+      min-width: 0;
     }
     .ug-search-input {
-      height: 30px;
-      padding: 0 28px 0 10px;
+      width: 100%;
+      height: 28px;
+      padding: 0 26px 0 10px;
       border: 1px solid #cbd5e1;
       border-radius: 6px;
       font-family: 'JetBrains Mono', monospace;
@@ -260,15 +295,14 @@
       color: #334155;
       background: #fff;
       outline: none;
-      width: 200px;
       box-sizing: border-box;
-      line-height: 30px;
+      line-height: 28px;
     }
     .ug-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
     .ug-search-input::placeholder { color: #94a3b8; font-style: italic; }
     .ug-search-clear {
       position: absolute;
-      right: 6px;
+      right: 5px;
       top: 50%;
       transform: translateY(-50%);
       width: 18px;
@@ -288,7 +322,9 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       color: #94a3b8;
-      min-width: 64px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 70px;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -301,42 +337,34 @@
       font-style: inherit;
     }
 
+    /* Print / Download — right side */
+    .doc-actions-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .doc-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 14px;
+      padding: 5px 13px;
       border-radius: 6px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       border: 1px solid;
       transition: background 0.15s;
+      white-space: nowrap;
     }
-
     .doc-btn-print {
       color: #1e40af;
       border-color: #93c5fd;
       background: #eff6ff;
     }
     .doc-btn-print:hover { background: #dbeafe; }
-
     .doc-btn-download {
       color: #166534;
       border-color: #86efac;
       background: #f0fdf4;
     }
     .doc-btn-download:hover { background: #dcfce7; }
-
-    .doc-btn-toggle {
-      color: #475569;
-      border-color: #cbd5e1;
-      background: #f8fafc;
-      font-weight: 500;
-      padding: 5px 10px;
-    }
-    .doc-btn-toggle:hover { background: #f1f5f9; }
 
     /* ── Collapsible sections ─────────────────────────────────────────────── */
     details { margin-bottom: 0; }
