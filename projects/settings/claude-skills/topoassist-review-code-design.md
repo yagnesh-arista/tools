@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-03 (Check 29 added: Function naming & documentation — vague names, single-letter params, WHY comments, stale rename detection) -->
+<!-- rules-synced: 2026-05-04 (Check 30 added: Change indicators — was-spans, .changed selects, .modified-highlight textareas for all manager panel editable fields) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
