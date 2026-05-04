@@ -1,75 +1,275 @@
-Review changes made in this session and update UserGuide.html so it always reflects the current design — adding new content, removing stale content, and keeping icon references accurate.
+Review UserGuide.html against the current code and design — full structural audit, not just session changes.
+Fix every gap found. Do not skip any step.
 
 ## Version format
-APP_VERSION is now `YYMMDD.N` (e.g. `260420.73`) — not the old `v4.5` style.
-The h1 in UserGuide.html uses `<?= APP_VERSION ?>` (GAS template tag, injected at runtime via
-`createTemplateFromFile().evaluate()`). Do NOT flag this tag as a missing or wrong version.
+APP_VERSION is `YYMMDD.N` (e.g. `260504.15`). The `<h1>` in UserGuide.html uses `<?= APP_VERSION ?>` (GAS template tag). Do NOT flag this as wrong.
 
 ---
 
-## Step 1 — What changed this session?
+## UserGuide structure (as of 2026-05-04)
 
-Summarize every file edited this session and what changed. Focus on anything user-facing:
-- New UI elements, buttons, panels, or modals
-- Changed button names, labels, or workflows
-- New features or removed features
-- Changed behavior of existing features (push flow, LLDP check, config generation, etc.)
-- New or removed Device Manager fields (roles, MLAG peer, tags, etc.)
-- Renamed config blocks or sections
+All `<h2>` sections are auto-wrapped in `<details>/<summary>` by JS. Two sections open by default: **Installation** and **Typical Workflow**.
 
----
-
-## Step 2 — Add missing content
-
-For each user-facing change: does UserGuide.html have a section covering it?
-- If no section exists — add one now in the appropriate place.
-- If a section exists but is incomplete or wrong — update it.
-
----
-
-## Step 3 — Remove stale content (mandatory)
-
-Read UserGuide.html and check every section against the current code. Flag and remove:
-- References to features, buttons, fields, or workflows that no longer exist
-- Old config block names that were renamed (e.g. if `080_SNAKE` was split, update references)
-- Descriptions of behavior that the code no longer does
-- Field names, menu paths, or UI labels that have changed
-
-✗ FAIL if stale content is found and not removed — do not leave outdated docs in place.
-
-Cross-check against Code.gs and Sidebar-js.html to verify:
-- Every menu path mentioned in UserGuide.html still exists in the code
-- Every config block name (e.g. `080_SNAKE`, `081_SNAKE_PBR`) mentioned is still generated
-- Every field name in tables matches the current sheet schema or UI field names
+### Section order and IDs
+| ID | Section |
+|---|---|
+| `#installation` | 📦 Installation |
+| `#typical-workflow` | 🗺️ Typical Workflow (10-step user journey) |
+| `#device-manager` | 🖥️ Device Manager |
+| `#sheet-filling` | 📋 Sheet Filling |
+| `#topology-toolbar` | 🔲 Topology Toolbar |
+| `#keyboard-shortcuts` | ⌨️ Keyboard Shortcuts |
+| `#visual-color-coding` | 🎨 Visual Color Coding |
+| `#group-rects` | ⬛ Group Rects |
+| `#sheet-schema` | 🔧 Sheet & Schema Management |
+| `#config-generation` | ⚙️ Configuration Generation |
+| `#audit-engine` | 🛡️ Audit Engine |
+| `#device-bridge` | 🔌 Device Bridge |
+| `#tips` | 💡 Tips & Notes |
+| `#appendix` | 📎 Appendix |
 
 ---
 
-## Step 4 — Icon accuracy check (mandatory)
+## Step 1 — Toolbar Structural Audit (highest drift risk)
 
-UserGuide.html references toolbar icons and action buttons using inline SVG. These must always
-match what is actually rendered in the sidebar.
+The toolbar evolves frequently. Always verify the UserGuide tables against the actual HTML.
 
-For every icon referenced in UserGuide.html (e.g. inside `.inline-icon` spans or described in
-text as "the X button"):
-1. Find the matching button or icon in Sidebar.html or Sidebar-js.html.
-2. Compare the SVG path data — do they match?
-3. If the icon in the sidebar changed (new SVG path, replaced with a different icon symbol),
-   update the inline SVG in UserGuide.html to match.
-4. If UserGuide.html describes an icon by shape or name (e.g. "the globe icon", "the shield icon"),
-   verify the sidebar still uses that icon for that function.
+### 1a — Read the actual toolbar
 
-✗ FAIL if any icon in UserGuide.html does not match what the sidebar actually shows — update it.
-✗ FAIL if a button referenced in UserGuide.html no longer has an icon (or vice versa).
+```bash
+# Primary row sections (toolbar-row primary-row)
+grep -n "tb-section\|tb-label\|icon-btn\|segmented-group\|mono-btn\|mono-input\|onclick" \
+  ~/claude/projects/topoassist/Sidebar.html | head -80
+
+# Secondary row (toolbar-row secondary-row)
+# Holistic floating controls (holistic-controls)
+grep -n "holistic-controls\|secondary-row\|toolbar-row" \
+  ~/claude/projects/topoassist/Sidebar.html
+```
+
+### 1b — Verify each toolbar section exists in UserGuide
+
+For **every** `<div class="tb-section">` in the primary row, check that UserGuide's Primary Row table has a matching row (icon or label matches). Flag any button present in code but absent from the table, and any row in the table that no longer has a matching button.
+
+Sections to verify: APP (Minimize) · LAYOUT (W G) · CABLE (O T) · CABLING (Edit Mode) · CONFIG (Refresh, Tech Stack, IP Config, Global Config Template, Generate All) · VIEW (Collapse All Cards, VLAN Summary, Device Visibility Panel, Snapshot, Cabling Export) · AUDIT (Device Bridge, Audit Mode, Errors Only) · THEME (Bold, Dark/Light) · HELP (Shortcuts)
+
+For the **secondary row**: TOPO (Linear/Simple/Flexible), INT SORT (SHEET/MODE/CAT/A-Z), SEARCH (filter + STRICT), STATUS LIVE LOGS (status bar), STATUS LOGS (HISTORY button).
+
+For **holistic-controls**: Group Rect, Node Size −/+. These must be in the "Holistic-View Floating Controls" subsection — NOT the Primary Row table.
+
+✗ FAIL if any button present in code is missing from the UserGuide.
+✗ FAIL if any UserGuide row describes a button that no longer exists.
+✗ FAIL if a control is in the wrong subsection (e.g. holistic floating control listed as a primary row toolbar button).
+
+### 1c — Icon SVG accuracy
+
+For each icon in the Primary Row table, compare the SVG `<path d="...">` to the matching button in Sidebar.html.
+
+```bash
+# Extract SVG paths from the toolbar section of UserGuide.html
+grep -A2 "icon-cell" ~/claude/projects/topoassist/UserGuide.html | grep "path d\|circle\|rect\|line\|polyline" | head -40
+
+# Compare against Sidebar.html button SVGs
+grep -A3 "icon-btn\|btn-yellow" ~/claude/projects/topoassist/Sidebar.html | grep "path d\|circle\|rect\|line" | head -40
+```
+
+✗ FAIL if an icon's SVG path in UserGuide does not match the actual sidebar button.
+✗ FAIL if a button is described as "chevron-down" but the actual SVG is chevron-up (or vice versa).
+
+---
+
+## Step 2 — Section Content Audit
+
+For each major section, read the UserGuide content and cross-check against the current code.
+
+### 2a — Device Manager section
+
+Read `#device-manager` in UserGuide.html and verify against Sidebar-js.html (DeviceManager* functions):
+
+```bash
+grep -n "DeviceManager\|openDeviceManager\|deviceManagerSave\|pencil\|dns\|hostname\|inline.*edit\|was-span\|wasChanged\|.changed" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -30
+```
+
+Check that the UserGuide covers:
+- [ ] Inline editing (no pencil column — click field to edit)
+- [ ] Change indicators (green + "was: X" span on text, `.changed` border on selects)
+- [ ] DNS name field (per-device hostname for Device Bridge)
+- [ ] DID explanation (Loopback0 IP, BGP ASN, VARP last octet)
+- [ ] MLAG pairing
+- [ ] Non-EOS toggle
+- [ ] Model, Rack
+- [ ] Visibility (eye icon)
+
+✗ FAIL for any missing item above.
+
+### 2b — Configuration Generation section
+
+Verify the numbered subsections (1–6+) match the actual modals and config generation functions:
+
+```bash
+grep -n "^function generate\|^function open.*Modal\|openTechModal\|openIpConfigModal\|openGlobalCfgModal\|openGenerateAllModal" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -20
+grep -n "getNetworkSettings\|techModal\|ipConfigModal\|generateAllModal\|globalCfgModal" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -20
+```
+
+Check each subsection label matches the current modal name and function.
+
+### 2c — Device Bridge section
+
+```bash
+grep -n "^function.*[Bb]ridge\|openBridge\|runCleanup\|reconcile\|Cleanup\|onBridgeIconClick" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -20
+grep -n "^def \|^class \|^VERSION\|METHOD\|JUMP_HOST" \
+  ~/claude/projects/topoassist/device_bridge.py | head -20
+```
+
+Check:
+- [ ] Download Bridge step matches actual download function
+- [ ] `device_bridge.py` config variables (METHOD, JUMP_HOST, SSH_USER) match UserGuide table
+- [ ] Cleanup section (not "Reconcile") is the current terminology
+- [ ] Bridge auto-check behavior matches double-click description
+
+### 2d — Audit Engine section
+
+```bash
+grep -n "runValidation\|_auditIssues\|auditChecks\|auditModal\|validationErrors\|toggleAuditOnly" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -20
+```
+
+Check that documented audit checks match the actual check list in the code.
+
+### 2e — Sheet & Schema Management section
+
+```bash
+grep -n "openCheckpointModal\|openColumnManager\|SheetColumnManager\|applyCustomView\|Force Sync\|buildConditionalRules" \
+  ~/claude/projects/topoassist/Sidebar-js.html ~/claude/projects/topoassist/Code.gs | head -20
+```
+
+Check that menu paths and feature names match current code.
+
+### 2f — Group Rects section
+
+```bash
+grep -n "newGroupRect\|groupRectBtn\|holistic-controls\|groupRectModal\|deleteGroupRect" \
+  ~/claude/projects/topoassist/Sidebar.html ~/claude/projects/topoassist/Sidebar-js.html | head -15
+```
+
+Verify:
+- [ ] Group Rect is described as a floating TOPO EDIT panel control (not a toolbar button)
+- [ ] Create/edit/delete flow matches current modal
+- [ ] localStorage persistence note is accurate
+
+### 2g — Enumeration Completeness
+
+Any list or table in UserGuide.html that enumerates a set of values (interface types, column names, config blocks, SP modes, roles, etc.) must not just name the values — it must explain for each value whether it is:
+- **User-entered** (which column or field)
+- **Auto-generated** (from which settings or columns)
+- **Not configured by TopoAssist** (out of scope)
+
+**The canonical failure pattern**: listing all recognized values in a flat bullet list without saying which ones the user actually touches. A user reading the list cannot tell what they need to enter vs. what happens automatically.
+
+Checks to run:
+
+```bash
+# Find <ul> lists and <table> blocks in UserGuide.html that enumerate values
+# (interface types, sp_mode_ values, ip_type_ values, roles, etc.)
+grep -n "Et\|Vl\|Lo\|Ma\|Po\|Vx\|l2-et\|l3-et\|gw-et\|int_\|sp_mode_\|ip_type_\|svi_vlan_\|vlan_\|po_\|tag_\|role_" \
+  ~/claude/projects/topoassist/UserGuide.html | head -40
+```
+
+For every enumeration found, check:
+- [ ] Interface type table — each of `Et`, `Vx`, `Po`, `Lo`, `Vl`, `Ma` has an explicit "how configured" column or annotation
+- [ ] `sp_mode_` values (l2-et-access, l3-et-int, etc.) — each explains what columns pair with it
+- [ ] `ip_type_` values — each explains what columns are relevant
+- [ ] Any other "code value → meaning" table — does it say where the value comes from?
+
+✗ FAIL if any enumeration table or list names values without explaining which are user-entered vs. auto-generated vs. out of scope.
+
+---
+
+## Step 3 — Menu Path Accuracy
+
+```bash
+# Extract all menu-path spans from UserGuide.html
+grep -o '<span class="menu-path">[^<]*</span>' ~/claude/projects/topoassist/UserGuide.html | sort -u
+```
+
+For each menu path, verify:
+- The menu item exists in `onOpen()` in Code.gs
+- The submenu label matches exactly
+
+```bash
+grep -n "addItem\|addSubMenu\|addSeparator\|createMenu\|addMenu" \
+  ~/claude/projects/topoassist/Code.gs | head -30
+```
+
+✗ FAIL if a menu path in UserGuide does not match the actual menu structure in Code.gs.
+
+---
+
+## Step 4 — Session Changes (add what's missing, remove what's stale)
+
+Check git log for any user-facing changes since the last UserGuide update:
+
+```bash
+# Changes since last UserGuide commit
+git -C ~/claude log --oneline -- projects/topoassist/ | head -20
+
+# What changed in GAS/bridge files recently
+git -C ~/claude diff HEAD~5..HEAD --stat -- projects/topoassist/ 2>/dev/null | head -20
+```
+
+For each changed file, identify whether any user-facing feature was added, removed, or renamed that the UserGuide does not yet reflect.
 
 ---
 
 ## Step 5 — Report
 
-Report:
-- What was added to UserGuide.html (section name + why)
-- What was removed from UserGuide.html (what was stale + why)
-- What was updated in place
-- Icon changes: which icons were verified, which were updated
-- If nothing changed: confirm and explain why UserGuide.html is already accurate
+```
+USERGUIDE AUDIT
+===============
+Step 1 — Toolbar
+  Primary Row: [N buttons in code] / [N rows in UserGuide] — ✓ match / ✗ [list gaps]
+  Secondary Row: [N items] — ✓ / ✗
+  Holistic Controls: ✓ / ✗
+  Icon SVG accuracy: ✓ / ✗ [list mismatches]
 
-Do not skip this check. UserGuide.html is the only end-user documentation.
+Step 2 — Section Content
+  Device Manager : ✓ / ✗ [missing items]
+  Config Generation: ✓ / ✗
+  Device Bridge : ✓ / ✗
+  Audit Engine : ✓ / ✗
+  Sheet & Schema : ✓ / ✗
+  Group Rects : ✓ / ✗
+
+Step 3 — Menu Paths: ✓ / ✗ [mismatches]
+Step 4 — Session Changes: ✓ none / ✗ [gaps]
+
+──────────────────────────────────────────
+Status: CLEAN — UserGuide matches code.
+        (or: GAPS FOUND — N issues fixed.)
+```
+
+---
+
+## Step 6 — Apply Fixes + Update INSTRUCTIONS + Commit
+
+After all fixes are applied:
+
+```bash
+# Update INSTRUCTIONS
+# (bump Last updated with a docs summary)
+
+git -C ~/claude add projects/topoassist/UserGuide.html \
+                    projects/topoassist/INSTRUCTIONS_topoassist.txt
+git -C ~/claude commit -m "docs(userguide): full audit — fix toolbar, section content, menu paths"
+git -C ~/claude push
+```
+
+---
+
+## Why session-only checking misses drift
+
+Toolbar restructuring (buttons moved between rows, controls moved to floating panels, new buttons added silently) accumulates across sessions. A session-only check only catches changes made in the current conversation — it misses any drift that predates this session. The structural checks in Steps 1–3 above catch cross-session drift because they compare the live code against the UserGuide content directly, without relying on session context.
