@@ -62,7 +62,7 @@
   }
 
   /* ================= 1. CORE VISIBILITY & RESET ================= */
-  #schemaContainer,
+  #sheetColumnManagerContainer,
   #viewCustomContainer,
   #reorderModal,
   #ipConfigModal,
@@ -109,7 +109,7 @@
   /* MODE: VIEW CUSTOM */
   body.mode-view_custom #app-topology,
   body.mode-view_custom #reorderModal,
-  body.mode-view_custom #schemaContainer {
+  body.mode-view_custom #sheetColumnManagerContainer {
     display: none !important
   }
 
@@ -128,17 +128,17 @@
   /* Hide background apps when in specific modes */
   body.mode-view_custom #app-topology,
   body.mode-view_custom #reorderModal,
-  body.mode-view_custom #schemaContainer,
+  body.mode-view_custom #sheetColumnManagerContainer,
   body.mode-schema #app-topology,
   body.mode-schema #reorderModal,
   body.mode-schema #viewCustomContainer,
   body.mode-reorder #app-topology,
-  body.mode-reorder #schemaContainer,
+  body.mode-reorder #sheetColumnManagerContainer,
   body.mode-reorder #viewCustomContainer {
     display: none !important;
   }
 
-  body.mode-schema #schemaContainer,
+  body.mode-schema #sheetColumnManagerContainer,
   body.mode-reorder #reorderModal,
   body.mode-view_custom #viewCustomContainer {
     display: flex !important;
@@ -166,7 +166,7 @@
   /* Full-screen mode containers are 100vh — higher-specificity override so
      .modal-minimized height:auto wins. JS toggleModalMinimize() also calls
      google.script.host.setHeight() to shrink the GAS dialog window itself. */
-  body.mode-schema #schemaContainer.modal-minimized,
+  body.mode-schema #sheetColumnManagerContainer.modal-minimized,
   body.mode-reorder #reorderModal.modal-minimized,
   body.mode-view_custom #viewCustomContainer.modal-minimized {
     height: auto !important;
@@ -204,7 +204,7 @@
 
   /* --- Layer 4: Full Screen Managers (Level 10000) --- */
   /* Managers sit below the overlay so they get dimmed when a popup opens */
-  body.mode-schema #schemaContainer,
+  body.mode-schema #sheetColumnManagerContainer,
   body.mode-reorder #reorderModal,
   body.mode-view_custom #viewCustomContainer {
     z-index: 10000 !important;
