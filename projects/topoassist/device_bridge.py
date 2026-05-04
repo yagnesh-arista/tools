@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260430.77 | 2026-04-30 18:46:44
+# topoassist v260504.21 | 2026-05-04 17:02:14
 """
 TopoAssist Device Bridge
 ========================
@@ -1238,6 +1238,30 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
                     return {"ok": False, "error": '\n'.join(eos_errs)}
                 raise
+            except OSError as e:
+                # Socket/read timeout — eAPI dispatched all commands including 'commit'
+                # but the HTTP response didn't arrive within TIMEOUT. EOS may have
+                # committed the session anyway (management-plane hiccup, process restart).
+                # Verify by checking whether the named session is still present.
+                _msg = str(e).lower()
+                if not (isinstance(e, TimeoutError) or 'timed out' in _msg or 'time out' in _msg):
+                    raise  # not a timeout — propagate as-is
+                if not open_only and not dry_run:
+                    time.sleep(2)
+                    try:
+                        _chk = self._eapi_push(ip, "show configuration sessions")[0]
+                        if session not in _chk:
+                            # Session absent → EOS committed and cleaned it up.
+                            return {"ok": True, "diff": "", "late_response": True, **_asn_extra}
+                        raise RuntimeError(
+                            f"Push timed out — session '{session}' still pending on device. "
+                            "Try again.") from e
+                    except RuntimeError:
+                        raise
+                    except Exception:
+                        pass  # verification query itself failed
+                raise RuntimeError(
+                    "Push timed out — verify: show running-config | grep __TA") from e
             if open_only:
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
@@ -1246,7 +1270,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if eos_errs:
                 eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
-                _asn_extra["eos_errors"] = eos_errs
+                # 'default ip address virtual' / 'default ipv6 address virtual' return
+                # 'invalid command' when the feature is not configured — expected and
+                # harmless (nothing to clear). Demote these to warnings so the push
+                # result shows green/amber notes rather than amber "N rejected".
+                _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
+                _real_errs, _cleanup_notes = [], []
+                for err in eos_errs:
+                    if any(cmd in err for cmd in _IDEMPOTENCY_CMDS) and 'invalid command' in err.lower():
+                        _cleanup_notes.append(err)
+                    else:
+                        _real_errs.append(err)
+                eos_errs = _real_errs
+                if _cleanup_notes:
+                    eos_warns = eos_warns + _cleanup_notes
+                if eos_errs:
+                    _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
@@ -1324,7 +1363,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 raise RuntimeError(
                     f"Configure session '{session_name}' not found — "
                     "it may have timed out on the device. Push again.")
-            self._eapi_push(ip, f"configure session {session_name}", action)
+            try:
+                self._eapi_push(ip, f"configure session {session_name}", action)
+            except OSError as e:
+                _msg = str(e).lower()
+                if not (isinstance(e, TimeoutError) or 'timed out' in _msg or 'time out' in _msg):
+                    raise
+                if action == "commit":
+                    time.sleep(2)
+                    try:
+                        _chk = self._eapi_push(ip, "show configuration sessions")[0]
+                        if session_name not in _chk:
+                            return {"ok": True, "action": action, "late_response": True}
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    f"Finalize timed out — verify: show configuration sessions") from e
             if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed (eapi)")
             return {"ok": True, "action": action}
 
