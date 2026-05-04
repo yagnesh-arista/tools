@@ -1,7 +1,7 @@
-<!-- TopoAssist v260503.27 | 2026-05-03 16:49:53 -->
+<!-- TopoAssist v260504.2 | 2026-05-04 11:17:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260503.27";  // keep in sync with Code.gs
+const APP_VERSION = "260504.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1450,8 +1450,8 @@ function SheetColumnManagerOpenButton() {
   isSheetColumnManagerDirty = false;
   SheetColumnManagerSaveButton();
 
-  google.script.run.withSuccessHandler(schemaArray => {
-    currentSheetColumnManagerList = schemaArray || [];
+  google.script.run.withSuccessHandler(columns => {
+    currentSheetColumnManagerList = columns || [];
 
     // TAKE SNAPSHOT (This replaces your old _originalLabel logic)
     initialSheetColumnManagerState = JSON.stringify(SheetColumnManagerCleanState(currentSheetColumnManagerList));
@@ -1794,10 +1794,10 @@ function SheetColumnManagerSave() {
         // Structural or dropdown changes affect topology config data — refresh.
         // rebuildSheet does not bump DATA_VERSION, so the 4s poll won't catch this.
         if (isStructuralChange || isDropdownChange) {
-          const schemaMsg = isStructuralChange
+          const columnManagerMsg = isStructuralChange
             ? 'Schema columns updated \u2014 topology refresh\u2026'
             : 'Schema dropdowns updated \u2014 topology refresh\u2026';
-          setStatus(schemaMsg, 'status-info');
+          setStatus(columnManagerMsg, 'status-info');
           if (typeof fetchData === 'function') fetchData(true);
         }
       };
@@ -2006,9 +2006,9 @@ function SheetColumnManagerResetDefaults() {
   if (!confirm("Reset column schema to built-in defaults?\n\nThis resets column definitions only — sheet data is not affected.")) return;
   SheetColumnManagerOpenButton();
   google.script.run
-    .withSuccessHandler(schemaArray => {
-      currentSheetColumnManagerList = schemaArray;
-      initialSheetColumnManagerState = JSON.stringify(schemaArray.map(({ key, label, options }) => ({ key, label, options })));
+    .withSuccessHandler(columns => {
+      currentSheetColumnManagerList = columns;
+      initialSheetColumnManagerState = JSON.stringify(columns.map(({ key, label, options }) => ({ key, label, options })));
       isSheetColumnManagerDirty = false;
       SheetColumnManager();
     })
@@ -6058,7 +6058,7 @@ window.topologyKeyHandler = function (event) {
 
         // Standard Close Logic
         const closeFuncs = {
-          "helpModal": closeHelpModal, "reorderModal": attemptCloseManager,
+          "helpModal": closeHelpModal, "reorderModal": DeviceManagerCloseButton,
           "editModal": closeEditModal, "ipConfigModal": closeIpModal,
           "globalCfgModal": closeGlobalCfgModal,
           "pushConfirmModal": cancelPushConfig,
