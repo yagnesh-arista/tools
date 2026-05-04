@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.5 | 2026-05-04 11:47:52 -->
+<!-- TopoAssist v260504.6 | 2026-05-04 11:59:57 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.5";  // keep in sync with Code.gs
+const APP_VERSION = "260504.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -671,8 +671,11 @@ function DeviceManagerLoadDevices(devices) {
       isVisible: d.isVisible,
       labels: d.labels || [],
       hostname: d.hostname || "",
+      _origHostname: d.hostname || "",
       role: d.role || "",
+      _origRole: d.role || "",
       mlagPeer: d.mlagPeer || "",
+      _origMlagPeer: d.mlagPeer || "",
       model: d.model || "",
       rack: d.rack || ""
     };
@@ -759,6 +762,9 @@ function DeviceManager() {
     }
 
     const wasChanged = devObj.originalName && devObj.name !== devObj.originalName;
+    const hostnameWasChanged = devObj._origHostname !== undefined && devObj.hostname !== devObj._origHostname;
+    const roleChanged = devObj._origRole !== undefined && devObj.role !== devObj._origRole;
+    const mlagChanged = devObj._origMlagPeer !== undefined && devObj.mlagPeer !== devObj._origMlagPeer;
 
     const isRoleManaged = (devObj.role === 'IXIA' || devObj.role === 'SPIRENT');
     let typeBadge;
@@ -810,10 +816,11 @@ onchange="toggleDeviceVisibility(${index})">
   <span class="dev-name-was" style="display:${wasChanged ? 'block' : 'none'}">${wasChanged ? `was: ${escapeHtml(devObj.originalName)}` : ''}</span>
   <span class="dev-name-error" style="display:none;"></span>
   <input class="dev-hostname-inp" type="text" value="${escapeHtml(devObj.hostname || '')}" placeholder="hostname (optional)" spellcheck="false" oninput="DeviceManagerUpdateHostname(${index}, this.value)">
+  <span id="devHostnameWas_${index}" class="dev-name-was" style="display:${hostnameWasChanged ? 'block' : 'none'}">${hostnameWasChanged ? `was: ${escapeHtml(devObj._origHostname)}` : ''}</span>
 </div></div>
 <div class="col-center">${typeBadge}</div>
-<div class="dev-role-cell"><select class="role-select" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
-<div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
+<div class="dev-role-cell"><select class="role-select${roleChanged ? ' changed' : ''}" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
+<div class="dev-role-cell"><select class="role-select mlag-peer-select${mlagChanged ? ' changed' : ''}" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
 <div class="dev-label-cell" data-label-index="${index}">${renderDeviceLabelPills(devObj.labels || [], index)}</div>
 ${deleteCell}
 <div class="dev-meta-row">
@@ -1158,10 +1165,18 @@ function DeviceManagerUpdateName(index, input) {
 }
 
 function DeviceManagerUpdateHostname(index, value) {
-  currentDeviceManagerList[index].hostname = value.trim();
+  const dev = currentDeviceManagerList[index];
+  if (!dev) return;
+  dev.hostname = value.trim();
   isDeviceManagerDirty = true;
   DeviceManagerCheckChanges();
   DeviceManagerSaveButton();
+  const wasSpan = document.getElementById('devHostnameWas_' + index);
+  if (wasSpan && dev._origHostname !== undefined) {
+    const changed = dev.hostname !== dev._origHostname;
+    wasSpan.textContent = changed ? 'was: ' + dev._origHostname : '';
+    wasSpan.style.display = changed ? 'block' : 'none';
+  }
 }
 
 /**
