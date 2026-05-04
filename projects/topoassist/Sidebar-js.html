@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.34 | 2026-05-04 18:18:00 -->
+<!-- TopoAssist v260504.36 | 2026-05-04 18:28:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.34";  // keep in sync with Code.gs
+const APP_VERSION = "260504.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5982,14 +5982,6 @@ function hideGlobalLoading() {
 }
 
 let _activeModalChipId = null;
-const _chipNames = {
-  guiEditModal: 'Edit Interface', autoConfigModal: 'Auto Config', deviceBridgeModal: 'Device Bridge',
-  techModal: 'Tech Stack', cablingModal: 'Cabling Export', helpModal: 'Shortcuts',
-  auditModal: 'Audit', auditSettingsModal: 'Audit Checks', groupRectModal: 'Group Rect',
-  configModal: 'Config View', generateAllModal: 'Generate All', vlanSummaryModal: 'VLAN Summary',
-  pushConfirmModal: 'Config Push',
-  reorderModal: 'Device Manager'
-};
 
 function setActiveModalChip(modalId) {
   if (!modalId && _activeModalChipId) {
@@ -6021,8 +6013,8 @@ function _refreshModalChip() {
   if (!_activeModalChipId) { chip.style.display = 'none'; return; }
   const modal = document.getElementById(_activeModalChipId);
   const isMin = modal && modal.classList.contains('modal-minimized');
-  const name = _chipNames[_activeModalChipId] || _activeModalChipId;
   if (isMin) { chip.style.display = 'none'; return; }
+  const name = modal?.querySelector('.modal-header-title')?.textContent.trim() || _activeModalChipId;
   chip.textContent = name;
   chip.style.display = 'inline-flex';
   chip.style.opacity = '1';
