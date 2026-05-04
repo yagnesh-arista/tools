@@ -187,6 +187,28 @@ For every enumeration found, check:
 
 ✗ FAIL if any enumeration table or list names values without explaining which are user-entered vs. auto-generated vs. out of scope.
 
+### 2h — Contextual Completeness
+
+Every instruction, step, or reference in the guide must be self-contained — a user must not need to already know the answer to follow the step.
+
+For every column name, button, field, or value mentioned:
+- [ ] Is it clear WHERE to find it? (which modal, which row of the sheet, which toolbar section)
+- [ ] Is it clear WHAT to put in it? (format, example value, valid range)
+- [ ] Is it clear WHAT HAPPENS as a result? (auto-generated output, downstream effect)
+- [ ] Is it clear what NOT to do? (common mistakes — e.g. "do not put Lo in int_")
+
+**The canonical failure pattern**: mentioning a column name (`int_`, `sp_mode_`, `vlan_`) without saying what format it accepts, what values are valid, or what the column controls. A user seeing `vlan_` for the first time should not have to guess.
+
+Check every `<code>` tag that names a column or field:
+```bash
+grep -o '<code>[a-z_]*_</code>' ~/claude/projects/topoassist/UserGuide.html | sort -u
+```
+
+For each column code tag found, verify the surrounding paragraph or a linked section answers: where, what format, what effect, and what to avoid.
+
+✗ FAIL if a column/field is referenced without enough context for a first-time user to fill it correctly.
+⚠ WARN if context exists but is in a different section with no cross-reference or link.
+
 ---
 
 ## Step 3 — Menu Path Accuracy
