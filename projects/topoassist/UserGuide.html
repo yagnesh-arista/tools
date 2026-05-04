@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.8 | 2026-05-04 12:05:49 -->
+<!-- TopoAssist v260504.9 | 2026-05-04 12:17:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -569,6 +569,18 @@ clasp login --no-localhost</pre>
       <li>Drag rows to reorder devices — this affects sheet column order and changes Device IDs.</li>
     </ul>
 
+    <h3>Editing Devices</h3>
+    <p style="font-size:13px;">All editable fields in Device Manager are <b>inline</b> — no separate edit mode or pencil column. Click any field to edit it directly in the row:</p>
+    <ul style="font-size:13px;">
+      <li><b>Device name</b> — click the name cell and type a new name. The name propagates to column headers and canvas nodes on Save.</li>
+      <li><b>DNS name</b> — click the DNS cell and type the hostname or IP the Device Bridge should use to reach this device. Leave blank to fall back to the device name.</li>
+      <li><b>Select fields</b> (type, role, etc.) — click to open the dropdown and choose a new value.</li>
+    </ul>
+    <p style="font-size:13px;"><b>Change indicators</b> — edited fields turn green and show a small <code>was: original</code> label so you can see what changed before committing. Select fields gain a green border. All indicators are cleared after a successful Save.</p>
+    <div class="info-box blue" style="font-size:12px; margin-top:8px;">
+      Changes are <b>pending</b> until you click <b>Save</b>. Click <b>Cancel</b> to revert everything to the last-saved state. Closing the modal without saving discards all pending edits.
+    </div>
+
     <h3>Device ID (DID)</h3>
     <p style="font-size:13px;">Each Arista device is assigned a <b>sequential Device ID</b> — its position among all Arista devices in the sheet (1-based). DID drives:</p>
     <ul style="font-size:13px;">
@@ -586,10 +598,11 @@ clasp login --no-localhost</pre>
     <h3>Non-EOS Toggle</h3>
     <p style="font-size:13px;">Any device can be toggled between <b>EOS</b> and <b>Non-EOS</b> by clicking the <b>EOS</b> badge in its Device Manager row. Devices with the IXIA or SPIRENT role are Non-EOS automatically. Non-EOS devices appear in the topology for cabling context but no config is generated. Changes take effect after Save + Force Sync.</p>
 
-    <h3>Model &amp; Rack</h3>
+    <h3>Model, Rack &amp; DNS Name</h3>
     <ul style="font-size:13px;">
       <li><b>Model</b> — platform string (e.g. <code>7050CX3-32S</code>). Auto-populated from a Device Bridge check; manual entry overrides. Shown as the first pill under the node in Simple view.</li>
       <li><b>Rack</b> — physical location (e.g. <code>dm1-rack104-tb38</code>). Manual only. Appears in the Cabling Report.</li>
+      <li><b>DNS name</b> — hostname or IP address the Device Bridge uses to reach this device (e.g. <code>leaf1.lab.example.com</code> or <code>192.0.2.11</code>). When blank, the Device Bridge falls back to the device name. Set this when the lab management IP or DNS name differs from the topology name.</li>
     </ul>
 
     <h3>Visibility</h3>
