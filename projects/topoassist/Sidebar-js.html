@@ -13434,6 +13434,17 @@ function toggleModalMinimize(modalId) {
   if (!modal) return;
   const btn = modal.querySelector('.btn-modal-minimize');
   const isMin = modal.classList.toggle('modal-minimized');
+  // Hide modal entirely on minimize (non-floating); dock chip is the only indicator.
+  // Floating panels stay visible as collapsed headers (they handle their own resize).
+  if (!modal.classList.contains('modal-floating')) {
+    if (isMin) {
+      modal.dataset.preMinDisplay = modal.style.display || 'flex';
+      modal.style.display = 'none';
+    } else {
+      modal.style.display = modal.dataset.preMinDisplay || 'flex';
+      delete modal.dataset.preMinDisplay;
+    }
+  }
   // Overlay management: hide dim backdrop on minimize, restore if it was showing
   const ov = document.getElementById('editOverlay');
   if (ov) {
@@ -13476,7 +13487,6 @@ function _updateModalDock() {
   if (!dock) return;
   dock.innerHTML = '';
   document.querySelectorAll('.modal-std.modal-minimized').forEach(modal => {
-    if (getComputedStyle(modal).display === 'none') return; // fully closed, skip
     const title = modal.querySelector('.modal-header-title')?.textContent.trim() || modal.id;
     const chip = document.createElement('button');
     chip.className = 'modal-dock-chip';
