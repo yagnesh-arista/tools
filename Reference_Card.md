@@ -133,6 +133,7 @@ Session end (Stop)
 | Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in Tests.gs; lists gaps |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
+| Edit `topoassist/device_bridge.py` | `topoassist-bridge-version.sh` | Auto-bumps `VERSION = "YYMMDD.N"` in `device_bridge.py` + embedded template in `Sidebar-js.html` |
 | Edit `eos-tricks/` files | `eos-tricks-publish.sh` | Publishes `eos-tricks.html` to `public_html/` |
 | Edit tmux-studio file | Inline hook | Copy to `~/.tmux-studio/tmux_studio.py` |
 | Edit `tmux.conf` project files | Inline hook | Copy to `~/.tmux/` + `tmux source-file` reload |
