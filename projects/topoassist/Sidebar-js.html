@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.26 | 2026-05-04 17:13:20 -->
+<!-- TopoAssist v260504.28 | 2026-05-04 17:23:50 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.26";  // keep in sync with Code.gs
+const APP_VERSION = "260504.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4983,7 +4983,7 @@ function openIpConfigModal(btn) {
     checkSnakeTrafficWarning();
     _updateGwExample();
 
-    setActiveModalChip('Auto Config');
+    setActiveModalChip('autoConfigModal');
     document.getElementById("editOverlay").style.display = "block";
     document.getElementById("autoConfigModal").style.display = "flex";
 
@@ -5976,11 +5976,25 @@ function hideGlobalLoading() {
   }
 }
 
-function setActiveModalChip(name) {
+let _activeModalChipId = null;
+const _chipNames = { guiEditModal: 'Edit Interface', autoConfigModal: 'Auto Config', deviceBridgeModal: 'Device Bridge' };
+
+function setActiveModalChip(modalId) {
+  _activeModalChipId = modalId;
+  _refreshModalChip();
+}
+
+function _refreshModalChip() {
   const chip = document.getElementById('activeModalChip');
   if (!chip) return;
-  if (name) { chip.textContent = name; chip.style.display = 'inline-flex'; }
-  else { chip.textContent = ''; chip.style.display = 'none'; }
+  if (!_activeModalChipId) { chip.style.display = 'none'; return; }
+  const modal = document.getElementById(_activeModalChipId);
+  const isMin = modal && modal.classList.contains('modal-minimized');
+  const name = _chipNames[_activeModalChipId] || _activeModalChipId;
+  if (isMin) { chip.style.display = 'none'; return; }
+  chip.textContent = name;
+  chip.style.display = 'inline-flex';
+  chip.style.opacity = '1';
 }
 
 /**
@@ -6997,7 +7011,7 @@ No peer connected.<br>Use 'Connect' to add a link.
     if (btnDelUnconf) btnDelUnconf.style.display = "none";
   }
 
-  setActiveModalChip('Edit Interface');
+  setActiveModalChip('guiEditModal');
   overlay.style.display = "block";
   modal.style.display = "flex";
 }
@@ -11406,7 +11420,7 @@ if __name__ == "__main__":
 function openBridgeModal() {
   const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
-  setActiveModalChip('Device Bridge');
+  setActiveModalChip('deviceBridgeModal');
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // No editOverlay — floating modal does not block background
   // Preserve results from a previous run — only hide if no results exist yet
@@ -13451,6 +13465,7 @@ function toggleModalMinimize(modalId) {
       }
     }
   }
+  _refreshModalChip();
   _updateModalDock();
 }
 

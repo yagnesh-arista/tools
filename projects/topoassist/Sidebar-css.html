@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.26 | 2026-05-04 17:13:39 -->
+<!-- TopoAssist v260504.28 | 2026-05-04 17:24:49 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6060,6 +6060,18 @@
     background: #3b82f6; border-color: #3b82f6; color: #ffffff;
   }
   .genall-dev-pill.selected:hover { background: #2563eb; border-color: #2563eb; }
+  /* Role filter pills — amber, distinct from All/None (blue) and device chips (blue) */
+  .genall-role-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    padding: 0 9px; height: 20px; box-sizing: border-box;
+    border: 1px solid #d97706; border-radius: 10px;
+    background: rgba(217,119,6,0.08); color: #b45309;
+    cursor: pointer; white-space: nowrap; letter-spacing: 0.03em;
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+    user-select: none; -webkit-user-select: none;
+  }
+  .genall-role-chip:hover { background: rgba(217,119,6,0.18); border-color: #b45309; color: #92400e; }
 
   /* ================= 13. COPY GROUP STRIP ================= */
   .copy-group-strip {
