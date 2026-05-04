@@ -5,6 +5,27 @@ Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line
 
 ---
 
+## Step 0 — Load Design Memory
+
+Before running any checks, read ALL TopoAssist design-relevant memory files. These carry
+established UI/UX patterns and feedback from past sessions — treat any pattern found as an
+additional implicit check for this session's changes.
+
+```bash
+ls ~/.claude/projects/-home-yagnesh-claude/memory/feedback_topoassist_*.md 2>/dev/null
+```
+
+Read each file listed. Design-relevant entries include (but are not limited to):
+- `feedback_topoassist_change_indicators.md` — was-spans, .changed selects, .modified-highlight
+- `feedback_topoassist_editor_light_mode.md` — config editor textarea colors (always light mode)
+- `feedback_topoassist_strip_dividers.md` — non-EOS strip divider/button parity rules
+- `feedback_topoassist_view_terminology.md` — DevVis / SheetVis / SheetViewMenu taxonomy
+
+For each memory pattern: if new code added this session violates it, report ✗ FAIL with the
+memory file as the source. Patterns already caught by static checks below need not be re-reported.
+
+---
+
 ## Check 0 — Rules Currency
 
 Verify this review command is in sync with the current global UI rules.
