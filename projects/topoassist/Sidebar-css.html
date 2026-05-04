@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.36 | 2026-05-04 18:28:34 -->
+<!-- TopoAssist v260504.39 | 2026-05-04 18:43:44 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -63,14 +63,14 @@
 
   /* ================= 1. CORE VISIBILITY & RESET ================= */
   #sheetColumnManagerContainer,
-  #viewCustomContainer,
+  #sheetVisContainer,
   #reorderModal,
   #autoConfigModal,
   #cablingModal,
   #auditModal,
   #guiEditModal,
   #techModal,
-  #generateAllModal,
+  #configCenterModal,
   #vlanSummaryModal,
   #auditSettingsModal,
   #editOverlay {
@@ -116,7 +116,7 @@
   /* MODE: SCHEMA MANAGER */
   body.mode-schema #app-topology,
   body.mode-schema #reorderModal,
-  body.mode-schema #viewCustomContainer {
+  body.mode-schema #sheetVisContainer {
     display: none !important
   }
 
@@ -131,16 +131,16 @@
   body.mode-view_custom #sheetColumnManagerContainer,
   body.mode-schema #app-topology,
   body.mode-schema #reorderModal,
-  body.mode-schema #viewCustomContainer,
+  body.mode-schema #sheetVisContainer,
   body.mode-reorder #app-topology,
   body.mode-reorder #sheetColumnManagerContainer,
-  body.mode-reorder #viewCustomContainer {
+  body.mode-reorder #sheetVisContainer {
     display: none !important;
   }
 
   body.mode-schema #sheetColumnManagerContainer,
   body.mode-reorder #reorderModal,
-  body.mode-view_custom #viewCustomContainer {
+  body.mode-view_custom #sheetVisContainer {
     display: flex !important;
     flex-direction: column !important;
     position: fixed !important;
@@ -168,7 +168,7 @@
      google.script.host.setHeight() to shrink the GAS dialog window itself. */
   body.mode-schema #sheetColumnManagerContainer.modal-minimized,
   body.mode-reorder #reorderModal.modal-minimized,
-  body.mode-view_custom #viewCustomContainer.modal-minimized {
+  body.mode-view_custom #sheetVisContainer.modal-minimized {
     height: auto !important;
   }
 
@@ -206,7 +206,7 @@
   /* Managers sit below the overlay so they get dimmed when a popup opens */
   body.mode-schema #sheetColumnManagerContainer,
   body.mode-reorder #reorderModal,
-  body.mode-view_custom #viewCustomContainer {
+  body.mode-view_custom #sheetVisContainer {
     z-index: 10000 !important;
   }
 

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.36 | 2026-05-04 18:28:51 -->
+<!-- TopoAssist v260504.39 | 2026-05-04 18:43:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.36";  // keep in sync with Code.gs
+const APP_VERSION = "260504.39";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -574,10 +574,9 @@ function initApp() {
       initLayoutObserver();
     }
 
-    // Apply drag to all standard (non-fullscreen) modals + bridge floating modal
+    // Apply drag to all standard (non-fullscreen) modals
     document.querySelectorAll('.modal-std:not(.modal-large)').forEach(m => _makeDraggable(m));
-    // Bridge: set up drag, restore icon state, silent startup check
-    _initLldpModalDrag();
+    // Bridge: restore icon state, silent startup check
     _updateBridgeToolbarIcon('idle');
     _silentBridgeCheck();
   }
@@ -5997,7 +5996,7 @@ function setActiveModalChip(modalId) {
 function _autoMinimizeOpenModal() {
   const candidates = ['guiEditModal','autoConfigModal','cablingModal','auditModal',
     'auditSettingsModal','techModal','configModal','groupRectModal',
-    'generateAllModal','vlanSummaryModal','helpModal','pushConfirmModal','deviceBridgeModal'];
+    'configCenterModal','vlanSummaryModal','helpModal','pushConfirmModal','deviceBridgeModal'];
   for (const id of candidates) {
     const el = document.getElementById(id);
     if (el && !el.classList.contains('modal-minimized') &&
@@ -6064,7 +6063,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "generateAllModal", "vlanSummaryModal", "sheetColumnManagerContainer", "viewCustomContainer"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "reorderModal", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "configCenterModal", "vlanSummaryModal", "sheetColumnManagerContainer", "sheetVisContainer"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -6082,7 +6081,7 @@ window.topologyKeyHandler = function (event) {
         }
 
         // If Config Center is open & find bar has text → clear first, don't close
-        if (id === "generateAllModal") {
+        if (id === "configCenterModal") {
           const gcfgSearch = document.getElementById("globalCfgSearch");
           if (gcfgSearch && gcfgSearch.value.trim() !== "") {
             gcfgSearch.value = "";
@@ -6102,10 +6101,10 @@ window.topologyKeyHandler = function (event) {
           "auditSettingsModal": closeAuditSettingsModal,
           "techModal": closeTechModal, "configModal": closeConfigModal,
           "groupRectModal": closeGroupRectModal,
-          "generateAllModal": closeGenerateAllModal,
+          "configCenterModal": closeGenerateAllModal,
           "vlanSummaryModal": closeVlanSummaryModal,
           "sheetColumnManagerContainer": SheetColumnManagerCloseButton,
-          "viewCustomContainer": () => google.script.host.close()
+          "sheetVisContainer": () => google.script.host.close()
         };
         if (typeof closeFuncs[id] === 'function') {
           closeFuncs[id]();
@@ -11451,9 +11450,9 @@ function openBridgeModal() {
   _autoMinimizeOpenModal();
   const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
+  document.getElementById('editOverlay').style.display = 'block';
   setActiveModalChip('deviceBridgeModal');
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
-  // No editOverlay — floating modal does not block background
   // Preserve results from a previous run — only hide if no results exist yet
   const _rs = document.getElementById('bridgeResultSections');
   if (!_rs || !_rs.children.length) document.getElementById('bridgeResults').style.display = 'none';
@@ -11788,9 +11787,10 @@ function _checkBridgeHealth() {
 }
 
 function closeBridgeModal() {
+  _onModalClose(document.getElementById('deviceBridgeModal'));
   setActiveModalChip(null);
   document.getElementById('deviceBridgeModal').style.display = 'none';
-  // No editOverlay to hide — floating modal
+  document.getElementById('editOverlay').style.display = 'none';
 }
 
 // Show auth-expired warning banner + toolbar icon when any bridge fetch returns auth_expired.
@@ -12009,11 +12009,6 @@ function _autoRunBridge() {
 }
 
 function toggleBridgeMinimize() { toggleModalMinimize('deviceBridgeModal'); } // legacy alias
-
-// Make the bridge modal draggable — delegates to unified _makeDraggable.
-function _initLldpModalDrag() {
-  _makeDraggable('deviceBridgeModal', { saveKey: 'deviceBridgeModalPos', noReset: true, toolbarGap: true });
-}
 
 // Auto-detect management IPs from Ma0/Management0 entries in allNodesData.
 function _getLldpMgmtIps() {
@@ -15001,7 +14996,7 @@ function setBtnLoading(btn, isLoading, loadingText = "⏳ Working...") {
 
 function initCustomViewManager() {
   const body = document.getElementById("viewCustomBody");
-  const container = document.getElementById("viewCustomContainer");
+  const container = document.getElementById("sheetVisContainer");
 
   if (!body || !container) {
     console.error("Missing DOM elements for Custom View");
@@ -16113,7 +16108,7 @@ function _isOperationActive() {
 
 function closeAllModals() {
   if (_isOperationActive()) return; // never dismiss during an active push/generate/cleanup
-  const modals = ['guiEditModal', 'autoConfigModal', 'deviceBridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'generateAllModal', 'vlanSummaryModal'];
+  const modals = ['guiEditModal', 'autoConfigModal', 'deviceBridgeModal', 'cablingModal', 'auditModal', 'auditSettingsModal', 'techModal', 'configModal', 'helpModal', 'groupRectModal', 'configCenterModal', 'vlanSummaryModal'];
   modals.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -16326,8 +16321,8 @@ function openGenerateAllModal(panel) {
   btn.disabled = false;
   btn.innerText = 'Generate Configs';
   _switchCfgPanel(panel || 'push');
-  document.getElementById('generateAllModal').style.display = 'flex';
-  setActiveModalChip('generateAllModal');
+  document.getElementById('configCenterModal').style.display = 'flex';
+  setActiveModalChip('configCenterModal');
   document.getElementById('editOverlay').style.display = 'block';
   _loadGlobalCfgTemplate();
 }
@@ -16341,8 +16336,8 @@ function closeGenerateAllModal() {
     }
     return;
   }
-  _onModalClose(document.getElementById('generateAllModal'));
-  document.getElementById('generateAllModal').style.display = 'none';
+  _onModalClose(document.getElementById('configCenterModal'));
+  document.getElementById('configCenterModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
 

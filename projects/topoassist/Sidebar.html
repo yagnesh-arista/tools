@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.36 | 2026-05-04 18:28:34 -->
+<!-- TopoAssist v260504.39 | 2026-05-04 18:43:17 -->
 <!DOCTYPE html>
 <html>
 
@@ -101,7 +101,7 @@
                 <button class="icon-btn" data-modal="autoConfigModal" onclick="openIpConfigModal(this)" title="Auto Config">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                 </button>
-                <button class="icon-btn" id="btnGenerateAllToolbar" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="Config Center">
+                <button class="icon-btn" id="btnGenerateAllToolbar" data-modal="configCenterModal" onclick="openGenerateAllModal()" title="Config Center">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   <span id="genToolbarDot"></span>
                 </button>
@@ -848,20 +848,18 @@
     </div>
   </div>
 
-  <!-- Global Config Modal — merged into Config Center (generateAllModal) -->
+  <!-- Global Config Modal — merged into Config Center (configCenterModal) -->
 
   <!-- Device Bridge Modal (floating, draggable) -->
-  <div id="deviceBridgeModal" class="modal-floating" style="width:480px;">
-    <div class="modal-header" id="deviceBridgeModalHeader">
+  <div id="deviceBridgeModal" class="modal-std" style="width:480px;">
+    <div class="modal-header">
       <div>
         <div class="modal-header-title">Device Bridge</div>
-        <div class="modal-header-subtitle">SSH bridge to lab devices — Bridge verification, device status & more</div>
+        <div class="modal-header-subtitle">SSH bridge to lab devices — Bridge verification, device status &amp; more</div>
       </div>
-      <div style="display:flex;gap:4px;align-items:center;">
-        <button class="btn-modal-close" onclick="closeBridgeModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-      </div>
+      <button class="btn-modal-close" onclick="closeBridgeModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div id="deviceBridgeModalBody" style="padding:14px 16px;overflow-y:auto;max-height:430px;">
+    <div id="deviceBridgeModalBody" style="padding:14px 16px;overflow-y:auto;flex:1;min-height:0;">
       <!-- Bridge status bar -->
       <div class="bridge-status-bar">
         <span class="bridge-field-label">Bridge</span>
@@ -1303,7 +1301,7 @@
   </div>
 
   <!-- Config Center Modal (Generate · Config Template · Cleanup · Push) -->
-  <div id="generateAllModal" class="modal-std" style="width:960px;max-width:96vw;min-height:82vh;">
+  <div id="configCenterModal" class="modal-std" style="width:960px;max-width:96vw;min-height:82vh;">
     <div class="modal-header">
       <div class="modal-header-title">Config Center</div>
       <button class="btn-modal-close" onclick="closeGenerateAllModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -1522,7 +1520,7 @@
   </div>
 
   <!-- Sheet Custom View Managers -->
-  <div id="viewCustomContainer" class="modal-std modal-large">
+  <div id="sheetVisContainer" class="modal-std modal-large">
     <div class="modal-header">
       <div class="modal-header-title">Sheet Custom View Managers</div>
       <button class="btn-modal-close" onclick="google.script.host.close()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260504.24 | 2026-05-04 17:12:38
+# topoassist v260504.39 | 2026-05-04 18:43:46
 """
 TopoAssist Device Bridge
 ========================
@@ -1219,8 +1219,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
             )
 
         if _cfg['transport'] == "eapi":
+            _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
+            _pre_idempotency_warns = []
             try:
-                results = self._eapi_push(ip, *core_cmds)
+                results = list(self._eapi_push(ip, *core_cmds))
+                # Pre-scan: when EOS embeds per-command errors in text output (rather than
+                # a top-level error), pair each command with its output so the command name
+                # is available for idempotency matching — _extract_eos_errors would only see
+                # bare "% Invalid command" with no context in eAPI-format output.
+                for i, (cmd, out) in enumerate(zip(core_cmds, results)):
+                    if (any(c in cmd.strip() for c in _IDEMPOTENCY_CMDS)
+                            and '% ' in out and 'invalid command' in out.lower()):
+                        _pre_idempotency_warns.append(f"{cmd.strip()} → {out.strip()}")
+                        results[i] = ''  # suppress so _extract_eos_errors skips it
             except RuntimeError as e:
                 # eAPI returns a top-level JSON-RPC "error" for configure session
                 # failures — _eapi_push raises RuntimeError with the message text.
@@ -1236,7 +1247,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         parts = [raw_msg]
                     eos_errs = _annotate_eapi_errors(parts, lines)
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
-                    return {"ok": False, "error": '\n'.join(eos_errs)}
+                    # GW SVI cleanup commands return 'invalid command' when the feature is
+                    # not configured — expected harmless no-op. Demote to warnings.
+                    # The "CLI command N of M 'cmd' failed" format includes the cmd name,
+                    # so the substring match is reliable here (unlike bare % lines above).
+                    _real_errs, _cleanup_notes = [], []
+                    for err in eos_errs:
+                        if (any(cmd in err for cmd in _IDEMPOTENCY_CMDS)
+                                and 'invalid command' in err.lower()):
+                            _cleanup_notes.append(err)
+                        else:
+                            _real_errs.append(err)
+                    if _cleanup_notes and not _real_errs:
+                        # All errors were idempotency cleanup — EOS committed the session
+                        # (stopOnError:False runs commit regardless). Diff is unavailable
+                        # because the error response doesn't carry the result array.
+                        return {"ok": True, "diff": None,
+                                "eos_warnings": _cleanup_notes, **_asn_extra}
+                    if _cleanup_notes:
+                        _asn_extra["eos_warnings"] = _cleanup_notes
+                    return {"ok": False, "error": '\n'.join(_real_errs or eos_errs), **_asn_extra}
                 raise
             except OSError as e:
                 # Socket/read timeout — eAPI dispatched all commands including 'commit'
@@ -1267,17 +1297,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
             eos_errs, eos_warns = _extract_eos_errors('\n'.join(results))
+            if _pre_idempotency_warns:
+                eos_warns = eos_warns + _pre_idempotency_warns
             if eos_errs:
                 eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
-                # 'default ip address virtual' / 'default ipv6 address virtual' return
-                # 'invalid command' when the feature is not configured — expected and
-                # harmless (nothing to clear). Demote these to warnings so the push
-                # result shows green/amber notes rather than amber "N rejected".
-                _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
+                # Secondary filter: SSH-style eAPI output includes cmd name in the error
+                # string (prompt echo before % line) — catch any that slipped past pre-scan.
                 _real_errs, _cleanup_notes = [], []
                 for err in eos_errs:
-                    if any(cmd in err for cmd in _IDEMPOTENCY_CMDS) and 'invalid command' in err.lower():
+                    if (any(cmd in err for cmd in _IDEMPOTENCY_CMDS)
+                            and 'invalid command' in err.lower()):
                         _cleanup_notes.append(err)
                     else:
                         _real_errs.append(err)
