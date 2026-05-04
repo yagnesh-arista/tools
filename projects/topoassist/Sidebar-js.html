@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.22 | 2026-05-04 17:04:08 -->
+<!-- TopoAssist v260504.23 | 2026-05-04 17:04:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.22";  // keep in sync with Code.gs
+const APP_VERSION = "260504.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13185,8 +13185,11 @@ async function commitPushConfig() {
           _lastIdShiftResult = { shifted: [], isFirstRun: false };
         }).withFailureHandler(function() {}).saveDeviceIdSnapshot();
       }
+      const _lateResponse = !!(res.late_response);
       const retryNote = lastAttempt > 1 ? ` (${lastAttempt - 1} retr${lastAttempt === 2 ? 'y' : 'ies'})` : '';
-      _ptSet('pt2', '#10b981', `committed${retryNote}`);
+      const _p2Color = _lateResponse ? '#f59e0b' : '#10b981';
+      const _p2Label = _lateResponse ? `committed — eAPI delayed${retryNote}` : `committed${retryNote}`;
+      _ptSet('pt2', _p2Color, _p2Label);
       _ptSet('pt3', '#94a3b8', 'verifying…');
       if (commitBtn) commitBtn.style.display = 'none';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
