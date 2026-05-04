@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.23 | 2026-05-04 17:04:46 -->
+<!-- TopoAssist v260504.24 | 2026-05-04 17:11:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.23";  // keep in sync with Code.gs
+const APP_VERSION = "260504.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5670,8 +5670,7 @@ function closeTechModal() {
 // ─── GLOBAL CONFIG MODAL ────────────────────────────────────────────────────
 
 function openGlobalCfgModal() {
-  // Config Template panel lives inside Config Center — open the modal and load content
-  openGenerateAllModal();
+  openGenerateAllModal('template');
 }
 
 function closeGlobalCfgModal() {
@@ -16149,7 +16148,12 @@ function _updateGenAllSelCount() {
   const total   = container.querySelectorAll('.genall-dev-pill').length;
   const checked = container.querySelectorAll('.genall-dev-pill.selected').length;
   const el = document.getElementById('genAllSelCount');
-  if (el) el.textContent = `${checked}/${total} selected`;
+  if (!el) return;
+  if (checked === total) {
+    el.textContent = `All ${total} selected`;
+  } else {
+    el.textContent = `${checked} of ${total} selected`;
+  }
 }
 
 function _genAllSelectAll(state) {
@@ -16161,11 +16165,22 @@ function _genAllSelectAll(state) {
   _updateGenAllSelCount();
 }
 
-function _switchGenTab(tab) {
-  // All panels are permanently visible in the 2×2 Config Center layout — no-op
+function _switchCfgPanel(panel) {
+  ['generate', 'template', 'cleanup', 'push'].forEach(p => {
+    const nav = document.getElementById('cfgNav-' + p);
+    const content = document.getElementById('cfgPanel-' + p);
+    const active = p === panel;
+    if (nav) nav.classList.toggle('active', active);
+    if (content) content.classList.toggle('active', active);
+  });
 }
 
-function openGenerateAllModal() {
+function _switchGenTab(tab) {
+  // Forward to the panel switcher — called by runGenerateAll, runCleanup, pushAllConfigs
+  _switchCfgPanel(tab === 'cleanup' ? 'cleanup' : tab === 'push' ? 'push' : 'generate');
+}
+
+function openGenerateAllModal(panel) {
   const left = document.getElementById('generateAllLeft');
   if (left && !left.dataset.generated) {
     left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
@@ -16176,6 +16191,7 @@ function openGenerateAllModal() {
   const btn = document.getElementById('btnRunGenerateAll');
   btn.disabled = false;
   btn.innerText = 'Generate Configs';
+  _switchCfgPanel(panel || 'generate');
   document.getElementById('generateAllModal').style.display = 'flex';
   document.getElementById('editOverlay').style.display = 'block';
   _loadGlobalCfgTemplate();

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.23 | 2026-05-04 17:04:46 -->
+<!-- TopoAssist v260504.24 | 2026-05-04 17:12:23 -->
 <!DOCTYPE html>
 <html>
 
@@ -100,10 +100,7 @@
                 <button class="icon-btn" data-modal="autoConfigModal" onclick="openIpConfigModal(this)" title="Auto Config">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                 </button>
-                <button class="icon-btn" data-modal="generateAllModal" onclick="openGlobalCfgModal()" title="Config Center — Config Template">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg>
-                </button>
-                <button class="icon-btn" id="btnGenerateAllToolbar" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="All Device Config">
+                <button class="icon-btn" id="btnGenerateAllToolbar" data-modal="generateAllModal" onclick="openGenerateAllModal()" title="Config Center">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   <span id="genToolbarDot"></span>
                 </button>
@@ -1305,7 +1302,7 @@
   </div>
 
   <!-- Config Center Modal (Generate · Config Template · Cleanup · Push) -->
-  <div id="generateAllModal" class="modal-std" style="width:1100px;max-width:96vw;min-height:82vh;">
+  <div id="generateAllModal" class="modal-std" style="width:960px;max-width:96vw;min-height:82vh;">
     <div class="modal-header">
       <div class="modal-header-title">Config Center</div>
       <button class="btn-modal-close" onclick="closeGenerateAllModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -1313,68 +1310,97 @@
     <div id="genAllPushWarn" style="display:none;padding:7px 16px;background:#fef3c7;border-bottom:1px solid #fcd34d;font-family:'JetBrains Mono',monospace;font-size:11px;color:#92400e;flex-shrink:0;">
       Push in progress — use <b>Stop Push</b> to cancel first, or wait for completion.
     </div>
-    <!-- Targets strip (always visible, scrollable when many devices) -->
+    <!-- Targets strip (always visible; blue chip = device included in operation) -->
     <div id="genallDeviceFilter" style="padding:7px 16px 8px;border-bottom:1px solid var(--border);background:var(--bg-modal,#ffffff);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.05em;user-select:none;-webkit-user-select:none;">Targets</span>
         <button class="genall-sel-chip" onclick="_genAllSelectAll(true)">All</button>
         <button class="genall-sel-chip" onclick="_genAllSelectAll(false)">None</button>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);font-style:italic;user-select:none;-webkit-user-select:none;">Click to toggle · blue = included</span>
         <span id="genAllSelCount" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;user-select:none;-webkit-user-select:none;"></span>
       </div>
       <div id="genAllDeviceList" style="display:flex;flex-wrap:wrap;gap:4px 6px;max-height:60px;overflow-y:auto;"></div>
     </div>
-    <!-- 2×2 operation grid -->
-    <div class="cfg-center-grid">
-      <!-- Top-left: Generate -->
-      <div class="cfg-center-panel" style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
-        <div class="cfg-center-panel-hdr">
-          <span class="cfg-center-panel-hdr-label">Generate</span>
-          <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()" title="Build EOS configs for all visible Arista devices and write to the Configs sheet. Configs can be copied per device.">Generate Configs</button>
-          <button class="btn-mono genall-btn" id="btnStopGenerate" disabled title="Stop config generation">Stop</button>
-        </div>
-        <div id="generateAllLeft" class="cfg-center-panel-body">
-          <div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>
-        </div>
+    <!-- Left nav + full-width content panels -->
+    <div class="cfg-center-layout">
+      <!-- Left navigation -->
+      <div class="cfg-center-nav">
+        <button class="cfg-center-nav-item active" id="cfgNav-generate" onclick="_switchCfgPanel('generate')">
+          <span class="cfg-nav-title">Generate</span>
+          <span class="cfg-nav-sub">Build EOS configs from sheet</span>
+        </button>
+        <button class="cfg-center-nav-item" id="cfgNav-template" onclick="_switchCfgPanel('template')">
+          <span class="cfg-nav-title">Template</span>
+          <span class="cfg-nav-sub">Global config prefix</span>
+        </button>
+        <button class="cfg-center-nav-item" id="cfgNav-cleanup" onclick="_switchCfgPanel('cleanup')">
+          <span class="cfg-nav-title">Cleanup</span>
+          <span class="cfg-nav-sub">Remove stale __TA config</span>
+        </button>
+        <button class="cfg-center-nav-item" id="cfgNav-push" onclick="_switchCfgPanel('push')">
+          <span class="cfg-nav-title">Push</span>
+          <span class="cfg-nav-sub">Deploy configs to devices</span>
+        </button>
       </div>
-      <!-- Top-right: Config Template (was globalCfgModal) -->
-      <div class="cfg-center-panel" style="border-bottom:1px solid var(--border);">
-        <div class="cfg-center-panel-hdr">
-          <span class="cfg-center-panel-hdr-label">Config Template</span>
-          <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+      <!-- Content panels (only the active one is shown) -->
+      <div class="cfg-center-content">
+        <!-- Generate panel -->
+        <div id="cfgPanel-generate" class="cfg-panel active">
+          <div class="cfg-panel-desc">
+            Reads the topology sheet and generates EOS configs for all <b>selected</b> Arista devices, then writes them to the <b>Configs</b> sheet. Each device's config can be copied individually or pushed via Device Bridge. Large topologies may take 30–60 seconds.
+          </div>
+          <div class="cfg-panel-actions">
+            <button class="btn-success-mono genall-btn" id="btnRunGenerateAll" onclick="runGenerateAll()" title="Build EOS configs for all selected Arista devices and write to the Configs sheet.">Generate Configs</button>
+            <button class="btn-mono genall-btn" id="btnStopGenerate" disabled title="Stop config generation">Stop</button>
+          </div>
+          <div id="generateAllLeft" class="cfg-panel-body">
+            <div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>
+          </div>
+        </div>
+        <!-- Config Template panel -->
+        <div id="cfgPanel-template" class="cfg-panel">
+          <div class="cfg-panel-desc">
+            Commands prepended to <b>every</b> Arista device config — NTP, AAA, SNMP, management routes, logging, banners, etc. Applied on next Generate or Push. Changes here do not push automatically.
+          </div>
+          <div class="cfg-panel-actions">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;color:var(--text-muted)"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <input type="text" id="globalCfgSearch" class="gcfg-find-input" placeholder="Find…" oninput="globalCfgSearchUpdate()" onkeydown="globalCfgSearchKey(event)" style="width:110px;height:22px;padding:0 7px;line-height:22px;box-sizing:border-box;flex-shrink:0;">
-            <span id="globalCfgSearchCount" class="gcfg-find-count" style="min-width:40px;"></span>
+            <input type="text" id="globalCfgSearch" class="gcfg-find-input" placeholder="Find…" oninput="globalCfgSearchUpdate()" onkeydown="globalCfgSearchKey(event)" style="width:130px;height:22px;padding:0 7px;line-height:22px;box-sizing:border-box;">
+            <span id="globalCfgSearchCount" class="gcfg-find-count" style="min-width:44px;"></span>
             <button class="gcfg-find-btn" onclick="globalCfgSearchPrev()" title="Previous (Shift+Enter)" style="padding:2px 5px;"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             <button class="gcfg-find-btn" onclick="globalCfgSearchNext()" title="Next (Enter)" style="padding:2px 5px;"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <span id="globalCfgStatus" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;"></span>
+            <button class="btn-success-mono" id="btnSaveGlobalCfg" onclick="saveGlobalCfgFromSidebar()" style="flex-shrink:0;">Save & Apply</button>
           </div>
-          <span id="globalCfgStatus" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-left:auto;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-          <button class="btn-success-mono" id="btnSaveGlobalCfg" onclick="saveGlobalCfgFromSidebar()" style="flex-shrink:0;margin-left:6px;">Save & Apply</button>
+          <div class="cfg-panel-body" style="padding:0;display:flex;flex-direction:column;">
+            <textarea id="globalCfgTextarea" spellcheck="false"
+              style="flex:1;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;
+                     padding:10px 14px;border:none;outline:none;resize:none;
+                     background:#ffffff;color:#1e293b;box-sizing:border-box;user-select:text;"
+              onfocus="this.style.boxShadow='inset 0 0 0 2px #3b82f6'" onblur="this.style.boxShadow='none'"></textarea>
+          </div>
         </div>
-        <div class="cfg-center-panel-body" style="padding:0;display:flex;flex-direction:column;">
-          <textarea id="globalCfgTextarea" spellcheck="false"
-            style="flex:1;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;
-                   padding:10px 12px;border:none;outline:none;resize:none;
-                   background:#ffffff;color:#1e293b;box-sizing:border-box;user-select:text;"
-            onfocus="this.style.boxShadow='inset 0 0 0 2px #3b82f6'" onblur="this.style.boxShadow='none'"></textarea>
+        <!-- Cleanup panel -->
+        <div id="cfgPanel-cleanup" class="cfg-panel">
+          <div class="cfg-panel-desc">
+            Scans selected devices for stale <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg-body);border:1px solid var(--border-light);border-radius:3px;padding:1px 4px;">__TA</code> config entries: interfaces, BGP neighbors, VLANs, VRFs, and OSPF passives that TopoAssist no longer generates. Requires Device Bridge. Detected orphans are listed for review — choose what to remove before applying.
+          </div>
+          <div class="cfg-panel-actions">
+            <button class="btn-mono genall-btn" id="btnGenAllCleanup" onclick="runCleanup()" title="Scan selected devices for stale __TA config and show removable orphans.">Clean-up Targets</button>
+            <button class="btn-mono genall-btn" id="btnStopCleanup" disabled title="Stop cleanup">Stop</button>
+          </div>
+          <div id="reconResultsBody" class="cfg-panel-body"></div>
         </div>
-      </div>
-      <!-- Bottom-left: Cleanup -->
-      <div class="cfg-center-panel" style="border-right:1px solid var(--border);">
-        <div class="cfg-center-panel-hdr">
-          <span class="cfg-center-panel-hdr-label">Cleanup</span>
-          <button class="btn-mono genall-btn" id="btnGenAllCleanup" onclick="runCleanup()" title="Scans selected devices for stale __TA config (interfaces, BGP, VLANs, VRFs, OSPF). Choose items to remove. Requires Device Bridge.">Clean-up Targets</button>
-          <button class="btn-mono genall-btn" id="btnStopCleanup" disabled title="Stop cleanup">Stop</button>
+        <!-- Push panel -->
+        <div id="cfgPanel-push" class="cfg-panel">
+          <div class="cfg-panel-desc">
+            Removes stale <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg-body);border:1px solid var(--border-light);border-radius:3px;padding:1px 4px;">__TA</code> entries then pushes fresh EOS config to selected devices via Device Bridge. Commits immediately without diff preview — use single-device Push from a device card to review the diff first.
+          </div>
+          <div class="cfg-panel-actions">
+            <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()" title="Push fresh config to all selected devices via Device Bridge.">Push Targets</button>
+            <button class="btn-mono genall-btn" id="btnStopPush" disabled title="Stop push">Stop</button>
+          </div>
+          <div id="generateAllRight" class="cfg-panel-body"></div>
         </div>
-        <div id="reconResultsBody" class="cfg-center-panel-body"></div>
-      </div>
-      <!-- Bottom-right: Push -->
-      <div class="cfg-center-panel">
-        <div class="cfg-center-panel-hdr">
-          <span class="cfg-center-panel-hdr-label">Push</span>
-          <button class="btn-mono genall-btn" id="btnPushAllConfigs" onclick="pushAllConfigs()" title="Removes stale __TA entries then pushes fresh config. Commits directly — use single-device Push to preview the diff first.">Push Targets</button>
-          <button class="btn-mono genall-btn" id="btnStopPush" disabled title="Stop push">Stop</button>
-        </div>
-        <div id="generateAllRight" class="cfg-center-panel-body"></div>
       </div>
     </div>
   </div>
