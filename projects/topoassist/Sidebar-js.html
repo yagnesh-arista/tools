@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.3 | 2026-05-04 11:28:04 -->
+<!-- TopoAssist v260504.4 | 2026-05-04 11:37:31 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.3";  // keep in sync with Code.gs
+const APP_VERSION = "260504.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -758,13 +758,7 @@ function DeviceManager() {
       didHtml = `<span class="col-id id-blue">${currDID}</span>`;
     }
 
-    let nameDisplay = (devObj.name !== devObj.originalName)
-      ? `<span class="val-old">${escapeHtml(devObj.originalName)}</span> <span class="rename-arrow">➜</span> <span class="val-new">${escapeHtml(devObj.name)}</span>`
-      : `<span style="font-weight:600;">${escapeHtml(devObj.name)}</span>`;
-
-    const hostnameHtml = devObj.hostname
-      ? `<span class="dev-hostname-text dev-hostname-clickable" onclick="DeviceManagerRenameDevice(${index})" title="Click to edit hostname">${escapeHtml(devObj.hostname)}</span>`
-      : `<span class="dev-hostname-add" onclick="DeviceManagerRenameDevice(${index})">+ set hostname</span>`;
+    const wasChanged = devObj.originalName && devObj.name !== devObj.originalName;
 
     const isRoleManaged = (devObj.role === 'IXIA' || devObj.role === 'SPIRENT');
     let typeBadge;
@@ -811,7 +805,12 @@ onchange="toggleDeviceVisibility(${index})">
 </div>
 <div class="col-center">${tidHtml}</div>
 <div class="col-center">${didHtml}</div>
-<div class="col-left"><div class="dev-name-cell">${nameDisplay}${hostnameHtml}</div></div>
+<div class="col-left"><div class="dev-name-cell">
+  <input class="dev-name-inp${wasChanged ? ' dev-name-changed' : ''}" type="text" value="${escapeHtml(devObj.name)}" placeholder="dns-name" spellcheck="false" oninput="DeviceManagerUpdateName(${index}, this)">
+  <span class="dev-name-was" style="display:${wasChanged ? 'block' : 'none'}">${wasChanged ? `was: ${escapeHtml(devObj.originalName)}` : ''}</span>
+  <span class="dev-name-error" style="display:none;"></span>
+  <input class="dev-hostname-inp" type="text" value="${escapeHtml(devObj.hostname || '')}" placeholder="hostname (optional)" spellcheck="false" oninput="DeviceManagerUpdateHostname(${index}, this.value)">
+</div></div>
 <div class="col-center">${typeBadge}</div>
 <div class="dev-role-cell"><select class="role-select" onchange="setDeviceRole(${index},this.value)" title="Device role — drives VXLAN/EVPN config generation">${roleOptions}</select></div>
 <div class="dev-role-cell"><select class="role-select mlag-peer-select" onchange="setDeviceMlagPeer(${index},this.value)" title="MLAG peer — explicit pair declaration; server enforces bidirectionality">${mlagPeerOptions}</select></div>
@@ -1125,79 +1124,44 @@ function toggleDeviceVisibility(index) {
   }
 }
 
-function DeviceManagerRenameDevice(index) {
-  const existing = document.getElementById('deviceEditRow');
-  if (existing && existing.dataset.editFor == index) { closeDeviceEditor(); return; }
-  closeDeviceEditor();
-
-  const items = document.querySelectorAll('#reorderList .reorder-item');
-  const li = items[index];
-  if (!li) return;
-
+function DeviceManagerUpdateName(index, input) {
+  const newName = input.value.trim();
+  const cell = input.closest('.dev-name-cell');
+  const errEl = cell.querySelector('.dev-name-error');
+  const wasEl = cell.querySelector('.dev-name-was');
   const dev = currentDeviceManagerList[index];
-  const editorLi = document.createElement('li');
-  editorLi.id = 'deviceEditRow';
-  editorLi.dataset.editFor = index;
-  editorLi.className = 'device-edit-row';
-  const inputStyle = 'width:100%;box-sizing:border-box;font-family:"JetBrains Mono",monospace;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-main);';
-  editorLi.innerHTML = `
-    <div class="device-edit-form">
-      <div class="device-edit-field">
-        <label>DNS Name <span style="color:#ef4444;">*</span></label>
-        <input type="text" id="editDeviceName" value="${escapeHtml(dev.name)}" placeholder="e.g. leaf1" style="${inputStyle}">
-      </div>
-      <div class="device-edit-field">
-        <label>Hostname <span style="color:var(--text-muted);">(optional — shown in sheet Row 1 &amp; EOS config)</span></label>
-        <input type="text" id="editDeviceHostname" value="${escapeHtml(dev.hostname || '')}" placeholder="e.g. LAB-DC1-Leaf1" style="${inputStyle}">
-      </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button onclick="applyDeviceEdit(${index})" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 12px;background:#3b82f6;color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:700;">Apply</button>
-        <button onclick="closeDeviceEditor()" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 10px;background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;">Cancel</button>
-      </div>
-      <div id="editDeviceError" style="color:#ef4444;font-size:10px;margin-top:4px;display:none;font-family:'JetBrains Mono',monospace;"></div>
-    </div>`;
-  li.after(editorLi);
-  const nameInput = document.getElementById('editDeviceName');
-  nameInput.focus();
-  nameInput.select();
-  nameInput.addEventListener('keydown', e => { if (e.key === 'Escape') closeDeviceEditor(); });
-  document.getElementById('editDeviceHostname').addEventListener('keydown', e => { if (e.key === 'Escape') closeDeviceEditor(); });
-}
 
-function closeDeviceEditor() {
-  const el = document.getElementById('deviceEditRow');
-  if (el) el.remove();
-}
-
-function applyDeviceEdit(index) {
-  const nameInput = document.getElementById('editDeviceName');
-  const hostnameInput = document.getElementById('editDeviceHostname');
-  const errorDiv = document.getElementById('editDeviceError');
-
-  const newName = nameInput.value.trim();
-  const newHostname = hostnameInput.value.trim();
+  input.classList.remove('has-error');
+  errEl.style.display = 'none';
 
   if (!newName || !/^[a-zA-Z0-9_\-]{1,64}$/.test(newName)) {
-    errorDiv.textContent = 'DNS name: alphanumeric, hyphens, underscores only (max 64 chars).';
-    errorDiv.style.display = 'block';
-    nameInput.focus();
+    errEl.textContent = 'Alphanumeric, hyphens, underscores only (max 64).';
+    errEl.style.display = 'block';
+    input.classList.add('has-error');
     return;
   }
-  const isDuplicate = currentDeviceManagerList.some((d, i) => i !== index && d.name.toLowerCase() === newName.toLowerCase());
-  if (isDuplicate) {
-    errorDiv.textContent = 'DNS name already exists in the list.';
-    errorDiv.style.display = 'block';
-    nameInput.focus();
+  if (currentDeviceManagerList.some((d, i) => i !== index && d.name.toLowerCase() === newName.toLowerCase())) {
+    errEl.textContent = 'Name already exists.';
+    errEl.style.display = 'block';
+    input.classList.add('has-error');
     return;
   }
 
-  currentDeviceManagerList[index].name = newName;
-  currentDeviceManagerList[index].hostname = newHostname;
-  closeDeviceEditor();
+  dev.name = newName;
+  const wasChanged = dev.originalName && newName !== dev.originalName;
+  wasEl.textContent = wasChanged ? `was: ${dev.originalName}` : '';
+  wasEl.style.display = wasChanged ? 'block' : 'none';
+  input.classList.toggle('dev-name-changed', !!wasChanged);
+  isDeviceManagerDirty = true;
   DeviceManagerCheckChanges();
-  DeviceManager();
-  const items = document.querySelectorAll('#reorderList .reorder-item');
-  if (items[index]) items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  DeviceManagerSaveButton();
+}
+
+function DeviceManagerUpdateHostname(index, value) {
+  currentDeviceManagerList[index].hostname = value.trim();
+  isDeviceManagerDirty = true;
+  DeviceManagerCheckChanges();
+  DeviceManagerSaveButton();
 }
 
 /**

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260504.3 | 2026-05-04 11:27:13 -->
+<!-- TopoAssist v260504.4 | 2026-05-04 11:38:25 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -4454,68 +4454,58 @@
     align-items: flex-start;
     overflow: hidden;
     width: 100%;
+    gap: 1px;
   }
 
-  .dev-hostname-text {
-    font-size: 10px;
-    color: var(--text-muted);
-    font-weight: 400;
-    margin-top: 1px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .dev-hostname-clickable {
-    cursor: pointer;
-  }
-
-  .dev-hostname-clickable:hover {
-    color: var(--primary, #3b82f6);
-  }
-
-  .dev-hostname-add {
-    font-size: 10px;
-    color: var(--text-muted);
-    font-weight: 400;
-    margin-top: 1px;
-    cursor: pointer;
-    opacity: 0.5;
+  .dev-name-inp {
+    font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text-main);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 1px 4px;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
   }
+  .dev-name-inp:hover { border-color: var(--border); background: var(--bg-secondary); }
+  .dev-name-inp:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+  .dev-name-inp.has-error { border-color: #ef4444 !important; background: #fff5f5 !important; }
+  .dev-name-inp.dev-name-changed { color: #10b981; }
 
-  .dev-hostname-add:hover {
-    color: var(--primary, #3b82f6);
-    opacity: 1;
-  }
-
-  .device-edit-row {
-    padding: 10px 15px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-light);
-    border-left: 3px solid var(--primary, #3b82f6);
-    list-style: none;
-  }
-
-  .device-edit-form {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .device-edit-field {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .device-edit-field label {
-    font-size: 10px;
-    color: var(--text-muted);
+  .dev-hostname-inp {
+    font-size: 11px;
     font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-weight: 400;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 1px 4px;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .dev-hostname-inp:hover { border-color: var(--border); background: var(--bg-secondary); }
+  .dev-hostname-inp:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+  .dev-hostname-inp::placeholder { color: #94a3b8; font-style: italic; }
+
+  .dev-name-was {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #94a3b8;
+    font-style: italic;
+    padding-left: 4px;
+  }
+
+  .dev-name-error {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #ef4444;
+    font-weight: 500;
+    padding-left: 4px;
   }
 
   .dev-role-cell {
@@ -4738,6 +4728,17 @@
     min-height: 36px;
     align-items: center;
     padding: 0 10px;
+  }
+
+  .reorder-list-header {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Data rows (not header) grow to fit wrapped label pills */
