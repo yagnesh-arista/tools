@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.29 | 2026-05-05 12:46:06 -->
+<!-- TopoAssist v260505.30 | 2026-05-05 12:55:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.29";  // keep in sync with Code.gs
+const APP_VERSION = "260505.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6026,8 +6026,10 @@ function _refreshDock() {
   if (!dock) return;
   dock.innerHTML = '';
   const fullScreenIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
-  document.querySelectorAll('.modal-std.modal-minimized').forEach(modal => {
-    if (fullScreenIds.has(modal.id)) return;
+  const minimized = [...document.querySelectorAll('.modal-std.modal-minimized')]
+    .filter(m => !fullScreenIds.has(m.id))
+    .sort((a, b) => (Number(a.dataset.minimizedAt) || 0) - (Number(b.dataset.minimizedAt) || 0));
+  minimized.forEach(modal => {
     const title = modal.querySelector('.modal-header-title')?.textContent.trim() || modal.id;
     const dc = document.createElement('button');
     dc.className = 'modal-dock-chip';
@@ -13490,10 +13492,12 @@ function toggleModalMinimize(modalId) {
   const isMin = modal.classList.toggle('modal-minimized');
   if (isMin) {
     modal.dataset.preMinDisplay = modal.style.display || 'flex';
+    modal.dataset.minimizedAt = Date.now();
     modal.style.display = 'none';
   } else {
     modal.style.display = modal.dataset.preMinDisplay || 'flex';
     delete modal.dataset.preMinDisplay;
+    delete modal.dataset.minimizedAt;
   }
   if (btn) {
     btn.innerHTML = isMin
