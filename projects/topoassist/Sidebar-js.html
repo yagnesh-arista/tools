@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.50 | 2026-05-05 14:24:26 -->
+<!-- TopoAssist v260505.52 | 2026-05-05 14:38:20 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.50";  // keep in sync with Code.gs
+const APP_VERSION = "260505.52";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16792,6 +16792,63 @@ function _computeGroupBounds(memberIds, padding) {
   return { x: minX - padding, y: minY - padding, width: (maxX - minX) + 2 * padding, height: (maxY - minY) + 2 * padding };
 }
 
+// Split member nodes into spatial clusters (union-find on bounding-box proximity).
+// Returns an array of {x,y,width,height} bounding boxes, one per cluster.
+// Nodes whose edges are within gapThreshold px of each other are in the same cluster.
+function _computeGroupClusters(memberIds, padding, gapThreshold) {
+  padding = padding !== undefined ? padding : 30;
+  gapThreshold = gapThreshold !== undefined ? gapThreshold : 300;
+  if (!memberIds || !memberIds.length) return [];
+  const set = new Set(memberIds.map(id => (id || '').toLowerCase()));
+  const nodes = [];
+  if (_isHolisticView()) {
+    if (typeof holisticSimulation !== 'undefined' && holisticSimulation) {
+      const r = (typeof holisticNodeR !== 'undefined' ? holisticNodeR : 52);
+      const pillBottom = r + 84;
+      holisticSimulation.nodes().forEach(n => {
+        if (!set.has((n.id || '').toLowerCase())) return;
+        nodes.push({ x1: n.x - r, y1: n.y - r, x2: n.x + r, y2: n.y + pillBottom });
+      });
+    }
+  } else {
+    document.querySelectorAll('#canvas-surface .node[data-id]').forEach(el => {
+      if (!set.has((el.dataset.id || '').toLowerCase())) return;
+      if (el.style.display === 'none') return;
+      const x = parseFloat(el.style.left) || 0;
+      const y = parseFloat(el.style.top) || 0;
+      const w = el.offsetWidth || 220;
+      const h = el.offsetHeight || 80;
+      nodes.push({ x1: x, y1: y, x2: x + w, y2: y + h });
+    });
+  }
+  if (!nodes.length) return [];
+  const parent = nodes.map((_, i) => i);
+  function find(i) { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
+  function union(i, j) { parent[find(i)] = find(j); }
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = Math.max(0, Math.max(a.x1, b.x1) - Math.min(a.x2, b.x2));
+      const dy = Math.max(0, Math.max(a.y1, b.y1) - Math.min(a.y2, b.y2));
+      if (Math.sqrt(dx * dx + dy * dy) <= gapThreshold) union(i, j);
+    }
+  }
+  const clusterMap = new Map();
+  nodes.forEach((node, i) => {
+    const root = find(i);
+    if (!clusterMap.has(root)) clusterMap.set(root, []);
+    clusterMap.get(root).push(node);
+  });
+  return [...clusterMap.values()].map(clNodes => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    clNodes.forEach(({ x1, y1, x2, y2 }) => {
+      if (x1 < minX) minX = x1; if (y1 < minY) minY = y1;
+      if (x2 > maxX) maxX = x2; if (y2 > maxY) maxY = y2;
+    });
+    return { x: minX - padding, y: minY - padding, width: (maxX - minX) + 2 * padding, height: (maxY - minY) + 2 * padding };
+  });
+}
+
 // --- RENDER: Draw all saved rects into the SVG group-rects layer ---
 // Maps a textPos key to SVG text attributes for a given rect
 function getTextAttrs(gr) {
@@ -16853,12 +16910,66 @@ function renderGroupRectsInto(rectGroup, labelGroup) {
   if (labelGroup) labelGroup.selectAll(".grect-label-item").remove();
 
   groupRects.forEach(gr => {
-    // Member-based rects: recompute bounds from current node positions every render
+    // Member-based rects: recompute bounds from current node positions every render.
+    // Spatially-separated members render as multiple compact cluster rects (same label/color).
     const isMemberRect = gr.members && gr.members.length > 0;
     if (isMemberRect) {
-      const computed = _computeGroupBounds(gr.members);
-      if (!computed) return; // all members hidden — skip this group rect
-      gr.x = computed.x; gr.y = computed.y; gr.width = computed.width; gr.height = computed.height;
+      const clusters = _computeGroupClusters(gr.members);
+      if (!clusters.length) return; // all members hidden — skip
+      if (clusters.length === 1) {
+        // Single cluster — fall through to common rendering with gr geom set
+        const b = clusters[0];
+        gr.x = b.x; gr.y = b.y; gr.width = b.width; gr.height = b.height;
+      } else {
+        // Multiple clusters — render each as a simple rect+label, then return
+        const strokeColor = gr.color.replace(/[0-9a-f]{2}$/i, "ff");
+        const dblclickHandler = (e) => {
+          e.stopPropagation();
+          editingGroupRectId = gr.id;
+          selectedGroupRectColor = gr.color;
+          selectedGroupRectTextPos = gr.textPos || "top-left";
+          selectedGroupRectWrapText = !!gr.wrapText;
+          selectedGroupRectBoldText = !!gr.boldText;
+          selectedGroupRectVertical = !!gr.vertical;
+          document.getElementById("groupRectLabelInp").value = gr.label;
+          document.querySelectorAll(".grect-swatch").forEach(s => {
+            s.classList.toggle("selected", s.dataset.color === gr.color);
+          });
+          openGroupRectModal();
+        };
+        clusters.forEach(box => {
+          const cg = rectGroup.append("g").attr("class", "grect-item").attr("data-id", gr.id);
+          const clg = labelGroup
+            ? labelGroup.append("g").attr("class", "grect-label-item").attr("data-id", gr.id)
+            : cg;
+          cg.append("rect").attr("class", "grect-body")
+            .attr("x", box.x).attr("y", box.y)
+            .attr("width", box.width).attr("height", box.height)
+            .attr("rx", 8).attr("fill", gr.color)
+            .attr("stroke", strokeColor).attr("stroke-width", 2)
+            .attr("stroke-dasharray", "8 4")
+            .style("pointer-events", "all").style("cursor", "default");
+          const boxGr = Object.assign({}, gr, { x: box.x, y: box.y, width: box.width, height: box.height });
+          const ta = getTextAttrs(boxGr);
+          const labelEl = clg.append("text").attr("class", "grect-label")
+            .attr("font-family", "'JetBrains Mono', monospace")
+            .attr("font-size", "12px").attr("font-weight", gr.boldText ? "800" : "400")
+            .attr("fill", strokeColor).style("pointer-events", "none");
+          if (gr.vertical) {
+            const va = getVertLabelAttrs(boxGr);
+            labelEl.attr("x", va.x).attr("y", va.y)
+              .attr("text-anchor", "start").attr("dominant-baseline", "auto")
+              .attr("transform", `rotate(-90, ${va.x}, ${va.y})`).text(gr.label);
+          } else {
+            labelEl.attr("x", ta.x).attr("y", ta.y)
+              .attr("text-anchor", ta.anchor).attr("dominant-baseline", ta.base);
+            if (gr.wrapText) applyWrapToLabel(labelEl, boxGr, ta);
+            else labelEl.text(gr.label);
+          }
+          cg.on("dblclick", dblclickHandler);
+        });
+        return; // skip single-rect path
+      }
     } else if (!_isHolisticView()) {
       // Coordinate-based rects: hide when no .node divs are visible (search no-match, all hidden).
       // Holistic view uses SVG circles, not .node divs — skip this check there.
