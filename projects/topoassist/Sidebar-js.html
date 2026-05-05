@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.38 | 2026-05-05 13:30:23 -->
+<!-- TopoAssist v260505.40 | 2026-05-05 13:37:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.38";  // keep in sync with Code.gs
+const APP_VERSION = "260505.40";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13545,14 +13545,13 @@ function _injectMinimizeButtons() {
     const header = modal.querySelector('.modal-header, .modal-keep-on-min');
     if (!header) return;
     if (header.querySelector('.btn-modal-minimize')) return; // already has one
-    const closeBtn = header.querySelector('.btn-modal-close');
-    if (!closeBtn) return;
     const btn = document.createElement('button');
     btn.className = 'btn-modal-minimize';
     btn.title = 'Minimize';
     btn.innerHTML = _minSvg;
     btn.onclick = function() { toggleModalMinimize(modal.id); };
-    closeBtn.parentNode.insertBefore(btn, closeBtn);
+    const closeBtn = header.querySelector('.btn-modal-close');
+    if (closeBtn) { closeBtn.parentNode.insertBefore(btn, closeBtn); } else { header.appendChild(btn); }
   });
 }
 

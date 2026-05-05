@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260505.25 | 2026-05-05 12:26:08
+# topoassist v260505.40 | 2026-05-05 13:37:30
 """
 TopoAssist Device Bridge
 ========================
