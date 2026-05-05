@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.32 | 2026-05-05 13:18:39 -->
+<!-- TopoAssist v260505.33 | 2026-05-05 13:22:31 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.32";  // keep in sync with Code.gs
+const APP_VERSION = "260505.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -786,7 +786,7 @@ function DeviceManager() {
            <button onclick="confirmRemoveDevice()" title="Confirm delete" style="font-size:10px;padding:2px 6px;background:#ef4444;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:700;display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
            <button onclick="cancelRemoveDevice()" title="Cancel" style="font-size:10px;padding:2px 5px;background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
          </div>`
-      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})" style="display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
+      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})" style="display:inline-flex;align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
 
     const roleVal = devObj.role || '';
     const roleOptions = ['', ...DEVICE_ROLE_OPTIONS].map(r =>
@@ -9557,7 +9557,21 @@ function loadStateFromStorage(mode) {
 function loadGroupRects() {
   try {
     const raw = localStorage.getItem("holistic_group_rects");
-    groupRects = raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    // Dedup: same label → merge members into the first entry, drop the duplicate
+    const byLabel = new Map();
+    parsed.forEach(gr => {
+      const key = (gr.label || '').toLowerCase();
+      if (byLabel.has(key)) {
+        const first = byLabel.get(key);
+        const merged = new Set([...(first.members || []), ...(gr.members || [])]);
+        first.members = [...merged];
+      } else {
+        byLabel.set(key, gr);
+      }
+    });
+    groupRects = [...byLabel.values()];
+    if (groupRects.length < parsed.length) saveGroupRects(); // persist fix
   } catch(e) { groupRects = []; }
 }
 
@@ -13526,8 +13540,10 @@ function toggleModalMinimize(modalId) {
 // but no .btn-modal-minimize yet. Runs once at initApp time.
 function _injectMinimizeButtons() {
   const _minSvg = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const _noMinIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
   document.querySelectorAll('.modal-std').forEach(modal => {
     if (!modal.id) return;
+    if (_noMinIds.has(modal.id)) return;
     const header = modal.querySelector('.modal-header, .modal-keep-on-min');
     if (!header) return;
     if (header.querySelector('.btn-modal-minimize')) return; // already has one
@@ -17052,6 +17068,20 @@ function refreshGroupRects() {
   if (!linRectGroup.empty()) {
     const linLabelGroup = d3.select("#linear-grect-svg .group-rect-labels");
     renderGroupRectsInto(linRectGroup, linLabelGroup.empty() ? null : linLabelGroup);
+  }
+}
+
+function _setGroupRectLabelError(msg) {
+  const el = document.getElementById('groupRectLabelError');
+  const inp = document.getElementById('groupRectLabelInp');
+  if (!el) return;
+  if (msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+    if (inp) inp.style.borderColor = '#ef4444';
+  } else {
+    el.style.display = 'none';
+    if (inp) inp.style.borderColor = '';
   }
 }
 

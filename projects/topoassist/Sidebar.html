@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.32 | 2026-05-05 13:18:39 -->
+<!-- TopoAssist v260505.33 | 2026-05-05 13:21:38 -->
 <!DOCTYPE html>
 <html>
 
@@ -1211,7 +1211,9 @@
       <input type="text" id="groupRectLabelInp" class="form-input" maxlength="16"
              placeholder="e.g. Spine Tier, DC-A Leaf"
              style="font-family:'JetBrains Mono',monospace; font-size:12px; padding:8px 10px;"
-             onkeydown="if(event.key==='Enter') confirmGroupRect()">
+             onkeydown="if(event.key==='Enter') confirmGroupRect()"
+             oninput="_setGroupRectLabelError('')">
+      <div id="groupRectLabelError" style="display:none; color:#ef4444; font-size:11px; font-family:'JetBrains Mono',monospace; margin-top:-8px; line-height:1.4;"></div>
 
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Color:</span>
