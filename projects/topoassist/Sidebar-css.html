@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.4 | 2026-05-05 10:15:04 -->
+<!-- TopoAssist v260505.5 | 2026-05-05 10:40:04 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -158,7 +158,7 @@
 
   /* Remove rounded corners for full-screen headers */
   body.mode-schema .modal-header,
-  body.mode-reorder .reorder-header,
+  body.mode-reorder .modal-header,
   body.mode-view_custom .modal-header {
     border-radius: 0 !important;
   }
@@ -4348,39 +4348,6 @@
     grid-template-columns: 30px 50px 60px 1fr 60px 70px 90px 110px 30px;
     gap: 6px;
     align-items: center
-  }
-
-  .reorder-header {
-    padding: 8px 15px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-light);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    user-select: none;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .reorder-header-close {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 0 2px;
-    line-height: 1;
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: none;
-  }
-
-  .reorder-header-close:hover {
-    color: var(--text-main);
   }
 
   .reorder-item {

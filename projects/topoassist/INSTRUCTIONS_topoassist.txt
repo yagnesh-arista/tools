@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (Remove modalOrder/closeFuncs registry from Esc handler — replaced with dynamic .modal-std query (only one modal open at a time; .btn-modal-close clicked directly). Two find-bar special cases (configModal, configCenterModal) preserved inline. FILES: Sidebar-js.html)
+  Last updated: 2026-05-05 (deviceManagerContainer header migrated from .reorder-header to standard .modal-header/.modal-header-title; mode-reorder no-border-radius rule updated; dead .reorder-header/.reorder-header-close CSS removed. FILES: Sidebar.html, Sidebar-css.html)
+  Previous: 2026-05-05 (Remove modalOrder/closeFuncs registry from Esc handler — replaced with dynamic .modal-std query (only one modal open at a time; .btn-modal-close clicked directly). Two find-bar special cases (configModal, configCenterModal) preserved inline. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (Rename app-topology → appTopologyContainer (main topology wrapper div, consistent *Container naming convention). FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-05 (Remove deviceManagerContainer from modalOrder and closeFuncs — also a separate GAS dialog, same as sheetColumnManagerContainer/sheetVisContainer. Final modalOrder has 13 topology-only modals. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (Remove sheetColumnManagerContainer and sheetVisContainer from modalOrder and closeFuncs in topology Esc handler — these are separate GAS dialog windows, never in the topology DOM, so Esc in the topology sidebar can never reach them. FILES: Sidebar-js.html)
