@@ -828,6 +828,25 @@ inside a manager panel. For each one:
 
 ---
 
+## Check 31 — setTitle / showModelessDialog String Sync
+
+Every `showModelessDialog(html, 'X')` call in Code.gs must have a matching `.setTitle('X')` on
+the html object, with the **identical string** — no version suffix, no variation.
+
+```bash
+# Extract all setTitle and showModelessDialog strings and compare
+grep -n "setTitle\|showModelessDialog" ~/claude/projects/topoassist/Code.gs \
+  | grep -v "showModalDialog\|^.*\/\/" | grep -oP "(?<=setTitle\('|showModelessDialog\(html, ')([^']+)"
+```
+
+Pair each `.setTitle('X')` with its adjacent `showModelessDialog(html, 'X')`. They must be
+identical strings.
+
+✗ FAIL if any pair has mismatched strings (e.g. one has a version suffix, different wording).
+✗ FAIL if a `showModelessDialog` call has no preceding `.setTitle(...)` on the html object.
+
+---
+
 ## Output Format
 
 ```
