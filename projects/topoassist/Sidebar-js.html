@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.3 | 2026-05-05 10:03:19 -->
+<!-- TopoAssist v260505.4 | 2026-05-05 10:15:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.3";  // keep in sync with Code.gs
+const APP_VERSION = "260505.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6062,53 +6062,29 @@ window.topologyKeyHandler = function (event) {
       window.lastEscPress = now;
     }
 
-    // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "configCenterModal", "vlanSummaryModal"];
+    // STEP 1: CLOSE MODALS — dynamic lookup, no registry needed (only one modal open at a time)
+    const openModal = [...document.querySelectorAll('.modal-std')]
+      .find(m => getComputedStyle(m).display !== 'none' && !m.classList.contains('modal-minimized'));
 
-    for (const id of modalOrder) {
-      const el = document.getElementById(id);
-      if (el && getComputedStyle(el).display !== "none" && !el.classList.contains('modal-minimized')) {
-
-        // If Config Modal is open & search has text → clear first, don't close
-        if (id === "configModal") {
-          const cfgSearch = document.getElementById("configSearch");
-          if (cfgSearch && cfgSearch.value.trim() !== "") {
-            cfgSearch.value = "";
-            cfgSearch.dispatchEvent(new Event('input'));
-            cfgSearch.focus();
-            return;
-          }
-        }
-
-        // If Config Center is open & find bar has text → clear first, don't close
-        if (id === "configCenterModal") {
-          const gcfgSearch = document.getElementById("globalCfgSearch");
-          if (gcfgSearch && gcfgSearch.value.trim() !== "") {
-            gcfgSearch.value = "";
-            gcfgSearch.dispatchEvent(new Event('input'));
-            gcfgSearch.focus();
-            return;
-          }
-        }
-
-        // Standard Close Logic
-        const closeFuncs = {
-          "helpModal": closeHelpModal,
-          "guiEditModal": closeEditModal, "autoConfigModal": closeIpModal,
-          "pushConfirmModal": cancelPushConfig,
-          "deviceBridgeModal": closeBridgeModal,
-          "cablingModal": closeCablingModal, "auditModal": closeAuditModal,
-          "auditSettingsModal": closeAuditSettingsModal,
-          "techModal": closeTechModal, "configModal": closeConfigModal,
-          "groupRectModal": closeGroupRectModal,
-          "configCenterModal": closeGenerateAllModal,
-          "vlanSummaryModal": closeVlanSummaryModal
-        };
-        if (typeof closeFuncs[id] === 'function') {
-          closeFuncs[id]();
+    if (openModal) {
+      // Config Modal: clear find bar first if active
+      if (openModal.id === 'configModal') {
+        const cfgSearch = document.getElementById('configSearch');
+        if (cfgSearch && cfgSearch.value.trim() !== '') {
+          cfgSearch.value = ''; cfgSearch.dispatchEvent(new Event('input')); cfgSearch.focus();
           return;
         }
       }
+      // Config Center: clear find bar first if active
+      if (openModal.id === 'configCenterModal') {
+        const gcfgSearch = document.getElementById('globalCfgSearch');
+        if (gcfgSearch && gcfgSearch.value.trim() !== '') {
+          gcfgSearch.value = ''; gcfgSearch.dispatchEvent(new Event('input')); gcfgSearch.focus();
+          return;
+        }
+      }
+      openModal.querySelector('.btn-modal-close')?.click();
+      return;
     }
 
     // STEP 2: GLOBAL UI & DATA RESET (Run if no modals intercepted the key)
