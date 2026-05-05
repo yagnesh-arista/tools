@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260505.24 | 2026-05-05 12:24:46
+# topoassist v260505.25 | 2026-05-05 12:26:08
 """
 TopoAssist Device Bridge
 ========================
@@ -565,7 +565,7 @@ def _orphans_to_cmds(orphans):
     for ctx, ifaces in ospf_by_ctx.items():
         cmds.append(ctx)
         for iface in ifaces:
-            cmds.append(f'   passive-interface {iface}')
+            cmds.append(f'   default passive-interface {iface}')
         cmds.append('!')
     return cmds
 
