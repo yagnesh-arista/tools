@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.26 | 2026-05-05 12:27:34 -->
+<!-- TopoAssist v260505.27 | 2026-05-05 12:35:38 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.26";  // keep in sync with Code.gs
+const APP_VERSION = "260505.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5404,7 +5404,7 @@ function checkTechDirty() {
   // Cross-validation: show errors and block save if invalid
   const errors = validateTechSettings();
   const banner = document.getElementById('techValidationErrors');
-  const saveBtn = document.querySelector('#techModal .btn-success-mono');
+  const saveBtn = document.querySelector('#networkStackModal .btn-success-mono');
   if (banner) {
     if (errors.length > 0) {
       const warnSvg = `<svg style="display:inline;vertical-align:middle;margin-right:5px;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
@@ -5416,7 +5416,7 @@ function checkTechDirty() {
   }
   if (saveBtn) saveBtn.disabled = errors.length > 0;
 
-  updateDirtyButton("#techModal .btn-success-mono", isDirty && errors.length === 0);
+  updateDirtyButton("#networkStackModal .btn-success-mono", isDirty && errors.length === 0);
 }
 
 /* --- TECH COMPAT: protocol checkboxes valid per P2P interface mode --- */
@@ -5464,7 +5464,7 @@ function _enableTechChk(id) {
 }
 
 function syncTechChipState() {
-  document.querySelectorAll('#techModal .tech-radio-label').forEach(function(lbl) {
+  document.querySelectorAll('#networkStackModal .tech-radio-label').forEach(function(lbl) {
     const inp = lbl.querySelector('.chk-input');
     if (!inp) return;
     if (lbl.classList.contains('tech-incompat')) {
@@ -5542,19 +5542,19 @@ function validateTechSettings() {
 /* --- TECHNOLOGY MODAL LOGIC --- */
 function openTechModal() {
   _autoMinimizeOpenModal();
-  showModalLoading("techModal");
+  showModalLoading("networkStackModal");
 
   const _guard = setTimeout(() => {
-    hideModalLoading('techModal');
-    document.getElementById("techModal").style.display = 'none';
+    hideModalLoading('networkStackModal');
+    document.getElementById("networkStackModal").style.display = 'none';
     setActiveModalChip(null);
-    setStatus("Network Tech Stack load timed out — try again", "status-error");
+    setStatus("Network Stack load timed out — try again", "status-error");
   }, 15000);
 
   google.script.run
     .withSuccessHandler(settings => {
       clearTimeout(_guard);
-      hideModalLoading('techModal');
+      hideModalLoading('networkStackModal');
 
       // 1. Derive P2P mode from stored flags (5-mode)
       let p2pMode;
@@ -5604,10 +5604,10 @@ function openTechModal() {
       applyEvpnGating();
 
       // 7. Attach handlers: P2P radios update compat then dirty; checkboxes just dirty
-      document.querySelectorAll('#techModal input[name="p2pMode"]').forEach(el => {
+      document.querySelectorAll('#networkStackModal input[name="p2pMode"]').forEach(el => {
         el.onchange = function() { applyTechCompat(this.value); checkTechDirty(); };
       });
-      document.querySelectorAll('#techModal input[type="checkbox"]').forEach(el => {
+      document.querySelectorAll('#networkStackModal input[type="checkbox"]').forEach(el => {
         el.onchange = checkTechDirty;
       });
       // EVPN checkboxes also re-run gating (overrides the generic checkTechDirty above)
@@ -5615,18 +5615,18 @@ function openTechModal() {
         const el = document.getElementById(id);
         if (el) el.onchange = function() { applyEvpnGating(); checkTechDirty(); };
       });
-      document.querySelectorAll('#techModal input[name="evpnService"]').forEach(el => {
+      document.querySelectorAll('#networkStackModal input[name="evpnService"]').forEach(el => {
         el.onchange = checkTechDirty;
       });
-      document.querySelectorAll('#techModal input[name="gwL3Type"]').forEach(el => {
+      document.querySelectorAll('#networkStackModal input[name="gwL3Type"]').forEach(el => {
         el.onchange = updateVarpMacVisibility;
       });
       const varpMacInput = document.getElementById('inputVarpMac');
       if (varpMacInput) varpMacInput.oninput = checkTechDirty;
 
       // Click-to-enable: clicking a greyed (tech-incompat) row auto-switches P2P and checks the box
-      if (!document.getElementById('techModal')._clickInit) {
-        document.getElementById('techModal')._clickInit = true;
+      if (!document.getElementById('networkStackModal')._clickInit) {
+        document.getElementById('networkStackModal')._clickInit = true;
         TECH_ALL_CHKS.forEach(id => {
           const row = document.getElementById('row-' + id);
           if (!row) return;
@@ -5639,9 +5639,9 @@ function openTechModal() {
       }
 
       // Delegated change listener: keeps chip selected-state in sync on every input change
-      if (!document.getElementById('techModal')._changeInit) {
-        document.getElementById('techModal')._changeInit = true;
-        document.getElementById('techModal').addEventListener('change', syncTechChipState);
+      if (!document.getElementById('networkStackModal')._changeInit) {
+        document.getElementById('networkStackModal')._changeInit = true;
+        document.getElementById('networkStackModal').addEventListener('change', syncTechChipState);
       }
 
       // 6. Capture initial state + run first validation
@@ -5649,13 +5649,13 @@ function openTechModal() {
       checkTechDirty();
 
       // 7. Ensure modal display properties (showModalLoading already set display:flex + chip)
-      const modal   = document.getElementById('techModal');
+      const modal   = document.getElementById('networkStackModal');
       if (modal)   { modal.style.zIndex = '30000'; modal.style.opacity = '1'; modal.style.visibility = 'visible'; }
     })
     .withFailureHandler(err => {
       clearTimeout(_guard);
-      hideModalLoading('techModal');
-      document.getElementById("techModal").style.display = 'none';
+      hideModalLoading('networkStackModal');
+      document.getElementById("networkStackModal").style.display = 'none';
       setActiveModalChip(null);
       alert("Server Error: " + err.message);
     })
@@ -5663,10 +5663,10 @@ function openTechModal() {
 }
 
 function closeTechModal() {
-  _onModalClose(document.getElementById('techModal'));
+  _onModalClose(document.getElementById('networkStackModal'));
   document.querySelectorAll('.info-popup-box.visible').forEach(function(el) { el.classList.remove('visible'); });
   document.querySelectorAll('.btn-info-popup.active').forEach(function(el) { el.classList.remove('active'); });
-  document.getElementById('techModal').style.display = 'none';
+  document.getElementById('networkStackModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
 
@@ -13001,7 +13001,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     const res  = data[deviceName] || {};
     // Guard: user cancelled while Phase 1 fetch was in-flight (Cancel hides the modal).
     // The EOS session is now PENDING — abort it silently before returning.
-    const _phaseModal = document.getElementById('pushConfirmModal');
+    const _phaseModal = document.getElementById('configPushModal');
     if (!_phaseModal || _phaseModal.style.display === 'none') {
       if (res.session_name) {
         fetch(BRIDGE_URL + '/pushconfig/finalize', {
@@ -13077,7 +13077,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
 
 function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync = false) {
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
-  const modal    = document.getElementById('pushConfirmModal');
+  const modal    = document.getElementById('configPushModal');
   const subtitle = document.getElementById('pushConfirmSubtitle');
   const body     = document.getElementById('pushConfirmBody');
   subtitle.textContent = _fmtDev(deviceName);
@@ -13087,7 +13087,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   // ── Loading state: show modal immediately before diff is fetched ─────────────
   if (diff === null) {
-    if (titleEl)    titleEl.textContent     = 'Confirm Config Push';
+    if (titleEl)    titleEl.textContent     = 'Config Push';
     if (commitBtn)  { commitBtn.style.display = 'none'; }
     if (cancelHdr)  { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
     if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
@@ -13099,7 +13099,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     return;
   }
   const noCommit = readOnly || alreadyInSync;
-  if (titleEl)    titleEl.textContent     = alreadyInSync ? 'Already in Sync' : (readOnly ? 'Verification Result' : 'Confirm Config Push');
+  if (titleEl)    titleEl.textContent     = alreadyInSync ? 'Already in Sync' : (readOnly ? 'Verification Result' ) : 'Config Push');
   if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
   if (cancelHdr)  cancelHdr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
@@ -13575,16 +13575,16 @@ function cancelPushConfig() {
 
 
 function closePushConfirmModal() {
-  _onModalClose(document.getElementById('pushConfirmModal'));
+  _onModalClose(document.getElementById('configPushModal'));
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
   _clearPushSessionGuard();
-  const m = document.getElementById('pushConfirmModal');
+  const m = document.getElementById('configPushModal');
   if (m) m.style.display = 'none';
   const titleEl   = document.getElementById('pushConfirmTitle');
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
-  if (titleEl)   titleEl.textContent     = 'Confirm Config Push';
+  if (titleEl)   titleEl.textContent     = 'Config Push';
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
   if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; cancelFtr.onclick = cancelPushConfig; }
@@ -14271,11 +14271,11 @@ function _onAddDiscoveredDone(btn, added, errors) {
 // --- CABLING MODAL ---
 function openCablingModal() {
   _autoMinimizeOpenModal();
-  const modal = document.getElementById('cablingModal');
+  const modal = document.getElementById('exportCablingModal');
 
   if (modal) {
     modal.style.display = 'block';
-    setActiveModalChip('cablingModal');
+    setActiveModalChip('exportCablingModal');
     loadNotebookLMQuestions();
     // Lazily load device metadata if not already populated (Device Manager may not have been opened)
     if (Object.keys(deviceMetadata).length === 0) {
@@ -14575,7 +14575,7 @@ function downloadCablingReport(mode) {
   }
 
   // Close modal
-  document.getElementById('cablingModal').style.display = 'none';
+  document.getElementById('exportCablingModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 
   // --- DERIVE ORDER FROM SHEET COLUMNS ---
@@ -15487,7 +15487,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     }
     const res  = data[deviceName] || {};
     // Guard: user cancelled while fetch was in-flight
-    const modal = document.getElementById('pushConfirmModal');
+    const modal = document.getElementById('configPushModal');
     if (!modal || modal.style.display === 'none') return;
     if (!res.ok) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -15521,7 +15521,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     }
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    const modal = document.getElementById('pushConfirmModal');
+    const modal = document.getElementById('configPushModal');
     if (!modal || modal.style.display === 'none') {
       setStatus(`Push error: ${err.message} — is device_bridge.py running?`, "status-error");
       return;
@@ -16101,8 +16101,8 @@ function closeHelpModal() {
 }
 
 function closeCablingModal() {
-  _onModalClose(document.getElementById('cablingModal'));
-  document.getElementById('cablingModal').style.display = 'none';
+  _onModalClose(document.getElementById('exportCablingModal'));
+  document.getElementById('exportCablingModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
 }
 

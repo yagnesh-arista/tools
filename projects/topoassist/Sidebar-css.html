@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.26 | 2026-05-05 12:27:34 -->
+<!-- TopoAssist v260505.27 | 2026-05-05 12:35:38 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -66,10 +66,10 @@
   #sheetVisContainer,
   #deviceManagerContainer,
   #autoConfigModal,
-  #cablingModal,
+  #exportCablingModal,
   #auditModal,
   #guiEditModal,
-  #techModal,
+  #networkStackModal,
   #configCenterModal,
   #vlanSummaryModal,
   #auditSettingsModal,
@@ -221,7 +221,7 @@
   }
 
   /* Push confirm modal must sit above configModal (both modal-std, but configModal is later in DOM) */
-  #pushConfirmModal {
+  #configPushModal {
     z-index: 21000 !important;
   }
 
@@ -4770,7 +4770,7 @@
   }
 
 
-  /* --- Manage Column & Formatting --- */
+  /* --- Column & Formatting Manager --- */
 
   #sheetColumnManagerBody {
     padding: 0;

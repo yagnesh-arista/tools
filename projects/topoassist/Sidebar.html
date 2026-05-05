@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.26 | 2026-05-05 12:27:34 -->
+<!-- TopoAssist v260505.27 | 2026-05-05 12:36:07 -->
 <!DOCTYPE html>
 <html>
 
@@ -95,7 +95,7 @@
                 <button id="manualRefreshBtn" class="icon-btn" onclick="fetchData(true)" title="Refresh Data">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                 </button>
-                <button class="icon-btn" data-modal="techModal" onclick="openTechModal()" title="Network Tech Stack">
+                <button class="icon-btn" data-modal="networkStackModal" onclick="openTechModal()" title="Network Stack">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg>
                 </button>
                 <button class="icon-btn" data-modal="autoConfigModal" onclick="openIpConfigModal(this)" title="Auto Config">
@@ -126,7 +126,7 @@
                 <button class="icon-btn" onclick="downloadPNG(this)" title="Topology Snapshot">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                 </button>
-                <button class="icon-btn" data-modal="cablingModal" onclick="openCablingModal()" title="Export Cabling Report">
+                <button class="icon-btn" data-modal="exportCablingModal" onclick="openCablingModal()" title="Export Cabling">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg>
                 </button>
               </div>
@@ -448,9 +448,9 @@
   <!-- 4. ALL MODALS (Paste them ALL here, OUTSIDE appTopologyContainer) -->
 
   <!-- Tech Modal -->
-  <div id="techModal" class="modal-std" style="width: 640px;">
+  <div id="networkStackModal" class="modal-std" style="width: 640px;">
     <div class="modal-header">
-      <div class="modal-header-title">Network Tech Stack</div>
+      <div class="modal-header-title">Network Stack</div>
       <button class="btn-modal-close" onclick="closeTechModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 18px 22px; font-family: 'JetBrains Mono', monospace; overflow-y: auto; flex: 1; min-height: 0;">
@@ -995,10 +995,10 @@
   </div>
 
   <!-- Push Confirm Modal -->
-  <div id="pushConfirmModal" class="modal-std" style="width:460px;display:none;z-index:2000;">
+  <div id="configPushModal" class="modal-std" style="width:460px;display:none;z-index:2000;">
     <div class="modal-header">
       <div>
-        <div id="pushConfirmTitle" class="modal-header-title">Confirm Config Push</div>
+        <div id="pushConfirmTitle" class="modal-header-title">Config Push</div>
         <div class="modal-header-subtitle" id="pushConfirmSubtitle" style="font-family:'JetBrains Mono',monospace;"></div>
       </div>
       <button id="btnPushConfirmClose" class="btn-modal-close" onclick="cancelPushConfig()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -1011,9 +1011,9 @@
   </div>
 
   <!-- Cabling Modal -->
-  <div id="cablingModal" class="modal-std modal-body-padded">
+  <div id="exportCablingModal" class="modal-std modal-body-padded">
     <div class="modal-header">
-      <div class="modal-header-title">Export Cabling Report</div>
+      <div class="modal-header-title">Export Cabling</div>
       <button class="btn-modal-close" onclick="closeCablingModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 20px;">
@@ -1052,10 +1052,7 @@
   <!-- Help Modal -->
   <div id="helpModal" class="modal-std" style="width: min(880px, calc(100vw - 40px));">
     <div class="modal-header">
-      <div class="modal-header-title" style="display:flex;align-items:center;gap:7px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h6"/></svg>
-        Shortcuts Help
-      </div>
+      <div class="modal-header-title">Shortcuts Help</div>
       <button class="btn-modal-close" onclick="closeHelpModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
@@ -1479,7 +1476,7 @@
   <!-- Manage Column & Formatting Managers -->
   <div id="sheetColumnManagerContainer" class="modal-std modal-large">
     <div class="modal-header">
-      <div class="modal-header-title">Manage Column & Formatting</div>
+      <div class="modal-header-title">Column & Formatting Manager</div>
       <button class="btn-modal-close" onclick="SheetColumnManagerCloseButton()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="sheetColumnManagerBody"></div>

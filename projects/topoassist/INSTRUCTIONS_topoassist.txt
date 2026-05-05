@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (auditSettingsModal: changed modal-title span → modal-header-title div to match all other modals; chip/dock name now reads correctly from DOM. Section 26 updated. FILES: Sidebar.html, INSTRUCTIONS_topoassist.txt)
+  Last updated: 2026-05-05 (Modal renames: techModal→networkStackModal ("Network Stack"), pushConfirmModal→configPushModal ("Config Push"), cablingModal→exportCablingModal ("Export Cabling"), helpModal title "Shortcuts Help" icon removed, sheetColumnManagerContainer title→"Column & Formatting Manager". Section 26 updated. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html, INSTRUCTIONS_topoassist.txt)
+  Previous: 2026-05-05 (auditSettingsModal: changed modal-title span → modal-header-title div to match all other modals; chip/dock name now reads correctly from DOM. Section 26 updated. FILES: Sidebar.html, INSTRUCTIONS_topoassist.txt)
   Previous: 2026-05-05 (Remove modal-floating: deviceBridgeModal was already modal-std in HTML; removed dead .modal-floating CSS block and JS modal-floating class checks in toggleModalMinimize + _injectMinimizeButtons. Section 26 updated. FILES: Sidebar-css.html, Sidebar-js.html, INSTRUCTIONS_topoassist.txt)
   Previous: 2026-05-05 (Remove modal-medium: dropped modal-medium class from autoConfigModal and auditModal — widths moved inline; .modal-medium CSS removed from Sidebar-css.html. Section 26 updated. FILES: Sidebar.html, Sidebar-css.html, INSTRUCTIONS_topoassist.txt)
   Previous: 2026-05-05 (UserGuide: Cleanup section expanded to all 5 orphan categories (interface, BGP neighbor, VLAN, VRF, OSPF passive) with detection+removal-command table; OSPF passive special handling explained (reverse direction — emit passive-interface on cleanup, not no passive-interface); Layer 2 push-time section updated to reference all 5 categories; Cleanup entry point corrected from "Device Bridge → Cleanup" to "Config Center → Cleanup nav item". review-userguide skill: added Step 2c-i (entry point check), 2c-ii (all 5 categories checklist), 2c-iii (Layer 2 push-time coverage). Config Center Generate panel: 3 fixes — (1) cache check in openGenerateAllModal prevents redundant regeneration; (2) View button per device added via _renderGenerateResults(); (3) openGenerateAllModal restores minimized modal instead of reinitializing. FILES: UserGuide.html, ~/.claude/commands/topoassist-review-userguide-update.md, Sidebar-js.html)
@@ -3397,12 +3398,12 @@ B. SIDEBAR MODALS — modal-std (standard floating overlay, Sidebar.html)
 
    ID                          Header Title                      Type
    ─────────────────────────────────────────────────────────────────────
-   techModal                   Network Tech Stack                modal-std
+   networkStackModal            Network Stack                     modal-std
    autoConfigModal             Auto Config                       modal-std
    deviceBridgeModal           Device Bridge                     modal-std
-   pushConfirmModal            Confirm Config Push               modal-std
-   cablingModal                Export Cabling Report             modal-std
-   helpModal                   Shortcuts                         modal-std
+   configPushModal              Config Push                       modal-std
+   exportCablingModal           Export Cabling                    modal-std
+   helpModal                   Shortcuts Help                    modal-std
    guiEditModal                Edit Interface                    modal-std
    auditModal                  Configuration Audit               modal-std
    groupRectModal              Group                             modal-std
@@ -3413,7 +3414,7 @@ B. SIDEBAR MODALS — modal-std (standard floating overlay, Sidebar.html)
 
    Full-page containers (modal-std modal-large — slide in from right, cover canvas):
    deviceManagerContainer      Device Manager
-   sheetColumnManagerContainer Manage Column & Formatting
+   sheetColumnManagerContainer Column & Formatting Manager
    sheetVisContainer           Sheet Custom View Managers
 
 
