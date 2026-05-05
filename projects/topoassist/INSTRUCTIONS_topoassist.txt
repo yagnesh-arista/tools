@@ -3419,7 +3419,7 @@ C. SIDEBAR PANELS (non-modal, always-present UI regions)
 
    ID                    Name              Location / Behaviour
    ──────────────────────────────────────────────────────────────
-   appTopologyContainer  Topology canvas   Main canvas; always visible in topology mode
+   appTopologyContainer  App Topology      Main canvas; always visible in topology mode
    devVisPanel           DevVis            Floating panel (dev-vis-panel), toggled by
                                            devVisPanelBtn; has own minimize behaviour
    #modalDock            Modal Dock        Fixed bar at bottom; shows chips for each
