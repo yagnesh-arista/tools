@@ -114,6 +114,38 @@ Before writing any logic that classifies, routes, or counts data:
 
 When `delete configCache[devName]` is called (eviction, clear), that is the complete invalidation — no other state needs to be cleared.
 
+## Modal Loading Pattern — In-Modal Spinner Only
+
+**`showGlobalLoading()`** is reserved for full-page sheet operations only: topology load (`getTopologyData`), Force Sync, schema rebuild, column sync. It must NEVER be called from any modal-open path.
+
+**`showModalLoading(modalId, msg)` / `hideModalLoading(modalId)`** are the only modal-open loading pattern. They:
+1. Open the modal immediately (`display:flex` + `setActiveModalChip`) — header stays interactive
+2. Inject `.modal-loading-state` div over the body only (top = `hdr.offsetHeight` dynamically)
+3. Remove the spinner when data is ready (`hideModalLoading` in both success and failure handlers)
+
+**Checklist for every new modal-open GAS call:**
+- [ ] Call `showModalLoading(modalId, "Loading…")` before `google.script.run`
+- [ ] `_guard` timeout calls `hideModalLoading(modalId)` + close modal + `setActiveModalChip(null)` + `setStatus(..., "status-error")`
+- [ ] `withSuccessHandler`: `clearTimeout(_guard)` first, then `hideModalLoading(modalId)`, then populate fields
+- [ ] `withFailureHandler`: `clearTimeout(_guard)` first, then `hideModalLoading(modalId)` + close + status error
+- [ ] Never call `showGlobalLoading()` from inside a modal-open handler
+
+**`editOverlay` is always `display:none`.** The `<div id="editOverlay">` element remains in the DOM (removing it breaks null-ref guards in close functions), but nothing ever sets `style.display = 'block'` on it. If you see a call that does, delete it — do not restore the overlay pattern.
+
+## Modal Dock — `_refreshDock()` Is the Single Sync Point
+
+`_refreshDock()` is the **only** function that updates both the `#activeModalChip` toolbar indicator and the `#modalDock` minimized-modal chip strip. Call it; never call `_updateActiveChip` or `_updateMinimizedDockChip` — they no longer exist.
+
+**Dock chip onclick must call `_autoMinimizeOpenModal()` before `toggleModalMinimize()`:**
+```javascript
+dc.onclick = () => { _autoMinimizeOpenModal(); toggleModalMinimize(modal.id); };
+```
+Without the guard, restoring a dock chip leaves two modals open simultaneously.
+
+**`_autoMinimizeOpenModal()`** uses a dynamic `.modal-std` query — never a hardcoded candidates array. Self-maintains as new modals are added.
+
+**`closeAllModals()`** uses the same dynamic `.modal-std` query.
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
