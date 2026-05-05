@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.49 | 2026-05-05 14:21:00 -->
+<!-- TopoAssist v260505.50 | 2026-05-05 14:24:26 -->
 <!DOCTYPE html>
 <html>
 
@@ -1477,6 +1477,16 @@
     <div class="modal-header">
       <div class="modal-header-title">Column & Formatting Manager</div>
     </div>
+    <div class="schema-settings-bar">
+      <div class="chk-container">
+        <input type="checkbox" id="chkDebugLogging" class="chk-input" onchange="toggleDebugLogging(this.checked)">
+        <label for="chkDebugLogging" class="chk-label" title="Enable debug logging to browser console (F12 → Console)">Debug log in F12</label>
+      </div>
+      <div class="chk-container">
+        <input type="checkbox" id="chkApplyFormatting" checked class="chk-input">
+        <label for="chkApplyFormatting" class="chk-label" title="Applies connection colors, conditional formatting rules, MLAG borders, and speed/mode color coding to the sheet">Apply Formatting</label>
+      </div>
+    </div>
     <div id="sheetColumnManagerBody"></div>
     <div class="schema-add-row">
       <input type="text" id="newFieldKey" placeholder="e.g. rack_id" class="form-input" style="flex: 3;">
@@ -1486,16 +1496,8 @@
     <div class="modal-actions">
       <div class="footer-group">
         <button class="btn-std btn-danger ui-equal-size" onclick="SheetColumnManagerResetDefaults()">Reset Defaults</button>
-        <div class="chk-container ui-equal-size">
-          <input type="checkbox" id="chkDebugLogging" class="chk-input" onchange="toggleDebugLogging(this.checked)">
-          <label for="chkDebugLogging" class="chk-label" title="Enable debug logging to browser console (F12 → Console)">Debug log in F12</label>
-        </div>
       </div>
       <div class="footer-group">
-        <div class="chk-container ui-equal-size">
-          <input type="checkbox" id="chkApplyFormatting" checked class="chk-input">
-          <label for="chkApplyFormatting" class="chk-label" title="Applies connection colors, conditional formatting rules, MLAG borders, and speed/mode color coding to the sheet">Apply Formatting</label>
-        </div>
         <button id="btnAudit" class="btn-std ui-equal-size" onclick="SheetColumnManagerAudit()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           Check Sync
@@ -1504,8 +1506,6 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           Force Sync
         </button>
-      </div>
-      <div class="footer-group">
         <button class="btn-std ui-equal-size" onclick="SheetColumnManagerCloseButton()">Cancel</button>
         <button id="btnSheetColumnManagerSave" class="btn-std btn-success ui-equal-size" onclick="SheetColumnManagerSave()">Save & Sync</button>
       </div>
