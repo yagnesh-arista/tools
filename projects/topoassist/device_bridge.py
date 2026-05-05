@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260504.40 | 2026-05-04 18:45:34
+# topoassist v260505.24 | 2026-05-05 12:24:46
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260504.1"
+VERSION           = "260505.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -536,7 +536,7 @@ def _orphans_to_cmds(orphans):
     BGP orphans → router bgp ASN / no neighbor X / !
     VLAN orphans → no vlan X
     VRF orphans → no vrf instance X
-    OSPF orphans → router ospf_kw N [vrf V] / passive-interface X / ! (grouped by context)
+    OSPF orphans → router ospf_kw N [vrf V] / default passive-interface X / ! (grouped by context)
     """
     cmds = []
     for o in orphans.get('interfaces', []):
