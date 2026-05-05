@@ -131,6 +131,46 @@ Check:
 - [ ] Cleanup section (not "Reconcile") is the current terminology
 - [ ] Bridge auto-check behavior matches double-click description
 
+### 2c-i — Cleanup entry point
+
+```bash
+grep -n "cfgPanel-cleanup\|btnGenAllCleanup\|configCenterModal\|openGenerateAllModal\|runCleanup" \
+  ~/claude/projects/topoassist/Sidebar.html ~/claude/projects/topoassist/Sidebar-js.html | head -10
+```
+
+Verify that the Cleanup entry point in UserGuide matches the actual UI location:
+
+- [ ] Cleanup is accessed via **Config Center** (toolbar grid icon → Cleanup nav item) — NOT "Device Bridge modal → Cleanup"
+- [ ] The button label is **Clean-up Targets** (not "Cleanup" or "Unconfigure")
+
+✗ FAIL if UserGuide says "Device Bridge → Cleanup" — the Cleanup panel is in Config Center.
+
+### 2c-ii — Cleanup orphan categories (all 5 must be documented)
+
+```bash
+grep -n "_detect_orphans\|_find_ta_orphans\|bgp\|vlan.*orphan\|vrf.*orphan\|ospf.*orphan\|passive.interface" \
+  ~/claude/projects/topoassist/device_bridge.py | grep -i "orphan\|passive" | head -20
+```
+
+The Cleanup section must document all five orphan categories. Check that UserGuide's Cleanup section covers each:
+
+- [ ] **Interface orphans** — `__TA`-tagged iface not in new config → `default interface EtX` / `no interface EtX.Y` / `no interface VlanN`
+- [ ] **BGP neighbor orphans** — `__TA`-tagged neighbor in `router bgp` whose device name is not in topology → `router bgp <ASN>` / `no neighbor <IP>`
+- [ ] **VLAN orphans** — VLAN name contains `__TA`, absent from new config (4093/4094 skipped) → `no vlan <N>`
+- [ ] **VRF orphans** — VRF description contains `__TA`, absent from new config → `no vrf instance <NAME>`
+- [ ] **OSPF passive orphans** — stale `no passive-interface EtX` in `router ospf`/`ospf3` for an orphaned interface → `passive-interface EtX` (re-passive, NOT delete)
+
+✗ FAIL if any of the five categories is missing from the Cleanup section.
+✗ FAIL if OSPF special handling is not explained (passive-interface direction, not no-interface).
+
+### 2c-iii — Layer 2 push-time orphan coverage
+
+Check that the "Layer 2 — Push-time additions" section of the Device Bridge documentation covers all 5 orphan categories (not just interface orphans):
+
+- [ ] Push-time orphan cleanup is described as covering all 5 categories (not "orphan interface cleanup" only)
+
+✗ FAIL if the Layer 2 section only mentions interface orphans, omitting BGP/VLAN/VRF/OSPF.
+
 ### 2d — Audit Engine section
 
 ```bash
