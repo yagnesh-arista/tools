@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.8 | 2026-05-05 10:49:11 -->
+<!-- TopoAssist v260505.9 | 2026-05-05 10:49:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.8";  // keep in sync with Code.gs
+const APP_VERSION = "260505.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7454,7 +7454,6 @@ ${debugLogs.map(l => `<div>> ${l}</div>`).join("")}
   content.innerHTML = html;
   _autoMinimizeOpenModal();
   setActiveModalChip('auditModal');
-  overlay.style.display = "block";
   modal.style.display = "flex";
 
   const totalIssues = conflicts.length + missing.length + extra.length + internalConflicts.length;
@@ -11454,7 +11453,6 @@ function openBridgeModal() {
   _autoMinimizeOpenModal();
   const modal = document.getElementById('deviceBridgeModal');
   modal.style.display = 'flex';
-  document.getElementById('editOverlay').style.display = 'block';
   setActiveModalChip('deviceBridgeModal');
   _setBridgeOrphanBadge(0); // clear orphan badge when user opens modal
   // Preserve results from a previous run — only hide if no results exist yet
