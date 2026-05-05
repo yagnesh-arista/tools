@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.15 | 2026-05-05 12:03:05 -->
+<!-- TopoAssist v260505.16 | 2026-05-05 12:04:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.15";  // keep in sync with Code.gs
+const APP_VERSION = "260505.16";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4914,13 +4914,15 @@ function openIpConfigModal(btn) {
   showModalLoading("autoConfigModal");
 
   const _guard = setTimeout(() => {
-    hideGlobalLoading();
+    hideModalLoading('autoConfigModal');
+    document.getElementById("autoConfigModal").style.display = 'none';
+    setActiveModalChip(null);
     setStatus("Auto Config load timed out — try again", "status-error");
   }, 15000);
 
   google.script.run.withSuccessHandler(prefs => {
     clearTimeout(_guard);
-    hideGlobalLoading();
+    hideModalLoading('autoConfigModal');
 
     // 1. Populate Fields
     document.getElementById("ip_p2p_v4_first").value = prefs.p2p_v4_first;
@@ -4984,12 +4986,11 @@ function openIpConfigModal(btn) {
     checkSnakeTrafficWarning();
     _updateGwExample();
 
-    setActiveModalChip('autoConfigModal');
-    document.getElementById("autoConfigModal").style.display = "flex";
-
   }).withFailureHandler(err => {
     clearTimeout(_guard);
-    hideGlobalLoading();
+    hideModalLoading('autoConfigModal');
+    document.getElementById("autoConfigModal").style.display = 'none';
+    setActiveModalChip(null);
     alert("Failed to load settings: " + err);
   }).getIpPreferencesForModal();
 }
@@ -5543,17 +5544,17 @@ function openTechModal() {
   _autoMinimizeOpenModal();
   showModalLoading("techModal");
 
-  // Safety net: if the GAS call hangs (auth expiry, quota, network error at framework level),
-  // auto-recover the loading overlay after 15s so the UI is not permanently blocked.
   const _guard = setTimeout(() => {
-    hideGlobalLoading();
+    hideModalLoading('techModal');
+    document.getElementById("techModal").style.display = 'none';
+    setActiveModalChip(null);
     setStatus("Network Tech Stack load timed out — try again", "status-error");
   }, 15000);
 
   google.script.run
     .withSuccessHandler(settings => {
       clearTimeout(_guard);
-      hideGlobalLoading();
+      hideModalLoading('techModal');
 
       // 1. Derive P2P mode from stored flags (5-mode)
       let p2pMode;
@@ -5647,15 +5648,15 @@ function openTechModal() {
       initialTechState = getCurrentTechState();
       checkTechDirty();
 
-      // 7. Show modal
+      // 7. Ensure modal display properties (showModalLoading already set display:flex + chip)
       const modal   = document.getElementById('techModal');
-      if (modal)   { modal.style.display = 'flex';   modal.style.zIndex = '30000';
-                     modal.style.opacity = '1'; modal.style.visibility = 'visible';
-                     setActiveModalChip('techModal'); }
+      if (modal)   { modal.style.zIndex = '30000'; modal.style.opacity = '1'; modal.style.visibility = 'visible'; }
     })
     .withFailureHandler(err => {
       clearTimeout(_guard);
-      hideGlobalLoading();
+      hideModalLoading('techModal');
+      document.getElementById("techModal").style.display = 'none';
+      setActiveModalChip(null);
       alert("Server Error: " + err.message);
     })
     .getNetworkSettings();
