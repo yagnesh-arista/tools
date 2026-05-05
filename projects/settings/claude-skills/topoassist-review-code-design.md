@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-04 (Check 30 added: Change indicators — was-spans, .changed selects, .modified-highlight textareas for all manager panel editable fields) -->
+<!-- rules-synced: 2026-05-05 (Check 31 added: setTitle/showModelessDialog string sync — every showModelessDialog must have matching .setTitle with identical string) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
