@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.52 | 2026-05-05 14:38:20 -->
+<!-- TopoAssist v260505.53 | 2026-05-05 14:45:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.52";  // keep in sync with Code.gs
+const APP_VERSION = "260505.53";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16797,7 +16797,17 @@ function _computeGroupBounds(memberIds, padding) {
 // Nodes whose edges are within gapThreshold px of each other are in the same cluster.
 function _computeGroupClusters(memberIds, padding, gapThreshold) {
   padding = padding !== undefined ? padding : 30;
-  gapThreshold = gapThreshold !== undefined ? gapThreshold : 300;
+  if (gapThreshold === undefined) {
+    // Detailed view: one full slot (W + G) — any non-member card between two members splits them.
+    // Holistic view: fixed fallback (force-sim spacing has no card geometry).
+    if (!_isHolisticView()) {
+      const W = parseInt(document.getElementById("cardWidthInp")?.value) || 250;
+      const G = parseInt(document.getElementById("deviceGapInp")?.value) || 100;
+      gapThreshold = W + G;
+    } else {
+      gapThreshold = 300;
+    }
+  }
   if (!memberIds || !memberIds.length) return [];
   const set = new Set(memberIds.map(id => (id || '').toLowerCase()));
   const nodes = [];
