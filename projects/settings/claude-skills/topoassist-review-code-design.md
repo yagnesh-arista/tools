@@ -859,6 +859,7 @@ TOPOASSIST CODE REVIEW
 28 — configCache sole store    ✓ / ✗ / ⚠
 29 — Naming & documentation    ✓ / ✗ / ⚠
 30 — Change indicators         ✓ / ✗ / ⚠
+31 — setTitle/showModelessDialog sync ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
