@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.55 | 2026-05-05 15:04:44 -->
+<!-- TopoAssist v260505.56 | 2026-05-05 15:15:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.55";  // keep in sync with Code.gs
+const APP_VERSION = "260505.56";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -303,7 +303,7 @@ const APP_VERSION = "260505.55";  // keep in sync with Code.gs
   let holisticSimulation = null;
   let isGroupRectMode = false;
   let groupRects = [];
-  let _groupRectsHidden = localStorage.getItem('grects_hidden') === '1';
+  let _groupListCollapsed = localStorage.getItem('grects_list_collapsed') === '1';
   let activeDrawRect = null;
   let drawStartSVG = null;
   let pendingGroupRectGeom = null;
@@ -505,7 +505,7 @@ function initApp() {
   initTheme();
   syncToolbarTooltips();
   _injectMinimizeButtons();   // add minimize button to all modals that lack one
-  _updateGroupRectsToggleBtn();
+  _updateGroupListToggleBtn();
   applyValidationState();
   applyBoldTextPref();
   dbg("Initializing App in mode:", currentMode);
@@ -9583,28 +9583,28 @@ function saveGroupRects() {
   _renderGroupList();
 }
 
-const _SVG_EYE     = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-const _SVG_EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const _SVG_EYE        = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _SVG_CHEVRON_UP = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+const _SVG_CHEVRON_DN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
-function toggleGroupRectsVisibility() {
-  _groupRectsHidden = !_groupRectsHidden;
-  localStorage.setItem('grects_hidden', _groupRectsHidden ? '1' : '0');
-  _updateGroupRectsToggleBtn();
-  refreshGroupRects();
+function toggleGroupList() {
+  _groupListCollapsed = !_groupListCollapsed;
+  localStorage.setItem('grects_list_collapsed', _groupListCollapsed ? '1' : '0');
   _renderGroupList();
 }
 
-function _updateGroupRectsToggleBtn() {
-  const btn = document.getElementById('groupRectsToggleBtn');
+function _updateGroupListToggleBtn() {
+  const btn = document.getElementById('groupListToggleBtn');
   if (!btn) return;
-  btn.innerHTML = _groupRectsHidden ? _SVG_EYE_OFF : _SVG_EYE;
-  btn.title = _groupRectsHidden ? 'Show all groups' : 'Hide all groups';
+  btn.innerHTML = _groupListCollapsed ? _SVG_CHEVRON_DN : _SVG_CHEVRON_UP;
+  btn.title = _groupListCollapsed ? 'Show group list' : 'Hide group list';
 }
 
 function _renderGroupList() {
   const panel = document.getElementById("groupListPanel");
   if (!panel) return;
-  if (!groupRects.length) {
+  _updateGroupListToggleBtn();
+  if (!groupRects.length || _groupListCollapsed) {
     panel.style.display = "none";
     return;
   }
@@ -17012,7 +17012,6 @@ function getVertLabelAttrs(gr) {
 function renderGroupRectsInto(rectGroup, labelGroup) {
   rectGroup.selectAll(".grect-item").remove();
   if (labelGroup) labelGroup.selectAll(".grect-label-item").remove();
-  if (_groupRectsHidden) return;
 
   groupRects.forEach(gr => {
     // Member-based rects: recompute bounds from current node positions every render.
