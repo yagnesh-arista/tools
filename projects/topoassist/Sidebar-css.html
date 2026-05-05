@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.18 | 2026-05-05 12:08:15 -->
+<!-- TopoAssist v260505.21 | 2026-05-05 12:13:53 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5523,33 +5523,6 @@
   }
   .dev-vis-vlan-clear:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
 
-  /* ================= FLOATING MODAL (Bridge) ================= */
-  .modal-floating {
-    display: none;
-    position: fixed;
-    top: 60px;
-    right: 20px;
-    width: 480px;
-    max-width: calc(100vw - 40px);
-    max-height: 85vh;
-    background: var(--bg-modal, #ffffff);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px -2px rgba(0,0,0,0.20);
-    flex-direction: column;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--text-main);
-    padding: 0;
-    overflow: hidden;
-    z-index: 16000;
-  }
-  .modal-floating .modal-header {
-    cursor: grab;
-    user-select: none;
-  }
-  .modal-floating .modal-header:active { cursor: grabbing; }
-  .modal-floating .modal-header button { cursor: pointer; }
-  /* .modal-minimized > *:not(.modal-header) covers all floating modals — no bridge-specific override needed */
 
   /* Bridge toolbar icon states (SVG uses stroke=currentColor) */
   #btnBridgeToolbar.bridge-down         { color: #ef4444; }  /* red    — enabled, bridge down        */
