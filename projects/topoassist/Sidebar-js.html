@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.7 | 2026-05-05 10:45:56 -->
+<!-- TopoAssist v260505.8 | 2026-05-05 10:49:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.7";  // keep in sync with Code.gs
+const APP_VERSION = "260505.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4985,7 +4985,6 @@ function openIpConfigModal(btn) {
     _updateGwExample();
 
     setActiveModalChip('autoConfigModal');
-    document.getElementById("editOverlay").style.display = "block";
     document.getElementById("autoConfigModal").style.display = "flex";
 
   }).withFailureHandler(err => {
@@ -5649,9 +5648,7 @@ function openTechModal() {
       checkTechDirty();
 
       // 7. Show modal
-      const overlay = document.getElementById('editOverlay');
       const modal   = document.getElementById('techModal');
-      if (overlay) { overlay.style.display = 'block'; overlay.style.zIndex = '29999'; }
       if (modal)   { modal.style.display = 'flex';   modal.style.zIndex = '30000';
                      modal.style.opacity = '1'; modal.style.visibility = 'visible';
                      setActiveModalChip('techModal'); }
@@ -7020,7 +7017,6 @@ No peer connected.<br>Use 'Connect' to add a link.
   }
 
   setActiveModalChip('guiEditModal');
-  overlay.style.display = "block";
   modal.style.display = "flex";
 }
 
@@ -7071,7 +7067,6 @@ function openConnectModal(domId, portObj) {
   if (_bdu1) _bdu1.style.display = "none";
 
   setActiveModalChip('guiEditModal');
-  overlay.style.display = "block";
   modal.style.display = "flex";
 }
 
@@ -7122,7 +7117,6 @@ function openAddLinkModal() {
   if (_bdu2) _bdu2.style.display = "none";
 
   setActiveModalChip('guiEditModal');
-  overlay.style.display = "block";
   modal.style.display = "flex";
 }
 
@@ -16326,6 +16320,11 @@ function closeGenerateAllModal() {
 }
 
 function runGenerateAll() {
+  // Clear any previously cached results — fresh generation requested
+  window._generateAllConfigs = null;
+  window._generateAllText = null;
+  window._generateAllMeta = null;
+
   _generateAllAborted = false;
   const btn     = document.getElementById('btnRunGenerateAll');
   const stopBtn = document.getElementById('btnStopGenerate');
@@ -16351,44 +16350,24 @@ function runGenerateAll() {
 
   document.getElementById('generateAllLeft').innerHTML =
     '<div style="text-align:center;padding:30px 0;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
-    + '<div style="font-size:20px;margin-bottom:10px;">\u23F3</div>'
-    + '<div>Generating configs\u2026 this may take 30\u201360 seconds for large topologies.</div></div>';
+    + '<div style="font-size:20px;margin-bottom:10px;">⏳</div>'
+    + '<div>Generating configs… this may take 30–60 seconds for large topologies.</div></div>';
 
   google.script.run
     .withSuccessHandler(function(result) {
       if (_generateAllAborted) return;
       _setGenToolbarActive(false, result.error ? 'err' : 'ok');
-      btn.disabled = false;
-      btn.innerText = 'Re-Generate Configs';
       if (result.error) {
         _resetStopGenerateBtn();
+        btn.disabled = false;
+        btn.innerText = 'Generate Configs';
         document.getElementById('generateAllLeft').innerHTML =
           '<div style="color:var(--error-text,#ef4444);padding:20px;font-family:\'JetBrains Mono\',monospace;font-size:12px;"><b>Error:</b> ' + result.error + '</div>';
         return;
       }
       const configs = result.configs || [];
-      let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">'
-        + '<div style="color:#10b981;font-weight:700;margin-bottom:12px;">\u2713 ' + configs.length + ' device(s) \u2192 written to <b>' + result.sheetName + '</b> tab'
-        + '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + new Date().toTimeString().slice(0,8) + '</span></div>';
-      configs.forEach(function(c, idx) {
-        const lines = c.text ? c.text.split('\n').length : 0;
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">'
-          + '<span style="color:var(--text-main);flex:1;">' + c.name + '</span>'
-          + '<span style="color:var(--text-muted);flex-shrink:0;">' + lines + ' lines</span>'
-          + '<button style="font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:0 6px;height:18px;line-height:18px;box-sizing:border-box;border:1px solid var(--border,#334155);border-radius:3px;background:transparent;color:var(--text-muted);cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none;" onclick="_copyDeviceConfigByIndex(' + idx + ', this)">Copy</button>'
-          + '</div>';
-      });
-      html += '</div>';
-      document.getElementById('generateAllLeft').innerHTML = html;
-      window._generateAllText    = configs.map(function(c) {
-        return '! === ' + c.name + ' ===\n' + c.text;
-      }).join('\n!\n!\n');
-      window._generateAllConfigs = configs;  // [{name, text}] — used by pushAllConfigs()
-      // Transform Stop → Copy All (remove stop-active — no longer a stop control)
-      stopBtn.disabled = false;
-      stopBtn.className = 'btn-success-mono genall-btn';
-      stopBtn.textContent = 'Copy All';
-      stopBtn.onclick = copyAllConfigs;
+      const meta = { sheetName: result.sheetName, ts: new Date().toTimeString().slice(0, 8) };
+      _renderGenerateResults(configs, meta);
     })
     .withFailureHandler(function(err) {
       if (_generateAllAborted) return;
@@ -16402,6 +16381,51 @@ function runGenerateAll() {
     .getAllDeviceConfigs();
 }
 
+function _renderGenerateResults(configs, meta) {
+  const left = document.getElementById('generateAllLeft');
+  if (!left) return;
+  const m = meta || window._generateAllMeta || {};
+  const sheetName = m.sheetName || 'Configs';
+  const ts = m.ts || '';
+  const btnStyle = 'font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:0 6px;height:18px;line-height:18px;'
+    + 'box-sizing:border-box;border:1px solid var(--border,#334155);border-radius:3px;background:transparent;'
+    + 'color:var(--text-muted);cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none;';
+  let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">'
+    + '<div style="color:#10b981;font-weight:700;margin-bottom:12px;">✓ ' + configs.length + ' device(s) → written to <b>' + sheetName + '</b> tab'
+    + '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + ts + '</span></div>';
+  configs.forEach(function(c, idx) {
+    const lines = c.text ? c.text.split('\n').length : 0;
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">'
+      + '<span style="color:var(--text-main);flex:1;">' + c.name + '</span>'
+      + '<span style="color:var(--text-muted);flex-shrink:0;">' + lines + ' lines</span>'
+      + '<button style="' + btnStyle + '" onclick="_viewGeneratedConfig(' + idx + ')">View</button>'
+      + '<button style="' + btnStyle + '" onclick="_copyDeviceConfigByIndex(' + idx + ', this)">Copy</button>'
+      + '</div>';
+  });
+  html += '</div>';
+  left.innerHTML = html;
+  left.dataset.generated = '1';
+  window._generateAllText = configs.map(function(c) {
+    return '! === ' + c.name + ' ===\n' + c.text;
+  }).join('\n!\n!\n');
+  window._generateAllConfigs = configs;
+  if (meta) window._generateAllMeta = meta;
+  const stopBtn = document.getElementById('btnStopGenerate');
+  if (stopBtn) {
+    stopBtn.disabled = false;
+    stopBtn.className = 'btn-success-mono genall-btn';
+    stopBtn.textContent = 'Copy All';
+    stopBtn.onclick = copyAllConfigs;
+  }
+  const btn = document.getElementById('btnRunGenerateAll');
+  if (btn) { btn.disabled = false; btn.innerText = 'Re-Generate Configs'; }
+}
+
+function _viewGeneratedConfig(idx) {
+  const cfg = window._generateAllConfigs && window._generateAllConfigs[idx];
+  if (!cfg) return;
+  showConfigModal(cfg.name, cfg.text);
+}
 function copyAllConfigs() {
   const text = window._generateAllText || '';
   if (!text) return;
