@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.5 | 2026-05-05 10:39:21 -->
+<!-- TopoAssist v260505.6 | 2026-05-05 10:45:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.5";  // keep in sync with Code.gs
+const APP_VERSION = "260505.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5986,37 +5986,48 @@ function setActiveModalChip(modalId) {
   if (!modalId && _activeModalChipId) {
     const prev = document.getElementById(_activeModalChipId);
     if (prev) { prev.classList.remove('modal-minimized'); delete prev.dataset.preMinDisplay; }
-    _updateMinimizedDockChip();
   }
   _activeModalChipId = modalId;
-  _updateActiveChip();
+  _refreshDock();
 }
 
 
 function _autoMinimizeOpenModal() {
-  const candidates = ['guiEditModal','autoConfigModal','cablingModal','auditModal',
-    'auditSettingsModal','techModal','configModal','groupRectModal',
-    'configCenterModal','vlanSummaryModal','helpModal','pushConfirmModal','deviceBridgeModal'];
-  for (const id of candidates) {
-    const el = document.getElementById(id);
-    if (el && !el.classList.contains('modal-minimized') &&
-        el.style.display && el.style.display !== 'none') {
-      toggleModalMinimize(id);
-      break;
+  const open = [...document.querySelectorAll('.modal-std')]
+    .find(m => getComputedStyle(m).display !== 'none' && !m.classList.contains('modal-minimized'));
+  if (open) toggleModalMinimize(open.id);
+}
+function _refreshDock() {
+  const chip = document.getElementById('activeModalChip');
+  if (chip) {
+    const modal = _activeModalChipId ? document.getElementById(_activeModalChipId) : null;
+    const isMin = modal && modal.classList.contains('modal-minimized');
+    if (!_activeModalChipId || isMin) {
+      chip.style.display = 'none';
+    } else {
+      chip.textContent = modal?.querySelector('.modal-header-title')?.textContent.trim() || _activeModalChipId;
+      chip.style.display = 'inline-flex';
+      chip.style.opacity = '1';
     }
   }
-}
-function _updateActiveChip() {
-  const chip = document.getElementById('activeModalChip');
-  if (!chip) return;
-  if (!_activeModalChipId) { chip.style.display = 'none'; return; }
-  const modal = document.getElementById(_activeModalChipId);
-  const isMin = modal && modal.classList.contains('modal-minimized');
-  if (isMin) { chip.style.display = 'none'; return; }
-  const name = modal?.querySelector('.modal-header-title')?.textContent.trim() || _activeModalChipId;
-  chip.textContent = name;
-  chip.style.display = 'inline-flex';
-  chip.style.opacity = '1';
+  const dock = document.getElementById('modalDock');
+  if (!dock) return;
+  dock.innerHTML = '';
+  const fullScreenIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
+  document.querySelectorAll('.modal-std.modal-minimized').forEach(modal => {
+    if (fullScreenIds.has(modal.id)) return;
+    const title = modal.querySelector('.modal-header-title')?.textContent.trim() || modal.id;
+    const dc = document.createElement('button');
+    dc.className = 'modal-dock-chip';
+    dc.title = 'Restore: ' + title;
+    dc.innerHTML =
+      '<svg width="10" height="10" viewBox="0 0 10 10" fill="none">' +
+      '<path d="M2 7l3-4 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>' + title;
+    dc.onclick = () => { _autoMinimizeOpenModal(); toggleModalMinimize(modal.id); };
+    dock.appendChild(dc);
+  });
+  dock.style.display = dock.children.length ? 'flex' : 'none';
 }
 
 /**
@@ -16312,19 +16323,26 @@ function _switchGenTab(tab) {
 }
 
 function openGenerateAllModal(panel) {
-  _autoMinimizeOpenModal();
-  const left = document.getElementById('generateAllLeft');
-  if (left && !left.dataset.generated) {
-    left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
+  const modal = document.getElementById('configCenterModal');
+  if (modal && modal.classList.contains('modal-minimized')) {
+    toggleModalMinimize('configCenterModal');
+    return;
   }
+  _autoMinimizeOpenModal();
   _populateGenAllDeviceList();
   _resetStopGenerateBtn();
   _resetStopPushBtn();
   const btn = document.getElementById('btnRunGenerateAll');
-  btn.disabled = false;
-  btn.innerText = 'Generate Configs';
+  if (window._generateAllConfigs && window._generateAllConfigs.length) {
+    _renderGenerateResults(window._generateAllConfigs);
+  } else {
+    btn.disabled = false;
+    btn.innerText = 'Generate Configs';
+    const left = document.getElementById('generateAllLeft');
+    if (left) left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
+  }
   _switchCfgPanel(panel || 'push');
-  document.getElementById('configCenterModal').style.display = 'flex';
+  if (modal) modal.style.display = 'flex';
   setActiveModalChip('configCenterModal');
   document.getElementById('editOverlay').style.display = 'block';
   _loadGlobalCfgTemplate();
