@@ -833,3 +833,20 @@ class TestFinalizeSessionTimeoutRecovery:
             import pytest
             with pytest.raises(RuntimeError, match="Finalize timed out"):
                 h._finalize_session("192.168.1.1", "topoassist_123", "abort")
+
+
+# ── VERSION sync ───────────────────────────────────────────────────────────────
+
+class TestVersionSync:
+    """device_bridge.py VERSION must match the embedded template in Sidebar-js.html."""
+
+    def test_version_matches_embedded_template(self):
+        import re, pathlib
+        sidebar = pathlib.Path(__file__).parent.parent / 'Sidebar-js.html'
+        text = sidebar.read_text()
+        m = re.search(r'^VERSION\s*=\s*"([^"]+)"', text, re.MULTILINE)
+        assert m, "Could not find VERSION = \"...\" in Sidebar-js.html embedded template"
+        assert db.VERSION == m.group(1), (
+            f"VERSION mismatch: device_bridge.py={db.VERSION!r}, "
+            f"Sidebar-js.html template={m.group(1)!r}"
+        )
