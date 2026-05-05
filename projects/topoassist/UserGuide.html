@@ -1730,7 +1730,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     Two sets of cleanup commands are prepended by <code>device_bridge.py</code> at push time because they require knowing the device's current running state — they cannot be pre-computed from the sheet alone:</p>
 
     <ul style="font-size:13px;">
-      <li><b>Orphan interface cleanup</b> — when a full-device push is triggered (not single-interface), the bridge queries <code>show interfaces description</code> and finds any <code>__TA</code>-tagged interface that is not present in the new config. For each orphan it prepends <code>default interface EtX</code> (physical/PO) or <code>no interface EtX.Y</code> / <code>no interface VlanN</code> (sub-interface/SVI) so the interface is removed in the same configure session.</li>
+      <li><b>Orphan cleanup (all 5 categories)</b> — when a full-device push is triggered (not single-interface), the bridge runs the same detection logic as <a href="#device-bridge-cleanup">Cleanup</a> across all five orphan types and prepends the removal commands before the new config in the same configure session. Every full push is self-cleaning: stale interfaces, BGP neighbors, VLANs, VRFs, and OSPF passives are all removed atomically.</li>
       <li><b>BGP ASN change</b> — if the config being pushed contains a <code>router bgp &lt;new-asn&gt;</code> block and the device is currently running a <i>different</i> ASN, the bridge prepends <code>no router bgp &lt;old-asn&gt;</code>. EOS cannot change the AS number in-place; the old process must be removed before the new one can be committed. The push modal shows a yellow warning banner when this applies.</li>
     </ul>
 
@@ -1738,21 +1738,51 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       Both push-time additions are always visible in the <b>dry-run diff</b> before you click Commit — so the complete picture of what will change on the device is shown upfront, even for commands that come from device state rather than the sheet.
     </div>
 
-    <h3>Cleanup — Orphan Removal</h3>
-    <p style="font-size:13px;"><b>Cleanup</b> finds interfaces on real devices that carry a <code>__TA</code> ownership marker but are no longer in the topology. These are <b>orphans</b> — leftover from deleted or renamed rows that were never cleaned up on the device.</p>
+    <h3 id="device-bridge-cleanup">Cleanup — Orphan Removal</h3>
+    <p style="font-size:13px;"><b>Cleanup</b> scans selected devices for <code>__TA</code>-tagged config that is no longer in the topology — interfaces, BGP neighbors, VLANs, VRFs, and OSPF passive overrides left over from deleted or renamed rows.</p>
     <ol style="font-size:13px;">
-      <li>Open the <b>Device Bridge</b> modal and click <b>Cleanup</b>. The bridge queries each device for all interfaces tagged <code>__TA</code> in their description.</li>
-      <li>Any <code>__TA</code>-tagged interface not in the current topology appears as an orphan row with an <b>Unconfigure</b> button.</li>
-      <li>Click <b>Unconfigure</b> to remove the interface from the device. The cleanup command sent depends on the interface type:
-        <ul style="margin-top:4px;">
-          <li><b>Physical / Port-Channel</b> — <code>default interface EtX</code> (resets all config to EOS defaults)</li>
-          <li><b>Sub-interface</b> (e.g. <code>Et25/1.100</code>) — <code>no interface Et25/1.100</code></li>
-          <li><b>SVI</b> (e.g. <code>Vlan100</code>) — <code>no interface Vlan100</code></li>
-        </ul>
-      </li>
+      <li>Open <b>Config Center</b> (toolbar grid icon) and click the <b>Cleanup</b> nav item.</li>
+      <li>Select target devices using the Targets strip, then click <b>Clean-up Targets</b>. The bridge queries each device and displays detected orphans grouped by category.</li>
+      <li>Review the list and click <b>Clean Selected</b> or <b>Clean All</b> to push removal commands. Each category is handled differently:</li>
     </ol>
+    <table style="font-size:12px;width:100%;border-collapse:collapse;margin:8px 0 12px;">
+      <thead>
+        <tr style="background:var(--bg-secondary);font-weight:700;">
+          <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">Category</th>
+          <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">Detection</th>
+          <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">Removal command</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><b>Interface</b></td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>__TA</code>-tagged iface in <code>show interfaces description</code> not present in new config</td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>default interface EtX</code> (physical/Po) · <code>no interface EtX.Y</code> (sub-iface) · <code>no interface VlanN</code> (SVI)</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><b>BGP neighbor</b></td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>__TA</code>-tagged neighbor in <code>router bgp</code> whose device name is not in the topology</td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>router bgp &lt;ASN&gt;</code> / <code>no neighbor &lt;IP&gt;</code></td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><b>VLAN</b></td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);">VLAN name contains <code>__TA</code> and the <code>vlan N</code> line is absent from new config; VLANs 4093/4094 skipped</td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>no vlan &lt;N&gt;</code></td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><b>VRF</b></td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);">VRF description contains <code>__TA</code> and the <code>vrf instance</code> block is absent from new config</td>
+          <td style="padding:5px 10px;border-bottom:1px solid var(--border-light);"><code>no vrf instance &lt;NAME&gt;</code></td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px;"><b>OSPF passive</b></td>
+          <td style="padding:5px 10px;">Stale <code>no passive-interface EtX</code> sub-command in <code>router ospf</code>/<code>ospf3</code> referencing an orphaned interface</td>
+          <td style="padding:5px 10px;"><code>passive-interface EtX</code> — re-passives the port rather than deleting it</td>
+        </tr>
+      </tbody>
+    </table>
     <div class="info-box info-box--dim">
-      Cleanup compares abbreviated interface names (topology uses <code>Et</code>, <code>Po</code>) against the EOS full-form names (<code>Ethernet</code>, <code>Port-Channel</code>) returned by <code>show interfaces description</code> — both are normalized before comparison so no manual name mapping is needed.
+      OSPF passive cleanup is the reverse of the others — TopoAssist emits <code>no passive-interface EtX</code> on active ports to allow OSPF adjacency. When that port is deleted, the override must be reverted with <code>passive-interface EtX</code>, not simply removed. Interface names are normalized automatically (<code>Et</code>/<code>Po</code> in topology vs. <code>Ethernet</code>/<code>Port-Channel</code> from EOS).
     </div>
 
     <!-- ================================================================ -->
