@@ -146,6 +146,23 @@ Without the guard, restoring a dock chip leaves two modals open simultaneously.
 
 **`closeAllModals()`** uses the same dynamic `.modal-std` query.
 
+## GAS Dialog Containers — Minimize-Only Header
+
+The three full-screen GAS dialog containers (`deviceManagerContainer`, `sheetColumnManagerContainer`, `sheetVisContainer`) use a different header pattern from regular modals:
+
+- **Header**: `[−]` minimize button only — **no `[×]` close button**
+- **Footer**: `[Cancel]` · `[Primary Action]` — Cancel is the only dismiss path
+
+The `[−]` is injected by `_injectMinimizeButtons()` via its `appendChild` fallback (these containers have no `btn-modal-close` to anchor `insertBefore` against).
+
+**Never add `btn-modal-close` to these container headers** — the GAS dialog chrome provides emergency close if needed; the footer `[Cancel]` handles intentional dismiss (with dirty-state check where applicable).
+
+| Container | Cancel target | Primary action |
+|---|---|---|
+| `deviceManagerContainer` | `DeviceManagerCloseButton()` | `saveDeviceChanges()` |
+| `sheetColumnManagerContainer` | `SheetColumnManagerCloseButton()` | `SheetColumnManagerSave()` |
+| `sheetVisContainer` | `google.script.host.close()` | `submitCustomView()` |
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
