@@ -1411,7 +1411,7 @@ TopoAssist (top-level menu)
 │   └── Custom View...                  → showSheetAssistPanel()  (merged panel)
 ├── [separator]
 ├── Sheet Manager            → submenu
-│   ├── ▤ Manage Column & Formatting → showDeviceDataUi()
+│   ├── ▤ Column & Formatting Manager → showDeviceDataUi()
 │   ├── ▣ Change Sheet Name     → promptRenameSheet()
 │   ├── [separator]
 │   ├── ▦ Create Sheet Checkpoint → createTopologySnapshot()
