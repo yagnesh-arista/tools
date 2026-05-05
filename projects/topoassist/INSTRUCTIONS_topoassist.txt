@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (Modal refactor: (1) editOverlay dim backdrop never shown — removed all display='block' assignments from 13 open functions (autoConfigModal, techModal, guiEditModal x3, auditModal, deviceBridgeModal, cablingModal, helpModal, configModal, configCenterModal, vlanSummaryModal, groupRectModal); overlay element stays in DOM as dead ref. (2) Merged _updateActiveChip + _updateMinimizedDockChip into single _refreshDock() — dock chip onclick now calls _autoMinimizeOpenModal() before restoring, so restoring a minimized modal auto-minimizes any other open modal. (3) Removed hadOverlay tracking from toggleModalMinimize and _onModalClose. (4) _autoMinimizeOpenModal and closeAllModals both converted from hardcoded candidates array to dynamic .modal-std query. FILES: Sidebar-js.html)
+  Last updated: 2026-05-05 (Added Section 26: UI Element Inventory — reference table of all ui.prompt/ui.alert native dialogs, modal-std modals with header titles and types, full-page containers, sidebar panels, and chip/dock name source rule. FILES: INSTRUCTIONS_topoassist.txt)
+  Previous: 2026-05-05 (Modal refactor: (1) editOverlay dim backdrop never shown — removed all display='block' assignments from 13 open functions (autoConfigModal, techModal, guiEditModal x3, auditModal, deviceBridgeModal, cablingModal, helpModal, configModal, configCenterModal, vlanSummaryModal, groupRectModal); overlay element stays in DOM as dead ref. (2) Merged _updateActiveChip + _updateMinimizedDockChip into single _refreshDock() — dock chip onclick now calls _autoMinimizeOpenModal() before restoring, so restoring a minimized modal auto-minimizes any other open modal. (3) Removed hadOverlay tracking from toggleModalMinimize and _onModalClose. (4) _autoMinimizeOpenModal and closeAllModals both converted from hardcoded candidates array to dynamic .modal-std query. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (No subtitle in modal headers: removed .modal-header-subtitle div + wrapper div from sheetColumnManagerContainer; deleted .modal-header-subtitle CSS from Sidebar-css.html. All three full-page containers (deviceManagerContainer, sheetColumnManagerContainer, sheetVisContainer) now share the identical .modal-header > .modal-header-title + .btn-modal-close structure. FILES: Sidebar.html, Sidebar-css.html)
   Previous: 2026-05-05 (Config Center Generate panel: cache-aware restore + View button. openGenerateAllModal(): if modal is minimized, calls toggleModalMinimize to restore and returns; if window._generateAllConfigs exists, calls _renderGenerateResults() to show cached result immediately. runGenerateAll(): clears window._generateAllConfigs/Text/Meta at start (always fresh GAS call). New _renderGenerateResults(configs, meta): shared renderer used by both runGenerateAll() success handler and openGenerateAllModal(); stores window._generateAllMeta={sheetName,ts}; adds View button per device row (calls _viewGeneratedConfig(idx)) in addition to existing Copy button; sets left.dataset.generated='1'; sets btn to 'Re-Generate Configs'. New _viewGeneratedConfig(idx): calls showConfigModal(cfg.name, cfg.text) on cached entry. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (deviceManagerContainer header migrated from .reorder-header to standard .modal-header/.modal-header-title; mode-reorder no-border-radius rule updated; dead .reorder-header/.reorder-header-close CSS removed. FILES: Sidebar.html, Sidebar-css.html)
@@ -3367,6 +3368,69 @@ Covered functions:
 GAS-entangled functions (PropertiesService, SpreadsheetApp, UrlFetchApp) and
 network transport functions (_ssh_cmds, _eapi_cmds, etc.) are not unit-tested.
 They require integration testing against a live sheet or real devices.
+
+================================================================================
+SECTION 26: UI ELEMENT INVENTORY
+--------------------------------------------------------------------------------
+
+A. NATIVE SHEETS DIALOGS (ui.prompt / ui.alert — server-side, block execution)
+   These open as browser-native dialogs, not sidebar overlays.
+
+   ui.prompt (user types a value):
+     promptRenameSheet()         "Change Sheet Name"         — new sheet name input
+     createTopologySnapshot()    "Create Sheet Checkpoint"   — checkpoint label input
+
+   ui.alert YES/NO (user confirms):
+     syncSchemaColumns()         "Sync Schema: Orphaned Columns" — confirm column delete
+
+   ui.alert OK (info/error):
+     promptRenameSheet() flow    — validation errors, success confirmation (5 alerts)
+     createTopologySnapshot()    — failure message
+
+B. SIDEBAR MODALS — modal-std (standard floating overlay, Sidebar.html)
+
+   ID                          Header Title                      Type
+   ─────────────────────────────────────────────────────────────────────
+   techModal                   Network Tech Stack                modal-std
+   autoConfigModal             Auto Config                       modal-std modal-medium
+   deviceBridgeModal           Device Bridge                     modal-std modal-floating
+   pushConfirmModal            Confirm Config Push               modal-std
+   cablingModal                Export Cabling Report             modal-std
+   helpModal                   Shortcuts                         modal-std
+   guiEditModal                Edit Interface                    modal-std
+   auditModal                  Configuration Audit               modal-std modal-medium
+   groupRectModal              Group                             modal-std
+   configModal                 (device name — set dynamically)  modal-std
+   configCenterModal           Config Center                     modal-std
+   vlanSummaryModal            VLAN Summary                      modal-std
+   auditSettingsModal          (injected dynamically)            modal-std
+
+   Full-page containers (modal-std modal-large — slide in from right, cover canvas):
+   deviceManagerContainer      Device Manager
+   sheetColumnManagerContainer Manage Column & Formatting
+   sheetVisContainer           Sheet Custom View Managers
+
+   NOTE: deviceBridgeModal is modal-floating — stays as collapsed header when minimized,
+   NOT hidden, NOT in #modalDock. All other modal-std modals go to display:none on minimize
+   and appear as chips in #modalDock.
+
+C. SIDEBAR PANELS (non-modal, always-present UI regions)
+
+   ID                    Name              Location / Behaviour
+   ──────────────────────────────────────────────────────────────
+   appTopologyContainer  Topology canvas   Main canvas; always visible in topology mode
+   devVisPanel           DevVis            Floating panel (dev-vis-panel), toggled by
+                                           devVisPanelBtn; has own minimize behaviour
+   #modalDock            Modal Dock        Fixed bar at bottom; shows chips for each
+                                           .modal-std.modal-minimized modal
+   #activeModalChip      Active Chip       Amber pill in APP toolbar; shows name of
+                                           currently open modal (hidden when none open
+                                           or when active modal is minimized)
+
+D. CHIP / DOCK NAME SOURCE
+   Both #activeModalChip (_updateActiveChip) and #modalDock chips (_updateMinimizedDockChip)
+   read the modal name from: modal.querySelector('.modal-header-title').textContent.trim()
+   No hardcoded name map — chip label always matches what the modal header displays.
 
 ================================================================================
 END OF INSTRUCTIONS
