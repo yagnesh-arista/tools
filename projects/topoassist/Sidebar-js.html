@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.13 | 2026-05-05 11:50:12 -->
+<!-- TopoAssist v260505.15 | 2026-05-05 12:03:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.13";  // keep in sync with Code.gs
+const APP_VERSION = "260505.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5896,10 +5896,24 @@ function saveTechSettings() {
 }
 
 // Reads the modal's own .modal-header-title so loading messages never go stale on rename.
-function showModalLoading(modalId) {
-  const titleEl = document.querySelector('#' + modalId + ' .modal-header-title');
-  const title = titleEl ? titleEl.textContent.trim() : 'Loading';
-  showGlobalLoading('Loading ' + title + '...');
+function showModalLoading(modalId, msg) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.style.display = 'flex';
+  setActiveModalChip(modalId);
+  if (modal.querySelector('.modal-loading-state')) return;
+  const el = document.createElement('div');
+  el.className = 'modal-loading-state';
+  const hdr = modal.querySelector('.modal-header');
+  el.style.top = (hdr ? hdr.offsetHeight : 0) + 'px';
+  el.innerHTML = '<div class="modal-loading-spinner"></div><span>' + (msg || 'Loading…') + '</span>';
+  modal.appendChild(el);
+}
+function hideModalLoading(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  const el = modal.querySelector('.modal-loading-state');
+  if (el) el.remove();
 }
 
 /**
