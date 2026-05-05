@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (Dock chip sort: minimized modals in #modalDock now sorted by minimized-at time (oldest-left, most-recent-right) via data-minimized-at timestamp stamped in toggleModalMinimize; _refreshDock sorts before rendering. FILES: Sidebar-js.html)
+  Last updated: 2026-05-05 (deviceBridgeModal: removed subtitle wrapper from header; subtitle text moved to info-box--dim at top of modal body. Header now standard title+close only. FILES: Sidebar.html)
+  Previous: 2026-05-05 (Dock chip sort: minimized modals in #modalDock now sorted by minimized-at time (oldest-left, most-recent-right) via data-minimized-at timestamp stamped in toggleModalMinimize; _refreshDock sorts before rendering. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (Bug fix: column click handlers (colEt/colMode/colType/colPo) in port rows now guard with isEditMode check — in edit cabling mode, clicks no longer trigger _portColFilter/global search; instead bubble up to row onclick to open edit/connect modal. FILES: Sidebar-js.html)
   Previous: 2026-05-05 (Modal renames: techModal→networkStackModal ("Network Stack"), pushConfirmModal→configPushModal ("Config Push"), cablingModal→exportCablingModal ("Export Cabling"), helpModal title "Shortcuts Help" icon removed, sheetColumnManagerContainer title→"Column & Formatting Manager". Section 26 updated. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html, INSTRUCTIONS_topoassist.txt)
   Previous: 2026-05-05 (auditSettingsModal: changed modal-title span → modal-header-title div to match all other modals; chip/dock name now reads correctly from DOM. Section 26 updated. FILES: Sidebar.html, INSTRUCTIONS_topoassist.txt)
