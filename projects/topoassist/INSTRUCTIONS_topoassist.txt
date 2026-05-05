@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (All 3 containers: minimize-only header (no [×]); dismiss via footer only. sheetColumnManagerContainer: added [Cancel]→SheetColumnManagerCloseButton. sheetVisContainer: removed header [×], added [Cancel]→google.script.host.close(). FILES: Sidebar.html)
+  Last updated: 2026-05-05 (TestVersionSync: pytest class catches VERSION mismatch between device_bridge.py and Sidebar-js.html embedded template; auto-runs on every device_bridge.py edit. Never manually edit VERSION — topoassist-bridge-version.sh hook auto-bumps on every device_bridge.py edit. FILES: tests/test_device_bridge.py)
+  Previous: 2026-05-05 (All 3 containers: minimize-only header (no [×]); dismiss via footer only. sheetColumnManagerContainer: added [Cancel]→SheetColumnManagerCloseButton. sheetVisContainer: removed header [×], added [Cancel]→google.script.host.close(). FILES: Sidebar.html)
   Previous: 2026-05-05 (Containers: remove btn-modal-close from deviceManagerContainer and sheetColumnManagerContainer headers — minimize-only in header, footer Cancel/Save handles dismiss. sheetVisContainer keeps [×] (google.script.host.close). FILES: Sidebar.html)
   Previous: 2026-05-05 (Container modal design settled: all 3 containers keep [−][×] in header (injector now falls back to appendChild when no close btn); deviceManagerContainer footer Cancel restored — [×]=quick close, Cancel=explicit discard. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-05 (setTitle/showModelessDialog sync: all 6 showModelessDialog calls in Code.gs now have matching .setTitle with identical string; fixed Network Topology (version suffix in setTitle only), Sheet Assistant and Sheet View (no setTitle at all). Check 31 added to review-code-design skill. FILES: Code.gs)
