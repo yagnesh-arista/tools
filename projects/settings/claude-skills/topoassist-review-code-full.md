@@ -164,6 +164,24 @@ grep -n "btn-modal-close\|>Close<\|>Cancel<" ~/claude/projects/topoassist/Sideba
 grep -n "modalOrder\|closeFuncs" ~/claude/projects/topoassist/Sidebar-js.html | head -20
 ```
 
+### 9e — GAS container footer is a single visible row
+
+GAS dialog height is fixed via `google.script.host.setHeight()`. The body fills remaining height via `flex: 1`. If `modal-actions` wraps to multiple lines, the bottom row is silently clipped — GAS does not scroll containers.
+
+For every `*Container` div (`deviceManagerContainer`, `sheetColumnManagerContainer`, `sheetVisContainer`):
+- Count the total number of buttons + checkboxes in `modal-actions`
+- If they would overflow a single row at typical dialog width, flag it
+- Low-priority controls (checkboxes, toggles) belong in a `schema-settings-bar` row above the body, not in the footer
+
+```bash
+grep -A30 'id="deviceManagerContainer\|id="sheetColumnManagerContainer\|id="sheetVisContainer' \
+  ~/claude/projects/topoassist/Sidebar.html | grep -E "modal-actions|footer-group|btn-std|chk-container"
+```
+
+✗ FAIL if `modal-actions` has more than one `footer-group` div (multiple groups → likely wraps)
+✗ FAIL if `modal-actions` contains checkboxes or toggle controls (promote to settings bar above body)
+⚠ WARN if total button count in footer exceeds 5 (risk of wrap at narrow dialog width)
+
 ---
 
 # Part 2 — Global Review
