@@ -1,5 +1,6 @@
 INSTRUCTIONS — bashrc_bus-home project
-Last updated: 2026-05-03 (Section 7: added eostricks() — fzf fuzzy search wrapper for ~/claude/projects/eos-tricks/EOS_CLI_Tricks.md; with arg: grep -n -i | less -R; without arg: fzf --no-sort)
+Last updated: 2026-05-05 (Section 7: added clasp() function using absolute path $HOME/.local/bin/clasp — shell functions take priority over PATH lookup, so clasp works even when ~/.local/bin drops from PATH in tmux panes. Also replaced ~/.local/bin/clasp symlink with a self-contained bash wrapper that resolves the nvm alias chain and invokes node directly, bypassing PATH entirely.)
+Previous: 2026-05-03 (Section 7: added eostricks() — fzf fuzzy search wrapper for ~/claude/projects/eos-tricks/EOS_CLI_Tricks.md; with arg: grep -n -i | less -R; without arg: fzf --no-sort)
 Previous: 2026-04-30 (fix-tmux converted from alias to function: uses stty size to read actual PTY dimensions (never stale), then tmux refresh-client -C WxH to push new size into tmux, then resize-window -A. Fixes display-switch resize failure where iTerm2 doesn't propagate SIGWINCH through SSH — Prefix+F was also failing; only close+reopen iTerm2 worked before.)
 Previous: 2026-04-29 (Section 10: _ai_spend_ps1() now only refreshes the cache — display moved to tmux status bar (status-right #(python3 ...) in tmux.conf reads ~/.cache/ai-spend.json). Function body stripped to cache-refresh only; printf removed.)
 Previous: 2026-04-29 (Section 10: fixed _ai_spend_ps1() — double-fork pattern ( ( ... ) & ) suppresses [N] PID job noise; PID-unique tmp file ${cache}.tmp.$$ prevents mv race when prompts fire quickly; output printed on own line above PS1 (simpler/reliable vs cursor right-alignment); || rm -f tmp cleanup on failure)
@@ -52,10 +53,14 @@ CURRENT .bashrc SECTIONS
 5.  Custom Functions — command_not_found_handle (@<device> SSHes to admin@<device>); mkcd()
     IMPORTANT: must stay BEFORE section 13 (ble-attach) so ble.sh wraps the handler on load
 6.  Prevent Ctrl+D (ignoreeof, IGNOREEOF=10)
-7.  Aliases: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ..., eod, fix-ssh
+7.  Aliases & Functions: ta, fix-tmux, tmux-studio, ll, la, ls, lrtha, grep, .., ..., eod, fix-ssh
     eod: subshell-wrapped (cd ~/claude; add; commit+push or "Nothing to commit")
     fix-ssh: repairs dead SSH_AUTH_SOCK in tmux after reconnect
     fix-path: sources ~/.bashrc to repair stale PATH in old tmux panes
+    clasp(): absolute-path wrapper → $HOME/.local/bin/clasp "$@"
+      Shell functions take priority over PATH; works even if ~/.local/bin drops from PATH.
+      ~/.local/bin/clasp is a self-contained bash wrapper (not a symlink) that resolves
+      nvm alias chain (default→lts/*→version) and invokes node directly.
 8.  TZ=Asia/Kolkata, PATH prepend ~/.local/bin:~/.atuin/bin, EDITOR/VISUAL=vim, CDPATH
 9.  History: HISTSIZE=100000, HISTFILESIZE=200000, ignoredups:erasedups, histappend
     PROMPT_COMMAND: guarded with [[ != *history -a* ]] to prevent stacking on re-source

@@ -1,4 +1,4 @@
-# bashrc_bus-home v260503.1 | 2026-05-03 16:42:24
+# bashrc_bus-home v260505.1 | 2026-05-05 10:10:11
 # Managed via ~/claude/projects/bashrc_bus-home/
 # Deploy: cp .bashrc ~/.bashrc (auto via hook)
 
@@ -88,6 +88,8 @@ alias ...='cd ../..'
 alias eod='(cd ~/claude && git add -A && git diff --cached --quiet && echo "Nothing to commit." || { git commit -m "EOD $(date +%Y-%m-%d)" && git push; })'
 alias fix-ssh='export SSH_AUTH_SOCK=$(tmux show-environment | grep "^SSH_AUTH_SOCK" | cut -d= -f2)'
 alias fix-path='source ~/.bashrc && echo "PATH reloaded"'
+# Absolute-path fallback: works even if ~/.local/bin drops from PATH
+clasp() { "$HOME/.local/bin/clasp" "$@"; }
 eostricks() {
   local f=~/claude/projects/eos-tricks/EOS_CLI_Tricks.md
   if [[ -n "$1" ]]; then
