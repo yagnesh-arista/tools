@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.54 | 2026-05-05 14:52:24 -->
+<!-- TopoAssist v260505.55 | 2026-05-05 15:05:15 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2059,18 +2059,23 @@
   #groupListPanel {
     display: none;
     border-top: 1px solid var(--border-light);
-    max-height: 150px;
+    max-height: 160px;
     overflow-y: auto;
-    min-width: 180px;
+    min-width: 200px;
   }
   #groupListPanel .gl-row {
     display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 6px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 6px;
     cursor: default;
   }
   #groupListPanel .gl-row:hover { background: var(--bg-hover); }
+  #groupListPanel .gl-row-top {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
   #groupListPanel .gl-swatch {
     width: 8px;
     height: 8px;
@@ -2092,12 +2097,12 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 70px;
-    user-select: none;
-    -webkit-user-select: none;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.4;
+    padding-left: 13px;
+    user-select: text;
+    -webkit-user-select: text;
   }
   #groupListPanel .gl-eye {
     display: flex;

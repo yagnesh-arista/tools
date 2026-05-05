@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.54 | 2026-05-05 14:53:02 -->
+<!-- TopoAssist v260505.55 | 2026-05-05 15:04:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.54";  // keep in sync with Code.gs
+const APP_VERSION = "260505.55";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -303,6 +303,7 @@ const APP_VERSION = "260505.54";  // keep in sync with Code.gs
   let holisticSimulation = null;
   let isGroupRectMode = false;
   let groupRects = [];
+  let _groupRectsHidden = localStorage.getItem('grects_hidden') === '1';
   let activeDrawRect = null;
   let drawStartSVG = null;
   let pendingGroupRectGeom = null;
@@ -504,6 +505,7 @@ function initApp() {
   initTheme();
   syncToolbarTooltips();
   _injectMinimizeButtons();   // add minimize button to all modals that lack one
+  _updateGroupRectsToggleBtn();
   applyValidationState();
   applyBoldTextPref();
   dbg("Initializing App in mode:", currentMode);
@@ -3399,6 +3401,7 @@ function startFlexibleLayout() {
 
   // Group rect overlay — behind node cards (z-index:1 < node z-index:20)
   d3.select('#flex-grect-svg').remove();
+  d3.select('#linear-grect-svg').remove(); // clear linear rects so they don't persist during flex sim
   const flexSvg = d3.select('#canvas-surface').append('svg')
     .attr('id', 'flex-grect-svg')
     .style('position', 'absolute').style('top', '0').style('left', '0')
@@ -9580,6 +9583,24 @@ function saveGroupRects() {
   _renderGroupList();
 }
 
+const _SVG_EYE     = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _SVG_EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+function toggleGroupRectsVisibility() {
+  _groupRectsHidden = !_groupRectsHidden;
+  localStorage.setItem('grects_hidden', _groupRectsHidden ? '1' : '0');
+  _updateGroupRectsToggleBtn();
+  refreshGroupRects();
+  _renderGroupList();
+}
+
+function _updateGroupRectsToggleBtn() {
+  const btn = document.getElementById('groupRectsToggleBtn');
+  if (!btn) return;
+  btn.innerHTML = _groupRectsHidden ? _SVG_EYE_OFF : _SVG_EYE;
+  btn.title = _groupRectsHidden ? 'Show all groups' : 'Hide all groups';
+}
+
 function _renderGroupList() {
   const panel = document.getElementById("groupListPanel");
   if (!panel) return;
@@ -9589,9 +9610,16 @@ function _renderGroupList() {
   }
   panel.style.display = "block";
   panel.innerHTML = "";
-  groupRects.forEach(gr => {
+  const sorted = [...groupRects].sort((a, b) =>
+    (a.label || '').toLowerCase().localeCompare((b.label || '').toLowerCase())
+  );
+  sorted.forEach(gr => {
     const row = document.createElement("div");
     row.className = "gl-row";
+
+    // Top line: swatch + label + focus-eye
+    const top = document.createElement("div");
+    top.className = "gl-row-top";
 
     const swatch = document.createElement("span");
     swatch.className = "gl-swatch";
@@ -9600,24 +9628,26 @@ function _renderGroupList() {
     const name = document.createElement("span");
     name.className = "gl-name";
     name.textContent = gr.label || "(unnamed)";
-    name.title = gr.label || "";
 
-    const memberText = (gr.members && gr.members.length) ? gr.members.join(", ") : "no members";
-    const members = document.createElement("span");
-    members.className = "gl-members";
-    members.textContent = memberText;
-    members.title = memberText;
+    const focusBtn = document.createElement("button");
+    focusBtn.className = "gl-eye";
+    focusBtn.title = "Focus on " + (gr.label || "group");
+    focusBtn.innerHTML = _SVG_EYE;
+    focusBtn.onclick = (e) => { e.stopPropagation(); _zoomToGroup(gr.id); };
 
-    const eye = document.createElement("button");
-    eye.className = "gl-eye";
-    eye.title = "Focus on " + (gr.label || "group");
-    eye.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    eye.onclick = (e) => { e.stopPropagation(); _zoomToGroup(gr.id); };
+    top.appendChild(swatch);
+    top.appendChild(name);
+    top.appendChild(focusBtn);
 
-    row.appendChild(swatch);
-    row.appendChild(name);
-    row.appendChild(members);
-    row.appendChild(eye);
+    // Member list: all names, wrapping
+    const memberList = document.createElement("div");
+    memberList.className = "gl-members";
+    memberList.textContent = (gr.members && gr.members.length)
+      ? [...gr.members].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(", ")
+      : "no members";
+
+    row.appendChild(top);
+    row.appendChild(memberList);
     panel.appendChild(row);
   });
 }
@@ -16982,6 +17012,7 @@ function getVertLabelAttrs(gr) {
 function renderGroupRectsInto(rectGroup, labelGroup) {
   rectGroup.selectAll(".grect-item").remove();
   if (labelGroup) labelGroup.selectAll(".grect-label-item").remove();
+  if (_groupRectsHidden) return;
 
   groupRects.forEach(gr => {
     // Member-based rects: recompute bounds from current node positions every render.
