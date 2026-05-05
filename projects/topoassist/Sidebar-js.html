@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.57 | 2026-05-05 15:21:11 -->
+<!-- TopoAssist v260505.58 | 2026-05-05 15:26:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.57";  // keep in sync with Code.gs
+const APP_VERSION = "260505.58";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16389,13 +16389,14 @@ function openGenerateAllModal(panel) {
   const btn = document.getElementById('btnRunGenerateAll');
   if (window._generateAllConfigs && window._generateAllConfigs.length) {
     _renderGenerateResults(window._generateAllConfigs);
+    _switchCfgPanel('generate');
   } else {
     btn.disabled = false;
     btn.innerText = 'Generate Configs';
     const left = document.getElementById('generateAllLeft');
     if (left) left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
+    _switchCfgPanel(panel || 'push');
   }
-  _switchCfgPanel(panel || 'push');
   if (modal) modal.style.display = 'flex';
   setActiveModalChip('configCenterModal');
   _loadGlobalCfgTemplate();
