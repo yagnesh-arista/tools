@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.42 | 2026-05-05 13:45:32 -->
+<!-- TopoAssist v260505.43 | 2026-05-05 14:13:57 -->
 <!DOCTYPE html>
 <html>
 
@@ -1506,6 +1506,7 @@
         </button>
       </div>
       <div class="footer-group">
+        <button class="btn-std ui-equal-size" onclick="SheetColumnManagerCloseButton()">Cancel</button>
         <button id="btnSheetColumnManagerSave" class="btn-std btn-success ui-equal-size" onclick="SheetColumnManagerSave()">Save & Sync</button>
       </div>
     </div>
@@ -1515,7 +1516,6 @@
   <div id="sheetVisContainer" class="modal-std modal-large">
     <div class="modal-header">
       <div class="modal-header-title">Sheet Custom View Managers</div>
-      <button class="btn-modal-close" onclick="google.script.host.close()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="view-toolbar">
       <span class="view-label">Presets:</span>
@@ -1531,6 +1531,7 @@
     </div>
     <div id="viewCustomBody"></div>
     <div class="modal-actions right-align">
+      <button class="btn-mono" onclick="google.script.host.close()">Cancel</button>
       <button id="btnApplyView" class="btn-success-mono" onclick="submitCustomView()">Apply View</button>
     </div>
   </div>
