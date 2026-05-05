@@ -1,7 +1,7 @@
-<!-- TopoAssist v260504.42 | 2026-05-04 18:52:16 -->
+<!-- TopoAssist v260505.2 | 2026-05-05 09:54:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260504.42";  // keep in sync with Code.gs
+const APP_VERSION = "260505.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6063,7 +6063,7 @@ window.topologyKeyHandler = function (event) {
     }
 
     // STEP 1: CLOSE MODALS (LIFO)
-    const modalOrder = ["pushConfirmModal", "helpModal", "deviceManagerContainer", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "configCenterModal", "vlanSummaryModal"];
+    const modalOrder = ["pushConfirmModal", "helpModal", "guiEditModal", "autoConfigModal", "deviceBridgeModal", "cablingModal", "auditModal", "auditSettingsModal", "techModal", "configModal", "groupRectModal", "configCenterModal", "vlanSummaryModal"];
 
     for (const id of modalOrder) {
       const el = document.getElementById(id);
@@ -6093,7 +6093,7 @@ window.topologyKeyHandler = function (event) {
 
         // Standard Close Logic
         const closeFuncs = {
-          "helpModal": closeHelpModal, "deviceManagerContainer": DeviceManagerCloseButton,
+          "helpModal": closeHelpModal,
           "guiEditModal": closeEditModal, "autoConfigModal": closeIpModal,
           "pushConfirmModal": cancelPushConfig,
           "deviceBridgeModal": closeBridgeModal,
