@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.53 | 2026-05-05 14:45:46 -->
+<!-- TopoAssist v260505.54 | 2026-05-05 14:53:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.53";  // keep in sync with Code.gs
+const APP_VERSION = "260505.54";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3407,8 +3407,7 @@ function startFlexibleLayout() {
     .style('z-index', '1');
   const flexRectGroup  = flexSvg.append('g').attr('class', 'group-rects');
   const flexLabelGroup = flexSvg.append('g').attr('class', 'group-rect-labels');
-  renderGroupRectsInto(flexRectGroup, flexLabelGroup);
-  // Re-render group rects after flex simulation settles so member bounds follow final node positions
+  // Render only after simulation settles — pre-sim positions give wrong/stale member bounds
   d3Simulation.on("end.grects", refreshGroupRects);
 }
 
@@ -9573,10 +9572,75 @@ function loadGroupRects() {
     groupRects = [...byLabel.values()];
     if (groupRects.length < parsed.length) saveGroupRects(); // persist fix
   } catch(e) { groupRects = []; }
+  _renderGroupList();
 }
 
 function saveGroupRects() {
   localStorage.setItem("holistic_group_rects", JSON.stringify(groupRects));
+  _renderGroupList();
+}
+
+function _renderGroupList() {
+  const panel = document.getElementById("groupListPanel");
+  if (!panel) return;
+  if (!groupRects.length) {
+    panel.style.display = "none";
+    return;
+  }
+  panel.style.display = "block";
+  panel.innerHTML = "";
+  groupRects.forEach(gr => {
+    const row = document.createElement("div");
+    row.className = "gl-row";
+
+    const swatch = document.createElement("span");
+    swatch.className = "gl-swatch";
+    swatch.style.background = gr.color || "#3b82f6";
+
+    const name = document.createElement("span");
+    name.className = "gl-name";
+    name.textContent = gr.label || "(unnamed)";
+    name.title = gr.label || "";
+
+    const memberText = (gr.members && gr.members.length) ? gr.members.join(", ") : "no members";
+    const members = document.createElement("span");
+    members.className = "gl-members";
+    members.textContent = memberText;
+    members.title = memberText;
+
+    const eye = document.createElement("button");
+    eye.className = "gl-eye";
+    eye.title = "Focus on " + (gr.label || "group");
+    eye.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    eye.onclick = (e) => { e.stopPropagation(); _zoomToGroup(gr.id); };
+
+    row.appendChild(swatch);
+    row.appendChild(name);
+    row.appendChild(members);
+    row.appendChild(eye);
+    panel.appendChild(row);
+  });
+}
+
+function _zoomToGroup(grId) {
+  const gr = groupRects.find(r => r.id === grId);
+  if (!gr) return;
+  let x, y, w, h;
+  if (gr.members && gr.members.length) {
+    const clusters = _computeGroupClusters(gr.members, 30);
+    if (!clusters.length) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    clusters.forEach(c => {
+      if (c.x < minX) minX = c.x;
+      if (c.y < minY) minY = c.y;
+      if (c.x + c.width > maxX) maxX = c.x + c.width;
+      if (c.y + c.height > maxY) maxY = c.y + c.height;
+    });
+    x = minX; y = minY; w = maxX - minX; h = maxY - minY;
+  } else {
+    x = gr.x; y = gr.y; w = gr.width; h = gr.height;
+  }
+  focusView(x, y, w, h);
 }
 
 /**
