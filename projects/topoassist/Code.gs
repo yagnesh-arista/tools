@@ -1,10 +1,10 @@
-// TopoAssist v260505.36 | 2026-05-05 13:24:52
+// TopoAssist v260505.37 | 2026-05-05 13:25:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260505.36";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260505.37";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -256,7 +256,8 @@ function showSheetAssistPanel() {
   try { ensureOnOpenTrigger();  } catch (e) {}
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
     .setWidth(540)
-    .setHeight(590);
+    .setHeight(590)
+    .setTitle('Sheet View');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet View');
 }
 
