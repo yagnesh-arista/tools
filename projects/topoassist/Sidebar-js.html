@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.33 | 2026-05-05 13:22:31 -->
+<!-- TopoAssist v260505.35 | 2026-05-05 13:23:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.33";  // keep in sync with Code.gs
+const APP_VERSION = "260505.35";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -786,7 +786,7 @@ function DeviceManager() {
            <button onclick="confirmRemoveDevice()" title="Confirm delete" style="font-size:10px;padding:2px 6px;background:#ef4444;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:700;display:inline-flex;align-items:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
            <button onclick="cancelRemoveDevice()" title="Cancel" style="font-size:10px;padding:2px 5px;background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
          </div>`
-      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})" style="display:inline-flex;align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+      : `<div class="col-center"><button class="btn-icon-delete" onclick="removeDeviceFromList(${index})" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
 
     const roleVal = devObj.role || '';
     const roleOptions = ['', ...DEVICE_ROLE_OPTIONS].map(r =>
@@ -17091,6 +17091,7 @@ function openGroupRectModal() {
   const modal = document.getElementById("groupRectModal");
   const overlay = document.getElementById("editOverlay");
   if (!modal || !overlay) return;
+  _setGroupRectLabelError('');
   if (!editingGroupRectId) {
     document.getElementById("groupRectLabelInp").value = "";
     selectedGroupRectColor = "#3b82f620";
@@ -17178,6 +17179,14 @@ function confirmGroupRect() {
   function minWidthForLabel(lbl) {
     return Math.ceil(lbl.length * 7.2) + 20;
   }
+
+  // Block duplicate label — find any group with same name (excluding the one being edited)
+  const dupLabel = groupRects.find(r => r.label.toLowerCase() === label.toLowerCase() && r.id !== editingGroupRectId);
+  if (dupLabel) {
+    _setGroupRectLabelError('A group "' + dupLabel.label + '" already exists. Click it on the canvas to edit, or choose a different name.');
+    return;
+  }
+  _setGroupRectLabelError('');
 
   if (editingGroupRectId) {
     const existing = groupRects.find(r => r.id === editingGroupRectId);
