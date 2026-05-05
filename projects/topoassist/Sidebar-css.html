@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.56 | 2026-05-05 15:13:35 -->
+<!-- TopoAssist v260505.57 | 2026-05-05 15:21:11 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2059,9 +2059,11 @@
   #groupListPanel {
     display: none;
     border-top: 1px solid var(--border-light);
-    max-height: 160px;
+    max-height: 240px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     min-width: 200px;
+    padding-bottom: 4px;
   }
   #groupListPanel .gl-row {
     display: flex;
