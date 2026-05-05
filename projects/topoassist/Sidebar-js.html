@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.37 | 2026-05-05 13:25:12 -->
+<!-- TopoAssist v260505.38 | 2026-05-05 13:30:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.37";  // keep in sync with Code.gs
+const APP_VERSION = "260505.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13540,10 +13540,8 @@ function toggleModalMinimize(modalId) {
 // but no .btn-modal-minimize yet. Runs once at initApp time.
 function _injectMinimizeButtons() {
   const _minSvg = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-  const _noMinIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
   document.querySelectorAll('.modal-std').forEach(modal => {
     if (!modal.id) return;
-    if (_noMinIds.has(modal.id)) return;
     const header = modal.querySelector('.modal-header, .modal-keep-on-min');
     if (!header) return;
     if (header.querySelector('.btn-modal-minimize')) return; // already has one
