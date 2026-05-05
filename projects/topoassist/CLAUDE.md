@@ -163,6 +163,8 @@ The `[−]` is injected by `_injectMinimizeButtons()` via its `appendChild` fall
 | `sheetColumnManagerContainer` | `SheetColumnManagerCloseButton()` | `SheetColumnManagerSave()` |
 | `sheetVisContainer` | `google.script.host.close()` | `submitCustomView()` |
 
+**GAS container footer must be a single row — no stacking.** GAS dialog height is fixed via `google.script.host.setHeight()`. The body fills remaining height via `flex: 1`. If the footer wraps to multiple lines, the bottom row is silently clipped — GAS does not scroll containers. Rule: the `modal-actions` footer of any container must fit in one horizontal row. If there are too many controls, promote low-priority ones (checkboxes, toggles) to a `schema-settings-bar` row above the body. After any footer change, reopen the dialog and visually confirm the bottom row is fully visible.
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
