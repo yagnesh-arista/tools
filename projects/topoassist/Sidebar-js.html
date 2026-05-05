@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.59 | 2026-05-05 15:43:15 -->
+<!-- TopoAssist v260505.60 | 2026-05-05 15:46:37 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.59";  // keep in sync with Code.gs
+const APP_VERSION = "260505.60";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16391,6 +16391,18 @@ function openGenerateAllModal(panel) {
     toggleModalMinimize('configCenterModal');
     return;
   }
+  if (!window._generateAllConfigs) {
+    try {
+      const raw = localStorage.getItem('ta_gen_cache');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.configs && saved.configs.length) {
+          window._generateAllConfigs = saved.configs;
+          window._generateAllMeta = saved.meta;
+        }
+      }
+    } catch(e) {}
+  }
   _autoMinimizeOpenModal();
   _populateGenAllDeviceList();
   _resetStopGenerateBtn();
@@ -16430,6 +16442,7 @@ function runGenerateAll() {
   window._generateAllConfigs = null;
   window._generateAllText = null;
   window._generateAllMeta = null;
+  try { localStorage.removeItem('ta_gen_cache'); } catch(e) {}
 
   _generateAllAborted = false;
   const btn     = document.getElementById('btnRunGenerateAll');
@@ -16516,6 +16529,7 @@ function _renderGenerateResults(configs, meta) {
   }).join('\n!\n!\n');
   window._generateAllConfigs = configs;
   if (meta) window._generateAllMeta = meta;
+  try { localStorage.setItem('ta_gen_cache', JSON.stringify({configs: configs, meta: window._generateAllMeta})); } catch(e) {}
   const stopBtn = document.getElementById('btnStopGenerate');
   if (stopBtn) {
     stopBtn.disabled = false;
