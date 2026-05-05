@@ -1,10 +1,10 @@
-// TopoAssist v260505.35 | 2026-05-05 13:22:58
+// TopoAssist v260505.36 | 2026-05-05 13:24:52
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260505.35";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260505.36";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -242,7 +242,8 @@ function showCustomViewUi() {
 function showSheetAssistUi() {
   const html = HtmlService.createHtmlOutputFromFile('SheetAssistPanel')
     .setWidth(360)
-    .setHeight(580);
+    .setHeight(580)
+    .setTitle('Sheet Assistant');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Sheet Assistant');
 }
 
@@ -746,7 +747,7 @@ function showTopologyWindow() {
   template.defaultRefresh = settings.refresh;
   template.defaultAuto   = settings.auto;
 
-  const html = template.evaluate().setWidth(1600).setHeight(1170).setTitle(`Live Network Topology v${APP_VERSION}`);
+  const html = template.evaluate().setWidth(1600).setHeight(1170).setTitle('Network Topology');
   SpreadsheetApp.getUi().showModelessDialog(html, 'Network Topology');
 }
 
