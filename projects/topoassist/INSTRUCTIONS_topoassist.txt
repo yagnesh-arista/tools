@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-05 (Container modal design settled: all 3 containers keep [−][×] in header (injector now falls back to appendChild when no close btn); deviceManagerContainer footer Cancel restored — [×]=quick close, Cancel=explicit discard. FILES: Sidebar.html, Sidebar-js.html)
+  Last updated: 2026-05-05 (Containers: remove btn-modal-close from deviceManagerContainer and sheetColumnManagerContainer headers — minimize-only in header, footer Cancel/Save handles dismiss. sheetVisContainer keeps [×] (google.script.host.close). FILES: Sidebar.html)
+  Previous: 2026-05-05 (Container modal design settled: all 3 containers keep [−][×] in header (injector now falls back to appendChild when no close btn); deviceManagerContainer footer Cancel restored — [×]=quick close, Cancel=explicit discard. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-05 (setTitle/showModelessDialog sync: all 6 showModelessDialog calls in Code.gs now have matching .setTitle with identical string; fixed Network Topology (version suffix in setTitle only), Sheet Assistant and Sheet View (no setTitle at all). Check 31 added to review-code-design skill. FILES: Code.gs)
   Previous: 2026-05-05 (Column & Formatting Manager name sync: sheet menu addItem + setTitle + showModelessDialog in Code.gs corrected from "Manage Column & Formatting"; Section 26 and UserGuide menu-path references updated. FILES: Code.gs, UserGuide.html)
   Previous: 2026-05-05 (OSPF orphan cleanup: passive-interface EtX → default passive-interface EtX — removes override without residue. Both _orphans_to_cmds() and JS _buildCleanupConfig() updated. VERSION 260505.1→260505.2. UserGuide cleanup table updated. FILES: device_bridge.py, Sidebar-js.html, UserGuide.html)
