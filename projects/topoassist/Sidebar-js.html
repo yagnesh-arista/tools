@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.48 | 2026-05-05 14:17:10 -->
+<!-- TopoAssist v260505.49 | 2026-05-05 14:21:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.48";  // keep in sync with Code.gs
+const APP_VERSION = "260505.49";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15132,27 +15132,23 @@ function loadViewPreset(name) {
 }
 
 function submitCustomView() {
-  const btn = document.getElementById("btnApplyView");
   const selected = [];
   document.querySelectorAll(".view-chk").forEach(c => {
     if (c.checked) selected.push(c.value);
   });
-  setBtnLoading(btn, true, "Applying...");
+  setStatus("Applying view...", "status-info");
+  const _guard = setTimeout(() => {
+    setStatus("View apply timed out — try again", "status-error");
+  }, 15000);
   google.script.run
     .withSuccessHandler(() => {
-      btn.innerText = "Applied";
-      btn.style.background = "var(--success)";
-      btn.disabled = false;
-      setTimeout(() => {
-        btn.innerText = "Apply View";
-        btn.style.background = "";
-        setBtnLoading(btn, false);
-      }, 2000);
+      clearTimeout(_guard);
+      setStatus("View applied", "status-ok");
+      setTimeout(() => setStatus(""), 2000);
     })
     .withFailureHandler(err => {
-      setBtnLoading(btn, false);
-      btn.innerText = "Apply View";
-      alert("✗ Apply Failed: " + err.message);
+      clearTimeout(_guard);
+      setStatus("✗ Apply Failed: " + err.message, "status-error");
     })
     .applyCustomView(selected);
 }
