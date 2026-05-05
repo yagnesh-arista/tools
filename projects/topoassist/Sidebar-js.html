@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.6 | 2026-05-05 10:45:04 -->
+<!-- TopoAssist v260505.7 | 2026-05-05 10:45:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.6";  // keep in sync with Code.gs
+const APP_VERSION = "260505.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13472,12 +13472,12 @@ function _makeDraggable(elOrId, opts) {
 // Strip minimize state when a modal is closed. Call at the top of every close function.
 function _onModalClose(el) {
   if (!el) return;
-  if (el.id && el.id === _activeModalChipId) { _activeModalChipId = null; _updateActiveChip(); }
-  if (!el.classList.contains('modal-minimized')) return;
-  el.classList.remove('modal-minimized');
-  delete el.dataset.preMinDisplay;
-  delete el.dataset.hadOverlay;
-  _updateMinimizedDockChip();
+  if (el.id && el.id === _activeModalChipId) _activeModalChipId = null;
+  if (el.classList.contains('modal-minimized')) {
+    el.classList.remove('modal-minimized');
+    delete el.dataset.preMinDisplay;
+  }
+  _refreshDock();
 }
 function toggleModalMinimize(modalId) {
   const modal = document.getElementById(modalId);
@@ -13493,17 +13493,6 @@ function toggleModalMinimize(modalId) {
     } else {
       modal.style.display = modal.dataset.preMinDisplay || 'flex';
       delete modal.dataset.preMinDisplay;
-    }
-  }
-  // Overlay management: hide dim backdrop on minimize, restore if it was showing
-  const ov = document.getElementById('editOverlay');
-  if (ov) {
-    if (isMin) {
-      modal.dataset.hadOverlay = (ov.style.display === 'block') ? '1' : '0';
-      ov.style.display = 'none';
-    } else {
-      if (modal.dataset.hadOverlay === '1') ov.style.display = 'block';
-      delete modal.dataset.hadOverlay;
     }
   }
   if (btn) {
@@ -13526,33 +13515,7 @@ function toggleModalMinimize(modalId) {
       }
     }
   }
-  _updateActiveChip();
-  _updateMinimizedDockChip();
-}
-
-// Rebuild the modal dock chip strip from current minimized modals.
-// Called by toggleModalMinimize() on every minimize/restore.
-function _updateMinimizedDockChip() {
-  const dock = document.getElementById('modalDock');
-  if (!dock) return;
-  dock.innerHTML = '';
-  // Full-screen mode modals collapse via setHeight — header stays visible as the restore affordance.
-  // Skip them here so there's no redundant dock chip alongside the header [chevron] button.
-  const fullScreenIds = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
-  document.querySelectorAll('.modal-std.modal-minimized').forEach(modal => {
-    if (fullScreenIds.has(modal.id)) return;
-    const title = modal.querySelector('.modal-header-title')?.textContent.trim() || modal.id;
-    const chip = document.createElement('button');
-    chip.className = 'modal-dock-chip';
-    chip.title = 'Restore: ' + title;
-    chip.innerHTML =
-      '<svg width="10" height="10" viewBox="0 0 10 10" fill="none">' +
-      '<path d="M2 7l3-4 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '</svg>' + title;
-    chip.onclick = () => toggleModalMinimize(modal.id);
-    dock.appendChild(chip);
-  });
-  dock.style.display = dock.children.length ? 'flex' : 'none';
+  _refreshDock();
 }
 
 // Auto-inject minimize buttons into every modal that has a .btn-modal-close
