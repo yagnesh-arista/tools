@@ -1,10 +1,10 @@
-// TopoAssist v260505.58 | 2026-05-05 15:26:00
+// TopoAssist v260505.59 | 2026-05-05 15:43:07
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260505.58";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260505.59";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3497,7 +3497,7 @@ function savePreferences(width, devGap, offset, top, refresh, auto) {
   }
 }
 
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-26
+// DUPLICATED in Sidebar-js.html — last synced: 2026-05-05
 function canonicalizeInterface(name) {
   if (!name) return "";
 
@@ -4098,7 +4098,7 @@ function expandVlanString(str) {
 }
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Sidebar-js.html — last synced: 2026-04-26
+// DUPLICATED in Sidebar-js.html — last synced: 2026-05-05
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")

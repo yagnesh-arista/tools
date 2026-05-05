@@ -1,7 +1,7 @@
-<!-- TopoAssist v260505.58 | 2026-05-05 15:26:00 -->
+<!-- TopoAssist v260505.59 | 2026-05-05 15:43:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260505.58";  // keep in sync with Code.gs
+const APP_VERSION = "260505.59";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4346,7 +4346,7 @@ function parseVlanInput(input) {
 
 
 // Parses a vlan_ field value that may contain an 'nv<N>' native-VLAN token.
-// DUPLICATED in Code.gs — last synced: 2026-04-26
+// DUPLICATED in Code.gs — last synced: 2026-05-05
 // Returns { native: string|null, vlans: string } where:
 //   native = the native VLAN number as a string (e.g. "100"), or null if absent
 //   vlans  = the remaining VLAN string with the nv token removed (e.g. "10,20")
@@ -6819,7 +6819,7 @@ function processDeviceConfig(deviceName, configData) {
 /**
 * Helper: Standardizes interface names (Ethernet1 -> Et1)
 * Required for mapping server config data to UI elements.
-* DUPLICATED in Code.gs — last synced: 2026-04-26
+* DUPLICATED in Code.gs — last synced: 2026-05-05
 */
 function canonicalizeInterface(name) {
   if (!name) return "";
@@ -9609,6 +9609,15 @@ function _renderGroupList() {
     return;
   }
   panel.style.display = "block";
+  // Clamp max-height so #holistic-controls never overflows viewport top
+  const hc = document.getElementById('holistic-controls');
+  if (hc) {
+    const hcLabel = hc.querySelector('.hc-label');
+    const hcBtns  = hc.querySelector('.hc-btns');
+    const fixedH  = (hcLabel ? hcLabel.offsetHeight : 28) + (hcBtns ? hcBtns.offsetHeight : 36);
+    const avail   = window.innerHeight - 32 - fixedH;
+    panel.style.maxHeight = Math.max(80, Math.min(240, avail)) + 'px';
+  }
   panel.innerHTML = "";
   const sorted = [...groupRects].sort((a, b) =>
     (a.label || '').toLowerCase().localeCompare((b.label || '').toLowerCase())
