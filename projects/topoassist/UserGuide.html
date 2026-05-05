@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.25 | 2026-05-05 12:25:18 -->
+<!-- TopoAssist v260505.26 | 2026-05-05 12:27:34 -->
 <!DOCTYPE html>
 <html>
 
@@ -1777,12 +1777,12 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         <tr>
           <td style="padding:5px 10px;"><b>OSPF passive</b></td>
           <td style="padding:5px 10px;">Stale <code>no passive-interface EtX</code> sub-command in <code>router ospf</code>/<code>ospf3</code> referencing an orphaned interface</td>
-          <td style="padding:5px 10px;"><code>passive-interface EtX</code> — re-passives the port rather than deleting it</td>
+          <td style="padding:5px 10px;"><code>default passive-interface EtX</code> — removes the override entirely; port falls back to <code>passive-interface default</code> with no residue</td>
         </tr>
       </tbody>
     </table>
     <div class="info-box info-box--dim">
-      OSPF passive cleanup is the reverse of the others — TopoAssist emits <code>no passive-interface EtX</code> on active ports to allow OSPF adjacency. When that port is deleted, the override must be reverted with <code>passive-interface EtX</code>, not simply removed. Interface names are normalized automatically (<code>Et</code>/<code>Po</code> in topology vs. <code>Ethernet</code>/<code>Port-Channel</code> from EOS).
+      OSPF passive cleanup is the reverse of the others — TopoAssist emits <code>no passive-interface EtX</code> on active ports to allow OSPF adjacency. When that port is deleted, the override must be cancelled with <code>default passive-interface EtX</code>. This removes the stale sub-command entirely, leaving <code>passive-interface default</code> to cover the interface with no residual config. Interface names are normalized automatically (<code>Et</code>/<code>Po</code> in topology vs. <code>Ethernet</code>/<code>Port-Channel</code> from EOS).
     </div>
 
     <!-- ================================================================ -->
