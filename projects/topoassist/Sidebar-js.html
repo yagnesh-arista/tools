@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.29 | 2026-05-06 12:19:05 -->
+<!-- TopoAssist v260506.32 | 2026-05-06 12:58:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.29";  // keep in sync with Code.gs
+const APP_VERSION = "260506.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15074,7 +15074,7 @@ function downloadCablingReport(mode) {
 //   Et5/22/3 → Et5/22/1 (modular chassis lane 3 → lane-1 anchor)
 //   Et14/1  → Et14/1  (already lane 1, unchanged)
 //   Et5     → Et5     (no slash, returned as-is)
-// DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
+// DUPLICATED in Code.gs (intentional — testable from Test-gs.gs). Last synced: 2026-04-19
 // Speed regex: /^(\d+(?:\.\d+)?)[gt]-(\d+)$/i — matches both "100g-4" and "1.6t-8".
 function getPhysicalPortParent(portName) {
   if (!portName) return "";
@@ -15090,7 +15090,7 @@ function getPhysicalPortParent(portName) {
 }
 
 // --- HELPER: Compress Port Lists ---
-// DUPLICATED in Code.gs (intentional — testable from Tests.gs). Last synced: 2026-04-19
+// DUPLICATED in Code.gs (intentional — testable from Test-gs.gs). Last synced: 2026-04-19
 // Joins a sorted port array as a comma-separated list: ["Et1", "Et2", "Et3"] → "Et1, Et2, Et3"
 function compressPortList(portArray) {
   if (portArray.length === 0) return "";

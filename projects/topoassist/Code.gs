@@ -1,10 +1,10 @@
-// TopoAssist v260506.29 | 2026-05-06 12:19:05
+// TopoAssist v260506.32 | 2026-05-06 12:57:52
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260506.29";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260506.32";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1135,7 +1135,7 @@ function auditSchemaVsSheet() {
   const missing = expectedHeaders.filter(h => !actualHeaders.includes(h));
   const extra = actualHeaders.filter(h => !expectedHeaders.includes(h));
 
-  // 2. Per-VLAN VRF audit (pure helper — testable in Tests.gs)
+  // 2. Per-VLAN VRF audit (pure helper — testable in Test-gs.gs)
   const aristaDevices = devices.filter(function(dv) { return dv.type !== 'non-arista'; });
   const vrfIssues = _auditVrfIssues(data.slice(2), headers, aristaDevices, 3);
 
@@ -7198,7 +7198,7 @@ function activateRow(rowNum) {
 
 // ─────────────────────────────────────────────────────────────────
 // CABLING HELPERS — server-side copies for unit testing
-// DUPLICATED from Sidebar-js.html (intentional — Tests.gs is server-side and cannot
+// DUPLICATED from Sidebar-js.html (intentional — Test-gs.gs is server-side and cannot
 // call client-side JS). Keep in sync with Sidebar-js.html. Last synced: 2026-04-26
 // ─────────────────────────────────────────────────────────────────
 
@@ -7261,7 +7261,7 @@ function _breakoutSides(g) {
 
 /**
  * Testable mirror of buildCableGroups() from Sidebar-js.html.
- * Accepts data as parameters instead of reading client-side globals, so Tests.gs can call it.
+ * Accepts data as parameters instead of reading client-side globals, so Test-gs.gs can call it.
  * DUPLICATED in Sidebar-js.html (as buildCableGroups) — last synced: 2026-04-26
  *
  * @param {Array}  links       [{u:"dev:port", v:"dev:port", type:"snake"|undefined}, ...]

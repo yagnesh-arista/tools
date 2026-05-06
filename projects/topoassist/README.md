@@ -84,7 +84,7 @@ For each file below: click the file on GitHub, copy the raw content, paste into 
 | `Sidebar-css.html` | HTML | **+ Add file → HTML** → name it `Sidebar-css` |
 | `SheetAssistPanel.html` | HTML | **+ Add file → HTML** → name it `SheetAssistPanel` |
 | `UserGuide.html` | HTML | **+ Add file → HTML** → name it `UserGuide` |
-| `Tests.gs` | Script | **+ Add file → Script** → name it `Tests` |
+| `Test-gs.gs` | Script | **+ Add file → Script** → name it `Test-gs` |
 
 **3. Save & run the initialiser**
 1. Press **Ctrl+S** (Cmd+S on Mac) to save all files
