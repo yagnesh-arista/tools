@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.69 | 2026-05-06 18:33:34 -->
+<!-- TopoAssist v260506.70 | 2026-05-06 18:33:59 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1150,6 +1150,38 @@
   .split-action:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  /* Cabling Export — bridge issue filter pills */
+  .cabling-pill {
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .cabling-pill:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    border-color: #94a3b8;
+  }
+  .cabling-pill:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .cabling-pill-active {
+    background: #e0f2fe;
+    border-color: #0ea5e9;
+    color: #0369a1;
+  }
+  .cabling-pill-active:hover:not(:disabled) {
+    background: #bae6fd;
   }
 
   /* Standard Buttons (Modal Actions) */
