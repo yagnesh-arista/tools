@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.32 | 2026-05-06 12:58:01 -->
+<!-- TopoAssist v260506.33 | 2026-05-06 13:18:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.32";  // keep in sync with Code.gs
+const APP_VERSION = "260506.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16445,13 +16445,18 @@ function _genAllSelectAll(state) {
 }
 
 function _switchCfgPanel(panel) {
+  // 'view' is a sub-panel of Generate — keep Generate nav highlighted
+  const navActive = panel === 'view' ? 'generate' : panel;
   ['generate', 'template', 'cleanup', 'push', 'view'].forEach(p => {
     const nav = document.getElementById('cfgNav-' + p);
     const content = document.getElementById('cfgPanel-' + p);
-    const active = p === panel;
-    if (nav) nav.classList.toggle('active', active);
-    if (content) content.classList.toggle('active', active);
+    if (nav) nav.classList.toggle('active', p === navActive);
+    if (content) content.classList.toggle('active', p === panel);
   });
+  if (panel === 'generate') {
+    const genSub = document.getElementById('cfgNavGenSub');
+    if (genSub) genSub.textContent = 'Build EOS configs from sheet';
+  }
 }
 
 function _switchGenTab(tab) {
@@ -16628,8 +16633,8 @@ function _openCfgPanelView(name) {
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
   if (title) title.textContent = _fmtDev(name);
-  var navSub = document.getElementById('cfgNavViewSub');
-  if (navSub) navSub.textContent = '→ ' + _fmtDev(name);
+  var genSub = document.getElementById('cfgNavGenSub');
+  if (genSub) genSub.textContent = '↳ ' + _fmtDev(name);
   var body = document.getElementById('cfgViewBody');
   if (body) body.innerHTML = _renderWithLineNums(text.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
   var inp = document.getElementById('cfgViewSearch');
