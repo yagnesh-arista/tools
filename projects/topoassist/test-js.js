@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260506.68 | 2026-05-06 18:26:04
+// topoassist v260506.76 | 2026-05-06 19:31:07
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -211,13 +211,14 @@ t('clampBridgeInterval: 480 → 480', clampBridgeInterval(480),  480);
 // ── L1 threshold clamping ─────────────────────────────────────────────────
 // SYNC: matches onBridgeL1ThresholdChange in Sidebar-js.html
 function clampL1Threshold(raw) {
-  return Math.max(0, parseInt(raw, 10) || 0);
+  return Math.max(1, parseInt(raw, 10) || 1);
 }
 
-t('clampL1Threshold: 0 → 0',     clampL1Threshold(0),      0);
+t('clampL1Threshold: 1 → 1',     clampL1Threshold(1),      1);
 t('clampL1Threshold: 5 → 5',     clampL1Threshold(5),      5);
-t('clampL1Threshold: -1 → 0',    clampL1Threshold(-1),     0);
-t('clampL1Threshold: NaN → 0',   clampL1Threshold('abc'),  0);
+t('clampL1Threshold: 0 → 1',     clampL1Threshold(0),      1);
+t('clampL1Threshold: -1 → 1',    clampL1Threshold(-1),     1);
+t('clampL1Threshold: NaN → 1',   clampL1Threshold('abc'),  1);
 t('clampL1Threshold: 100 → 100', clampL1Threshold(100),  100);
 
 // ── _l1ErrDetail ──────────────────────────────────────────────────────────

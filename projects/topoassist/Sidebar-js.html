@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.75 | 2026-05-06 19:24:02 -->
+<!-- TopoAssist v260506.76 | 2026-05-06 19:30:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.75";  // keep in sync with Code.gs
+const APP_VERSION = "260506.76";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10297,7 +10297,7 @@ var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')   
 var bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF — shut links are common in lab setups (intentionally disabled)
 var bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
 var bridgeAuditFlagL1Errors     = localStorage.getItem('bridgeAuditFlagL1Errors')     !== 'false'; // default ON
-let bridgeL1ErrorThreshold  = parseInt(localStorage.getItem('bridgeL1ErrorThreshold') || '0', 10);
+let bridgeL1ErrorThreshold  = parseInt(localStorage.getItem('bridgeL1ErrorThreshold') || '1', 10);
 let bridgePortL1Errors      = {}; // portId → {fcs, sym, align} for ports above threshold
 let _cablingBridgeFilter = new Set(); // active cabling export filter categories: mismatch|missing|down|shut|l1
 var auditFlagPoMismatch         = localStorage.getItem('auditFlagPoMismatch')         !== 'false';
@@ -12134,7 +12134,7 @@ function onBridgeAutoCheckIntervalChange() {
 }
 
 function onBridgeL1ThresholdChange(rawVal) {
-  bridgeL1ErrorThreshold = Math.max(0, parseInt(rawVal, 10) || 0);
+  bridgeL1ErrorThreshold = Math.max(1, parseInt(rawVal, 10) || 1);
   localStorage.setItem('bridgeL1ErrorThreshold', bridgeL1ErrorThreshold);
   if (_lastBridgeResults && devStatusMap && Object.keys(devStatusMap).length) {
     _populateBridgePortL1Errors(devStatusMap);
@@ -12389,18 +12389,20 @@ function _populateBridgePortSubTypes(dsData) {
 
 // Populate bridgePortL1Errors from fresh dsData right after _populateBridgePortSubTypes().
 // SSoT for L1 error classification — all consumers read from this map.
+// Iterates all topology ports (allNodesData) so errdisable/down/shut ports not in a bridge
+// check are also detected, not just ports in bridgePortStatus.
 function _populateBridgePortL1Errors(dsData) {
   bridgePortL1Errors = {};
   if (!dsData) return;
-  Object.keys(bridgePortStatus).forEach(portId => {
+  Object.keys(allNodesData).forEach(portId => {
     const c  = portId.lastIndexOf(':');
     const ds = dsData[portId.slice(0, c)];
     if (!ds || !ds.ok || !ds.interfaceErrors) return;
     const e = ds.interfaceErrors[_expandIfaceName(portId.slice(c + 1))];
     if (!e) return;
-    if ((e.fcs || 0) > bridgeL1ErrorThreshold ||
-        (e.sym || 0) > bridgeL1ErrorThreshold ||
-        (e.align || 0) > bridgeL1ErrorThreshold) {
+    if ((e.fcs || 0) >= bridgeL1ErrorThreshold ||
+        (e.sym || 0) >= bridgeL1ErrorThreshold ||
+        (e.align || 0) >= bridgeL1ErrorThreshold) {
       bridgePortL1Errors[portId] = e;
     }
   });
@@ -14554,11 +14556,17 @@ function _renderLldpResults(results, orphans) {
   }
   if (noNbrDownR.length) {
     issueParts.push(subHtml('Interface down', noNbrDownR.length,
-      noNbrDownR.map(r => rowHtml(r, svgDown, 'bridge-row-part', r.msg, 'Link is physically down — click to select link')).join('')));
+      noNbrDownR.map(r => {
+        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
+        return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link');
+      }).join('')));
   }
   if (noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
-      noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — click to select link')).join('')));
+      noNbrShutR.map(r => {
+        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
+        return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link');
+      }).join('')));
   }
   if (l1ErrR.length) {
     issueParts.push('<div class="br-group-label">L1 Quality</div>');
