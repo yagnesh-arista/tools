@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.1 | 2026-05-06 09:55:52 -->
+<!-- TopoAssist v260506.3 | 2026-05-06 10:58:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.1";  // keep in sync with Code.gs
+const APP_VERSION = "260506.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3174,6 +3174,8 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
           currentDeviceConfig = formatConfigText(res.config);
         }
 
+        _refreshGenerateRow(deviceName);
+
         // 5. Success Message
         const isStillSelected = (selectedDeviceId === deviceName);
 
@@ -4823,11 +4825,10 @@ function _updateGwExample() {
       if (!el) return;
       if (wide) {
         if (!el.disabled) {
-          const isHint = !el.value.trim() || el.classList.contains('gw-ov-wide-hint');
-          el.dataset.preLockVal = isHint ? '' : el.value;
+          el.dataset.preLockVal = (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) ? '' : el.value;
           el.disabled = true;
-          if (isHint) { el.value = '1'; el.classList.remove('gw-ov-wide-hint'); }
-          // Explicit value: disable only, keep showing the user's override value
+          el.classList.remove('gw-ov-wide-hint');
+          el.value = '1';
         }
         // Already locked — no-op
       } else {
@@ -5254,7 +5255,7 @@ function _readGwDeviceOverrides() {
     const g = f => {
       const el = document.getElementById('gw_ov_' + name + '_' + f);
       if (!el) return '';
-      if (el.disabled) return el.dataset.preLockVal || ''; // explicit value locked in wide mode
+      if (el.disabled) return el.value.trim(); // wide-mode first field — always '1', save explicitly
       if (el.classList.contains('gw-ov-wide-hint')) return '';
       return el.value.trim();
     };
@@ -16407,17 +16408,16 @@ function openGenerateAllModal(panel) {
   _populateGenAllDeviceList();
   _resetStopGenerateBtn();
   _resetStopPushBtn();
+  _renderGenerateDeviceList();
   const btn = document.getElementById('btnRunGenerateAll');
+  const stopBtn = document.getElementById('btnStopGenerate');
   if (window._generateAllConfigs && window._generateAllConfigs.length) {
-    _renderGenerateResults(window._generateAllConfigs);
-    _switchCfgPanel('generate');
+    if (btn) { btn.disabled = false; btn.innerText = 'Re-Generate Configs'; }
+    if (stopBtn) { stopBtn.disabled = false; stopBtn.className = 'btn-success-mono genall-btn'; stopBtn.textContent = 'Copy All'; stopBtn.onclick = copyAllConfigs; }
   } else {
-    btn.disabled = false;
-    btn.innerText = 'Generate Configs';
-    const left = document.getElementById('generateAllLeft');
-    if (left) left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>';
-    _switchCfgPanel(panel || 'push');
+    if (btn) { btn.disabled = false; btn.innerText = 'Generate Configs'; }
   }
+  _switchCfgPanel(panel || 'generate');
   if (modal) modal.style.display = 'flex';
   setActiveModalChip('configCenterModal');
   _loadGlobalCfgTemplate();
@@ -16501,35 +16501,13 @@ function runGenerateAll() {
 }
 
 function _renderGenerateResults(configs, meta) {
-  const left = document.getElementById('generateAllLeft');
-  if (!left) return;
-  const m = meta || window._generateAllMeta || {};
-  const sheetName = m.sheetName || 'Configs';
-  const ts = m.ts || '';
-  const btnStyle = 'font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:0 6px;height:18px;line-height:18px;'
-    + 'box-sizing:border-box;border:1px solid var(--border,#334155);border-radius:3px;background:transparent;'
-    + 'color:var(--text-muted);cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none;';
-  let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">'
-    + '<div style="color:#10b981;font-weight:700;margin-bottom:12px;">✓ ' + configs.length + ' device(s) → written to <b>' + sheetName + '</b> tab'
-    + '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + ts + '</span></div>';
-  configs.forEach(function(c, idx) {
-    const lines = c.text ? c.text.split('\n').length : 0;
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;">'
-      + '<span style="color:var(--text-main);flex:1;">' + c.name + '</span>'
-      + '<span style="color:var(--text-muted);flex-shrink:0;">' + lines + ' lines</span>'
-      + '<button style="' + btnStyle + '" onclick="_viewGeneratedConfig(' + idx + ')">View</button>'
-      + '<button style="' + btnStyle + '" onclick="_copyDeviceConfigByIndex(' + idx + ', this)">Copy</button>'
-      + '</div>';
-  });
-  html += '</div>';
-  left.innerHTML = html;
-  left.dataset.generated = '1';
   window._generateAllText = configs.map(function(c) {
     return '! === ' + c.name + ' ===\n' + c.text;
   }).join('\n!\n!\n');
   window._generateAllConfigs = configs;
   if (meta) window._generateAllMeta = meta;
   try { localStorage.setItem('ta_gen_cache', JSON.stringify({configs: configs, meta: window._generateAllMeta})); } catch(e) {}
+  _renderGenerateDeviceList();
   const stopBtn = document.getElementById('btnStopGenerate');
   if (stopBtn) {
     stopBtn.disabled = false;
@@ -16550,6 +16528,117 @@ function copyAllConfigs() {
   const text = window._generateAllText || '';
   if (!text) return;
   handleCopy(text, 'btnCopyAllConfigs');
+}
+
+// ----- Generate panel helpers -----
+
+function _getConfigTextForDevice(name) {
+  if (window._generateAllConfigs) {
+    const entry = window._generateAllConfigs.find(c => c.name === name);
+    if (entry && entry.text) return entry.text;
+  }
+  if (configCache[name] && configCache[name].data) {
+    return formatConfigText(configCache[name].data);
+  }
+  return null;
+}
+
+function _iconBtn(type, name, disabled) {
+  const base = 'display:inline-flex;align-items:center;justify-content:center;'
+    + 'width:22px;height:18px;padding:0;border-radius:3px;flex-shrink:0;'
+    + 'font-family:\'JetBrains Mono\',monospace;user-select:none;-webkit-user-select:none;'
+    + 'border:1px solid var(--border,#334155);background:transparent;color:var(--text-muted);';
+  const dis = disabled ? 'opacity:0.35;cursor:default;pointer-events:none;' : 'cursor:pointer;';
+  const safeAttr = escapeHtml(name);
+  if (type === 'view') {
+    const onclick = disabled ? '' : 'onclick="_viewGeneratedConfigByName(this.dataset.dev)"';
+    return '<button data-dev="' + safeAttr + '" style="' + base + dis + '" ' + onclick + ' title="View config">'
+      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>';
+  } else {
+    const onclick = disabled ? '' : 'onclick="_copyDeviceConfigByName(this.dataset.dev,this)"';
+    return '<button data-dev="' + safeAttr + '" style="' + base + dis + '" ' + onclick + ' title="Copy config">'
+      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      + '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
+      + '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2 2h9a2 2 0 0 1 2 2v1"/></svg></button>';
+  }
+}
+
+function _viewGeneratedConfigByName(name) {
+  const text = _getConfigTextForDevice(name);
+  if (text) showConfigModal(name, text);
+}
+
+function _copyDeviceConfigByName(name, btn) {
+  const text = _getConfigTextForDevice(name);
+  if (text) handleCopy(text, btn);
+}
+
+function _renderGenerateDeviceList() {
+  const left = document.getElementById('generateAllLeft');
+  if (!left) return;
+  const devices = (currentData && currentData.nodes || [])
+    .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
+    .map(n => n.id)
+    .sort((a, b) => (allDevicesData[a].sheetIndex || 0) - (allDevicesData[b].sheetIndex || 0));
+
+  if (!devices.length) {
+    left.innerHTML = '<div style="color:var(--text-muted);font-style:italic;'
+      + 'font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:8px 0;">'
+      + 'No EOS devices in topology.</div>';
+    return;
+  }
+
+  const totalCached = devices.filter(n => !!_getConfigTextForDevice(n)).length;
+  const m = window._generateAllMeta || {};
+  const ts = m.ts
+    ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">' + m.ts + '</span>'
+    : '';
+  let header;
+  if (totalCached === devices.length && totalCached > 0) {
+    const sheetName = m.sheetName || 'Configs';
+    header = '<div style="color:#10b981;font-weight:700;margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
+      + '✓ ' + totalCached + ' device(s) → written to <b>' + escapeHtml(sheetName) + '</b> tab' + ts + '</div>';
+  } else if (totalCached > 0) {
+    header = '<div style="color:var(--text-muted);margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">'
+      + totalCached + ' of ' + devices.length + ' device(s) cached'
+      + ' — click <b>Generate Configs</b> to build all.</div>';
+  } else {
+    header = '<div style="color:var(--text-muted);margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">'
+      + devices.length + ' device(s) — click <b>Generate Configs</b> to build.</div>';
+  }
+
+  let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">' + header;
+  devices.forEach(function(name) {
+    const text = _getConfigTextForDevice(name);
+    const lines = text ? text.split('\n').length : null;
+    const rowOp = text ? '' : 'opacity:0.45;';
+    html += '<div data-dev="' + escapeHtml(name) + '" style="display:flex;align-items:center;gap:8px;padding:4px 8px;'
+      + 'margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;' + rowOp + '">'
+      + '<span style="color:var(--text-main);flex:1;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
+      + escapeHtml(_fmtDev(name)) + '</span>'
+      + '<span style="color:var(--text-muted);flex-shrink:0;font-family:\'JetBrains Mono\',monospace;font-size:11px;">'
+      + (lines !== null ? lines + ' lines' : '—') + '</span>'
+      + _iconBtn('view', name, !text)
+      + _iconBtn('copy', name, !text)
+      + '</div>';
+  });
+  html += '</div>';
+  left.innerHTML = html;
+  left.dataset.generated = (totalCached === devices.length && totalCached > 0) ? '1' : '0';
+}
+
+function _refreshGenerateRow(devName) {
+  const left = document.getElementById('generateAllLeft');
+  if (!left) return;
+  const panel = document.getElementById('cfgPanel-generate');
+  if (!panel || !panel.classList.contains('active')) return;
+  const row = left.querySelector('[data-dev="' + CSS.escape(devName) + '"]');
+  if (!row) return;
+  const text = _getConfigTextForDevice(devName);
+  if (!text) return;
+  // Re-render the full list so the header count and all rows stay consistent
+  _renderGenerateDeviceList();
 }
 
 // =====================================================================
