@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.77 | 2026-05-06 19:34:08 -->
+<!-- TopoAssist v260506.78 | 2026-05-06 19:38:22 -->
 <!DOCTYPE html>
 <html>
 
@@ -1042,7 +1042,10 @@
       <div id="cablingBridgeFilterBar"></div>
       <div class="export-title">⬡ Topology Patching List</div>
       <div class="export-desc">Flat list following sheet order. Best for auditing total connections.</div>
-      <button class="btn-primary-mono btn-block" onclick="downloadCablingReport('netlist')">Download Topology Patching</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-mono btn-block" style="flex:1;" onclick="_viewCablingReport('netlist')">View</button>
+        <button class="btn-primary-mono btn-block" style="flex:2;" onclick="downloadCablingReport('netlist')">Download</button>
+      </div>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
           <button class="btn-primary-mono" style="font-family:'JetBrains Mono',monospace;" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
@@ -1058,7 +1061,18 @@
 
       <div class="export-title">◻ Device Patching List</div>
       <div class="export-desc">Grouped by local device. Best for field engineers patching one rack at a time.</div>
-      <button class="btn-primary-mono btn-block" onclick="downloadCablingReport('device')">Download Device Patching</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-mono btn-block" style="flex:1;" onclick="_viewCablingReport('device')">View</button>
+        <button class="btn-primary-mono btn-block" style="flex:2;" onclick="downloadCablingReport('device')">Download</button>
+      </div>
+
+      <div id="cablingPreviewArea" style="display:none;margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span id="cablingPreviewTitle" class="cabling-filter-label" style="margin:0;font-style:normal;"></span>
+          <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_closeCablingPreview()">Hide</button>
+        </div>
+        <textarea id="cablingPreviewText" readonly class="cabling-preview-text" rows="14" placeholder=""></textarea>
+      </div>
 
       <div class="export-divider"></div>
       <div class="export-title" style="display:flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none;">
