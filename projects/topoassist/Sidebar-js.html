@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.3 | 2026-05-06 10:58:07 -->
+<!-- TopoAssist v260506.5 | 2026-05-06 11:12:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.3";  // keep in sync with Code.gs
+const APP_VERSION = "260506.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -593,14 +593,15 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 }
 
 window.onerror = function (msg, url, line, col, error) {
-  let el = document.getElementById("status");
-  if (el) {
-    if (msg === "Script error.") return;
-    el.innerText = "Error: " + msg;
-    el.style.color = "red";
-  }
-  console.error("Error: " + msg, error);
+  if (msg === "Script error.") return;
+  setStatus("Error: " + msg, "status-error");
 };
+
+window.addEventListener('unhandledrejection', function (event) {
+  const err = event.reason;
+  const msg = err && err.message ? err.message : String(err);
+  setStatus("Error: " + msg, "status-error");
+});
 
 function startSmartPolling() {
   if (smartPollTimer) clearInterval(smartPollTimer);
@@ -6766,7 +6767,9 @@ function _updateStripFetchError(deviceName, label) {
 */
 function processDeviceConfig(deviceName, configData) {
   const wasAlreadyLoaded = !!configCache[deviceName];
-  const time = wasAlreadyLoaded ? (allDevicesData[deviceName].fetchTime || getTimestamp()) : getTimestamp();
+  const time = (wasAlreadyLoaded && allDevicesData[deviceName])
+    ? (allDevicesData[deviceName].fetchTime || getTimestamp())
+    : getTimestamp();
 
   // Populate allNodesData per-port config FIRST so Cases 1/2 below read fresh values.
   // configData keys are prefixed (e.g. "050_Et1", "060_Po10") for section ordering in the
@@ -8651,7 +8654,7 @@ function render(data) {
 
         row.addEventListener("mouseenter", function (e) { hoverPort(domId, true); scheduleTooltip(e, domId, getPeerId(domId)); });
         row.addEventListener("mouseleave", function () { hoverPort(domId, false); cancelTooltip(); hideTooltip(); });
-        row.onclick = function (e) { e.stopPropagation(); isEditMode ? (portObj.connected ? openEditModal(domId, allNodesData[domId]) : openConnectModal(domId, allNodesData[domId])) : selectPortOrLink(domId); };
+        row.onclick = function (e) { e.stopPropagation(); if (isEditMode && !allNodesData[domId]) return; isEditMode ? (portObj.connected ? openEditModal(domId, allNodesData[domId]) : openConnectModal(domId, allNodesData[domId])) : selectPortOrLink(domId); };
         body.appendChild(row);
       });
 
@@ -15360,11 +15363,8 @@ function clearConfigSearch() {
 }
 
 /* --- UPDATED: showConfigModal with Shortcuts & Aliases --- */
-function showConfigModal(deviceName, configText) {
-  if (!configText) {
-    console.error("No config text provided to modal");
-    return;
-  }
+function showConfigModal(deviceName, configText, opts) {
+  if (!configText) return;
 
   currentRawConfig = configText;
 
@@ -15386,8 +15386,8 @@ function showConfigModal(deviceName, configText) {
   // Show Full Config initially (with line numbers for error correlation)
   body.innerHTML = _renderWithLineNums(configText.split('\n').map((text, i) => ({text, lineNum: i + 1})));
 
-  // Display Modal
-  _autoMinimizeOpenModal();
+  // Display Modal — skip auto-minimize when called from inside another modal (e.g. Config Center)
+  if (!opts || !opts.noAutoMinimize) _autoMinimizeOpenModal();
   setActiveModalChip('configModal');
   modal.style.display = "flex";
   searchInput.focus();
