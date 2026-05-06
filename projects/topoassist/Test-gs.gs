@@ -1,4 +1,4 @@
-// TopoAssist v260506.55 | 2026-05-06 17:11:31
+// TopoAssist v260506.56 | 2026-05-06 17:11:49
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -23,6 +23,9 @@
  *   parseVlanWithNative      — split nv<N> native-VLAN token out of vlan_ field
  *   generateGlobalBlock      — ip routing/ipv6/multi-agent/VARP MAC global commands
  *   generateComplexL3Block   — GW type (anycast/VARP), vx1 exclusion, ANYCAST_GW description
+ *   expandVlanString         — VLAN string (ranges/comma/space/newline) → Set<int>; NaN + reversed range protection
+ *   compressVlanRanges       — Set<int> → compressed range string; NaN filtered, numerically sorted
+ *   parseAndExpandDevices    — "leaf[01-03]" → ["leaf01","leaf02","leaf03"]; zero-pad, dedup, >50 skipped
  */
 
 // APP_VERSION is declared in Code.gs — all .gs files share the same global scope in GAS
