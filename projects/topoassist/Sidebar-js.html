@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.65 | 2026-05-06 17:47:29 -->
+<!-- TopoAssist v260506.66 | 2026-05-06 18:00:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.65";  // keep in sync with Code.gs
+const APP_VERSION = "260506.66";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10273,8 +10273,8 @@ let bridgePortSubType = {};  // "dev:Et1" → 'shut'|'down'|'other' — set alon
 // Default ON  → parse as !== 'false'   Default OFF → parse as === 'true'
 var bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 var bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
-var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF
-var bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF
+var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF — down links are common in lab setups (unplugged, powered off)
+var bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF — shut links are common in lab setups (intentionally disabled)
 var bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
 var auditFlagPoMismatch         = localStorage.getItem('auditFlagPoMismatch')         !== 'false';
 var auditFlagPoAsymmetry        = localStorage.getItem('auditFlagPoAsymmetry')        !== 'false';
