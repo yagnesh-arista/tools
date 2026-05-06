@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.12 | 2026-05-06 11:40:43 -->
+<!-- TopoAssist v260506.13 | 2026-05-06 11:41:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.12";  // keep in sync with Code.gs
+const APP_VERSION = "260506.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2007,7 +2007,7 @@ function SheetColumnManagerResetDefaults() {
       isSheetColumnManagerDirty = false;
       SheetColumnManager();
     })
-    .withFailureHandler(err => alert("✗ Reset Failed: " + err.message))
+    .withFailureHandler(err => setStatus("✗ Reset Failed: " + err.message, "status-error"))
     .resetSchemaToDefaults();
 }
 
@@ -13014,7 +13014,7 @@ function deleteAndUnconfigure() {
         setStatus(deviceName + ':' + portName + ' unconfigured + deleted — topology refresh…', 'status-info');
         google.script.run
           .withSuccessHandler(() => fetchData(true))
-          .withFailureHandler(err => alert('Delete error: ' + err.message))
+          .withFailureHandler(err => setStatus('Delete error: ' + err.message, 'status-error'))
           .deleteInterface(deviceName, portName);
       } else {
         const errMsg = res ? res.error : 'no response';
@@ -13023,7 +13023,7 @@ function deleteAndUnconfigure() {
           setStatus(deviceName + ':' + portName + ' deleted — topology refresh\u2026', 'status-info');
           google.script.run
             .withSuccessHandler(() => fetchData(true))
-            .withFailureHandler(err => alert('Delete error: ' + err.message))
+            .withFailureHandler(err => setStatus('Delete error: ' + err.message, 'status-error'))
             .deleteInterface(deviceName, portName);
         }
       }
