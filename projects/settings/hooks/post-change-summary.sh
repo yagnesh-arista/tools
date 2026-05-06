@@ -135,7 +135,7 @@ Clasp: ${clasp_note}"
   LOG="$HOME/claude/.change-log"
   echo "$SUMMARY" > "$LOG"
   echo "$SUMMARY" >&2
-  jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":$ctx}}'
+  jq -n --arg ctx "$SUMMARY" '{"systemMessage":$ctx}'
   exit 0
 fi
 
