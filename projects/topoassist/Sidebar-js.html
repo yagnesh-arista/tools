@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.18 | 2026-05-06 11:52:19 -->
+<!-- TopoAssist v260506.19 | 2026-05-06 11:53:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.18";  // keep in sync with Code.gs
+const APP_VERSION = "260506.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7196,6 +7196,7 @@ function openAddLinkModal() {
 
   document.getElementById("modalTitle").innerText = "Add Link Pair";
   document.getElementById("modalContent").innerHTML = html;
+  initialEditModalState = _captureFormState('guiEditModal');
 
   let btnDelete = document.getElementById("btnDelete");
   if (btnDelete) btnDelete.style.display = "none";
@@ -7213,6 +7214,9 @@ function openAddModal(deviceId) {
 }
 
 function closeEditModal() {
+  const isDirty = initialEditModalState !== '' && _captureFormState('guiEditModal') !== initialEditModalState;
+  if (!_confirmDirtyClose(isDirty, "Edit Interface")) return;
+  initialEditModalState = '';
   setActiveModalChip(null);
   document.getElementById("editOverlay").style.display = "none";
   document.getElementById("guiEditModal").style.display = "none";
@@ -7230,7 +7234,7 @@ function deletePort() {
   google.script.run.withSuccessHandler(function (res) {
     btn.innerText = originalText; btn.disabled = false;
     if (res.error) { alert("Error: " + res.error); }
-    else { closeEditModal(); setStatus(deviceName + ':' + portName + ' deleted \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
+    else { initialEditModalState = ''; closeEditModal(); setStatus(deviceName + ':' + portName + ' deleted \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
   }).withFailureHandler(function (err) {
     btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
   }).deleteInterface(deviceName, portName);

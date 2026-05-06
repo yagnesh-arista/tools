@@ -1,7 +1,7 @@
 ================================================================================
   TMUX CONFIG — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Personal tmux configuration: bindings, themes, broadcast scripting
-  Last updated: 2026-05-06 (tmux_ai_spend.sh: color thresholds changed — green <31%, yellow 31-60%, colour203 (light red) 61-74%, colour160 (dark red) ≥75%. Removed orange colour214 tier.)
+  Last updated: 2026-05-06 (tmux_ai_spend.sh: color thresholds — green ≤40%, yellow 41-70%, colour203 (light red) 71-90%, colour160 (dark red) >90%.)
   Previous: 2026-05-04 (light.conf: removed grey wash on inactive panes (window-style now fg=terminal,bg=terminal instead of fg=colour240,bg=colour254); removed bg=white from pane borders; changed active border from fg=black to fg=colour39,bold for visible blue highlight.)
   Previous: 2026-05-03 (client-resized hook: fixed #{window_id} → ##{window_id} bug — without ## escaping, tmux pre-expands the format variable to the current window ID at hook-fire time, so list-windows -F received a literal "@3" string instead of a format specifier, causing only the current window to be resized. Now uses ##{window_id} so list-windows receives the format string and outputs each window's actual ID.)
   Previous: 2026-05-03 (Added client-resized hook: automatically runs resize-window -A + select-layout -E for all windows in the current session whenever the terminal is resized (display-switch, monitor change, window resize). Uses sleep 0.05 to let tmux finish SIGWINCH processing first. Ends with "; :" (null command) to force exit 0 and suppress "returned N". bind F simplified to manual fallback — no stty pipeline needed since the hook handles auto-sizing. VESPA session (10 windows) manually fixed from 74→62 rows via resize-window -A loop.)
@@ -391,7 +391,7 @@ Layout: [session] | windows centered | 💳 spend sync-status online-status [hos
     Display: python3 heredoc reads ~/.cache/ai-spend.json; shows cached value immediately;
       next tick shows refreshed value (async refresh completes within the 60s window).
     Format: 💳 $<spend>/<budget>  (e.g. 💳 $12.34/$50)
-    Colors: green <31% · yellow 31-60% · colour203 (light red) 61-74% · colour160 (dark red) ≥75%
+    Colors: green ≤40% · yellow 41-70% · colour203 (light red) 71-90% · colour160 (dark red) >90%
     API: https://ai-proxy.infra.corp.arista.io/key/info · fields: .info.spend / .info.max_budget
     Silent if no claude pane, cache missing, or max_budget is 0.
 
