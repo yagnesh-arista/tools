@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-06 (Generate panel device list: removed [sheetIndex] prefix from row labels — sort order unchanged (still by sheetIndex), only the display label simplified to "devName · N lines". FILES: Sidebar-js.html)
+  Last updated: 2026-05-06 (configPushModal dock chip + header: removed modal-header-subtitle and wrapper div (no-subtitle rule); device name merged into title — loading: "Push: [01] leaf1", normal: "Push: [01] leaf1", already-in-sync: "In Sync: [01] leaf1", read-only: "Verify: [01] leaf1". Dock chip now shows device name. FILES: Sidebar.html, Sidebar-js.html)
+  Previous: 2026-05-06 (Generate panel device list: removed [sheetIndex] prefix from row labels — sort order unchanged (still by sheetIndex), only the display label simplified to "devName · N lines". FILES: Sidebar-js.html)
   Previous: 2026-05-06 (configModal dock chip label: showConfigModal now sets title.innerText = "Config: " + _fmtDev(deviceName) — dock chip and modal header both show "Config: [01] leaf1" with "Config: " prefix restored. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (View panel back button: cfgViewTitle now renders "← Generate › DevName" breadcrumb — "← Generate" is a clickable button calling _switchCfgPanel('generate'), making return to device list obvious. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (configModal dock chip label fix: added modal-header-title class to #configModalTitle span — dock chip now reads "Config: leaf1" (dynamic device name) instead of raw ID "configModal". FILES: Sidebar.html)
