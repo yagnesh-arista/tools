@@ -847,6 +847,45 @@ identical strings.
 
 ---
 
+## Check 32 — Cancel Button + Dirty-State Warning
+
+Every **edit/confirm** modal with a Save button must have a Cancel button and dirty-state protection.
+
+```bash
+# Verify Cancel buttons exist in edit/confirm modal footers
+grep -A3 "modal-actions right-align" ~/claude/projects/topoassist/Sidebar.html \
+  | grep -B1 "btn-success-mono" | grep "btn-mono.*Cancel\|Cancel.*btn-mono"
+
+# Verify close functions call _confirmDirtyClose
+grep -n "_confirmDirtyClose" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Verify _confirmDirtyClose, _captureFormState, _captureGroupRectState helpers exist
+grep -n "function _confirmDirtyClose\|function _captureFormState\|function _captureGroupRectState" \
+  ~/claude/projects/topoassist/Sidebar-js.html
+
+# Verify initialState vars exist
+grep -n "initialGlobalCfgState\|initialEditModalState\|initialGroupRectState" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -5
+```
+
+For each edit/confirm modal (`networkStackModal`, `autoConfigModal`, `guiEditModal`, `groupRectModal`, `configCenterModal`):
+- [ ] `networkStackModal`: footer has `.btn-mono` Cancel; `closeTechModal()` calls `_confirmDirtyClose`
+- [ ] `autoConfigModal`: footer has `.btn-mono` Cancel; `closeIpModal()` calls `_confirmDirtyClose`
+- [ ] `guiEditModal`: `closeEditModal()` calls `_confirmDirtyClose`; all 3 open paths capture `initialEditModalState`
+- [ ] `groupRectModal`: `closeGroupRectModal()` calls `_confirmDirtyClose`; `openGroupRectModal()` captures `initialGroupRectState`
+- [ ] `configCenterModal`: `closeGenerateAllModal()` calls `_confirmDirtyClose` for global cfg dirty state
+
+Reset rules:
+- [ ] Save success handlers reset `initialState = ''` before calling close
+- [ ] Delete/destructive success handlers reset `initialState = ''` before calling close
+- [ ] `confirmGroupRect()` resets `initialGroupRectState = ''` at top (user clicked Save)
+
+✗ FAIL if any edit/confirm modal has a Save button but no Cancel button in the footer (exception: Config Center with embedded Save)
+✗ FAIL if any canonical close function for a dirty-tracked modal does not call `_confirmDirtyClose`
+✗ FAIL if `_confirmDirtyClose`, `_captureFormState`, or `_captureGroupRectState` helper is missing
+
+---
+
 ## Output Format
 
 ```
