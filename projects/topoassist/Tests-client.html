@@ -1,0 +1,330 @@
+<!-- TopoAssist v260506.21 | 2026-05-06 11:59:03 -->
+<!DOCTYPE html>
+<!-- TopoAssist client-side test suite — open in any browser, no GAS auth needed -->
+<!-- SYNC NOTICE: applyHint and lockFirst below are copied from Sidebar-js.html.
+     If either function changes in Sidebar-js.html, update the copies here too. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TopoAssist Client Tests</title>
+  <style>
+    body { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #0f172a; color: #e2e8f0; padding: 24px; margin: 0; }
+    h2 { font-size: 14px; color: #94a3b8; margin: 0 0 6px; }
+    .summary { font-size: 12px; margin-bottom: 16px; color: #94a3b8; }
+    .summary .pass-count { color: #4ade80; font-weight: 600; }
+    .summary .fail-count { color: #f87171; font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; }
+    th { text-align: left; font-size: 10px; color: #64748b; padding: 4px 10px; border-bottom: 1px solid #1e293b; }
+    td { padding: 4px 10px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+    tr.suite-header td { padding: 10px 10px 2px; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: none; }
+    tr.pass td:first-child { color: #4ade80; }
+    tr.fail td:first-child { color: #f87171; }
+    .label { color: #e2e8f0; }
+    .muted { color: #475569; font-size: 11px; }
+  </style>
+</head>
+<body>
+<h2>TopoAssist Client-Side Tests</h2>
+<div class="summary" id="summary"></div>
+<table>
+  <thead>
+    <tr><th>Result</th><th>Test</th><th>Actual</th><th>Expected</th></tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// SYNC COPIES from Sidebar-js.html — update both when either changes
+// Source: _updateGwExample() closure, ~line 4842 and ~line 4868
+// ═══════════════════════════════════════════════════════════════════
+
+function applyHint(el, inheritedVal) {
+  if (!el) return;
+  if (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) {
+    el.value = inheritedVal;
+    if (inheritedVal) el.classList.add('gw-ov-wide-hint'); else el.classList.remove('gw-ov-wide-hint');
+  }
+}
+
+function lockFirst(el, wide, fallback, forceValue) {
+  if (!el) return;
+  if (wide) {
+    if (!el.disabled) {
+      const isHint = !el.value.trim() || el.classList.contains('gw-ov-wide-hint');
+      el.dataset.preLockVal = isHint ? '' : el.value;
+      el.disabled = true;
+      if (forceValue || isHint) { el.classList.remove('gw-ov-wide-hint'); el.value = '1'; }
+      // Global wide + explicit per-device first: disable only, preserve the user's value
+    } else if (forceValue && el.value !== '1') {
+      // Already locked (e.g. from global wide) but per-device mask just went explicitly wide — force '1' now
+      el.classList.remove('gw-ov-wide-hint');
+      el.value = '1';
+    }
+  } else {
+    if (el.disabled) {
+      const saved = el.dataset.preLockVal || '';
+      delete el.dataset.preLockVal;
+      el.disabled = false;
+      if (saved) { el.value = saved; el.classList.remove('gw-ov-wide-hint'); }
+      else { el.value = ''; applyHint(el, fallback); }
+    } else {
+      applyHint(el, fallback);
+    }
+  }
+}
+
+// ── Adapted from _readGwDeviceOverrides g() — accepts inputMap instead of getElementById ──
+function g(f, inputMap) {
+  const el = inputMap[f];
+  if (!el) return '';
+  if (el.disabled) return el.value.trim();         // wide-mode first field — always '1'
+  if (el.classList.contains('gw-ov-wide-hint')) return '';
+  return el.value.trim();
+}
+
+// ── Inline logic from _updateGwExample ~line 4850 ──
+function computeGlb4firstForNonWide(wide4, savedFirst, firstElValue) {
+  return wide4 ? (savedFirst || '') : (firstElValue || '');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Test harness
+// ═══════════════════════════════════════════════════════════════════
+
+function makeInput({ value = '', disabled = false, classes = [], preLockVal } = {}) {
+  const el = document.createElement('input');
+  el.type = 'text';
+  el.value = value;
+  el.disabled = disabled;
+  classes.forEach(c => el.classList.add(c));
+  if (preLockVal !== undefined) el.dataset.preLockVal = preLockVal;
+  return el;
+}
+
+function snap(el) {
+  return {
+    value:    el.value,
+    disabled: el.disabled,
+    hasHint:  el.classList.contains('gw-ov-wide-hint'),
+    preLockVal: el.dataset.preLockVal,
+  };
+}
+
+function assert_(label, actual, expected) {
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  return { label, pass, actual: JSON.stringify(actual), expected: JSON.stringify(expected) };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Test suites
+// ═══════════════════════════════════════════════════════════════════
+
+function testApplyHint() {
+  const results = [];
+  const t = (label, actual, expected) => results.push(assert_(label, actual, expected));
+
+  // 1. Empty field → hint applied
+  let el = makeInput({ value: '' });
+  applyHint(el, '100');
+  t('applyHint: empty field → value set + hint class',
+    { value: el.value, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '100', hasHint: true });
+
+  // 2. Field already carrying hint class → hint updated
+  el = makeInput({ value: '50', classes: ['gw-ov-wide-hint'] });
+  applyHint(el, '200');
+  t('applyHint: hint-class field → value updated to new hint',
+    { value: el.value, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '200', hasHint: true });
+
+  // 3. Explicit field (no hint class) → not touched
+  el = makeInput({ value: '42' });
+  applyHint(el, '100');
+  t('applyHint: explicit field (no hint class) → value unchanged',
+    { value: el.value, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '42', hasHint: false });
+
+  // 4. Empty field + inheritedVal='' → hint class removed
+  el = makeInput({ value: '', classes: ['gw-ov-wide-hint'] });
+  applyHint(el, '');
+  t('applyHint: empty inheritedVal → hint class removed',
+    { value: el.value, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '', hasHint: false });
+
+  return results;
+}
+
+function testLockFirstWide() {
+  const results = [];
+  const t = (label, actual, expected) => results.push(assert_(label, actual, expected));
+
+  // 5. Hint field (empty), wide=true, forceValue=false → force '1', disable
+  let el = makeInput({ value: '' });
+  lockFirst(el, true, '100', false);
+  t('lockFirst wide: empty hint field → value=\'1\', disabled',
+    { value: el.value, disabled: el.disabled, hasHint: el.classList.contains('gw-ov-wide-hint'), preLockVal: el.dataset.preLockVal },
+    { value: '1', disabled: true, hasHint: false, preLockVal: '' });
+
+  // 6. Hint-class field, wide=true, forceValue=false → force '1', disable
+  el = makeInput({ value: '50', classes: ['gw-ov-wide-hint'] });
+  lockFirst(el, true, '100', false);
+  t('lockFirst wide: hint-class field → value=\'1\', disabled',
+    { value: el.value, disabled: el.disabled, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '1', disabled: true, hasHint: false });
+
+  // 7. Explicit field, wide=true, forceValue=false → disable only, preserve value (global-wide case)
+  el = makeInput({ value: '200' });
+  lockFirst(el, true, '100', false);
+  t('lockFirst wide: explicit field + forceValue=false → disabled, value preserved',
+    { value: el.value, disabled: el.disabled, preLockVal: el.dataset.preLockVal },
+    { value: '200', disabled: true, preLockVal: '200' });
+
+  // 8. Hint field, wide=true, forceValue=true → force '1' (per-device explicit wide, field was hint)
+  el = makeInput({ value: '' });
+  lockFirst(el, true, '100', true);
+  t('lockFirst wide: hint + forceValue=true → value=\'1\', disabled',
+    { value: el.value, disabled: el.disabled },
+    { value: '1', disabled: true });
+
+  // 9. Explicit field, wide=true, forceValue=true → force '1' (THE original bug: was preserving '200')
+  el = makeInput({ value: '200' });
+  lockFirst(el, true, '100', true);
+  t('lockFirst wide: explicit value + forceValue=true → value=\'1\', disabled (original bug)',
+    { value: el.value, disabled: el.disabled, preLockVal: el.dataset.preLockVal },
+    { value: '1', disabled: true, preLockVal: '200' });
+
+  // 10. Already disabled + forceValue=true + value≠'1' → force '1' (else-if branch)
+  el = makeInput({ value: '200', disabled: true });
+  lockFirst(el, true, '100', true);
+  t('lockFirst wide: already-disabled + forceValue=true + value≠\'1\' → force \'1\'',
+    { value: el.value, disabled: el.disabled },
+    { value: '1', disabled: true });
+
+  // 10b. Already disabled + forceValue=false → no-op
+  el = makeInput({ value: '200', disabled: true });
+  lockFirst(el, true, '100', false);
+  t('lockFirst wide: already-disabled + forceValue=false → no-op',
+    { value: el.value, disabled: el.disabled },
+    { value: '200', disabled: true });
+
+  return results;
+}
+
+function testLockFirstExitWide() {
+  const results = [];
+  const t = (label, actual, expected) => results.push(assert_(label, actual, expected));
+
+  // 11. Disabled with preLockVal='200' → restore
+  let el = makeInput({ value: '1', disabled: true, preLockVal: '200' });
+  lockFirst(el, false, '100', false);
+  t('lockFirst exit-wide: preLockVal=\'200\' → restored, enabled',
+    { value: el.value, disabled: el.disabled, hasHint: el.classList.contains('gw-ov-wide-hint'), preLockVal: el.dataset.preLockVal },
+    { value: '200', disabled: false, hasHint: false, preLockVal: undefined });
+
+  // 12. Disabled with empty preLockVal → applyHint with fallback
+  el = makeInput({ value: '1', disabled: true, preLockVal: '' });
+  lockFirst(el, false, '100', false);
+  t('lockFirst exit-wide: empty preLockVal → fallback hint applied',
+    { value: el.value, disabled: el.disabled, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '100', disabled: false, hasHint: true });
+
+  // 13. Not disabled, has hint class → applyHint called with fallback
+  el = makeInput({ value: '50', classes: ['gw-ov-wide-hint'] });
+  lockFirst(el, false, '100', false);
+  t('lockFirst exit-wide: non-disabled hint field → applyHint with fallback',
+    { value: el.value, disabled: el.disabled, hasHint: el.classList.contains('gw-ov-wide-hint') },
+    { value: '100', disabled: false, hasHint: true });
+
+  return results;
+}
+
+function testGReader() {
+  const results = [];
+  const t = (label, actual, expected) => results.push(assert_(label, actual, expected));
+
+  // 14. Disabled field → returns value (wide-mode first, always '1')
+  let el = makeInput({ value: '1', disabled: true });
+  t('g(): disabled field → returns value', g('v4_first', { v4_first: el }), '1');
+
+  // 15. Hint-class field → returns ''
+  el = makeInput({ value: '100', classes: ['gw-ov-wide-hint'] });
+  t('g(): hint-class field → returns \'\'', g('v4_first', { v4_first: el }), '');
+
+  // 16. Explicit field → returns value
+  el = makeInput({ value: '200' });
+  t('g(): explicit field → returns value', g('v4_first', { v4_first: el }), '200');
+
+  // 17. Missing key in map → returns ''
+  t('g(): missing key → returns \'\'', g('v4_first', {}), '');
+
+  return results;
+}
+
+function testGlb4firstForNonWide() {
+  const results = [];
+  const t = (label, actual, expected) => results.push(assert_(label, actual, expected));
+
+  // B1. wide4=true, savedFirst='100' → '100' (hint shows pre-wide global value)
+  t('glb4firstForNonWide: wide + savedFirst=\'100\' → \'100\'',
+    computeGlb4firstForNonWide(true, '100', '1'), '100');
+
+  // B2. wide4=true, savedFirst=null → '' (nothing saved yet)
+  t('glb4firstForNonWide: wide + savedFirst=null → \'\'',
+    computeGlb4firstForNonWide(true, null, '1'), '');
+
+  // B3. wide4=false, firstElValue='100' → '100'
+  t('glb4firstForNonWide: not wide → firstEl value passthrough',
+    computeGlb4firstForNonWide(false, null, '100'), '100');
+
+  // B4. wide4=false, firstElValue='' → ''
+  t('glb4firstForNonWide: not wide + empty firstEl → \'\'',
+    computeGlb4firstForNonWide(false, null, ''), '');
+
+  return results;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Run + render
+// ═══════════════════════════════════════════════════════════════════
+
+const suites = [
+  { name: 'applyHint', fn: testApplyHint },
+  { name: 'lockFirst — wide=true', fn: testLockFirstWide },
+  { name: 'lockFirst — exit wide', fn: testLockFirstExitWide },
+  { name: 'g() reader', fn: testGReader },
+  { name: 'glb4firstForNonWide', fn: testGlb4firstForNonWide },
+];
+
+const tbody = document.getElementById('tbody');
+let totalPass = 0, totalFail = 0;
+
+suites.forEach(({ name, fn }) => {
+  const row = document.createElement('tr');
+  row.className = 'suite-header';
+  row.innerHTML = `<td colspan="4">${name}</td>`;
+  tbody.appendChild(row);
+
+  let results;
+  try { results = fn(); }
+  catch (e) { results = [{ label: name + ' (suite threw)', pass: false, actual: 'threw: ' + e.message, expected: 'no throw' }]; }
+
+  results.forEach(r => {
+    if (r.pass) totalPass++; else totalFail++;
+    const tr = document.createElement('tr');
+    tr.className = r.pass ? 'pass' : 'fail';
+    tr.innerHTML = `<td>${r.pass ? '✓ pass' : '✗ fail'}</td>` +
+      `<td class="label">${r.label}</td>` +
+      `<td class="muted">${r.pass ? '' : r.actual}</td>` +
+      `<td class="muted">${r.pass ? '' : r.expected}</td>`;
+    tbody.appendChild(tr);
+  });
+});
+
+const s = document.getElementById('summary');
+s.innerHTML = `<span class="pass-count">${totalPass} passed</span>&nbsp;&nbsp;` +
+  (totalFail ? `<span class="fail-count">${totalFail} failed</span>` : '<span style="color:#64748b">0 failed</span>');
+if (!totalFail) s.innerHTML += '&nbsp;&nbsp;<span style="color:#4ade80">All good.</span>';
+</script>
+</body>
+</html>
