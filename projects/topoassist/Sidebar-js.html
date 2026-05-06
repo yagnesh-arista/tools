@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.63 | 2026-05-06 17:36:16 -->
+<!-- TopoAssist v260506.64 | 2026-05-06 17:42:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.63";  // keep in sync with Code.gs
+const APP_VERSION = "260506.64";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8696,8 +8696,7 @@ function render(data) {
 
         // 2. CREATE COLUMNS
         let colEt = document.createElement("span"); colEt.className = "col-et"; colEt.innerText = portObj.name;
-        colEt.title = 'Filter: ' + portObj.name; colEt.style.cursor = 'pointer';
-        colEt.addEventListener('click', (e) => { if (isEditMode) return; e.stopPropagation(); _portColFilter(portObj.name); });
+        colEt.title = portObj.name;
         row.appendChild(colEt);
 
         let colMode = document.createElement("span"); colMode.className = "col-mode"; colMode.innerText = d.sp_mode_ || "-";
