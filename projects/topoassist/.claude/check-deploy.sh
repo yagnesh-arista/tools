@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# topoassist v260421.158 | 2026-04-21 18:11:40
+# topoassist v260506.28 | 2026-05-06 12:16:37
 # TopoAssist three-way sync check: git → local → GAS remote + commit history.
 # Called by /check-deploy command.
 
@@ -8,7 +8,7 @@ REPO=~/claude
 PULL_DIR=$(mktemp -d)
 trap "rm -rf $PULL_DIR" EXIT
 
-GAS_FILES=(Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs appsscript.json)
+GAS_FILES=(Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Test-gs.gs appsscript.json)
 GAS_SET=" ${GAS_FILES[*]} "
 
 # ── SECTION 1: THREE-WAY SYNC ──────────────────────────────────────────────
