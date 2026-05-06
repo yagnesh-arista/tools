@@ -1,4 +1,4 @@
-// TopoAssist v260506.54 | 2026-05-06 17:09:19
+// TopoAssist v260506.55 | 2026-05-06 17:11:31
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1483,6 +1483,9 @@ function runAllTests() {
     { name: "generateComplexL3Block (GW)",    fn: test_generateComplexL3BlockGwType },
     { name: "_compressVniLines",              fn: test_compressVniLines },
     { name: "deviceIdSnapshot",              fn: test_deviceIdSnapshot },
+    { name: "expandVlanString",              fn: test_expandVlanString },
+    { name: "compressVlanRanges",            fn: test_compressVlanRanges },
+    { name: "parseAndExpandDevices",         fn: test_parseAndExpandDevices },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);

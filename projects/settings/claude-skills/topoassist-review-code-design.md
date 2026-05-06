@@ -995,6 +995,7 @@ TOPOASSIST CODE REVIEW
 32 — Cancel btn + dirty-state warning  ✓ / ✗ / ⚠
 33 — alert() in error/async paths      ✓ / ✗ / ⚠
 34 — allDevicesData null guards        ✓ / ✗ / ⚠
+35 — Bridge sub-type SSoT             ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
