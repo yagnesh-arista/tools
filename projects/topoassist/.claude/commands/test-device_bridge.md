@@ -18,15 +18,13 @@ Expected: 91 passed, 0 failed.
 ## Client-side JS — GW override logic (applyHint, lockFirst, g() reader)
 
 ```bash
-xdg-open ~/claude/projects/topoassist/Tests-client.html   # Linux
-open ~/claude/projects/topoassist/Tests-client.html        # macOS
+cd ~/claude/projects/topoassist && node tests-client-node.js
 ```
 
-Opens `Tests-client.html` in the default browser. All 20 cases should show green.
-No GAS auth needed — runs entirely in the browser.
+Expected: 22 passed, 0 failed. No dependencies — pure Node.js with a minimal DOM mock.
 
-If a case fails, the row shows actual vs expected values.
+`Tests-client.html` is also available for browser runs (macOS: `open Tests-client.html`).
 
-> **Sync rule**: `applyHint` and `lockFirst` in `Tests-client.html` are copies of the
-> closures in `Sidebar-js.html`. Both carry `// SYNC:` comments. Update both files
+> **Sync rule**: `applyHint` and `lockFirst` in both test files are copies of the
+> closures in `Sidebar-js.html`. Both carry `// SYNC:` comments. Update all three
 > whenever either function changes.
