@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.50 | 2026-05-06 16:49:27 -->
+<!-- TopoAssist v260506.51 | 2026-05-06 17:03:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.50";  // keep in sync with Code.gs
+const APP_VERSION = "260506.51";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3010,10 +3010,10 @@ function runValidation(logIssues) {
       }
     } else if (status === 'missing') {
       // Use link-level priority: if either side is shut, both sides count as shut.
-      const _subA = _bridgeMissingSubType(portId);
+      const _subA = bridgePortSubType[portId] || 'other';
       const _br = _portToResult[portId];
       const _pairedPort = _br ? (_br.u === portId ? _br.v : _br.u) : null;
-      const _subB = _pairedPort ? _bridgeMissingSubType(_pairedPort) : 'other';
+      const _subB = _pairedPort ? (bridgePortSubType[_pairedPort] || 'other') : 'other';
       const _sub = (_subA === 'shut' || _subB === 'shut') ? 'shut'
                  : (_subA === 'down' || _subB === 'down') ? 'down' : 'other';
       if (_sub === 'shut') {
@@ -10263,7 +10263,8 @@ function toggleMinimize() {
 // --- BRIDGE MODAL ---
 
 const BRIDGE_URL = 'http://localhost:8765';
-let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
+let bridgePortStatus = {};    // "dev:Et1" → 'match'|'mismatch'|'missing'
+let bridgePortSubType = {};  // "dev:Et1" → 'shut'|'down'|'other' — set alongside bridgePortStatus
 let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
 let bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF
@@ -11960,7 +11961,7 @@ function toggleAuditCheck(name, val) {
   _setAuditFlag(name, val);
   if (name === 'bridgeAuditFlagMissing' || name === 'bridgeAuditFlagDown' || name === 'bridgeAuditFlagShut') {
     applyLldpIndicators();
-    if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans, devStatusMap);
+    if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
   }
   if (isValidationMode) runValidation();
   refreshAuditSettingsDots();
@@ -12205,7 +12206,8 @@ function _autoRunBridge() {
       const { results, orphans } = _compareBridgeData(bridgeResult.value);
       _autoOrphanCount = orphans.length;
       const _autoDs = devResult.status === 'fulfilled' ? devResult.value : null;
-      _renderLldpResults(results, orphans, _autoDs);
+      _populateBridgePortSubTypes(_autoDs);
+      _renderLldpResults(results, orphans);
       _logBridgeIssuesToStatusLog(results, orphans, _autoDs, true);
     } else {
       dbg('Auto-Bridge: LLDP fetch failed —', bridgeResult.reason);
@@ -12329,16 +12331,19 @@ function _bridgeEffectiveClass(status, portId) {
   return status;
 }
 
-// Sub-classify a 'missing' bridgePortStatus port: 'shut' | 'down' | 'other'.
-// Uses devStatusMap (populated after any bridge check).
-function _bridgeMissingSubType(portId) {
-  const colon = portId.lastIndexOf(':');
-  const ds = devStatusMap[portId.slice(0, colon)];
-  if (!ds || !ds.ok || !ds.interfaces) return 'other';
-  const ls = (ds.interfaces[_expandIfaceName(portId.slice(colon + 1))] || {}).linkStatus || '';
-  if (ls === 'disabled') return 'shut';
-  if (ls === 'notconnect') return 'down';
-  return 'other';
+// Populate bridgePortSubType from fresh dsData right after _compareBridgeData().
+// This is the single canonical sub-type classification — all consumers read it.
+function _populateBridgePortSubTypes(dsData) {
+  bridgePortSubType = {};
+  if (!dsData) return;
+  Object.keys(bridgePortStatus).forEach(portId => {
+    if (bridgePortStatus[portId] !== 'missing') return;
+    const c = portId.lastIndexOf(':');
+    const ds = dsData[portId.slice(0, c)];
+    if (!ds || !ds.ok || !ds.interfaces) { bridgePortSubType[portId] = 'other'; return; }
+    const ls = (ds.interfaces[_expandIfaceName(portId.slice(c + 1))] || {}).linkStatus || '';
+    bridgePortSubType[portId] = ls === 'disabled' ? 'shut' : ls === 'notconnect' ? 'down' : 'other';
+  });
 }
 
 function _applyHostnameIndicators(devices) {
@@ -12527,7 +12532,8 @@ function runBridgeCheck() {
           else            { dot.className = 'bridge-dev-dot dot-red';   dot.title = res.error || 'Error'; }
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
-        _renderLldpResults(results, orphans, dsData);
+        _populateBridgePortSubTypes(dsData);
+        _renderLldpResults(results, orphans);
         _logBridgeIssuesToStatusLog(results, orphans, dsData, true);
         _manualOrphanCount = orphans.length;
       }
@@ -14213,7 +14219,8 @@ async function pushAllConfigs() {
 
 // Compare LLDP data against globalLinks. Only checks Et↔Et links on Arista devices.
 function _compareBridgeData(bridgeData) {
-  bridgePortStatus = {};  // reset per-port status for topology cards
+  bridgePortStatus = {};   // reset per-port status for topology cards
+  bridgePortSubType = {};  // reset sub-type (repopulated by _populateBridgePortSubTypes)
   // Build bridgeMap: "DevName:NormIface" → {remoteDevice, remoteIface}
   const bridgeMap = {};
   Object.entries(bridgeData).forEach(([devName, res]) => {
@@ -14335,13 +14342,6 @@ function _compareBridgeData(bridgeData) {
 // avoids misrouting mixed-case links (wrong neighbor one end, no neighbor other end).
 function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
   if (results) {
-    function _ls(devPort) {
-      if (!dsData) return '';
-      const c = devPort.lastIndexOf(':');
-      const ds = dsData[devPort.slice(0, c)];
-      if (!ds || !ds.ok || !ds.interfaces) return '';
-      return (ds.interfaces[_expandIfaceName(devPort.slice(c + 1))] || {}).linkStatus || '';
-    }
     results.filter(r => r.status === 'mismatch').forEach(r => {
       const uStatus = bridgePortStatus[r.u];
       const vStatus = bridgePortStatus[r.v];
@@ -14349,9 +14349,9 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
       if (hasMismatch && bridgeAuditFlagMismatch) {
         setStatus(`[Audit - Live] LLDP mismatch: ${r.u} \u2194 ${r.v}${r.msg ? ' \u2014 ' + r.msg : ''}`, 'status-error');
       } else if (!hasMismatch) {
-        const uLs = _ls(r.u), vLs = _ls(r.v);
-        const _sub = (uLs === 'disabled' || vLs === 'disabled') ? 'shut'
-                   : (uLs === 'notconnect' || vLs === 'notconnect') ? 'down' : 'other';
+        const uSub = bridgePortSubType[r.u] || 'other', vSub = bridgePortSubType[r.v] || 'other';
+        const _sub = (uSub === 'shut' || vSub === 'shut') ? 'shut'
+                   : (uSub === 'down' || vSub === 'down') ? 'down' : 'other';
         if (_sub === 'shut' && bridgeAuditFlagShut)
           setStatus(`[Audit - Live] Interface shut: ${r.u} \u2194 ${r.v}`, 'status-error');
         else if (_sub === 'down' && bridgeAuditFlagDown)
@@ -14378,7 +14378,7 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
   }
 }
 
-function _renderLldpResults(results, orphans, dsData) {
+function _renderLldpResults(results, orphans) {
   const container  = document.getElementById('bridgeResults');
   const sectionsEl = document.getElementById('bridgeResultSections');
 
@@ -14393,17 +14393,8 @@ function _renderLldpResults(results, orphans, dsData) {
   const svgSkip  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   const svgChev  = `<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-  // ── Classify by bridgePortStatus (enum) — never by r.msg content ──────
+  // ── Classify by bridgePortStatus / bridgePortSubType — single source ──
   const mismatchR = [], noNbrR = [], noNbrDownR = [], noNbrShutR = [], okR = [], noeosR = [];
-
-  // Look up live linkStatus for one side of a link ("DevName:Et1") from dsData
-  function _portLinkSt(devPort) {
-    if (!dsData) return '';
-    const colon = devPort.lastIndexOf(':');
-    const ds = dsData[devPort.slice(0, colon)];
-    if (!ds || !ds.ok || !ds.interfaces) return '';
-    return (ds.interfaces[_expandIfaceName(devPort.slice(colon + 1))] || {}).linkStatus || '';
-  }
 
   results.forEach(r => {
     if (r.status === 'match') { okR.push(r); return; }
@@ -14411,10 +14402,10 @@ function _renderLldpResults(results, orphans, dsData) {
     if (r.status === 'mismatch') {
       const uSt = bridgePortStatus[r.u], vSt = bridgePortStatus[r.v];
       if (uSt === 'mismatch' || vSt === 'mismatch') { mismatchR.push(r); return; }
-      // No-neighbour: sub-classify by interface op-status from dsData
-      const uLs = _portLinkSt(r.u), vLs = _portLinkSt(r.v);
-      if (uLs === 'disabled' || vLs === 'disabled') { noNbrShutR.push(r); return; }
-      if (uLs === 'notconnect' || vLs === 'notconnect') { noNbrDownR.push(r); return; }
+      // No-neighbour: sub-classify from bridgePortSubType (populated at bridge-check time)
+      const uSub = bridgePortSubType[r.u] || 'other', vSub = bridgePortSubType[r.v] || 'other';
+      if (uSub === 'shut' || vSub === 'shut') { noNbrShutR.push(r); return; }
+      if (uSub === 'down' || vSub === 'down') { noNbrDownR.push(r); return; }
       noNbrR.push(r);
     }
   });
