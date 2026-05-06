@@ -977,6 +977,8 @@ TOPOASSIST CODE REVIEW
 30 — Change indicators         ✓ / ✗ / ⚠
 31 — setTitle/showModelessDialog sync ✓ / ✗ / ⚠
 32 — Cancel btn + dirty-state warning  ✓ / ✗ / ⚠
+33 — alert() in error/async paths      ✓ / ✗ / ⚠
+34 — allDevicesData null guards        ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
