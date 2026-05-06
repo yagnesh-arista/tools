@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.46 | 2026-05-06 16:08:55 -->
+<!-- TopoAssist v260506.47 | 2026-05-06 16:16:09 -->
 <!DOCTYPE html>
 <html>
 
@@ -1582,6 +1582,14 @@
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Missing LLDP neighbor</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMissing"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagDown" onchange="toggleAuditCheck('bridgeAuditFlagDown',this.checked)"><span>Interface down (link not connected)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagDown"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagShut" onchange="toggleAuditCheck('bridgeAuditFlagShut',this.checked)"><span>Interface shut (admin disabled)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagShut"></span>
       </div>
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>

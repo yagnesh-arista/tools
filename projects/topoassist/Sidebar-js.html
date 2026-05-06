@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.46 | 2026-05-06 16:10:52 -->
+<!-- TopoAssist v260506.47 | 2026-05-06 16:15:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.46";  // keep in sync with Code.gs
+const APP_VERSION = "260506.47";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10244,6 +10244,8 @@ const BRIDGE_URL = 'http://localhost:8765';
 let bridgePortStatus = {};  // "dev:Et1" → 'match'|'mismatch'|'missing'
 let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
+let bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF
+let bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF
 let bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
 
 // ---- Topology audit per-check flags (localStorage, default ON) ----
@@ -11784,7 +11786,7 @@ function toggleBridgeDevSection() {
 // =========================================================
 
 const _ALL_AUDIT_FLAGS = [
-  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagInternalVlan',
+  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagDown', 'bridgeAuditFlagShut', 'bridgeAuditFlagInternalVlan',
   'auditFlagPoMismatch', 'auditFlagPoAsymmetry', 'auditFlagMissingPo', 'auditFlagStalePo',
   'auditFlagUnsupportedInt', 'auditFlagDuplicateInt', 'auditFlagMlagL3',
   'auditFlagVlanMismatch', 'auditFlagNativeNonTrunk', 'auditFlagSviVlanMismatch',
@@ -11830,6 +11832,8 @@ function _getAuditFlag(name) {
     case 'auditFlagUndeclaredMlag':     return auditFlagUndeclaredMlag;
     case 'bridgeAuditFlagMismatch':     return bridgeAuditFlagMismatch;
     case 'bridgeAuditFlagMissing':      return bridgeAuditFlagMissing;
+    case 'bridgeAuditFlagDown':         return bridgeAuditFlagDown;
+    case 'bridgeAuditFlagShut':         return bridgeAuditFlagShut;
     case 'bridgeAuditFlagInternalVlan': return bridgeAuditFlagInternalVlan;
     case 'auditFlagSnakeIpType':        return auditFlagSnakeIpType;
     case 'auditFlagIxiaIpType':         return auditFlagIxiaIpType;
@@ -11869,6 +11873,8 @@ function _setAuditFlag(name, val) {
     case 'auditFlagUndeclaredMlag':     auditFlagUndeclaredMlag = val; break;
     case 'bridgeAuditFlagMismatch':     bridgeAuditFlagMismatch = val; break;
     case 'bridgeAuditFlagMissing':      bridgeAuditFlagMissing = val; break;
+    case 'bridgeAuditFlagDown':         bridgeAuditFlagDown = val; break;
+    case 'bridgeAuditFlagShut':         bridgeAuditFlagShut = val; break;
     case 'bridgeAuditFlagInternalVlan': bridgeAuditFlagInternalVlan = val; break;
     case 'auditFlagSnakeIpType':        auditFlagSnakeIpType = val; break;
     case 'auditFlagIxiaIpType':         auditFlagIxiaIpType = val; break;
@@ -11930,7 +11936,10 @@ function refreshAuditSettingsDots() {
 
 function toggleAuditCheck(name, val) {
   _setAuditFlag(name, val);
-  if (name === 'bridgeAuditFlagMissing') applyLldpIndicators(); // recolor missing dots: gray ↔ red
+  if (name === 'bridgeAuditFlagMissing' || name === 'bridgeAuditFlagDown' || name === 'bridgeAuditFlagShut') {
+    applyLldpIndicators();
+    if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans, devStatusMap);
+  }
   if (isValidationMode) runValidation();
   refreshAuditSettingsDots();
 }
@@ -14357,8 +14366,8 @@ function _renderLldpResults(results, orphans, dsData) {
   });
 
   const orphanCount = orphans ? orphans.length : 0;
-  // Shut interfaces are intentional — excluded from issue count
-  const issueCount  = orphanCount + mismatchR.length + noNbrDownR.length + noNbrR.length;
+  // Shut never counts (intentional); Down only counts when flag is ON
+  const issueCount  = orphanCount + mismatchR.length + noNbrR.length + (bridgeAuditFlagDown ? noNbrDownR.length : 0);
   const skipCount   = results.filter(r => r.status === 'skip').length;
   const checkable   = results.length - skipCount;
 
@@ -14405,11 +14414,11 @@ function _renderLldpResults(results, orphans, dsData) {
     issueParts.push(subHtml('No neighbour', noNbrR.length,
       noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — click to select link')).join('')));
   }
-  if (noNbrDownR.length) {
+  if (bridgeAuditFlagDown && noNbrDownR.length) {
     issueParts.push(subHtml('Interface down', noNbrDownR.length,
       noNbrDownR.map(r => rowHtml(r, svgDown, 'bridge-row-part', r.msg, 'Link is physically down — click to select link')).join('')));
   }
-  if (noNbrShutR.length) {
+  if (bridgeAuditFlagShut && noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
       noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — not flagged as issue')).join('')));
   }
