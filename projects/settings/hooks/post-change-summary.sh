@@ -17,7 +17,7 @@ if [ -z "$cmd" ]; then
   uncommitted=$(git -C "$REPO" status --porcelain 2>/dev/null | grep -v '^??')
   [ -z "$uncommitted" ] && exit 0
 
-  GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
+  GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Test-gs.gs"
   file_lines=""
   gas_changed=0
   gas_project_dir=""
@@ -181,7 +181,7 @@ else
 fi
 
 # ── Extract version stamp from each changed file ──────────────────────────────
-GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs"
+GAS_NAMES="Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Test-gs.gs"
 file_lines=""
 gas_changed=0
 gas_project_dir=""
