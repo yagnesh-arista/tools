@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.40 | 2026-05-06 15:13:47 -->
+<!-- TopoAssist v260506.42 | 2026-05-06 15:17:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.40";  // keep in sync with Code.gs
+const APP_VERSION = "260506.42";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13280,7 +13280,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   // ── Loading state: show modal immediately before diff is fetched ─────────────
   if (diff === null) {
-    if (titleEl)    titleEl.textContent     = 'Push: ' + _devLabel;
+    if (titleEl)    titleEl.textContent     = _devLabel + ': Push';
     if (commitBtn)  { commitBtn.style.display = 'none'; }
     if (cancelHdr)  { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
     if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
@@ -13292,7 +13292,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     return;
   }
   const noCommit = readOnly || alreadyInSync;
-  if (titleEl)    titleEl.textContent     = alreadyInSync ? 'In Sync: ' + _devLabel : (readOnly ? 'Verify: ' + _devLabel : 'Push: ' + _devLabel);
+  if (titleEl)    titleEl.textContent     = alreadyInSync ? _devLabel + ': In Sync' : (readOnly ? _devLabel + ': Verify' : _devLabel + ': Push');
   if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
   if (cancelHdr)  cancelHdr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
