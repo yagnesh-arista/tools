@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.36 | 2026-05-06 14:32:14 -->
+<!-- TopoAssist v260506.38 | 2026-05-06 14:53:37 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.36";  // keep in sync with Code.gs
+const APP_VERSION = "260506.38";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15449,7 +15449,7 @@ function showConfigModal(deviceName, configText, opts) {
   const matchBadge = document.getElementById("configMatchCount");
 
   // Reset UI State
-  title.innerText = _fmtDev(deviceName);
+  title.innerText = "Config: " + _fmtDev(deviceName);
   searchInput.value = "";
   clearBtn.classList.add("hidden");
   matchBadge.classList.add("hidden");
@@ -16842,8 +16842,7 @@ function _renderGenerateDeviceList() {
     const lines = text ? text.split('\n').length : null;
     const bg = text ? '#10b981' : '#475569';
     const safeAttr = escapeHtml(name);
-    const label = escapeHtml('[' + (allDevicesData[name].sheetIndex || '') + '] ' + _fmtDev(name)
-      + (lines !== null ? ' · ' + lines + ' lines' : ''));
+    const label = escapeHtml(_fmtDev(name) + (lines !== null ? ' · ' + lines + ' lines' : ''));
     const isFetching = window._genSingleFetching && window._genSingleFetching.has(name);
     const genSingleBtn = isFetching
       ? '<button class="split-action" disabled style="font-family:\'JetBrains Mono\',monospace;">…</button>'
