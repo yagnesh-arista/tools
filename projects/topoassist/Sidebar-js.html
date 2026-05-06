@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.20 | 2026-05-06 11:56:50 -->
+<!-- TopoAssist v260506.21 | 2026-05-06 11:59:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.20";  // keep in sync with Code.gs
+const APP_VERSION = "260506.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1098,7 +1098,7 @@ function addDevicesToList() {
     input.focus();
 
   }).withFailureHandler(err => {
-    alert("Error: " + err.message);
+    setStatus("Error: " + err.message, "status-error");
     resetAddBtn();
   }).parseAndExpandDevices(val);
 
@@ -1275,7 +1275,7 @@ function saveDeviceChanges() {
   };
 
   const handleError = (err) => {
-    alert("Error: " + err.message);
+    setStatus("Error: " + err.message, "status-error");
     btn.innerText = origText;
     btn.disabled = false;
     btn.style.background = "";
@@ -1739,7 +1739,7 @@ function SheetColumnManagerSave() {
     sheetColumnManagerLockTimer = null;
     setUiBusy(false);
     btn.innerText = origText;
-    alert("⚠ Save timed out. The server took too long. Please try again.");
+    setStatus("⚠ Save timed out — server took too long. Please try again.", "status-error");
   }, 30000);
 
   const applyFormatting = document.getElementById("chkApplyFormatting").checked;
@@ -1807,7 +1807,7 @@ function SheetColumnManagerSave() {
         setUiBusy(false);
         btn.innerText = origText;
         SheetColumnManagerSaveButton();
-        alert("Save OK, but Sync Failed: " + err.message);
+        setStatus("Save OK, but Sync Failed: " + err.message, "status-error");
       };
 
       // Execute the appropriate Sync type
@@ -1873,7 +1873,7 @@ function SheetColumnManagerSave() {
       setUiBusy(false);
       btn.innerText = origText;
       SheetColumnManagerSaveButton();
-      alert("✗ Save Failed: " + err.message);
+      setStatus("✗ Save Failed: " + err.message, "status-error");
     })
     .saveSchemaConfig(cleanList);
 }
@@ -1946,7 +1946,7 @@ function triggerSyncOnly() {
     .withFailureHandler(err => {
       setUiBusy(false);
       btn.innerHTML = origHtml;
-      alert('✗ Pre-sync check failed: ' + err.message);
+      setStatus('✗ Pre-sync check failed: ' + err.message, 'status-error');
     })
     .getOrphanedColumnsInfo(null);
 }
@@ -3258,7 +3258,7 @@ function switchLayout(mode) {
 
 function startFlexibleLayout() {
   if (!currentData) return;
-  if (typeof d3 === 'undefined') { alert("D3 library not loaded."); return; }
+  if (typeof d3 === 'undefined') { setStatus("D3 library not loaded.", "status-error"); return; }
 
   // Stop any previous instance
   stopFlexibleLayout();
@@ -3524,7 +3524,7 @@ function setSplitBtnState(splitId, labelText, bg, actionsDisabled) {
 
 // --- GLOBAL COPY HANDLER ---
 function handleCopy(text, btnId) {
-  if (!text) { alert("No configuration to copy."); return; }
+  if (!text) { setStatus("No configuration to copy.", "status-warn"); return; }
 
   const btn = document.getElementById(btnId);
   const wrapper = btn ? btn.closest('.split-btn') : null;
@@ -3548,7 +3548,7 @@ function handleCopy(text, btnId) {
   // 2. Perform Copy — navigator.clipboard primary, execCommand fallback
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(doFeedback).catch(() => {
-      alert("Copy failed. Please select and copy manually.");
+      setStatus("Copy failed — please select and copy manually.", "status-error");
     });
   } else {
     const ta = document.createElement("textarea");
@@ -3556,7 +3556,7 @@ function handleCopy(text, btnId) {
     ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;";
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand("copy"); doFeedback(); } catch(e) { alert("Copy failed."); }
+    try { document.execCommand("copy"); doFeedback(); } catch(e) { setStatus("Copy failed.", "status-error"); }
     document.body.removeChild(ta);
   }
 }
@@ -4839,6 +4839,7 @@ function _updateGwExample() {
   // applyHint: updates only hint-mode fields (hint class or empty). Explicit per-device
   //   values (hint class removed by oninput) are NEVER overwritten — not by global changes,
   //   not by wide-mode transitions. First fields use '1' as the hint in wide mode.
+  // SYNC: copied into Tests-client.html — update both when changing this function.
   const applyHint = (el, inheritedVal) => {
     if (!el) return;
     if (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) {
@@ -5044,7 +5045,7 @@ function openIpConfigModal(btn) {
     hideModalLoading('autoConfigModal');
     document.getElementById("autoConfigModal").style.display = 'none';
     setActiveModalChip(null);
-    alert("Failed to load settings: " + err);
+    setStatus("Failed to load settings: " + err, "status-error");
   }).getIpPreferencesForModal();
 }
 
@@ -5148,7 +5149,7 @@ function saveIpConfig() {
     .withFailureHandler(err => {
       clearTimeout(_guard);
       hideGlobalLoading();
-      setTimeout(() => { alert("✗ Save Failed: " + err.message); }, 50);
+      setTimeout(() => { setStatus("✗ Save Failed: " + err.message, "status-error"); }, 50);
     })
     .saveIpPreferences(prefs);
 }
@@ -5707,7 +5708,7 @@ function openTechModal() {
       hideModalLoading('networkStackModal');
       document.getElementById("networkStackModal").style.display = 'none';
       setActiveModalChip(null);
-      alert("Server Error: " + err.message);
+      setStatus("Server Error: " + err.message, "status-error");
     })
     .getNetworkSettings();
 }
@@ -5951,7 +5952,7 @@ function saveTechSettings() {
     .withFailureHandler(err => {
       clearTimeout(_guard);
       hideGlobalLoading();
-      alert("Error saving: " + err.message);
+      setStatus("Error saving: " + err.message, "status-error");
     })
     .saveNetworkSettings(settings);
 }
@@ -7233,10 +7234,10 @@ function deletePort() {
   let originalText = btn.innerText; btn.innerText = "Deleting..."; btn.disabled = true;
   google.script.run.withSuccessHandler(function (res) {
     btn.innerText = originalText; btn.disabled = false;
-    if (res.error) { alert("Error: " + res.error); }
+    if (res.error) { setStatus("Error: " + res.error, "status-error"); }
     else { initialEditModalState = ''; closeEditModal(); setStatus(deviceName + ':' + portName + ' deleted \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
   }).withFailureHandler(function (err) {
-    btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
+    btn.innerText = originalText; btn.disabled = false; setStatus("Server Error: " + err.message, "status-error");
   }).deleteInterface(deviceName, portName);
 }
 
@@ -7278,10 +7279,10 @@ function saveEdit() {
     google.script.run.withSuccessHandler(function (res) {
       // ... existing success handler ...
       btn.innerText = originalText; btn.disabled = false;
-      if (res.error) { alert("Error: " + res.error); }
+      if (res.error) { setStatus("Error: " + res.error, "status-error"); }
       else { initialEditModalState = ''; closeEditModal(); setStatus(devA + ':' + portA + ' \u2194 ' + devB + ':' + portB + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
     }).withFailureHandler(function (err) {
-      btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
+      btn.innerText = originalText; btn.disabled = false; setStatus("Server Error: " + err.message, "status-error");
     }).connectExistingToNew(devA, portA, updatesA, devB, portB, updatesB);
 
     // 2. ADD MODE
@@ -7302,10 +7303,10 @@ function saveEdit() {
 
     const onAddSuccess = function (res) {
       btn.innerText = originalText; btn.disabled = false;
-      if (res.error) { alert("Error: " + res.error); }
+      if (res.error) { setStatus("Error: " + res.error, "status-error"); }
       else { initialEditModalState = ''; closeEditModal(); setStatus(devA + ':' + portA + ' \u2194 ' + devB + ':' + portB + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
     };
-    const onAddFail = function (err) { btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message); };
+    const onAddFail = function (err) { btn.innerText = originalText; btn.disabled = false; setStatus("Server Error: " + err.message, "status-error"); };
 
     if (devA === devB) {
       // Snake self-loop — same device on both sides
@@ -7349,10 +7350,10 @@ function saveEdit() {
       google.script.run.withSuccessHandler(function (res) {
         // ... success ...
         btn.innerText = originalText; btn.disabled = false;
-        if (res.error) { alert("Error: " + res.error); }
+        if (res.error) { setStatus("Error: " + res.error, "status-error"); }
         else { initialEditModalState = ''; closeEditModal(); setStatus(localDev + ':' + localPort + ' \u2194 ' + newPeerDev + ':' + newPeerPort + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
       }).withFailureHandler(function (err) {
-        btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
+        btn.innerText = originalText; btn.disabled = false; setStatus("Server Error: " + err.message, "status-error");
       }).connectExistingToNew(localDev, localPort, localUpdates, newPeerDev, newPeerPort, peerUpdates);
     } else {
       let payloads = [];
@@ -7365,10 +7366,10 @@ function saveEdit() {
       google.script.run.withSuccessHandler(function (res) {
         // ... success ...
         btn.innerText = originalText; btn.disabled = false;
-        if (res.error) { alert("Error: " + res.error); }
+        if (res.error) { setStatus("Error: " + res.error, "status-error"); }
         else { initialEditModalState = ''; closeEditModal(); setStatus(localDev + ':' + localPort + (originalPeerId ? ' & ' + originalPeerId : '') + ' \u2014 topology refresh\u2026', 'status-info'); fetchData(true); }
       }).withFailureHandler(function (err) {
-        btn.innerText = originalText; btn.disabled = false; alert("Server Error: " + err.message);
+        btn.innerText = originalText; btn.disabled = false; setStatus("Server Error: " + err.message, "status-error");
       }).updateMultipleInterfaces(payloads);
     }
   }
@@ -7419,7 +7420,7 @@ function SheetColumnManagerAudit() {
       btn.innerHTML = origHtml; // Restore button
 
       if (res.error) {
-        alert(res.error);
+        setStatus(res.error || "Server error", "status-error");
         return;
       }
       showAuditResults(res);
@@ -7428,7 +7429,7 @@ function SheetColumnManagerAudit() {
       console.error("Server failure:", err);
       setUiBusy(false);
       btn.innerHTML = origHtml;
-      alert("Audit Error: " + err.message);
+      setStatus("Audit Error: " + err.message, "status-error");
     })
     .auditSchemaVsSheet();
 }
@@ -8968,7 +8969,7 @@ async function downloadPNG(btn) {
   } catch (e) {
     console.error("Screenshot Error:", e);
     if (stat) stat.innerText = "Error: " + e.message;
-    alert("Snapshot Failed: " + e.message);
+    setStatus("Snapshot Failed: " + e.message, "status-error");
   } finally {
     // 9. RESTORE ORIGINAL STATE
     surface.style.width = originalW;
@@ -9939,7 +9940,7 @@ function fetchData(force, autoVerify, silent) {
   try {
     if (typeof isEditMode !== 'undefined' && isEditMode && !force) {
       isFetching = false;
-      alert("Please exit Edit Mode to refresh.");
+      setStatus("Please exit Edit Mode to refresh.", "status-warn");
       return;
     }
 
@@ -14453,7 +14454,7 @@ function _onAddDiscoveredDone(btn, added, errors) {
   if (errors.length) {
     const msg = `${added} link${added !== 1 ? 's' : ''} added \u00b7 ${errors.length} failed \u2014 topology refresh\u2026`;
     setStatus(msg, 'status-error');
-    alert('Could not add:\n' + errors.join('\n'));
+    setStatus('Could not add: ' + errors.join(', '), 'status-error');
     if (added > 0) fetchData(true);
   } else {
     setStatus(`${added} link${added !== 1 ? 's' : ''} added \u2014 topology refresh\u2026`, 'status-ok');
@@ -14633,7 +14634,7 @@ function _sortCableGroups(cableGroups, sheetIndexMap) {
 }
 
 function copyCablingCsv() {
-  if (!currentData || !currentData.nodes) { alert('No topology data found. Please refresh.'); return; }
+  if (!currentData || !currentData.nodes) { setStatus('No topology data found. Please refresh.', 'status-error'); return; }
   const { cableGroups, sheetIndexMap } = buildCableGroups();
   const sorted = _sortCableGroups(cableGroups, sheetIndexMap);
   const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
@@ -14695,7 +14696,7 @@ function _buildCablingMarkdownStr() {
 }
 
 function copyCablingMarkdown() {
-  if (!currentData || !currentData.nodes) { alert('No topology data found. Please refresh.'); return; }
+  if (!currentData || !currentData.nodes) { setStatus('No topology data found. Please refresh.', 'status-error'); return; }
   handleCopy(_buildCablingMarkdownStr(), 'btnCablingMd');
 }
 
@@ -14717,7 +14718,7 @@ function saveNotebookLMQuestions() {
 
 function askNotebookLM() {
   const md = _buildCablingMarkdownStr();
-  if (!md) { alert('No cabling data found. Please refresh.'); return; }
+  if (!md) { setStatus('No cabling data found. Please refresh.', 'status-error'); return; }
   const questions = (document.getElementById('notebookLMQuestions').value || '').trim();
   const prompt = (questions ? questions + '\n\n' : '') + 'Cabling table:\n\n' + md;
   const btn = document.getElementById('btnAskNotebookLM');
@@ -14763,7 +14764,7 @@ function askNotebookLM() {
 */
 function downloadCablingReport(mode) {
   if (!currentData || !currentData.nodes) {
-    alert("No topology data found. Please refresh.");
+    setStatus("No topology data found. Please refresh.", "status-error");
     return;
   }
 
@@ -15973,7 +15974,7 @@ function cfgModalPushAll() {
 }
 
 function _copyToClipboard(text, btnEl) {
-  if (!text || !text.trim()) { alert('No config to copy.'); return; }
+  if (!text || !text.trim()) { setStatus('No config to copy.', 'status-warn'); return; }
   const doFeedback = () => {
     if (!btnEl) return;
     const orig = btnEl.innerText;
@@ -15983,7 +15984,7 @@ function _copyToClipboard(text, btnEl) {
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(doFeedback).catch(() => {
-      alert('Copy failed. Please select and copy manually.');
+      setStatus('Copy failed — please select and copy manually.', 'status-error');
     });
   } else {
     const ta = document.createElement('textarea');
@@ -15991,7 +15992,7 @@ function _copyToClipboard(text, btnEl) {
     ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(e) { alert('Copy failed.'); }
+    try { document.execCommand('copy'); doFeedback(); } catch(e) { setStatus('Copy failed.', 'status-error'); }
     document.body.removeChild(ta);
   }
 }
@@ -16725,14 +16726,14 @@ function _cfgViewCopyAll() {
     setTimeout(function() { btn.textContent = orig; }, 2000);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { alert('Copy failed.'); });
+    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { setStatus('Copy failed.', 'status-error'); });
   } else {
     var ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(ex) { alert('Copy failed.'); }
+    try { document.execCommand('copy'); doFeedback(); } catch(ex) { setStatus('Copy failed.', 'status-error'); }
     document.body.removeChild(ta);
   }
 }
@@ -16748,14 +16749,14 @@ function _cfgViewCopyInterface() {
     setTimeout(function() { btn.textContent = orig; }, 2000);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { alert('Copy failed.'); });
+    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { setStatus('Copy failed.', 'status-error'); });
   } else {
     var ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(ex) { alert('Copy failed.'); }
+    try { document.execCommand('copy'); doFeedback(); } catch(ex) { setStatus('Copy failed.', 'status-error'); }
     document.body.removeChild(ta);
   }
 }
@@ -16775,14 +16776,14 @@ function _copyGenRow(devName, btn) {
     }, 2000);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(doFeedback).catch(() => alert('Copy failed.'));
+    navigator.clipboard.writeText(text).then(doFeedback).catch(() => setStatus('Copy failed.', 'status-error'));
   } else {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(e) { alert('Copy failed.'); }
+    try { document.execCommand('copy'); doFeedback(); } catch(e) { setStatus('Copy failed.', 'status-error'); }
     document.body.removeChild(ta);
   }
 }
