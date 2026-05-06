@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.22 | 2026-05-06 12:00:03 -->
+<!-- TopoAssist v260506.29 | 2026-05-06 12:19:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.22";  // keep in sync with Code.gs
+const APP_VERSION = "260506.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16882,6 +16882,16 @@ function _generateSingleDevice(name) {
     const idx = window._generateAllConfigs.findIndex(c => c.name === name);
     if (idx !== -1) window._generateAllConfigs.splice(idx, 1);
   }
+  try {
+    const raw = localStorage.getItem('ta_gen_cache');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && saved.configs) {
+        saved.configs = saved.configs.filter(c => c.name !== name);
+        localStorage.setItem('ta_gen_cache', JSON.stringify(saved));
+      }
+    }
+  } catch(e) {}
   if (!window._genSingleFetching) window._genSingleFetching = new Set();
   window._genSingleFetching.add(name);
   _renderGenerateDeviceList();

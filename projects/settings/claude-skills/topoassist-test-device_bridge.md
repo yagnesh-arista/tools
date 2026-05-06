@@ -18,7 +18,7 @@ Expected: 91 passed, 0 failed.
 ## Client-side JS — GW override logic (applyHint, lockFirst, g() reader)
 
 ```bash
-cd ~/claude/projects/topoassist && node tests-client-node.js
+cd ~/claude/projects/topoassist && node test-js.js
 ```
 
 Expected: 22 passed, 0 failed. No dependencies — pure Node.js with a minimal DOM mock.
