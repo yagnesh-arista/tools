@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.68 | 2026-05-06 18:25:22 -->
+<!-- TopoAssist v260506.69 | 2026-05-06 18:33:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.68";  // keep in sync with Code.gs
+const APP_VERSION = "260506.69";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10299,6 +10299,7 @@ var bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalV
 var bridgeAuditFlagL1Errors     = localStorage.getItem('bridgeAuditFlagL1Errors')     !== 'false'; // default ON
 let bridgeL1ErrorThreshold  = parseInt(localStorage.getItem('bridgeL1ErrorThreshold') || '0', 10);
 let bridgePortL1Errors      = {}; // portId → {fcs, sym, align} for ports above threshold
+let _cablingBridgeFilter = new Set(); // active cabling export filter categories: mismatch|missing|down|shut|l1
 var auditFlagPoMismatch         = localStorage.getItem('auditFlagPoMismatch')         !== 'false';
 var auditFlagPoAsymmetry        = localStorage.getItem('auditFlagPoAsymmetry')        !== 'false';
 var auditFlagVlanMismatch       = localStorage.getItem('auditFlagVlanMismatch')        !== 'false';
@@ -14651,6 +14652,7 @@ function openCablingModal() {
     modal.style.display = 'block';
     setActiveModalChip('exportCablingModal');
     loadNotebookLMQuestions();
+    _renderCablingBridgeFilter();
     // Lazily load device metadata if not already populated (Device Manager may not have been opened)
     if (Object.keys(deviceMetadata).length === 0) {
       google.script.run
@@ -14813,16 +14815,154 @@ function _sortCableGroups(cableGroups, sheetIndexMap) {
     });
 }
 
+const _CABLING_BRIDGE_CATS = [
+  { val: 'mismatch', label: 'Mismatch'  },
+  { val: 'missing',  label: 'Missing'   },
+  { val: 'down',     label: 'Down'      },
+  { val: 'shut',     label: 'Shut'      },
+  { val: 'l1',       label: 'L1 Errors' },
+];
+
+// Returns Set of bridge issue categories for a cable group.
+// Uses bridgePortStatus/SubType (LLDP) and bridgePortL1Errors (error counters) as SSoT.
+function _cableGroupBridgeCategories(group) {
+  const cats = new Set();
+  (group.links || []).forEach(function(lnk) {
+    [[group.devA, lnk.portA], [group.devB, lnk.portB]].forEach(function(pair) {
+      const pid = pair[0] + ':' + pair[1];
+      const st = bridgePortStatus[pid];
+      if (st && st !== 'match') {
+        if (st === 'mismatch') cats.add('mismatch');
+        else if (st === 'missing') {
+          const sub = bridgePortSubType[pid];
+          cats.add(sub === 'shut' ? 'shut' : sub === 'down' ? 'down' : 'missing');
+        }
+      }
+      if (bridgePortL1Errors[pid]) cats.add('l1');
+    });
+  });
+  return cats;
+}
+
+// Returns a human-readable issues string for a cable group (used in export Issues column).
+// Reads bridgePortStatus/SubType for LLDP issues; _lastBridgeResults for mismatch detail;
+// bridgePortL1Errors for FCS/sym/align error counts.
+function _cableGroupIssueReason(group) {
+  const mismatchMsg = {};
+  if (_lastBridgeResults) {
+    _lastBridgeResults.forEach(function(r) {
+      if (r.status === 'mismatch') { mismatchMsg[r.u] = r.msg || ''; mismatchMsg[r.v] = r.msg || ''; }
+    });
+  }
+  const seen = new Set();
+  const parts = [];
+  (group.links || []).forEach(function(lnk) {
+    [[group.devA, lnk.portA], [group.devB, lnk.portB]].forEach(function(pair) {
+      const pid = pair[0] + ':' + pair[1];
+      const st = bridgePortStatus[pid];
+      if (st && st !== 'match') {
+        let reason;
+        if (st === 'mismatch') reason = mismatchMsg[pid] ? 'Mismatch: ' + mismatchMsg[pid] : 'Mismatch';
+        else {
+          const sub = bridgePortSubType[pid];
+          reason = sub === 'shut' ? 'Shut (admin disabled)' : sub === 'down' ? 'Down (link not connected)' : 'Missing (no LLDP neighbor)';
+        }
+        if (!seen.has(reason)) { seen.add(reason); parts.push(reason); }
+      }
+      const errs = bridgePortL1Errors[pid];
+      if (errs) {
+        const ep = [];
+        if (errs.fcs)   ep.push('FCS=' + errs.fcs);
+        if (errs.sym)   ep.push('sym=' + errs.sym);
+        if (errs.align) ep.push('align=' + errs.align);
+        if (ep.length) {
+          const reason = 'L1: ' + ep.join(' ');
+          if (!seen.has(reason)) { seen.add(reason); parts.push(reason); }
+        }
+      }
+    });
+  });
+  return parts.join('; ');
+}
+
+// Filter a sorted cable-groups array to those matching the active _cablingBridgeFilter.
+// Empty filter → return all (no filter). Multi-select = union.
+function _filterCableGroupsByBridge(sortedGroups) {
+  if (!_cablingBridgeFilter.size) return sortedGroups;
+  return sortedGroups.filter(function(g) {
+    const cats = _cableGroupBridgeCategories(g);
+    for (const cat of _cablingBridgeFilter) { if (cats.has(cat)) return true; }
+    return false;
+  });
+}
+
+function _renderCablingBridgeFilter() {
+  const bar = document.getElementById('cablingBridgeFilterBar');
+  if (!bar) return;
+  const hasBridge = Object.keys(bridgePortStatus).length > 0 || Object.keys(bridgePortL1Errors).length > 0;
+  if (!hasBridge) {
+    bar.innerHTML = '<div class="info-box info-box--dim" style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;">No bridge data — connect Device Bridge and run a check to enable issue filtering.</div>';
+    return;
+  }
+  const { cableGroups, sheetIndexMap } = buildCableGroups();
+  const allSorted = _sortCableGroups(cableGroups, sheetIndexMap);
+  const counts = {};
+  _CABLING_BRIDGE_CATS.forEach(function(c) { counts[c.val] = 0; });
+  allSorted.forEach(function(g) {
+    _cableGroupBridgeCategories(g).forEach(function(cat) { if (cat in counts) counts[cat]++; });
+  });
+  const filtered = _filterCableGroupsByBridge(allSorted);
+  const pills = _CABLING_BRIDGE_CATS.map(function(c) {
+    const active = _cablingBridgeFilter.has(c.val);
+    const cnt = counts[c.val] || 0;
+    const disabled = cnt === 0;
+    return '<button class="cabling-pill' + (active ? ' cabling-pill-active' : '') + '"'
+      + (disabled ? ' disabled' : ' onclick="_toggleCablingBridgeFilter('' + c.val + '')"')
+      + ' style="font-family:'JetBrains Mono',monospace;">'
+      + c.label + ' (' + cnt + ')</button>';
+  }).join('');
+  const summary = _cablingBridgeFilter.size
+    ? '<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;margin-left:8px;">'
+      + filtered.length + ' of ' + allSorted.length + ' cable groups</span>'
+    : '';
+  bar.innerHTML = '<div style="margin-bottom:12px;">'
+    + '<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:6px;">'
+    + 'Filter by bridge issue:'
+    + '<button class="btn-mono" style="padding:2px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;" onclick="_cablingBridgeSelectAll()">All</button>'
+    + '<button class="btn-mono" style="padding:2px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;" onclick="_cablingBridgeSelectNone()">None</button>'
+    + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">' + pills + summary + '</div>'
+    + '</div>';
+}
+
+function _toggleCablingBridgeFilter(cat) {
+  if (_cablingBridgeFilter.has(cat)) _cablingBridgeFilter.delete(cat);
+  else _cablingBridgeFilter.add(cat);
+  _renderCablingBridgeFilter();
+}
+
+function _cablingBridgeSelectAll() {
+  _CABLING_BRIDGE_CATS.forEach(function(c) { _cablingBridgeFilter.add(c.val); });
+  _renderCablingBridgeFilter();
+}
+
+function _cablingBridgeSelectNone() {
+  _cablingBridgeFilter.clear();
+  _renderCablingBridgeFilter();
+}
+
 function copyCablingCsv() {
   if (!currentData || !currentData.nodes) { setStatus('No topology data found. Please refresh.', 'status-error'); return; }
   const { cableGroups, sheetIndexMap } = buildCableGroups();
-  const sorted = _sortCableGroups(cableGroups, sheetIndexMap);
+  const sorted = _filterCableGroupsByBridge(_sortCableGroups(cableGroups, sheetIndexMap));
+  const hasBridgeData = Object.keys(bridgePortStatus).length > 0 || Object.keys(bridgePortL1Errors).length > 0;
   const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
   const devModel = name => (deviceMetadata[name] || {}).model || (devStatusMap[name] || {}).platform || '';
   const devRack  = name => (deviceMetadata[name] || {}).rack || '';
-  const rows = ['Device A,Model A,Rack A,Port A,Xcvr A,Speed A,Speed B,Xcvr B,Port B,Device B,Model B,Rack B'];
+  const header = 'Device A,Model A,Rack A,Port A,Xcvr A,Speed A,Speed B,Xcvr B,Port B,Device B,Model B,Rack B' + (hasBridgeData ? ',Issues' : '');
+  const rows = [header];
   sorted.forEach(g => {
     const bo = _breakoutSides(g);
     const isMulti = g.links.length > 1;
@@ -14831,15 +14971,18 @@ function copyCablingCsv() {
     // Two QSFP/OSFP connectors facing each other = single cable (laser lane split), never dual harnesses.
     // So both-side slash + both-side aggX = single cable → one row.
     const linksToRender = (isMulti && g.isBreakoutA && g.isBreakoutB) ? [g.links[0]] : g.links;
+    const issue = hasBridgeData ? _cableGroupIssueReason(g) : '';
     linksToRender.forEach(l => {
       const portA = (isMulti && !bo.a) ? g.phyA : l.portA;
       const portB = (isMulti && !bo.b) ? g.phyB : l.portB;
-      rows.push([
+      const rowData = [
         q(g.devA), q(devModel(g.devA)), q(devRack(g.devA)),
         q(portA), q(xcvrLabel(g.xcvrA, bo.a)), q(cleanSpeed(g.speedA)),
         q(cleanSpeed(g.speedB)), q(xcvrLabel(g.xcvrB, bo.b)), q(portB),
         q(g.devB), q(devModel(g.devB)), q(devRack(g.devB))
-      ].join(','));
+      ];
+      if (hasBridgeData) rowData.push(q(issue));
+      rows.push(rowData.join(','));
     });
   });
   handleCopy(rows.join('\n'), 'btnCablingCsv');
@@ -14848,16 +14991,16 @@ function copyCablingCsv() {
 function _buildCablingMarkdownStr() {
   if (!currentData || !currentData.nodes) return '';
   const { cableGroups, sheetIndexMap } = buildCableGroups();
-  const sorted = _sortCableGroups(cableGroups, sheetIndexMap);
+  const sorted = _filterCableGroupsByBridge(_sortCableGroups(cableGroups, sheetIndexMap));
+  const hasBridgeData = Object.keys(bridgePortStatus).length > 0 || Object.keys(bridgePortL1Errors).length > 0;
   const cleanSpeed = s => { const v = (s || "").trim(); if (v.toLowerCase() === 'auto') return ''; if (v.toUpperCase().includes('BASE-T')) return '1g'; return v; };
   const xcvrLabel = (x, bo) => { const v = (x || "").trim(); return bo ? (v ? `${v} (Breakout)` : "(Breakout)") : v; };
   const esc = s => String(s).replace(/\|/g, '\\|');
   const devModel = name => (deviceMetadata[name] || {}).model || (devStatusMap[name] || {}).platform || '';
   const devRack  = name => (deviceMetadata[name] || {}).rack || '';
-  const lines = [
-    '| Device A | Model A | Rack A | Port A | Xcvr A | Speed A | Speed B | Xcvr B | Port B | Device B | Model B | Rack B |',
-    '|---|---|---|---|---|---|---|---|---|---|---|---|'
-  ];
+  const headerRow = '| Device A | Model A | Rack A | Port A | Xcvr A | Speed A | Speed B | Xcvr B | Port B | Device B | Model B | Rack B |' + (hasBridgeData ? ' Issues |' : '');
+  const sepRow    = '|---|---|---|---|---|---|---|---|---|---|---|---|' + (hasBridgeData ? '---|' : '');
+  const lines = [headerRow, sepRow];
   sorted.forEach(g => {
     const bo = _breakoutSides(g);
     const isMulti = g.links.length > 1;
@@ -14866,10 +15009,11 @@ function _buildCablingMarkdownStr() {
     // Two QSFP/OSFP connectors facing each other = single cable (laser lane split), never dual harnesses.
     // So both-side slash + both-side aggX = single cable → one row.
     const linksToRender = (isMulti && g.isBreakoutA && g.isBreakoutB) ? [g.links[0]] : g.links;
+    const issue = hasBridgeData ? _cableGroupIssueReason(g) : '';
     linksToRender.forEach(l => {
       const portA = (isMulti && !bo.a) ? g.phyA : l.portA;
       const portB = (isMulti && !bo.b) ? g.phyB : l.portB;
-      lines.push(`| ${esc(g.devA)} | ${esc(devModel(g.devA))} | ${esc(devRack(g.devA))} | ${esc(portA)} | ${esc(xcvrLabel(g.xcvrA, bo.a))} | ${esc(cleanSpeed(g.speedA))} | ${esc(cleanSpeed(g.speedB))} | ${esc(xcvrLabel(g.xcvrB, bo.b))} | ${esc(portB)} | ${esc(g.devB)} | ${esc(devModel(g.devB))} | ${esc(devRack(g.devB))} |`);
+      lines.push(`| ${esc(g.devA)} | ${esc(devModel(g.devA))} | ${esc(devRack(g.devA))} | ${esc(portA)} | ${esc(xcvrLabel(g.xcvrA, bo.a))} | ${esc(cleanSpeed(g.speedA))} | ${esc(cleanSpeed(g.speedB))} | ${esc(xcvrLabel(g.xcvrB, bo.b))} | ${esc(portB)} | ${esc(g.devB)} | ${esc(devModel(g.devB))} | ${esc(devRack(g.devB))} |` + (hasBridgeData ? ` ${esc(issue)} |` : ''));
     });
   });
   return lines.join('\n');
