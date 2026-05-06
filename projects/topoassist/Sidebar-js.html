@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.80 | 2026-05-06 19:40:56 -->
+<!-- TopoAssist v260506.81 | 2026-05-06 19:42:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.80";  // keep in sync with Code.gs
+const APP_VERSION = "260506.81";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14836,18 +14836,23 @@ const _CABLING_BRIDGE_CATS = [
 function _cableGroupBridgeCategories(group) {
   const cats = new Set();
   (group.links || []).forEach(function(lnk) {
-    [[group.devA, lnk.portA], [group.devB, lnk.portB]].forEach(function(pair) {
-      const pid = pair[0] + ':' + pair[1];
-      const st = bridgePortStatus[pid];
-      if (st && st !== 'match') {
-        if (st === 'mismatch') cats.add('mismatch');
-        else if (st === 'missing') {
-          const sub = bridgePortSubType[pid];
-          cats.add(sub === 'shut' ? 'shut' : sub === 'down' ? 'down' : 'missing');
-        }
-      }
-      if (bridgePortL1Errors[pid]) cats.add('l1');
-    });
+    const pidA = group.devA + ':' + lnk.portA;
+    const pidB = group.devB + ':' + lnk.portB;
+    const stA = bridgePortStatus[pidA];
+    const stB = bridgePortStatus[pidB];
+    // Mismatch: either port
+    if (stA === 'mismatch' || stB === 'mismatch') cats.add('mismatch');
+    // Missing: link-level priority (shut > down > other) — same logic as audit
+    if (stA === 'missing' || stB === 'missing') {
+      const subA = bridgePortSubType[pidA] || 'other';
+      const subB = bridgePortSubType[pidB] || 'other';
+      const sub = (subA === 'shut' || subB === 'shut') ? 'shut'
+                : (subA === 'down' || subB === 'down') ? 'down' : 'other';
+      cats.add(sub === 'shut' ? 'shut' : sub === 'down' ? 'down' : 'missing');
+    }
+    // L1 errors: per-port (no link-level priority)
+    if (bridgePortL1Errors[pidA]) cats.add('l1');
+    if (bridgePortL1Errors[pidB]) cats.add('l1');
   });
   return cats;
 }
