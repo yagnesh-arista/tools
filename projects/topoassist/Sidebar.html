@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.85 | 2026-05-06 20:22:48 -->
+<!-- TopoAssist v260506.86 | 2026-05-06 20:34:18 -->
 <!DOCTYPE html>
 <html>
 
@@ -1044,10 +1044,10 @@
       <div class="cabling-section-row">
         <span class="cabling-section-title">⬡ Topology List</span>
         <div class="cabling-action-btns">
+          <button class="btn-mono" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy MD</button>
+          <button class="btn-mono" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
           <button class="btn-mono" onclick="_viewCablingReport('netlist')">View</button>
           <button class="btn-mono" onclick="downloadCablingReport('netlist')">Download</button>
-          <button class="btn-mono" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
-          <button class="btn-mono" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy MD</button>
         </div>
       </div>
       <div class="export-desc">Flat list ordered by sheet. Best for auditing total connections.</div>
