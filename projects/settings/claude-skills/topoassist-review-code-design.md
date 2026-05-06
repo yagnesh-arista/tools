@@ -918,6 +918,7 @@ TOPOASSIST CODE REVIEW
 29 — Naming & documentation    ✓ / ✗ / ⚠
 30 — Change indicators         ✓ / ✗ / ⚠
 31 — setTitle/showModelessDialog sync ✓ / ✗ / ⚠
+32 — Cancel btn + dirty-state warning  ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
