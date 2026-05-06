@@ -215,8 +215,11 @@
       }
     ]
   },
-  "enabledPlugins": {},
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
+  },
   "autoUpdatesChannel": "stable",
+  "theme": "light",
   "skipAutoPermissionPrompt": true,
   "mcpServers": {
     "arista-eos": {
@@ -279,6 +282,5 @@
         "/export/users/ash.chan/MCP/claudeGHCBot/claudeGHCBot.py"
       ]
     }
-  },
-  "theme": "light"
+  }
 }
