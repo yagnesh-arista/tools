@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.7 | 2026-05-06 11:13:16 -->
+<!-- TopoAssist v260506.8 | 2026-05-06 11:24:18 -->
 <!DOCTYPE html>
 <html>
 
@@ -1895,6 +1895,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       _ugCurMark = (_ugCurMark + dir + _ugMarks.length) % _ugMarks.length;
       var m = _ugMarks[_ugCurMark];
       m.classList.add('ug-mark-active');
+      var _el = m; while (_el) { if (_el.tagName === 'DETAILS') _el.open = true; _el = _el.parentElement; }
       m.scrollIntoView({ behavior: 'smooth', block: 'center' });
       _ugUpdateCount();
       var inp = document.getElementById('ugSearchInput');
