@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260506.60 | 2026-05-06 17:27:34
+// topoassist v260506.68 | 2026-05-06 18:26:04
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -207,6 +207,51 @@ t('clampBridgeInterval: 0 → 30',    clampBridgeInterval(0),     30);
 t('clampBridgeInterval: NaN → 30',  clampBridgeInterval('abc'), 30);
 t('clampBridgeInterval: 5 → 5',     clampBridgeInterval(5),      5);
 t('clampBridgeInterval: 480 → 480', clampBridgeInterval(480),  480);
+
+// ── L1 threshold clamping ─────────────────────────────────────────────────
+// SYNC: matches onBridgeL1ThresholdChange in Sidebar-js.html
+function clampL1Threshold(raw) {
+  return Math.max(0, parseInt(raw, 10) || 0);
+}
+
+t('clampL1Threshold: 0 → 0',     clampL1Threshold(0),      0);
+t('clampL1Threshold: 5 → 5',     clampL1Threshold(5),      5);
+t('clampL1Threshold: -1 → 0',    clampL1Threshold(-1),     0);
+t('clampL1Threshold: NaN → 0',   clampL1Threshold('abc'),  0);
+t('clampL1Threshold: 100 → 100', clampL1Threshold(100),  100);
+
+// ── _l1ErrDetail ──────────────────────────────────────────────────────────
+// SYNC: matches _l1ErrDetail in Sidebar-js.html
+function _l1ErrDetail(u, uErr, v, vErr) {
+  const fmt = (id, e) => {
+    if (!e) return '';
+    let s = id + ': FCS ' + e.fcs;
+    if (e.sym)   s += ' sym '   + e.sym;
+    if (e.align) s += ' align ' + e.align;
+    return s;
+  };
+  return [fmt(u, uErr), fmt(v, vErr)].filter(Boolean).join(' | ');
+}
+
+t('_l1ErrDetail: both sides',
+  _l1ErrDetail('dev1:Et1', {fcs:3,sym:0,align:0}, 'dev2:Et1', {fcs:1,sym:2,align:0}),
+  'dev1:Et1: FCS 3 | dev2:Et1: FCS 1 sym 2');
+
+t('_l1ErrDetail: only u-side',
+  _l1ErrDetail('dev1:Et1', {fcs:5,sym:0,align:1}, 'dev2:Et1', null),
+  'dev1:Et1: FCS 5 align 1');
+
+t('_l1ErrDetail: only v-side',
+  _l1ErrDetail('dev1:Et1', null, 'dev2:Et1', {fcs:0,sym:3,align:0}),
+  'dev2:Et1: FCS 0 sym 3');
+
+t('_l1ErrDetail: fcs+sym+align',
+  _l1ErrDetail('dev1:Et1', {fcs:1,sym:2,align:3}, 'dev2:Et1', null),
+  'dev1:Et1: FCS 1 sym 2 align 3');
+
+t('_l1ErrDetail: both null → empty',
+  _l1ErrDetail('dev1:Et1', null, 'dev2:Et1', null),
+  '');
 
 // ── Report ────────────────────────────────────────────────────────────────
 

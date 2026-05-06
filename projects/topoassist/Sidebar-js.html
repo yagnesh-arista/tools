@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.67 | 2026-05-06 18:13:46 -->
+<!-- TopoAssist v260506.68 | 2026-05-06 18:25:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.67";  // keep in sync with Code.gs
+const APP_VERSION = "260506.68";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3088,6 +3088,26 @@ function runValidation(logIssues) {
   if (_lastBridgeOrphans && _lastBridgeOrphans.length && bridgeAuditFlagMismatch) {
     _lastBridgeOrphans.forEach(o => {
       _auditIssues.push({ msg: `[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, cls: 'status-error', src: 'live' });
+    });
+  }
+  // L1 errors — read from bridgePortL1Errors SSoT (link-level dedup: each link counted once)
+  const _l1Seen = new Set();
+  if (_lastBridgeResults) {
+    _lastBridgeResults.forEach(r => {
+      const uErr = bridgePortL1Errors[r.u], vErr = bridgePortL1Errors[r.v];
+      if (uErr || vErr) {
+        auditCheckHadIssue.bridgeAuditFlagL1Errors = (auditCheckHadIssue.bridgeAuditFlagL1Errors || 0) + 1;
+        if (bridgeAuditFlagL1Errors) {
+          flagErrorOnPort(r.u, 'L1 errors (CRC/FCS)');
+          flagErrorOnPort(r.v, 'L1 errors (CRC/FCS)');
+          const _pk = [r.u, r.v].sort().join('||');
+          if (!_l1Seen.has(_pk)) {
+            _l1Seen.add(_pk);
+            const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
+            _auditIssues.push({ msg: `[Audit - Live] L1 errors: ${r.u} \u2194 ${r.v} \u2014 ${detail}`, cls: 'status-warning', src: 'live' });
+          }
+        }
+      }
     });
   }
 
@@ -11839,7 +11859,7 @@ function toggleBridgeDevSection() {
 // =========================================================
 
 const _ALL_AUDIT_FLAGS = [
-  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagDown', 'bridgeAuditFlagShut', 'bridgeAuditFlagInternalVlan',
+  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagDown', 'bridgeAuditFlagShut', 'bridgeAuditFlagInternalVlan', 'bridgeAuditFlagL1Errors',
   'auditFlagPoMismatch', 'auditFlagPoAsymmetry', 'auditFlagMissingPo', 'auditFlagStalePo',
   'auditFlagUnsupportedInt', 'auditFlagDuplicateInt', 'auditFlagMlagL3',
   'auditFlagVlanMismatch', 'auditFlagNativeNonTrunk', 'auditFlagSviVlanMismatch',
@@ -11929,6 +11949,9 @@ function toggleAuditCheck(name, val) {
   _setAuditFlag(name, val);
   if (name === 'bridgeAuditFlagMissing' || name === 'bridgeAuditFlagDown' || name === 'bridgeAuditFlagShut') {
     applyLldpIndicators();
+    if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
+  }
+  if (name === 'bridgeAuditFlagL1Errors') {
     if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
   }
   if (isValidationMode) runValidation();
@@ -12073,6 +12096,8 @@ function _syncBridgeEnableCheckbox() {
   if (chkAC) chkAC.checked = localStorage.getItem('bridgeAutoCheck') !== 'false';
   const inp = document.getElementById('bridgeAutoCheckInterval');
   if (inp) inp.value = localStorage.getItem('bridgeAutoCheckInterval') || '30';
+  const threshInp = document.getElementById('bridgeL1Threshold');
+  if (threshInp) threshInp.value = bridgeL1ErrorThreshold;
 }
 
 function _startBridgeAutoCheck() {
@@ -12105,6 +12130,15 @@ function onBridgeAutoCheckIntervalChange() {
   inp.value = val;
   localStorage.setItem('bridgeAutoCheckInterval', val);
   if (_bridgeUpState) _startBridgeAutoCheck();
+}
+
+function onBridgeL1ThresholdChange(rawVal) {
+  bridgeL1ErrorThreshold = Math.max(0, parseInt(rawVal, 10) || 0);
+  localStorage.setItem('bridgeL1ErrorThreshold', bridgeL1ErrorThreshold);
+  if (_lastBridgeResults && devStatusMap && Object.keys(devStatusMap).length) {
+    _populateBridgePortL1Errors(devStatusMap);
+    _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
+  }
 }
 
 // Silent health check — only updates toolbar icon, does not touch modal DOM.
