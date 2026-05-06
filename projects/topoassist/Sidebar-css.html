@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.70 | 2026-05-06 18:33:59 -->
+<!-- TopoAssist v260506.71 | 2026-05-06 18:46:07 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1150,6 +1150,23 @@
   .split-action:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  /* Cabling Export — bridge issue filter label + summary spans */
+  .cabling-filter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cabling-filter-summary {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #64748b;
+    margin-left: 8px;
   }
 
   /* Cabling Export — bridge issue filter pills */
