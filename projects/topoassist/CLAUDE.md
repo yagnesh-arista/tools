@@ -146,6 +146,13 @@ Without the guard, restoring a dock chip leaves two modals open simultaneously.
 
 **`closeAllModals()`** uses the same dynamic `.modal-std` query.
 
+**Every modal/panel must open in expanded state — always.** This is a core design rule. Whether opened fresh or restored from the dock, a modal must never reopen in minimized state:
+
+- `setActiveModalChip(modalId)` strips `modal-minimized` + `preMinDisplay` from the incoming modal before registering it. This covers every open function that calls `setActiveModalChip` (all standard modals).
+- `_showPushConfirmModal()` strips `modal-minimized` at the top of the function (it does not call `setActiveModalChip`).
+- **Never add a new open function that sets `style.display='flex'` without calling `setActiveModalChip(modalId)`** — if a modal bypasses `setActiveModalChip`, it must strip `modal-minimized` explicitly.
+- Dock chip restore via `toggleModalMinimize` always expands (the modal has `modal-minimized` when docked; toggle removes it). This is correct by construction — no change needed.
+
 ## GAS Dialog Containers — Minimize-Only Header
 
 The three full-screen GAS dialog containers (`deviceManagerContainer`, `sheetColumnManagerContainer`, `sheetVisContainer`) use a different header pattern from regular modals:
