@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-06 (Check 32 added: Cancel button + dirty-state warning — every edit/confirm modal must have Cancel btn and _confirmDirtyClose in close function) -->
+<!-- rules-synced: 2026-05-06 (Checks 33+34 added: alert() in error/async paths must use setStatus(); allDevicesData/allNodesData null guards required in async callbacks and render-time event handlers) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
