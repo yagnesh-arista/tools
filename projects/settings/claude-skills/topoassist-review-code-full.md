@@ -22,7 +22,7 @@ Read each file found. Apply patterns as additional checks against this session's
 
 **Code memory** (correctness, safety, invariants):
 - `feedback_topoassist_data_safety.md` — backup-before-write, rollback-on-error
-- `feedback_topoassist_tests.md` — pytest for device_bridge; Tests.gs for Code.gs
+- `feedback_topoassist_tests.md` — pytest for device_bridge; Test-gs.gs for Code.gs; test-js.js for Sidebar-js.html client closures
 - `feedback_topoassist_audit_tests.md` — audit logic must be extracted to pure helpers + tested
 - `feedback_topoassist_refresh_status.md` — setStatus(reason+host) before every fetchData call
 - `feedback_topoassist_gray_audit_sync.md` — N/A gray CF rules need paired A-rule + audit check
