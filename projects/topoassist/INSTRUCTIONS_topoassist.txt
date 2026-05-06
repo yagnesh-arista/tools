@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-06 (refactor: bridgePortSubType as single source of truth for LLDP missing sub-type — bridgePortSubType={} declared alongside bridgePortStatus; _populateBridgePortSubTypes(dsData) replaces _bridgeMissingSubType and is called immediately after _compareBridgeData() at both bridge-check call sites; _renderLldpResults(results,orphans) drops dsData param + _portLinkSt() helper; _logBridgeIssuesToStatusLog drops _ls() helper; runValidation per-port count block + audit log block + _bridgeEffectiveClass all read bridgePortSubType directly; _bridgeMissingSubType deleted. FILES: Sidebar-js.html)
+  Last updated: 2026-05-06 (Test-gs.gs: add test_expandVlanString (10 cases), test_compressVlanRanges (8 cases), test_parseAndExpandDevices (7 cases); all registered in runAllTests(). INSTRUCTIONS covered-function list expanded to all 25 suites. FILES: Test-gs.gs, INSTRUCTIONS_topoassist.txt)
+  Previous: 2026-05-06 (refactor: bridgePortSubType as single source of truth for LLDP missing sub-type — bridgePortSubType={} declared alongside bridgePortStatus; _populateBridgePortSubTypes(dsData) replaces _bridgeMissingSubType and is called immediately after _compareBridgeData() at both bridge-check call sites; _renderLldpResults(results,orphans) drops dsData param + _portLinkSt() helper; _logBridgeIssuesToStatusLog drops _ls() helper; runValidation per-port count block + audit log block + _bridgeEffectiveClass all read bridgePortSubType directly; _bridgeMissingSubType deleted. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (fix: bridge dot + audit count misclassification — (1) _bridgeEffectiveClass(status,portId) now sub-type aware: checks bridgeAuditFlagShut/Down/Missing based on _bridgeMissingSubType(portId); dots turn missing-quiet when flag OFF; (2) applyLldpIndicators() passes portId; initial port-row render passes domId; (3) applyLldpIndicators() moved to after devStatusMap update in both auto-bridge and manual-bridge handlers so sub-type lookup uses fresh data; (4) runValidation() per-port missing count uses link-level priority — checks paired port via _portToResult so far-end 'notconnect' of a shut link counts as shut, not down. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (fix: _logBridgeIssuesToStatusLog audit misrouting — all 'missing' entries were routed to bridgeAuditFlagMissing regardless of link status; added local _ls() helper using dsData; replaced single else-if with tri-branch: shut→bridgeAuditFlagShut, down→bridgeAuditFlagDown, other→bridgeAuditFlagMissing. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (fix: bridgeAuditFlagShut now counts toward issueCount when ON (same as Down); tooltip updated. All 3 sub-sections: No neighbour=ON+counted, Interface down=OFF+counted-when-ON, Interface shut=OFF+counted-when-ON. FILES: Sidebar-js.html)
@@ -3424,10 +3425,31 @@ File: Test-gs.gs  (was Tests.gs — renamed 2026-05-06)
 Output: SpreadsheetApp alert (summary) + Execution Log (full detail)
 
 Covered functions:
-  canonicalizeInterface  — interface name normalization (18 cases)
-  hasKey                 — case-insensitive Set lookup (6 cases)
-  normalizePo            — Port-Channel number extraction (8 cases)
-  isValidPort            — port string validation (8 cases)
+  canonicalizeInterface    — interface name normalization (18 cases)
+  hasKey                   — case-insensitive Set lookup (6 cases)
+  normalizePo              — Port-Channel number extraction (8 cases)
+  isValidPort              — port string validation (8 cases)
+  _parseSviVlans           — SVI VLAN subset selection (11 cases)
+  _parseVrfList            — VRF list parsing (cases)
+  _resolveVrfAtIndex       — VRF lookup by index
+  _auditVrfIssues          — VRF audit: all 6 conditions, error+warn+clean paths (22 cases)
+  parseVlanWithNative      — nv<N> native-VLAN token split (11 cases)
+  getPhysicalPortParent    — strip breakout lane suffix (cases)
+  compressPortList         — sort + join port array (cases)
+  _breakoutSides           — QSFP vs SFP lane side detection
+  _buildCableGroupsForTest — cabling grouping: Scenario A/B/C + snake + non-Arista
+  generateSnakeStaticConfig  — snake test config gen (~30 cases)
+  generateSnakeTtlPbrConfig  — TTL PBR config gen
+  generateSnakeTtlTrafficPolicyConfig — TTL traffic-policy config gen
+  findAttrKey              — attribute key lookup
+  deviceMetadata           — JSON round-trip + null-prop fallback (8 cases)
+  generateGlobalBlock      — ip routing/ipv6/multi-agent/VARP MAC (6 cases)
+  generateComplexL3Block   — GW type anycast/VARP, vx1 exclusion (5 cases)
+  _compressVniLines        — consecutive VNI range compression (8 cases)
+  deviceIdSnapshot         — shift detection + isFirstRun (5 cases)
+  expandVlanString         — VLAN string → Set<int>; NaN + reversed range (10 cases)
+  compressVlanRanges       — Set<int> → compressed range string (8 cases)
+  parseAndExpandDevices    — "leaf[01-03]" → list; zero-pad, dedup, >50 skip (7 cases)
 
 ── Client-side JS (Sidebar-js.html) ──────────────────────────────────────────
 Run:  cd ~/claude/projects/topoassist && node test-js.js
