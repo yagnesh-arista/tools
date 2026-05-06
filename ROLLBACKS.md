@@ -72,4 +72,3 @@ Files: ROLLBACKS.md,projects/tmux.conf/tmux.conf
 **revert: tmux.conf fully rolled back to 696aea5 (yesterday) — scroll fixes all broke; revisit later**  
 Files: ROLLBACKS.md,projects/tmux.conf/tmux.conf,projects/tmux.conf/tmux_click.sh,projects/topoassist/Code.gs,projects/topoassist/SheetAssistPanel.html,projects/topoassist/Sidebar-css.html,projects/topoassist/Sidebar-js.html,projects/topoassist/Sidebar.html,projects/topoassist/Tests.gs,projects/topoassist/UserGuide.html
 
-
