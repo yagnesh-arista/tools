@@ -216,6 +216,40 @@ Every modal must have a close button as the last element in its header, using `.
   — never inline with the Cancel/Save group
 - **Secondary actions** (e.g. Reset Defaults, Download) go between Delete and Cancel
 
+### Cancel button and dirty-state warning
+
+Every **edit/confirm** modal (one with a Save button) must have a Cancel button in the footer, immediately left of Save. **Exception**: modals with an embedded per-panel Save (e.g. Config Center) use the X button as the universal dismiss — no footer Cancel is needed.
+
+When a modal has unsaved changes (Save button is orange/dirty), **all dismissal paths** must warn before discarding:
+- Cancel button → calls the canonical close function → dirty check fires
+- X button (`.btn-modal-close`) → calls the canonical close function → dirty check fires
+- Esc → clicks the X button → same path — covered automatically
+
+Use the shared `_confirmDirtyClose(isDirty, modalLabel)` helper — never duplicate the `confirm()` inline:
+
+```javascript
+function closeMyModal() {
+  const isDirty = initialMyState !== '' && _captureFormState('myModal') !== initialMyState;
+  if (!_confirmDirtyClose(isDirty, "My Modal Name")) return;
+  initialMyState = '';
+  // ... actual close logic ...
+}
+```
+
+**State capture rule**: call `initialMyState = _captureFormState('myModalId')` at the END of the open function, after all fields are populated. For modals with JS-variable state (color pickers, toggles) use a custom capture function.
+
+**Reset rule**: set `initialMyState = ''` before calling the close function in:
+- The save success handler (clean close after save)
+- Any delete/destructive success handler (deliberate action, no warning needed)
+- At the TOP of the save function (`confirmGroupRect()` pattern — user clicked Save)
+
+**Confirm message format** (matches existing device/column manager containers):
+```
+△ You have unsaved changes in {modalLabel}.
+
+Close anyway? (Changes will be lost)
+```
+
 ### Esc key — every new modal must be in the LIFO close list
 
 Every modal added to the project must be registered in two places in the global `keydown` handler:
