@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.34 | 2026-05-06 13:37:51 -->
+<!-- TopoAssist v260506.36 | 2026-05-06 14:32:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.34";  // keep in sync with Code.gs
+const APP_VERSION = "260506.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16632,7 +16632,10 @@ function _openCfgPanelView(name) {
   window._cfgViewRawText = text;
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
-  if (title) title.textContent = _fmtDev(name);
+  if (title) title.innerHTML =
+    '<button onclick="_switchCfgPanel(\'generate\')" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:400;font-style:normal;color:var(--text-muted);background:none;border:none;padding:0;cursor:pointer;user-select:none;-webkit-user-select:none;" title="Back to device list">← Generate</button>'
+    + '<span style="color:var(--text-muted);margin:0 5px;font-weight:400;font-style:normal;">›</span>'
+    + '<span>' + escapeHtml(_fmtDev(name)) + '</span>';
   var genSub = document.getElementById('cfgNavGenSub');
   if (genSub) genSub.textContent = '↳ ' + _fmtDev(name);
   var body = document.getElementById('cfgViewBody');
