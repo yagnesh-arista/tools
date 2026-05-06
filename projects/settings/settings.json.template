@@ -49,6 +49,10 @@
           },
           {
             "type": "command",
+            "command": "bash ~/.claude/hooks/topoassist-client-test-check.sh"
+          },
+          {
+            "type": "command",
             "command": "bash ~/.claude/hooks/eos-tricks-publish.sh",
             "statusMessage": "Publishing eos-tricks.html to public_html..."
           },
