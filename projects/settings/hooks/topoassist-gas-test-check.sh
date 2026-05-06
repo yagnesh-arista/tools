@@ -11,7 +11,7 @@ f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
 echo "$f" | grep -q '/topoassist/Code\.gs' || exit 0
 
 TOPODIR="$HOME/claude/projects/topoassist"
-TESTS_FILE="$TOPODIR/Tests.gs"
+TESTS_FILE="$TOPODIR/Test-gs.gs"
 
 # ── 1. Detect new/changed public functions in diff ────────────────────────────
 NEW_FNS=$(git -C "$HOME/claude" diff HEAD -- projects/topoassist/Code.gs 2>/dev/null \
