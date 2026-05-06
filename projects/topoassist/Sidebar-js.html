@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.11 | 2026-05-06 11:32:44 -->
+<!-- TopoAssist v260506.12 | 2026-05-06 11:40:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.11";  // keep in sync with Code.gs
+const APP_VERSION = "260506.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1992,7 +1992,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
       hideGlobalLoading();
       setUiBusy(false);
       btn.innerHTML = origHtml;
-      alert('✗ Sync Failed: ' + err.message);
+      setStatus('✗ Sync Failed: ' + err.message, 'status-error');
     })
     .syncSchemaPreservingOrder(null, applyFormatting, deleteOrphans);
 }
