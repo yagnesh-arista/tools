@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.44 | 2026-05-06 15:22:36 -->
+<!-- TopoAssist v260506.45 | 2026-05-06 15:30:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.44";  // keep in sync with Code.gs
+const APP_VERSION = "260506.45";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15383,6 +15383,45 @@ function highlightEosConfig(text) {
 
 // Split raw config into block objects: [{header, lines, sep}]
 // header / sep / each line: {text, lineNum}
+function _makeConfigSearchHandler(ids) {
+  // ids: { inp, body, clearBtn, badge } — DOM elements, not IDs
+  return function() {
+    if (!ids.inp || !ids.body || !currentRawConfig) return;
+    const rawTerm = ids.inp.value.toLowerCase().trim();
+    if (ids.clearBtn) ids.clearBtn.classList.toggle('hidden', !rawTerm);
+    if (!rawTerm) {
+      ids.body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
+      if (ids.badge) ids.badge.classList.add('hidden');
+      return;
+    }
+    const lineJump = rawTerm.match(/^:(\d+)$/);
+    if (lineJump) {
+      const targetLine = parseInt(lineJump[1], 10);
+      ids.body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})), targetLine);
+      if (ids.badge) { ids.badge.textContent = 'Line ' + targetLine; ids.badge.classList.remove('hidden'); }
+      const hlEl = ids.body.querySelector('.cfg-line-hl');
+      if (hlEl) hlEl.scrollIntoView({block: 'center'});
+      return;
+    }
+    const term = rawTerm
+      .replace(/^int\s/, 'interface ').replace(/ethernet/g, 'et').replace(/port-channel/g, 'po')
+      .replace(/^desc\s/, 'description ').replace(/^lo\s?/, 'loopback').replace(/^mgmt/, 'management')
+      .replace(/vlan\s/g, 'vlan');
+    const blocks = _splitConfigIntoBlocks(currentRawConfig);
+    const matched = blocks.filter(b => {
+      const all = [...(b.header ? [b.header] : []), ...b.lines];
+      return all.some(l => l.text.toLowerCase().includes(term));
+    });
+    const flatLines = [];
+    matched.forEach(b => { if (b.header) flatLines.push(b.header); flatLines.push(...b.lines); if (b.sep) flatLines.push(b.sep); });
+    ids.body.innerHTML = _renderWithLineNums(flatLines);
+    if (ids.badge) {
+      ids.badge.textContent = matched.length ? matched.length + ' block' + (matched.length !== 1 ? 's' : '') + ' · ' + flatLines.length + ' lines' : '';
+      ids.badge.classList.toggle('hidden', !matched.length);
+    }
+  };
+}
+
 function _splitConfigIntoBlocks(rawConfig) {
   const blocks = [];
   let cur = null;
@@ -15476,64 +15515,7 @@ function showConfigModal(deviceName, configText, opts) {
   };
 
   // --- 2. SMART FILTER LOGIC ---
-  searchInput.oninput = function (e) {
-    let rawTerm = e.target.value.toLowerCase().trim();
-
-    // Toggle Clear Button
-    if (rawTerm.length > 0) clearBtn.classList.remove("hidden");
-    else clearBtn.classList.add("hidden");
-
-    if (!rawTerm) {
-      body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
-      matchBadge.classList.add("hidden");
-      return;
-    }
-
-    // Line number jump: :N  (e.g. ":12314")
-    const lineJump = rawTerm.match(/^:(\d+)$/);
-    if (lineJump) {
-      const targetLine = parseInt(lineJump[1], 10);
-      const allLines = currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1}));
-      body.innerHTML = _renderWithLineNums(allLines, targetLine);
-      matchBadge.innerText = `Line ${targetLine}`;
-      matchBadge.classList.remove("hidden");
-      const hlEl = body.querySelector('.cfg-line-hl');
-      if (hlEl) hlEl.scrollIntoView({block: 'center'});
-      return;
-    }
-
-    // CLI shorthands → full config format
-    const term = rawTerm
-      .replace(/^int\s/, "interface ")
-      .replace(/ethernet/g, "et")
-      .replace(/port-channel/g, "po")
-      .replace(/^desc\s/, "description ")
-      .replace(/^lo\s?/, "loopback")
-      .replace(/^mgmt/, "management")
-      .replace(/vlan\s/g, "vlan");
-
-    // Block-aware filter: if ANY line in a block matches, show the whole block
-    const blocks = _splitConfigIntoBlocks(currentRawConfig);
-    const matched = blocks.filter(b => {
-      const all = [...(b.header ? [b.header] : []), ...b.lines];
-      return all.some(l => l.text.toLowerCase().includes(term));
-    });
-
-    const flatLines = [];
-    matched.forEach(b => {
-      if (b.header) flatLines.push(b.header);
-      flatLines.push(...b.lines);
-      if (b.sep) flatLines.push(b.sep);
-    });
-
-    body.innerHTML = _renderWithLineNums(flatLines);
-
-    const blockCount = matched.length;
-    matchBadge.innerText = blockCount
-      ? `${blockCount} block${blockCount !== 1 ? 's' : ''} · ${flatLines.length} lines`
-      : '';
-    matchBadge.classList.toggle("hidden", !blockCount);
-  };
+  searchInput.oninput = _makeConfigSearchHandler({inp: searchInput, body, clearBtn, badge: matchBadge});
 }
 
 /**
@@ -16639,19 +16621,18 @@ function _openCfgPanelView(name) {
   if (genSub) genSub.textContent = '↳ ' + _fmtDev(name);
   var body = document.getElementById('cfgViewBody');
   if (body) body.innerHTML = _renderWithLineNums(text.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
+  var clr = document.getElementById('cfgViewSearchClear');
+  var badge = document.getElementById('cfgViewMatchCount');
   var inp = document.getElementById('cfgViewSearch');
   if (inp) {
     inp.value = '';
-    inp.oninput = _cfgViewSearchHandler;
+    inp.oninput = _makeConfigSearchHandler({inp, body, clearBtn: clr, badge});
     inp.onkeydown = function(e) {
       if (e.key === 'Escape' && inp.value.trim() !== '') {
         e.preventDefault(); e.stopPropagation(); _clearCfgViewSearch();
       }
     };
   }
-  var clr = document.getElementById('cfgViewSearchClear');
-  if (clr) clr.classList.add('hidden');
-  var badge = document.getElementById('cfgViewMatchCount');
   if (badge) badge.classList.add('hidden');
   var isNonEos = allDevicesData[name] && allDevicesData[name].type === 'non-arista';
   var pushDiv   = document.getElementById('cfgViewPushDiv');
@@ -16664,55 +16645,6 @@ function _openCfgPanelView(name) {
   if (inp) inp.focus();
 }
 
-function _cfgViewSearchHandler() {
-  var inp   = document.getElementById('cfgViewSearch');
-  var body  = document.getElementById('cfgViewBody');
-  var clr   = document.getElementById('cfgViewSearchClear');
-  var badge = document.getElementById('cfgViewMatchCount');
-  if (!inp || !body || !currentRawConfig) return;
-  var rawTerm = inp.value.toLowerCase().trim();
-  if (clr) clr.classList.toggle('hidden', !rawTerm);
-  if (!rawTerm) {
-    body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
-    if (badge) badge.classList.add('hidden');
-    return;
-  }
-  var lineJump = rawTerm.match(/^:(\d+)$/);
-  if (lineJump) {
-    var targetLine = parseInt(lineJump[1], 10);
-    var allLines = currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; });
-    body.innerHTML = _renderWithLineNums(allLines, targetLine);
-    if (badge) { badge.textContent = 'Line ' + targetLine; badge.classList.remove('hidden'); }
-    var hlEl = body.querySelector('.cfg-line-hl');
-    if (hlEl) hlEl.scrollIntoView({block: 'center'});
-    return;
-  }
-  var term = rawTerm
-    .replace(/^int\s/, 'interface ')
-    .replace(/ethernet/g, 'et')
-    .replace(/port-channel/g, 'po')
-    .replace(/^desc\s/, 'description ')
-    .replace(/^lo\s?/, 'loopback')
-    .replace(/^mgmt/, 'management')
-    .replace(/vlan\s/g, 'vlan');
-  var blocks = _splitConfigIntoBlocks(currentRawConfig);
-  var matched = blocks.filter(function(b) {
-    var all = (b.header ? [b.header] : []).concat(b.lines);
-    return all.some(function(l) { return l.text.toLowerCase().includes(term); });
-  });
-  var flatLines = [];
-  matched.forEach(function(b) {
-    if (b.header) flatLines.push(b.header);
-    flatLines.push.apply(flatLines, b.lines);
-    if (b.sep) flatLines.push(b.sep);
-  });
-  body.innerHTML = _renderWithLineNums(flatLines);
-  if (badge) {
-    badge.textContent = matched.length ? matched.length + ' block' + (matched.length !== 1 ? 's' : '') + ' · ' + flatLines.length + ' lines' : '';
-    badge.classList.toggle('hidden', !matched.length);
-  }
-}
-
 function _clearCfgViewSearch() {
   var inp = document.getElementById('cfgViewSearch');
   if (!inp) return;
@@ -16722,49 +16654,11 @@ function _clearCfgViewSearch() {
 }
 
 function _cfgViewCopyAll() {
-  var text = currentRawConfig;
-  if (!text) return;
-  var btn = document.getElementById('btnCfgViewCopyAll');
-  var doFeedback = function() {
-    if (!btn) return;
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(function() { btn.textContent = orig; }, 2000);
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { setStatus('Copy failed.', 'status-error'); });
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(ex) { setStatus('Copy failed.', 'status-error'); }
-    document.body.removeChild(ta);
-  }
+  _copyToClipboard(currentRawConfig, document.getElementById('btnCfgViewCopyAll'));
 }
 
 function _cfgViewCopyInterface() {
-  var text = _extractAllInterfaceBlocks(currentRawConfig);
-  if (!text) return;
-  var btn = document.getElementById('btnCfgViewCopyIface');
-  var doFeedback = function() {
-    if (!btn) return;
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(function() { btn.textContent = orig; }, 2000);
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { setStatus('Copy failed.', 'status-error'); });
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); doFeedback(); } catch(ex) { setStatus('Copy failed.', 'status-error'); }
-    document.body.removeChild(ta);
-  }
+  _copyToClipboard(_extractAllInterfaceBlocks(currentRawConfig), document.getElementById('btnCfgViewCopyIface'));
 }
 
 function _copyGenRow(devName, btn) {
