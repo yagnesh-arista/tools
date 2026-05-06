@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.78 | 2026-05-06 19:37:27 -->
+<!-- TopoAssist v260506.79 | 2026-05-06 19:39:16 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1199,6 +1199,34 @@
   }
   .cabling-pill-active:hover:not(:disabled) {
     background: #bae6fd;
+  }
+
+  /* Cabling Export — inline text preview */
+  .cabling-preview-text {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-main);
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    resize: vertical;
+    line-height: 1.5;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .cabling-preview-text:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+  }
+  .cabling-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
   }
 
   /* Standard Buttons (Modal Actions) */
