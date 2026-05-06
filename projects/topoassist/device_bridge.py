@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260505.40 | 2026-05-05 13:37:30
+# topoassist v260506.67 | 2026-05-06 18:08:59
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260505.2"
+VERSION           = "260506.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -309,13 +309,30 @@ def _parse_internal_vlans(ivlans):
     return sorted(int(vid) for vid in ivlans.get("internalVlans", {}).keys())
 
 
-def _build_devstatus_ssh(ver, ifs, ivlans):
+def _parse_interface_errors(raw):
+    """Return {IfaceName: {fcs, sym, align}} for interfaces with any non-zero L1 counter.
+
+    EOS returns: {"interfaceErrorCounters": {"Ethernet1": {"fcsErrors": 3, ...}, ...}}
+    Only interfaces with at least one non-zero counter are included (compact response).
+    """
+    out = {}
+    for iface, c in (raw or {}).get("interfaceErrorCounters", {}).items():
+        fcs   = c.get("fcsErrors",       0)
+        sym   = c.get("symbolErrors",    0)
+        align = c.get("alignmentErrors", 0)
+        if fcs or sym or align:
+            out[iface] = {"fcs": fcs, "sym": sym, "align": align}
+    return out
+
+
+def _build_devstatus_ssh(ver, ifs, ivlans, errs=None):
     """Build devstatus response dict from raw _run_cmds results (any may be None on failure).
 
     Each argument corresponds to one SSH/eAPI command result:
-      ver    — 'show version'              (None if command failed)
-      ifs    — 'show interfaces status'    (None if command failed)
-      ivlans — 'show vlan internal usage'  (None if command failed)
+      ver    — 'show version'                    (None if command failed)
+      ifs    — 'show interfaces status'          (None if command failed)
+      ivlans — 'show vlan internal usage'        (None if command failed)
+      errs   — 'show interfaces counters errors' (None if command failed)
 
     A failed command contributes empty data but never causes ok:False — the
     other commands' data is still returned intact.
@@ -327,16 +344,17 @@ def _build_devstatus_ssh(ver, ifs, ivlans):
         raw_ver = raw_ver[len("Software image version: "):]
     raw_ver = raw_ver.split(" (")[0].strip()
     return {
-        "ok":          True,
-        "hostname":    ver.get("hostname", ""),
-        "version":     raw_ver,
-        "platform":    ver.get("modelName", "").lstrip("DCS-"),
-        "bridgeMac":   ver.get("systemMacAddress", ""),
-        "interfaces":  {
+        "ok":             True,
+        "hostname":       ver.get("hostname", ""),
+        "version":        raw_ver,
+        "platform":       ver.get("modelName", "").lstrip("DCS-"),
+        "bridgeMac":      ver.get("systemMacAddress", ""),
+        "interfaces":     {
             k: {"linkStatus": v.get("linkStatus", "")}
             for k, v in ifs.get("interfaceStatuses", {}).items()
         },
-        "internalVlans": _parse_internal_vlans(ivlans),
+        "internalVlans":  _parse_internal_vlans(ivlans),
+        "interfaceErrors": _parse_interface_errors(errs),
     }
 
 
@@ -1451,10 +1469,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if _cfg['transport'] in ("ssh", "eapi"):
-            (ver, ifs, ivlans), cmd_errors = self._run_cmds(
-                ip, "show version", "show interfaces status", "show vlan internal usage"
+            (ver, ifs, ivlans, errs), cmd_errors = self._run_cmds(
+                ip,
+                "show version",
+                "show interfaces status",
+                "show vlan internal usage",
+                "show interfaces counters errors",
             )
-            result = _build_devstatus_ssh(ver, ifs, ivlans)
+            result = _build_devstatus_ssh(ver, ifs, ivlans, errs)
             if cmd_errors:
                 def _fmt(e):
                     if isinstance(e, subprocess.CalledProcessError):
@@ -1469,10 +1491,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
             plat_raw  = self._rest_get(ip, "openconfig-platform:components")
             iface_raw = self._rest_get(ip, "openconfig-interfaces:interfaces")
             return {
-                "ok":         True,
-                "version":    _oc_version(plat_raw),
-                "platform":   _oc_platform(plat_raw),
-                "interfaces": _oc_iface_status(iface_raw),
+                "ok":              True,
+                "version":         _oc_version(plat_raw),
+                "platform":        _oc_platform(plat_raw),
+                "interfaces":      _oc_iface_status(iface_raw),
+                "interfaceErrors": {},
             }
 
         if _cfg['transport'] == "gnmi":
@@ -1482,10 +1505,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "openconfig-interfaces:interfaces",
             )
             return {
-                "ok":         True,
-                "version":    _oc_version(_gnmi_val(plat_r)),
-                "platform":   _oc_platform(_gnmi_val(plat_r)),
-                "interfaces": _oc_iface_status(_gnmi_val(iface_r)),
+                "ok":              True,
+                "version":         _oc_version(_gnmi_val(plat_r)),
+                "platform":        _oc_platform(_gnmi_val(plat_r)),
+                "interfaces":      _oc_iface_status(_gnmi_val(iface_r)),
+                "interfaceErrors": {},
             }
 
         raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")

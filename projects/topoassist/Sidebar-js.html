@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.66 | 2026-05-06 18:00:01 -->
+<!-- TopoAssist v260506.67 | 2026-05-06 18:13:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.66";  // keep in sync with Code.gs
+const APP_VERSION = "260506.67";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10276,6 +10276,9 @@ var bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')
 var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF — down links are common in lab setups (unplugged, powered off)
 var bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF — shut links are common in lab setups (intentionally disabled)
 var bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
+var bridgeAuditFlagL1Errors     = localStorage.getItem('bridgeAuditFlagL1Errors')     !== 'false'; // default ON
+let bridgeL1ErrorThreshold  = parseInt(localStorage.getItem('bridgeL1ErrorThreshold') || '0', 10);
+let bridgePortL1Errors      = {}; // portId → {fcs, sym, align} for ports above threshold
 var auditFlagPoMismatch         = localStorage.getItem('auditFlagPoMismatch')         !== 'false';
 var auditFlagPoAsymmetry        = localStorage.getItem('auditFlagPoAsymmetry')        !== 'false';
 var auditFlagVlanMismatch       = localStorage.getItem('auditFlagVlanMismatch')        !== 'false';
@@ -10445,7 +10448,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260505.2"
+VERSION    = "260506.1"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10586,13 +10589,30 @@ def _parse_internal_vlans(ivlans):
     return sorted(int(vid) for vid in ivlans.get("internalVlans", {}).keys())
 
 
-def _build_devstatus_ssh(ver, ifs, ivlans):
+def _parse_interface_errors(raw):
+    """Return {IfaceName: {fcs, sym, align}} for interfaces with any non-zero L1 counter.
+
+    EOS returns: {"interfaceErrorCounters": {"Ethernet1": {"fcsErrors": 3, ...}, ...}}
+    Only interfaces with at least one non-zero counter are included (compact response).
+    """
+    out = {}
+    for iface, c in (raw or {}).get("interfaceErrorCounters", {}).items():
+        fcs   = c.get("fcsErrors",       0)
+        sym   = c.get("symbolErrors",    0)
+        align = c.get("alignmentErrors", 0)
+        if fcs or sym or align:
+            out[iface] = {"fcs": fcs, "sym": sym, "align": align}
+    return out
+
+
+def _build_devstatus_ssh(ver, ifs, ivlans, errs=None):
     """Build devstatus response dict from raw _run_cmds results (any may be None on failure).
 
     Each argument corresponds to one SSH/eAPI command result:
-      ver    — 'show version'              (None if command failed)
-      ifs    — 'show interfaces status'    (None if command failed)
-      ivlans — 'show vlan internal usage'  (None if command failed)
+      ver    — 'show version'                    (None if command failed)
+      ifs    — 'show interfaces status'          (None if command failed)
+      ivlans — 'show vlan internal usage'        (None if command failed)
+      errs   — 'show interfaces counters errors' (None if command failed)
 
     A failed command contributes empty data but never causes ok:False — the
     other commands' data is still returned intact.
@@ -10604,16 +10624,17 @@ def _build_devstatus_ssh(ver, ifs, ivlans):
         raw_ver = raw_ver[len("Software image version: "):]
     raw_ver = raw_ver.split(" (")[0].strip()
     return {
-        "ok":          True,
-        "hostname":    ver.get("hostname", ""),
-        "version":     raw_ver,
-        "platform":    ver.get("modelName", "").lstrip("DCS-"),
-        "bridgeMac":   ver.get("systemMacAddress", ""),
-        "interfaces":  {
+        "ok":             True,
+        "hostname":       ver.get("hostname", ""),
+        "version":        raw_ver,
+        "platform":       ver.get("modelName", "").lstrip("DCS-"),
+        "bridgeMac":      ver.get("systemMacAddress", ""),
+        "interfaces":     {
             k: {"linkStatus": v.get("linkStatus", "")}
             for k, v in ifs.get("interfaceStatuses", {}).items()
         },
-        "internalVlans": _parse_internal_vlans(ivlans),
+        "internalVlans":  _parse_internal_vlans(ivlans),
+        "interfaceErrors": _parse_interface_errors(errs),
     }
 
 
@@ -11560,10 +11581,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if _cfg['transport'] in ("ssh", "eapi"):
-            (ver, ifs, ivlans), cmd_errors = self._run_cmds(
-                ip, "show version", "show interfaces status", "show vlan internal usage"
+            (ver, ifs, ivlans, errs), cmd_errors = self._run_cmds(
+                ip,
+                "show version",
+                "show interfaces status",
+                "show vlan internal usage",
+                "show interfaces counters errors",
             )
-            result = _build_devstatus_ssh(ver, ifs, ivlans)
+            result = _build_devstatus_ssh(ver, ifs, ivlans, errs)
             if cmd_errors:
                 def _fmt(e):
                     if isinstance(e, subprocess.CalledProcessError): return f"exit {e.returncode}"
@@ -11574,11 +11599,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if _cfg['transport'] == "rest":
             plat  = self._rest_get(ip, "openconfig-platform:components")
             iface = self._rest_get(ip, "openconfig-interfaces:interfaces")
-            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface)}
+            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface), "interfaceErrors": {}}
         if _cfg['transport'] == "gnmi":
             plat_r, iface_r = self._gnmi_get(ip, "openconfig-platform:components", "openconfig-interfaces:interfaces")
             plat = _gnmi_val(plat_r); iface = _gnmi_val(iface_r)
-            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface)}
+            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface), "interfaceErrors": {}}
         raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     # -- Parallel runner -------------------------------------------------------
@@ -12187,6 +12212,7 @@ function _autoRunBridge() {
       _autoOrphanCount = orphans.length;
       const _autoDs = devResult.status === 'fulfilled' ? devResult.value : null;
       _populateBridgePortSubTypes(_autoDs);
+      _populateBridgePortL1Errors(_autoDs);
       _renderLldpResults(results, orphans);
       _logBridgeIssuesToStatusLog(results, orphans, _autoDs, true);
     } else {
@@ -12324,6 +12350,36 @@ function _populateBridgePortSubTypes(dsData) {
     const ls = (ds.interfaces[_expandIfaceName(portId.slice(c + 1))] || {}).linkStatus || '';
     bridgePortSubType[portId] = ls === 'disabled' ? 'shut' : ls === 'notconnect' ? 'down' : 'other';
   });
+}
+
+// Populate bridgePortL1Errors from fresh dsData right after _populateBridgePortSubTypes().
+// SSoT for L1 error classification — all consumers read from this map.
+function _populateBridgePortL1Errors(dsData) {
+  bridgePortL1Errors = {};
+  if (!dsData) return;
+  Object.keys(bridgePortStatus).forEach(portId => {
+    const c  = portId.lastIndexOf(':');
+    const ds = dsData[portId.slice(0, c)];
+    if (!ds || !ds.ok || !ds.interfaceErrors) return;
+    const e = ds.interfaceErrors[_expandIfaceName(portId.slice(c + 1))];
+    if (!e) return;
+    if ((e.fcs || 0) > bridgeL1ErrorThreshold ||
+        (e.sym || 0) > bridgeL1ErrorThreshold ||
+        (e.align || 0) > bridgeL1ErrorThreshold) {
+      bridgePortL1Errors[portId] = e;
+    }
+  });
+}
+
+function _l1ErrDetail(u, uErr, v, vErr) {
+  const fmt = (id, e) => {
+    if (!e) return '';
+    let s = id + ': FCS ' + e.fcs;
+    if (e.sym)   s += ' sym '   + e.sym;
+    if (e.align) s += ' align ' + e.align;
+    return s;
+  };
+  return [fmt(u, uErr), fmt(v, vErr)].filter(Boolean).join(' | ');
 }
 
 function _applyHostnameIndicators(devices) {
@@ -12513,6 +12569,7 @@ function runBridgeCheck() {
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
         _populateBridgePortSubTypes(dsData);
+        _populateBridgePortL1Errors(dsData);
         _renderLldpResults(results, orphans);
         _logBridgeIssuesToStatusLog(results, orphans, dsData, true);
         _manualOrphanCount = orphans.length;
@@ -14347,6 +14404,16 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
       setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
     });
   }
+  // L1 errors — reads from bridgePortL1Errors SSoT (no ad-hoc re-derivation from dsData)
+  if (bridgeAuditFlagL1Errors && results) {
+    results.forEach(r => {
+      const uErr = bridgePortL1Errors[r.u], vErr = bridgePortL1Errors[r.v];
+      if (uErr || vErr) {
+        const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
+        setStatus(`[Audit - Live] L1 errors: ${r.u} \u2194 ${r.v} \u2014 ${detail}`, 'status-warning');
+      }
+    });
+  }
   // [Bridge] cmd failures: operational, not replayed — only emit when dsData provided
   if (dsData) {
     Object.entries(dsData).forEach(([devId, ds]) => {
@@ -14373,6 +14440,7 @@ function _renderLldpResults(results, orphans) {
   const svgUnk   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
   const svgSkip  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   const svgChev  = `<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const svgWarn  = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L11 10H1L6 1Z" stroke="#d97706" stroke-width="1.4" stroke-linejoin="round"/><line x1="6" y1="4.5" x2="6" y2="7" stroke="#d97706" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="8.5" r="0.6" fill="#d97706"/></svg>`;
 
   // ── Classify by bridgePortStatus / bridgePortSubType — single source ──
   const mismatchR = [], noNbrR = [], noNbrDownR = [], noNbrShutR = [], okR = [], noeosR = [];
@@ -14391,8 +14459,15 @@ function _renderLldpResults(results, orphans) {
     }
   });
 
+  // ── L1 error classification — reads from bridgePortL1Errors SSoT ─────
+  const l1ErrR = [];
+  results.forEach(r => {
+    const uErr = bridgePortL1Errors[r.u], vErr = bridgePortL1Errors[r.v];
+    if (uErr || vErr) l1ErrR.push({ r, uErr, vErr });
+  });
+
   const orphanCount = orphans ? orphans.length : 0;
-  const issueCount  = orphanCount + mismatchR.length + noNbrR.length + noNbrDownR.length + noNbrShutR.length;
+  const issueCount  = orphanCount + mismatchR.length + noNbrR.length + noNbrDownR.length + noNbrShutR.length + l1ErrR.length;
   const skipCount   = results.filter(r => r.status === 'skip').length;
   const checkable   = results.length - skipCount;
 
@@ -14449,6 +14524,14 @@ function _renderLldpResults(results, orphans) {
   if (noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
       noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — click to select link')).join('')));
+  }
+  if (l1ErrR.length) {
+    issueParts.push('<div class="br-group-label">L1 Quality</div>');
+    issueParts.push(subHtml('CRC / FCS errors', l1ErrR.length,
+      l1ErrR.map(({ r, uErr, vErr }) => {
+        const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
+        return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link');
+      }).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
