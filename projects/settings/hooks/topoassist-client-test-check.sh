@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260506.12 | 2026-05-06 12:17:12
 # topoassist-client-test-check.sh
 # Fires on every Sidebar-js.html edit:
 #   1. Detects new/changed functions in the diff
