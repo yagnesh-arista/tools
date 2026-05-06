@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.21 | 2026-05-06 11:59:44 -->
+<!-- TopoAssist v260506.22 | 2026-05-06 12:00:03 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.21";  // keep in sync with Code.gs
+const APP_VERSION = "260506.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4868,6 +4868,7 @@ function _updateGwExample() {
     // When global is wide but per-device mask is inherited (hint), explicit per-device first values are preserved.
     const devExplicitWide4 = !!(explicitMask4 && devWide4);
     const devExplicitWide6 = !!(explicitMask6 && devWide6);
+    // SYNC: copied into Tests-client.html — update both when changing this function.
     const lockFirst = (el, wide, fallback, forceValue) => {
       if (!el) return;
       if (wide) {

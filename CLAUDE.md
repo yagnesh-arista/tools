@@ -192,6 +192,8 @@ Button ordering (left → right): `[Delete isolated-left]` ··· `[Cancel] [Pri
 - Primary action always **rightmost**; Cancel always immediately left of it
 - Delete always `margin-right: auto; display: none` — never inline with Cancel/Save
 
+**Cancel + dirty-state**: every edit/confirm modal must have a Cancel button (`.btn-mono`) immediately left of Save. The canonical close function (called by X, Cancel, and Esc) must call `_confirmDirtyClose(isDirty, label)` at top when dirty. Capture `initialState` at end of open function (after DOM populated); reset to `''` in save/delete success handlers before calling close. Exception: embedded-save panels (Config Center) use X-only dismiss.
+
 Esc key: every new modal must be added to both `modalOrder` array AND `closeFuncs` map
 in the global `keydown` handler — omitting either causes Esc to reset the canvas instead.
 
