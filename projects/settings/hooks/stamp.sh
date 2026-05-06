@@ -91,7 +91,7 @@ stamp_file "$f" "$NEW_LINE" "$MARKER"
 
 # ── TopoAssist GAS only: APP_VERSION sync + all-file re-stamp on version bump ─
 case "$f" in
-  */topoassist/Code.gs|*/topoassist/Tests.gs|\
+  */topoassist/Code.gs|*/topoassist/Test-gs.gs|\
   */topoassist/Sidebar.html|*/topoassist/Sidebar-js.html|\
   */topoassist/Sidebar-css.html|*/topoassist/SheetAssistPanel.html|\
   */topoassist/UserGuide.html)
