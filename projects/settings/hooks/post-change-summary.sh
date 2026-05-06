@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260502.2 | 2026-05-02 14:26:30
+# settings v260506.9 | 2026-05-06 12:16:36
 # post-change-summary.sh
 # PostToolUse hook on Bash — fires when command includes git commit, git push, or clasp push.
 # Reports:
@@ -312,4 +312,4 @@ Clasp: ${clasp_status}"
 LOG="$HOME/claude/.change-log"
 echo "$SUMMARY" > "$LOG"
 
-jq -n --arg ctx "$SUMMARY" '{"systemMessage":$ctx}'
+jq -n --arg ctx "$SUMMARY" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
