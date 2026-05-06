@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.74 | 2026-05-06 19:12:47 -->
+<!-- TopoAssist v260506.75 | 2026-05-06 19:24:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.74";  // keep in sync with Code.gs
+const APP_VERSION = "260506.75";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15101,10 +15101,11 @@ function downloadCablingReport(mode) {
   const sheetIndexMap = {};
   sheetOrderNames.forEach((name, index) => sheetIndexMap[name] = index);
 
-  // 1. GROUPING PHASE
-  const { cableGroups } = buildCableGroups();
-  const totalCableGroups = Object.values(cableGroups).length;
-  const totalIndividualLinks = Object.values(cableGroups).reduce((sum, g) => sum + g.links.length, 0);
+  // 1. GROUPING PHASE — apply bridge filter (same as CSV/Markdown)
+  const { cableGroups, sheetIndexMap: _sim } = buildCableGroups();
+  const sortedGroups = _filterCableGroupsByBridge(_sortCableGroups(cableGroups, sheetIndexMap));
+  const totalCableGroups = sortedGroups.length;
+  const totalIndividualLinks = sortedGroups.reduce((sum, g) => sum + g.links.length, 0);
 
 
   // Model/rack lookup: stored metadata first, devstatus platform as fallback for model
@@ -15114,7 +15115,7 @@ function downloadCablingReport(mode) {
   // 2. ORGANIZE DATA
   const groupedLines = {};
 
-  Object.values(cableGroups).forEach(group => {
+  sortedGroups.forEach(group => {
     let count = group.links.length;
 
     let idxA = sheetIndexMap[group.devA];
