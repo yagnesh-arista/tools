@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.5 | 2026-05-06 11:12:01 -->
+<!-- TopoAssist v260506.7 | 2026-05-06 11:13:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.5";  // keep in sync with Code.gs
+const APP_VERSION = "260506.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4818,20 +4818,31 @@ function _updateGwExample() {
     const n = row.getAttribute('data-dev');
     const dMEl4 = document.getElementById('gw_ov_' + n + '_v4_mask');
     const dMEl6 = document.getElementById('gw_ov_' + n + '_v6_mask');
-    const devM4 = (dMEl4 && !dMEl4.classList.contains('gw-ov-wide-hint') && dMEl4.value.trim()) || m4;
-    const devM6 = (dMEl6 && !dMEl6.classList.contains('gw-ov-wide-hint') && dMEl6.value.trim()) || m6;
+    // explicitMask: truthy (the value string) when the user has typed a per-device mask; falsy when still a hint.
+    const explicitMask4 = dMEl4 && !dMEl4.classList.contains('gw-ov-wide-hint') && dMEl4.value.trim();
+    const explicitMask6 = dMEl6 && !dMEl6.classList.contains('gw-ov-wide-hint') && dMEl6.value.trim();
+    const devM4 = explicitMask4 || m4;
+    const devM6 = explicitMask6 || m6;
     const devWide4 = (parseInt(devM4.replace('/', '')) || 24) < 24;
     const devWide6 = (parseInt(devM6.replace('/', '')) || 64) < 64;
-    const lockFirst = (el, wide, fallback) => {
+    // forceValue: only true when the per-device mask itself is explicitly wide.
+    // When global is wide but per-device mask is inherited (hint), explicit per-device first values are preserved.
+    const devExplicitWide4 = !!(explicitMask4 && devWide4);
+    const devExplicitWide6 = !!(explicitMask6 && devWide6);
+    const lockFirst = (el, wide, fallback, forceValue) => {
       if (!el) return;
       if (wide) {
         if (!el.disabled) {
-          el.dataset.preLockVal = (!el.value.trim() || el.classList.contains('gw-ov-wide-hint')) ? '' : el.value;
+          const isHint = !el.value.trim() || el.classList.contains('gw-ov-wide-hint');
+          el.dataset.preLockVal = isHint ? '' : el.value;
           el.disabled = true;
+          if (forceValue || isHint) { el.classList.remove('gw-ov-wide-hint'); el.value = '1'; }
+          // Global wide + explicit per-device first: disable only, preserve the user's value
+        } else if (forceValue && el.value !== '1') {
+          // Already locked (e.g. from global wide) but per-device mask just went explicitly wide — force '1' now
           el.classList.remove('gw-ov-wide-hint');
           el.value = '1';
         }
-        // Already locked — no-op
       } else {
         if (el.disabled) {
           const saved = el.dataset.preLockVal || '';
@@ -4844,10 +4855,10 @@ function _updateGwExample() {
         }
       }
     };
-    lockFirst(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4, glb4first);
+    lockFirst(document.getElementById('gw_ov_' + n + '_v4_first'), devWide4, glb4first, devExplicitWide4);
     applyHint(document.getElementById('gw_ov_' + n + '_v4_last'),  glb4last);
     applyHint(document.getElementById('gw_ov_' + n + '_v4_mask'),  m4);
-    lockFirst(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6, glb6first);
+    lockFirst(document.getElementById('gw_ov_' + n + '_v6_first'), devWide6, glb6first, devExplicitWide6);
     applyHint(document.getElementById('gw_ov_' + n + '_v6_last'),  glb6last);
     applyHint(document.getElementById('gw_ov_' + n + '_v6_mask'),  m6);
   });
