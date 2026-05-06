@@ -1,5 +1,5 @@
 #!/bin/bash
-# tmux.conf v260429.7 | 2026-04-29 12:21:17
+# tmux.conf v260506.1 | 2026-05-06 11:38:07
 # tmux_ai_spend.sh — AI spend widget for tmux status bar
 # Called by status-right: #(~/.tmux/tmux_ai_spend.sh '#{session_name}')
 # Refreshes cache on every tmux tick (every 60s via status-interval),
@@ -36,7 +36,7 @@ try:
     s, m = d['spend'], d['max_budget']
     if not m: sys.exit()
     p = int(s / m * 100)
-    c = 'green' if p < 30 else 'yellow' if p < 60 else 'colour214' if p < 90 else 'red'
+    c = 'green' if p < 31 else 'yellow' if p < 61 else 'colour203' if p < 75 else 'colour160'
     # Sonnet 4.6: $3/M input, $15/M output, ~80/20 split → ~$5.4/M avg
     tok = s / 5.4
     tok_str = f'~{tok:.1f}M' if tok >= 1 else f'~{tok*1000:.0f}K'
