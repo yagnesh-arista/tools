@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.45 | 2026-05-06 15:27:53 -->
+<!-- TopoAssist v260506.46 | 2026-05-06 16:11:11 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5891,10 +5891,13 @@
   .bridge-row-part { background: #fffbeb; cursor: pointer; }
   .bridge-row-unk  { background: var(--bg-secondary); cursor: pointer; }
   .bridge-row-skip { opacity: 0.45; }
+  .bridge-row-shut { background: #f8fafc; cursor: pointer; }
   .bridge-row-ok:hover   { background: #bbf7d0; }
   .bridge-row-fail:hover { background: #fecaca; }
   .bridge-row-part:hover { background: #fde68a; }
   .bridge-row-unk:hover  { background: var(--bg-hover, #e2e8f0); }
+  .bridge-row-shut:hover { background: #f1f5f9; }
+  .bridge-row-shut .bridge-row-cable { color: var(--text-muted); font-weight: 400; }
   .bridge-row-icon { grid-row: 1; display: flex; align-items: center; padding-top: 1px; }
   .bridge-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bridge-row-detail {

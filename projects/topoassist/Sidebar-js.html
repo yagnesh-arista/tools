@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.45 | 2026-05-06 15:30:01 -->
+<!-- TopoAssist v260506.46 | 2026-05-06 16:10:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.45";  // keep in sync with Code.gs
+const APP_VERSION = "260506.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12173,8 +12173,9 @@ function _autoRunBridge() {
       dbg('Auto-Bridge: LLDP results received');
       const { results, orphans } = _compareBridgeData(bridgeResult.value);
       _autoOrphanCount = orphans.length;
-      _renderLldpResults(results, orphans);
-      _logBridgeIssuesToStatusLog(results, orphans, devResult.status === 'fulfilled' ? devResult.value : null, true);
+      const _autoDs = devResult.status === 'fulfilled' ? devResult.value : null;
+      _renderLldpResults(results, orphans, _autoDs);
+      _logBridgeIssuesToStatusLog(results, orphans, _autoDs, true);
       applyLldpIndicators();
     } else {
       dbg('Auto-Bridge: LLDP fetch failed —', bridgeResult.reason);
@@ -12478,7 +12479,7 @@ function runBridgeCheck() {
           else            { dot.className = 'bridge-dev-dot dot-red';   dot.title = res.error || 'Error'; }
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
-        _renderLldpResults(results, orphans);
+        _renderLldpResults(results, orphans, dsData);
         _logBridgeIssuesToStatusLog(results, orphans, dsData, true);
         applyLldpIndicators();
         _manualOrphanCount = orphans.length;
@@ -14314,7 +14315,7 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
   }
 }
 
-function _renderLldpResults(results, orphans) {
+function _renderLldpResults(results, orphans, dsData) {
   const container  = document.getElementById('bridgeResults');
   const sectionsEl = document.getElementById('bridgeResultSections');
 
@@ -14322,25 +14323,42 @@ function _renderLldpResults(results, orphans) {
   const svgCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const svgX     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
   const svgNoNbr = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+  const svgDown  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+  const svgShut  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
   const svgPart  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
   const svgUnk   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>`;
   const svgSkip  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   const svgChev  = `<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   // ── Classify by bridgePortStatus (enum) — never by r.msg content ──────
-  const mismatchR = [], noNbrR = [], okR = [], noeosR = [];
+  const mismatchR = [], noNbrR = [], noNbrDownR = [], noNbrShutR = [], okR = [], noeosR = [];
+
+  // Look up live linkStatus for one side of a link ("DevName:Et1") from dsData
+  function _portLinkSt(devPort) {
+    if (!dsData) return '';
+    const colon = devPort.lastIndexOf(':');
+    const ds = dsData[devPort.slice(0, colon)];
+    if (!ds || !ds.ok || !ds.interfaces) return '';
+    return (ds.interfaces[_expandIfaceName(devPort.slice(colon + 1))] || {}).linkStatus || '';
+  }
+
   results.forEach(r => {
     if (r.status === 'match') { okR.push(r); return; }
     if (r.status === 'partial' || r.status === 'unknown' || r.status === 'skip') { noeosR.push(r); return; }
     if (r.status === 'mismatch') {
       const uSt = bridgePortStatus[r.u], vSt = bridgePortStatus[r.v];
-      if (uSt === 'mismatch' || vSt === 'mismatch') mismatchR.push(r);
-      else noNbrR.push(r);
+      if (uSt === 'mismatch' || vSt === 'mismatch') { mismatchR.push(r); return; }
+      // No-neighbour: sub-classify by interface op-status from dsData
+      const uLs = _portLinkSt(r.u), vLs = _portLinkSt(r.v);
+      if (uLs === 'disabled' || vLs === 'disabled') { noNbrShutR.push(r); return; }
+      if (uLs === 'notconnect' || vLs === 'notconnect') { noNbrDownR.push(r); return; }
+      noNbrR.push(r);
     }
   });
 
   const orphanCount = orphans ? orphans.length : 0;
-  const issueCount  = orphanCount + mismatchR.length + noNbrR.length;
+  // Shut interfaces are intentional — excluded from issue count
+  const issueCount  = orphanCount + mismatchR.length + noNbrDownR.length + noNbrR.length;
   const skipCount   = results.filter(r => r.status === 'skip').length;
   const checkable   = results.length - skipCount;
 
@@ -14386,6 +14404,14 @@ function _renderLldpResults(results, orphans) {
   if (noNbrR.length) {
     issueParts.push(subHtml('No neighbour', noNbrR.length,
       noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — click to select link')).join('')));
+  }
+  if (noNbrDownR.length) {
+    issueParts.push(subHtml('Interface down', noNbrDownR.length,
+      noNbrDownR.map(r => rowHtml(r, svgDown, 'bridge-row-part', r.msg, 'Link is physically down — click to select link')).join('')));
+  }
+  if (noNbrShutR.length) {
+    issueParts.push(subHtml('Interface shut', noNbrShutR.length,
+      noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — not flagged as issue')).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
