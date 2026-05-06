@@ -3413,6 +3413,27 @@ Covered functions:
   normalizePo            — Port-Channel number extraction (8 cases)
   isValidPort            — port string validation (8 cases)
 
+── Client-side JS (Sidebar-js.html) ──────────────────────────────────────────
+Run:  cd ~/claude/projects/topoassist && node test-js.js
+File: test-js.js  (was tests-client-node.js — renamed 2026-05-06; 22 tests)
+Output: pass/fail per test, summary line
+
+Also: Tests-client.html (browser-runnable; macOS: open Tests-client.html)
+
+Covered functions (closures inside _updateGwExample / _readGwDeviceOverrides):
+  applyHint(el, inheritedVal)          — 4 cases
+  lockFirst(el, wide, fallback, force) — 10 cases (wide + exit-wide)
+  g(f, inputMap)                       — 4 cases (disabled / hint / explicit)
+  computeGlb4firstForNonWide(...)      — 4 cases
+
+SYNC rule: applyHint and lockFirst in test-js.js and Tests-client.html are
+verbatim copies of the closures in Sidebar-js.html. Both carry // SYNC:
+comments. Update all three whenever either function changes.
+
+Hook: topoassist-client-test-check.sh fires on every Sidebar-js.html edit —
+detects new top-level functions, checks test-js.js for coverage, and reminds
+to run: node test-js.js
+
 ── What is NOT tested ─────────────────────────────────────────────────────────
 GAS-entangled functions (PropertiesService, SpreadsheetApp, UrlFetchApp) and
 network transport functions (_ssh_cmds, _eapi_cmds, etc.) are not unit-tested.
