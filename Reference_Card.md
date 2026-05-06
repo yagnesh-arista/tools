@@ -217,3 +217,4 @@ All concurrent-write risks are flock-protected:
 | Hooks | `~/.claude/settings.json` | All automatic enforcement |
 | Backup | `~/claude/projects/settings/` | Restore kit for new machine |
 | Reference | `~/claude/Reference_Card.md` | This file — single source of truth |
+
