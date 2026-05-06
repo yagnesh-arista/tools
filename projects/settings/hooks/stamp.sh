@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260424.2 | 2026-04-24 10:43:18
+# settings v260506.21 | 2026-05-06 12:56:15
 # stamp.sh — unified version stamp hook (replaces topoassist-stamp.sh + project-stamp.sh)
 # PostToolUse Write|Edit
 #
@@ -125,7 +125,7 @@ PYEOF
 
     # Re-stamp all GAS files so every file ships the same version
     STAMPED_EXTRA=""
-    for gas in Code.gs Tests.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
+    for gas in Code.gs Test-gs.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
       gas_path="$TOPODIR/$gas"
       [ "$gas_path" = "$f" ] && continue
       [ -f "$gas_path" ] || continue
@@ -140,7 +140,7 @@ PYEOF
     # Stage all stamped GAS files under claude-git.lock (prevents index.lock conflicts)
     exec 8>/tmp/claude-git.lock
     flock -x 8
-    for gas in Code.gs Tests.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
+    for gas in Code.gs Test-gs.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html; do
       gas_path="$TOPODIR/$gas"
       [ -f "$gas_path" ] && git -C "$HOME/claude" add "$gas_path" &>/dev/null
     done
