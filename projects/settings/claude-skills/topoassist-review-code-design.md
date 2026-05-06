@@ -886,6 +886,64 @@ Reset rules:
 
 ---
 
+## Check 33 — alert() in Error/Async Paths
+
+`alert()` is permitted only for two cases: (1) **input validation that gates an action** (e.g. "Field ID required", "Interface Name required", IP mask validation errors, "Device already in list"), and (2) the **D3 cable tooltip** on link click (line ~9396). All other uses — withFailureHandler, server response errors (res.error), catch blocks, precondition guards, copy failures, timeouts — must use `setStatus(..., 'status-error')` or `setStatus(..., 'status-warn')`.
+
+```bash
+# Find ALL alert() calls not in comments
+grep -n "alert(" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "^.*//.*alert("
+```
+
+For each result, classify:
+- **KEEP** if it is: input validation (`if (!field) { alert(...); return; }`), or the D3 tooltip (`alert(\`${d.source.id}...`)`)
+- **FAIL** if it is: inside a `withFailureHandler`, a `catch` block, checking `res.error`, a guard against missing topology/config data, or a copy/clipboard failure
+
+✗ FAIL if any `alert()` exists in a withFailureHandler callback
+✗ FAIL if any `alert()` exists in a `catch` block handling async/server errors
+✗ FAIL if any `alert()` checks `res.error` or `err.message` from a GAS response
+✗ FAIL if any `alert()` is used as a precondition guard ("No topology data", "D3 not loaded", etc.)
+✗ FAIL if any `alert()` is used for copy/clipboard failures
+✗ FAIL if `window.onerror` does not call `setStatus()` (line ~595)
+✗ FAIL if `window.addEventListener('unhandledrejection', ...)` handler is missing or does not call `setStatus()`
+
+---
+
+## Check 34 — allDevicesData / allNodesData Null Guards in Async Callbacks
+
+`allDevicesData` and `allNodesData` are cleared during topology reload. Any GAS `withSuccessHandler` callback or event handler registered during render (and fired later) may access these after they are cleared. The safe patterns are `?.prop`, `&& obj.prop`, or an `if (obj)` guard before the block. The **unsafe** pattern is `allDevicesData[x].prop` or a variable `d = allDevicesData[x]` followed by `d.prop` without checking `d` first.
+
+Known fixed locations (verify guards still present):
+- `processDeviceConfig()` line ~6768: `(wasAlreadyLoaded && allDevicesData[deviceName]) ? ... .fetchTime`
+- `selectDevice()` line ~6555: `devData?.fetchEpoch`
+
+```bash
+# Find bracket-indexed allDevicesData property reads — scan for unguarded patterns
+grep -n "allDevicesData\[" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "allDevicesData\[.*\]?\." \
+  | grep -v "if (allDevicesData\[" \
+  | grep -v "allDevicesData\[.*\] &&" \
+  | grep -v "for (" \
+  | grep -v "Object\.keys\|Object\.values\|delete " \
+  | head -30
+
+# Confirm known guards are still present
+grep -n "wasAlreadyLoaded && allDevicesData\[deviceName\]" \
+  ~/claude/projects/topoassist/Sidebar-js.html
+grep -n "devData?\.fetchEpoch" ~/claude/projects/topoassist/Sidebar-js.html
+```
+
+For any new code added this session that accesses `allDevicesData[x]` or `allNodesData[x]` inside a `withSuccessHandler`, a click/event handler registered during render, or a `setTimeout`:
+- [ ] Is there a null check before accessing properties on the result?
+- [ ] If a variable `d = allDevicesData[x]` is used, is `d` checked before `d.prop`?
+
+✗ FAIL if a new `withSuccessHandler` callback accesses `allDevicesData[x].prop` without a null guard
+✗ FAIL if a new render-time event handler closure accesses `allNodesData[x].prop` without a guard
+✗ FAIL if the known guards at `processDeviceConfig` and `selectDevice` have been removed
+
+---
+
 ## Output Format
 
 ```
