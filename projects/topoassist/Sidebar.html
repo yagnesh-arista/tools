@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.59 | 2026-05-06 17:25:06 -->
+<!-- TopoAssist v260506.60 | 2026-05-06 17:26:34 -->
 <!DOCTYPE html>
 <html>
 
@@ -897,7 +897,8 @@
         </div>
         <div class="bridge-audit-flags-grid" style="margin-top:3px;align-items:center;">
           <span class="bridge-audit-cat"></span>
-          <label class="bridge-chk-label" title="How often (in minutes) to run a live bridge check while connected. Min: 5 min.">
+          <label class="bridge-chk-label" title="Periodically run a live bridge check while connected. Interval is configurable (min: 5 min).">
+            <input type="checkbox" id="chkBridgeAutoCheck" onchange="onBridgeAutoCheckToggle(this.checked)" checked>
             Auto-check every
             <input type="number" id="bridgeAutoCheckInterval" min="5" max="480" value="30"
               onchange="onBridgeAutoCheckIntervalChange()"

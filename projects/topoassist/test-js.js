@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260506.24 | 2026-05-06 12:08:58
+// topoassist v260506.60 | 2026-05-06 17:27:34
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -193,6 +193,20 @@ t('glb4firstForNonWide: not wide → firstEl passthrough',
 
 t('glb4firstForNonWide: not wide + empty firstEl → \'\'',
   computeGlb4firstForNonWide(false, null, ''), '');
+
+// ── Bridge auto-check: interval clamping ─────────────────────────────────
+// SYNC: bounds match Sidebar-js.html onBridgeAutoCheckIntervalChange + _startBridgeAutoCheck
+function clampBridgeInterval(raw) {
+  return Math.max(5, Math.min(480, parseInt(raw, 10) || 30));
+}
+
+t('clampBridgeInterval: 30 → 30',   clampBridgeInterval(30),    30);
+t('clampBridgeInterval: 3 → 5',     clampBridgeInterval(3),      5);
+t('clampBridgeInterval: 600 → 480', clampBridgeInterval(600),  480);
+t('clampBridgeInterval: 0 → 30',    clampBridgeInterval(0),     30);
+t('clampBridgeInterval: NaN → 30',  clampBridgeInterval('abc'), 30);
+t('clampBridgeInterval: 5 → 5',     clampBridgeInterval(5),      5);
+t('clampBridgeInterval: 480 → 480', clampBridgeInterval(480),  480);
 
 // ── Report ────────────────────────────────────────────────────────────────
 
