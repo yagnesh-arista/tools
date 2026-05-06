@@ -1338,6 +1338,10 @@
           <span class="cfg-nav-title">Generate</span>
           <span class="cfg-nav-sub">Build EOS configs from sheet</span>
         </button>
+        <button class="cfg-center-nav-item" id="cfgNav-view" onclick="_switchCfgPanel('view')">
+          <span class="cfg-nav-title">View</span>
+          <span class="cfg-nav-sub" id="cfgNavViewSub">Device config</span>
+        </button>
         <button class="cfg-center-nav-item" id="cfgNav-template" onclick="_switchCfgPanel('template')">
           <span class="cfg-nav-title">Template</span>
           <span class="cfg-nav-sub">Global config prefix</span>
@@ -1357,6 +1361,34 @@
           <div id="generateAllLeft" class="cfg-panel-body">
             <div style="color:var(--text-muted);font-style:italic;">No configs generated yet.</div>
           </div>
+        </div>
+        <!-- Config View panel -->
+        <div id="cfgPanel-view" class="cfg-panel">
+          <!-- Device name strip -->
+          <div class="cfg-panel-desc" id="cfgViewTitle" style="font-style:normal;font-weight:700;font-size:12px;color:var(--text-main);">—</div>
+          <!-- Search + action buttons -->
+          <div class="cfg-panel-actions" style="flex-wrap:wrap;gap:6px;">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="cfgViewSearch" placeholder="Filter… or :N to jump to line" autocomplete="off">
+              <button id="cfgViewSearchClear" class="btn-clear hidden" onclick="_clearCfgViewSearch()">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <span id="cfgViewMatchCount" class="match-badge hidden"></span>
+            <div class="divider-v" style="height:18px;margin:0 2px;flex-shrink:0;"></div>
+            <button class="btn-mono btn-sm" id="btnCfgViewCopyIface" onclick="_cfgViewCopyInterface()" style="font-family:'JetBrains Mono',monospace;">Copy Interface</button>
+            <button class="btn-mono btn-sm" id="btnCfgViewCopyAll" onclick="_cfgViewCopyAll()" style="font-family:'JetBrains Mono',monospace;">Copy All</button>
+            <div class="divider-v" id="cfgViewPushDiv" style="height:18px;margin:0 2px;flex-shrink:0;display:none;"></div>
+            <button class="btn-mono btn-sm" id="btnCfgViewPushIface" onclick="cfgModalPushInterface()" title="Push interface config(s) via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push Interface</button>
+            <button class="btn-mono btn-sm" id="btnCfgViewPushAll" onclick="cfgModalPushAll()" title="Push full config via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push All</button>
+          </div>
+          <!-- Search hint -->
+          <div class="cfg-search-hint">Filter by keyword (interface, IP, vlan, description…) &middot; Type <code>:N</code> to jump to line N</div>
+          <!-- Config body -->
+          <pre id="cfgViewBody"></pre>
         </div>
         <!-- Config Template panel -->
         <div id="cfgPanel-template" class="cfg-panel">

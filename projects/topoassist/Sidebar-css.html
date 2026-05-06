@@ -3335,6 +3335,25 @@
     color: var(--text-main);
   }
 
+  #cfgViewSearch {
+    padding: 6px 28px 6px 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    width: 200px;
+    flex-shrink: 0;
+    height: 28px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+    background: var(--bg-input);
+    color: var(--text-main);
+  }
+  #cfgViewSearch:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
   /* The Clear 'X' Button */
   .btn-clear {
     position: absolute;
@@ -3442,6 +3461,46 @@
   #configBody .cfg-neighbor  { color: #0369a1; }
   #configBody .cfg-shutdown  { color: #dc2626; }
   #configBody .cfg-desc      { color: #94a3b8; font-style: italic; }
+  #cfgViewBody {
+    font-family: 'JetBrains Mono', monospace;
+    white-space: pre;
+    overflow: auto;
+    padding: 16px 20px;
+    margin: 0;
+    background: #ffffff;
+    color: #1e293b;
+    line-height: 1.6;
+    flex: 1;
+    min-height: 0;
+    font-size: 12px;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  #cfgViewBody .cfg-error     { color: #dc2626; font-weight: bold; }
+  #cfgViewBody .cfg-comment   { color: #64748b; font-style: italic; }
+  #cfgViewBody .cfg-cleanup   { color: #dc2626; font-weight: 600; }
+  #cfgViewBody .cfg-interface { color: #1d4ed8; font-weight: bold; }
+  #cfgViewBody .cfg-router    { color: #7c3aed; font-weight: bold; }
+  #cfgViewBody .cfg-vlan      { color: #c2410c; font-weight: bold; }
+  #cfgViewBody .cfg-mlag      { color: #4f46e5; font-weight: bold; }
+  #cfgViewBody .cfg-routing   { color: #15803d; font-weight: 600; }
+  #cfgViewBody .cfg-ip        { color: #0d9488; }
+  #cfgViewBody .cfg-neighbor  { color: #0369a1; }
+  #cfgViewBody .cfg-shutdown  { color: #dc2626; }
+  #cfgViewBody .cfg-desc      { color: #94a3b8; font-style: italic; }
+  #cfgViewBody .cfg-lno {
+    color: #94a3b8; font-size: 10px; padding-right: 10px;
+    user-select: none; -webkit-user-select: none;
+  }
+  #cfgViewBody .cfg-line-hl {
+    display: block; background: rgba(234,179,8,0.13);
+    border-left: 2px solid #eab308; padding-left: 2px; margin-left: -4px;
+  }
+  #cfgViewBody .cfg-line-hl .cfg-lno { color: #eab308; }
+  #cfgViewBody::-webkit-scrollbar { height: 8px; width: 8px; }
+  #cfgViewBody::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  #cfgViewBody::-webkit-scrollbar-track { background: #ffffff; }
+
   .cfg-search-hint {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;

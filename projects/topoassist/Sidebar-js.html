@@ -6122,6 +6122,11 @@ window.topologyKeyHandler = function (event) {
           gcfgSearch.value = ''; gcfgSearch.dispatchEvent(new Event('input')); gcfgSearch.focus();
           return;
         }
+        const cvSearch = document.getElementById('cfgViewSearch');
+        if (cvSearch && cvSearch.value.trim() !== '') {
+          _clearCfgViewSearch();
+          return;
+        }
       }
       openModal.querySelector('.btn-modal-close')?.click();
       return;
@@ -16383,7 +16388,7 @@ function _genAllSelectAll(state) {
 }
 
 function _switchCfgPanel(panel) {
-  ['generate', 'template', 'cleanup', 'push'].forEach(p => {
+  ['generate', 'template', 'cleanup', 'push', 'view'].forEach(p => {
     const nav = document.getElementById('cfgNav-' + p);
     const content = document.getElementById('cfgPanel-' + p);
     const active = p === panel;
@@ -16554,30 +16559,147 @@ function _getConfigTextForDevice(name) {
   return null;
 }
 
-function _iconBtn_UNUSED(type, name, disabled) {
-  const base = 'display:inline-flex;align-items:center;justify-content:center;'
-    + 'width:22px;height:18px;padding:0;border-radius:3px;flex-shrink:0;'
-    + 'font-family:\'JetBrains Mono\',monospace;user-select:none;-webkit-user-select:none;'
-    + 'border:1px solid var(--border,#334155);background:transparent;color:var(--text-muted);';
-  const dis = disabled ? 'opacity:0.35;cursor:default;pointer-events:none;' : 'cursor:pointer;';
-  const safeAttr = escapeHtml(name);
-  if (type === 'view') {
-    const onclick = disabled ? '' : 'onclick="_viewGeneratedConfigByName(this.dataset.dev)"';
-    return '<button data-dev="' + safeAttr + '" style="' + base + dis + '" ' + onclick + ' title="View config">'
-      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-      + '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>';
-  } else {
-    const onclick = disabled ? '' : 'onclick="_copyDeviceConfigByName(this.dataset.dev,this)"';
-    return '<button data-dev="' + safeAttr + '" style="' + base + dis + '" ' + onclick + ' title="Copy config">'
-      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-      + '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
-      + '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2 2h9a2 2 0 0 1 2 2v1"/></svg></button>';
+function _viewGeneratedConfigByName(name) {
+  _openCfgPanelView(name);
+}
+
+function _openCfgPanelView(name) {
+  var text = _getConfigTextForDevice(name);
+  if (!text) return;
+  window._cfgViewRawText = text;
+  _configViewContext = { deviceName: name, portFilter: null };
+  var title = document.getElementById('cfgViewTitle');
+  if (title) title.textContent = _fmtDev(name);
+  var navSub = document.getElementById('cfgNavViewSub');
+  if (navSub) navSub.textContent = '→ ' + _fmtDev(name);
+  var body = document.getElementById('cfgViewBody');
+  if (body) body.innerHTML = _renderWithLineNums(text.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
+  var inp = document.getElementById('cfgViewSearch');
+  if (inp) {
+    inp.value = '';
+    inp.oninput = _cfgViewSearchHandler;
+    inp.onkeydown = function(e) {
+      if (e.key === 'Escape' && inp.value.trim() !== '') {
+        e.preventDefault(); e.stopPropagation(); _clearCfgViewSearch();
+      }
+    };
+  }
+  var clr = document.getElementById('cfgViewSearchClear');
+  if (clr) clr.classList.add('hidden');
+  var badge = document.getElementById('cfgViewMatchCount');
+  if (badge) badge.classList.add('hidden');
+  var isNonEos = allDevicesData[name] && allDevicesData[name].type === 'non-arista';
+  var pushDiv   = document.getElementById('cfgViewPushDiv');
+  var pushIface = document.getElementById('btnCfgViewPushIface');
+  var pushAllBtn = document.getElementById('btnCfgViewPushAll');
+  if (pushDiv)    pushDiv.style.display    = isNonEos ? 'none' : '';
+  if (pushIface)  pushIface.style.display  = isNonEos ? 'none' : '';
+  if (pushAllBtn) pushAllBtn.style.display = isNonEos ? 'none' : '';
+  _switchCfgPanel('view');
+  if (inp) inp.focus();
+}
+
+function _cfgViewSearchHandler() {
+  var inp   = document.getElementById('cfgViewSearch');
+  var body  = document.getElementById('cfgViewBody');
+  var clr   = document.getElementById('cfgViewSearchClear');
+  var badge = document.getElementById('cfgViewMatchCount');
+  if (!inp || !body || !window._cfgViewRawText) return;
+  var rawTerm = inp.value.toLowerCase().trim();
+  if (clr) clr.classList.toggle('hidden', !rawTerm);
+  if (!rawTerm) {
+    body.innerHTML = _renderWithLineNums(window._cfgViewRawText.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
+    if (badge) badge.classList.add('hidden');
+    return;
+  }
+  var lineJump = rawTerm.match(/^:(\d+)$/);
+  if (lineJump) {
+    var targetLine = parseInt(lineJump[1], 10);
+    var allLines = window._cfgViewRawText.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; });
+    body.innerHTML = _renderWithLineNums(allLines, targetLine);
+    if (badge) { badge.textContent = 'Line ' + targetLine; badge.classList.remove('hidden'); }
+    var hlEl = body.querySelector('.cfg-line-hl');
+    if (hlEl) hlEl.scrollIntoView({block: 'center'});
+    return;
+  }
+  var term = rawTerm
+    .replace(/^int\s/, 'interface ')
+    .replace(/ethernet/g, 'et')
+    .replace(/port-channel/g, 'po')
+    .replace(/^desc\s/, 'description ')
+    .replace(/^lo\s?/, 'loopback')
+    .replace(/^mgmt/, 'management')
+    .replace(/vlan\s/g, 'vlan');
+  var blocks = _splitConfigIntoBlocks(window._cfgViewRawText);
+  var matched = blocks.filter(function(b) {
+    var all = (b.header ? [b.header] : []).concat(b.lines);
+    return all.some(function(l) { return l.text.toLowerCase().includes(term); });
+  });
+  var flatLines = [];
+  matched.forEach(function(b) {
+    if (b.header) flatLines.push(b.header);
+    flatLines.push.apply(flatLines, b.lines);
+    if (b.sep) flatLines.push(b.sep);
+  });
+  body.innerHTML = _renderWithLineNums(flatLines);
+  if (badge) {
+    badge.textContent = matched.length ? matched.length + ' block' + (matched.length !== 1 ? 's' : '') + ' · ' + flatLines.length + ' lines' : '';
+    badge.classList.toggle('hidden', !matched.length);
   }
 }
 
-function _viewGeneratedConfigByName(name) {
-  const text = _getConfigTextForDevice(name);
-  if (text) showConfigModal(name, text, {noAutoMinimize: true});
+function _clearCfgViewSearch() {
+  var inp = document.getElementById('cfgViewSearch');
+  if (!inp) return;
+  inp.value = '';
+  inp.dispatchEvent(new Event('input'));
+  inp.focus();
+}
+
+function _cfgViewCopyAll() {
+  var text = window._cfgViewRawText;
+  if (!text) return;
+  var btn = document.getElementById('btnCfgViewCopyAll');
+  var doFeedback = function() {
+    if (!btn) return;
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { alert('Copy failed.'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); doFeedback(); } catch(ex) { alert('Copy failed.'); }
+    document.body.removeChild(ta);
+  }
+}
+
+function _cfgViewCopyInterface() {
+  var text = _extractAllInterfaceBlocks(window._cfgViewRawText);
+  if (!text) return;
+  var btn = document.getElementById('btnCfgViewCopyIface');
+  var doFeedback = function() {
+    if (!btn) return;
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(function() { alert('Copy failed.'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); doFeedback(); } catch(ex) { alert('Copy failed.'); }
+    document.body.removeChild(ta);
+  }
 }
 
 function _copyGenRow(devName, btn) {
