@@ -105,6 +105,7 @@ Before writing any logic that classifies, routes, or counts data:
 - [ ] Does any display string combine multiple conditions into one field? Never parse it for routing.
 - [ ] Is the same state tracked in two places? Eliminate the secondary tracker or make it a strict read-only view.
 - [ ] Does count come from the same array that drives the UI? If not, they will diverge.
+- [ ] **Does the logic aggregate multiple structured values into one result (e.g. two port subtypes → one link classification)?** If yes — grep for existing code that does the same reduction and copy it exactly. Never re-derive independently. The canonical case: `bridgePortSubType` across two link endpoints uses `shut > down > other` priority in 3 places (lines 3017, 3077, 14427) — any new consumer must grep and reuse that pattern, not invent its own.
 
 ## Config State — `configCache` Is the Only Store
 
