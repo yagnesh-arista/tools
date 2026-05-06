@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.73 | 2026-05-06 19:01:42 -->
+<!-- TopoAssist v260506.74 | 2026-05-06 19:12:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.73";  // keep in sync with Code.gs
+const APP_VERSION = "260506.74";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14917,7 +14917,7 @@ function _renderCablingBridgeFilter() {
     const cnt = counts[c.val] || 0;
     const disabled = cnt === 0;
     return '<button class="cabling-pill' + (active ? ' cabling-pill-active' : '') + '"'
-      + (disabled ? ' disabled' : ' onclick="_toggleCablingBridgeFilter('' + c.val + '')"')
+      + (disabled ? ' disabled' : ` onclick="_toggleCablingBridgeFilter('${c.val}')"`)
       + '>'
       + c.label + ' (' + cnt + ')</button>';
   }).join('');
