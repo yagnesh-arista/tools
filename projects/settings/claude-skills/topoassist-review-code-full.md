@@ -265,9 +265,25 @@ missing abstractions that make the code hard to reason about.
 
 ## Check D — Tests
 
+Three test suites cover TopoAssist pure logic. Route findings to the correct suite:
+
+| Changed file | Test file | Run command |
+|---|---|---|
+| `device_bridge.py` | `tests/test_device_bridge.py` | `cd ~/claude/projects/topoassist && pytest tests/ -v` |
+| `Code.gs` | `Test-gs.gs` | Apps Script editor → `runAllTests()` |
+| `Sidebar-js.html` (client closures) | `test-js.js` | `cd ~/claude/projects/topoassist && node test-js.js` |
+
+SYNC rule: `applyHint` and `lockFirst` are copied verbatim into both `test-js.js` and
+`Tests-client.html`. Both carry `// SYNC:` comments. If either function changed this
+session, all three files must be updated.
+
 ### D1. Coverage
 - Identify changed production code with critical behavior
-- ✗ FAIL if critical behavior was changed or added with no corresponding test
+- Route to the correct test file per the table above
+- ✗ FAIL if a pure function in `device_bridge.py` was changed with no corresponding case in `tests/test_device_bridge.py`
+- ✗ FAIL if a pure function in `Code.gs` was changed with no corresponding case in `Test-gs.gs`
+- ✗ FAIL if `applyHint`, `lockFirst`, `g()`, or `computeGlb4firstForNonWide` in `Sidebar-js.html` changed with no corresponding case in `test-js.js`
+- ✗ FAIL if `applyHint` or `lockFirst` changed but `test-js.js` or `Tests-client.html` was not updated (SYNC violation)
 
 ### D2. Test Quality
 - Tests must test real production code, not reimplementations
