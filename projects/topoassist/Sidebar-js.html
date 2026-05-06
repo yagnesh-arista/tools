@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.76 | 2026-05-06 19:30:19 -->
+<!-- TopoAssist v260506.77 | 2026-05-06 19:36:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.76";  // keep in sync with Code.gs
+const APP_VERSION = "260506.77";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15094,15 +15094,8 @@ function askNotebookLM() {
 * FINAL CABLING REPORT (Segregated + Perfectly Aligned)
 * ---------------------------------------------------------
 */
-function downloadCablingReport(mode) {
-  if (!currentData || !currentData.nodes) {
-    setStatus("No topology data found. Please refresh.", "status-error");
-    return;
-  }
-
-  // Close modal
-  document.getElementById('exportCablingModal').style.display = 'none';
-  document.getElementById('editOverlay').style.display = 'none';
+function _buildCablingReportStr(mode) {
+  if (!currentData || !currentData.nodes) return null;
 
   // --- DERIVE ORDER FROM SHEET COLUMNS ---
   const sheetOrderNames = currentData.nodes.map(n => n.id);
@@ -15384,21 +15377,55 @@ function downloadCablingReport(mode) {
     }
   });
 
-  const fileContent = lines.join("\n").trim();
+  return lines.join("\n").trim();
+}
+
+function downloadCablingReport(mode) {
+  if (!currentData || !currentData.nodes) {
+    setStatus("No topology data found. Please refresh.", "status-error");
+    return;
+  }
+  document.getElementById('exportCablingModal').style.display = 'none';
+  document.getElementById('editOverlay').style.display = 'none';
+  const fileContent = _buildCablingReportStr(mode);
+  if (!fileContent) return;
   const blob = new Blob([fileContent], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  const date = new Date();
-  const timestamp = date.toISOString().slice(0, 19).replace("T", "_").replace(/:/g, "-");
-  const filenameStr = (mode === 'device') ? "Device_Patching_List" : "Topology_Netlist";
-
-  link.href = url;
-  link.download = `${filenameStr}_${timestamp}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 19).replace("T", "_").replace(/:/g, "-");
+  a.href = url;
+  a.download = (mode === 'device' ? "Device_Patching_List" : "Topology_Netlist") + "_" + ts + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+function _viewCablingReport(mode) {
+  if (!currentData || !currentData.nodes) {
+    setStatus("No topology data found. Please refresh.", "status-error");
+    return;
+  }
+  const area  = document.getElementById('cablingPreviewArea');
+  const txt   = document.getElementById('cablingPreviewText');
+  const title = document.getElementById('cablingPreviewTitle');
+  if (!area || !txt) return;
+  if (area.style.display !== 'none' && area.dataset.mode === mode) {
+    _closeCablingPreview();
+    return;
+  }
+  txt.value = _buildCablingReportStr(mode) || '';
+  if (title) title.textContent = (mode === 'device') ? 'Device Patching List' : 'Topology Patching List';
+  area.dataset.mode = mode;
+  area.style.display = 'block';
+  txt.scrollTop = 0;
+}
+
+function _closeCablingPreview() {
+  const area = document.getElementById('cablingPreviewArea');
+  if (area) { area.style.display = 'none'; delete area.dataset.mode; }
+}
+
 // --- HELPER: Normalize breakout port to lane-1 anchor ---
 // Normalizes the lane suffix to /1 so all lanes of the same physical transceiver
 // collapse to one key. Returns a valid EOS port name:
