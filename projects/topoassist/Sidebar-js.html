@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.14 | 2026-05-06 11:41:37 -->
+<!-- TopoAssist v260506.17 | 2026-05-06 11:51:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.14";  // keep in sync with Code.gs
+const APP_VERSION = "260506.17";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -263,6 +263,9 @@ const APP_VERSION = "260506.14";  // keep in sync with Code.gs
   let contentBounds = {minX: 0, minY: 0, maxX: 0, maxY: 0 };
   let initialTechState = "";
   let initialIpState = "";
+  let initialGlobalCfgState = "";
+  let initialEditModalState = "";
+  let initialGroupRectState = "";
   let sortableInstance = null
   let localDataVersion = "0";
   let isFetching = false;
@@ -4711,6 +4714,38 @@ function updateDirtyButton(btnSelector, isDirty) {
   }
 }
 
+// --- DIRTY-CLOSE HELPERS ---
+function _confirmDirtyClose(isDirty, modalLabel) {
+  if (!isDirty) return true;
+  return confirm("△ You have unsaved changes in " + modalLabel + ".\n\nClose anyway? (Changes will be lost)");
+}
+
+function _captureFormState(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return '';
+  const state = {};
+  modal.querySelectorAll('input, select, textarea').forEach(function(el) {
+    const key = el.id || el.name || (el.type + '_' + el.value);
+    state[key] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+  });
+  return JSON.stringify(state);
+}
+
+function _captureGroupRectState() {
+  return JSON.stringify({
+    form: _captureFormState('groupRectModal'),
+    color: selectedGroupRectColor,
+    textPos: selectedGroupRectTextPos,
+    wrap: selectedGroupRectWrapText,
+    bold: selectedGroupRectBoldText,
+    vertical: selectedGroupRectVertical,
+    members: Array.from(
+      document.querySelectorAll('#groupRectMemberList input[type=checkbox]:checked'),
+      function(cb) { return cb.value; }
+    ).sort().join(',')
+  });
+}
+
 // --- IP MODAL: STATE HELPERS ---
 function getCurrentIpState() {
   // Capture value of every text input in the modal
@@ -5678,6 +5713,8 @@ function openTechModal() {
 }
 
 function closeTechModal() {
+  const isDirty = initialTechState !== '' && getCurrentTechState() !== initialTechState;
+  if (!_confirmDirtyClose(isDirty, "Network Stack")) return;
   _onModalClose(document.getElementById('networkStackModal'));
   document.querySelectorAll('.info-popup-box.visible').forEach(function(el) { el.classList.remove('visible'); });
   document.querySelectorAll('.btn-info-popup.active').forEach(function(el) { el.classList.remove('active'); });
@@ -5714,11 +5751,17 @@ function _loadGlobalCfgTemplate() {
   google.script.run
     .withSuccessHandler(function(text) {
       textarea.value = text || '';
+      initialGlobalCfgState = text || '';
+      updateDirtyButton('#btnSaveGlobalCfg', false);
+      textarea.oninput = function() {
+        updateDirtyButton('#btnSaveGlobalCfg', textarea.value !== initialGlobalCfgState);
+      };
       textarea.disabled = false;
       btn.disabled = false;
     })
     .withFailureHandler(function(err) {
       textarea.value = '';
+      initialGlobalCfgState = '';
       textarea.disabled = false;
       btn.disabled = false;
       status.style.color = 'var(--error-text,#ef4444)';
@@ -5806,6 +5849,8 @@ function saveGlobalCfgFromSidebar() {
       // 1. Wipe config cache — global config is baked into every device config
       if (typeof configCache !== 'undefined') configCache = {};
 
+      initialGlobalCfgState = textarea.value;
+      updateDirtyButton('#btnSaveGlobalCfg', false);
       closeGlobalCfgModal();
 
       // 3. Refresh active device immediately
@@ -7042,6 +7087,7 @@ No peer connected.<br>Use 'Connect' to add a link.
   html += "</div>";
 
   document.getElementById("modalContent").innerHTML = html;
+  initialEditModalState = _captureFormState('guiEditModal');
 
   // Show Delete or Delete+Unconfigure depending on bridge availability
   const btnDelete = document.getElementById("btnDelete");
@@ -16240,6 +16286,8 @@ function closeCablingModal() {
 }
 
 function closeIpModal() {
+  const isDirty = initialIpState !== '' && getCurrentIpState() !== initialIpState;
+  if (!_confirmDirtyClose(isDirty, "Auto Config")) return;
   setActiveModalChip(null);
   document.getElementById('autoConfigModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
@@ -16448,6 +16496,9 @@ function closeGenerateAllModal() {
     }
     return;
   }
+  const _gcfgTa = document.getElementById('globalCfgTextarea');
+  const isCfgDirty = _gcfgTa && initialGlobalCfgState !== '' && _gcfgTa.value !== initialGlobalCfgState;
+  if (!_confirmDirtyClose(isCfgDirty, "Config Center")) return;
   _onModalClose(document.getElementById('configCenterModal'));
   document.getElementById('configCenterModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
