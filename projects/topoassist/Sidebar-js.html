@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.58 | 2026-05-06 17:24:16 -->
+<!-- TopoAssist v260506.59 | 2026-05-06 17:24:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.58";  // keep in sync with Code.gs
+const APP_VERSION = "260506.59";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12187,7 +12187,8 @@ function _updateBridgeToolbarIcon(state) {
   // Auto-Bridge: trigger only on fresh connect (down/idle → up transition)
   const wasUp = _bridgeUpState;
   _bridgeUpState = (enabled && state === 'up');
-  if (!wasUp && _bridgeUpState) _autoRunBridge();
+  if (!wasUp && _bridgeUpState) { _autoRunBridge(); _startBridgeAutoCheck(); }
+  if (wasUp && !_bridgeUpState) { _stopBridgeAutoCheck(); }
 }
 
 // Returns a stable string fingerprint of current cabling (sorted link ids).

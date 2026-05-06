@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.58 | 2026-05-06 17:23:40 -->
+<!-- TopoAssist v260506.59 | 2026-05-06 17:25:06 -->
 <!DOCTYPE html>
 <html>
 
@@ -893,6 +893,16 @@
           <label class="bridge-chk-label" title="When bridge is down, re-check automatically every 60 seconds until it comes back up.">
             <input type="checkbox" id="chkBridgeAutoReconnect" onchange="setBridgeAutoReconnect(this.checked)">
             Auto-reconnect on disconnect
+          </label>
+        </div>
+        <div class="bridge-audit-flags-grid" style="margin-top:3px;align-items:center;">
+          <span class="bridge-audit-cat"></span>
+          <label class="bridge-chk-label" title="How often (in minutes) to run a live bridge check while connected. Min: 5 min.">
+            Auto-check every
+            <input type="number" id="bridgeAutoCheckInterval" min="5" max="480" value="30"
+              onchange="onBridgeAutoCheckIntervalChange()"
+              style="font-family:'JetBrains Mono',monospace;font-size:12px;height:20px;padding:0 5px;box-sizing:border-box;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-main);width:44px;text-align:right;">
+            min
           </label>
         </div>
       </div>
