@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-06 (.claspignore: broadened to *.js glob — all Node.js test runners (tests-client-node.js, test-js.js) excluded from clasp push; Tests-client.html also excluded. _generateSingleDevice localStorage fix: also evicts device from ta_gen_cache so stale config cannot resurface after close/reopen of Config Center. FILES: .claspignore, Sidebar-js.html)
+  Last updated: 2026-05-06 (Rename test files: tests-client-node.js→test-js.js, Tests.gs→Test-gs.gs. Add topoassist-client-test-check.sh hook (fires on Sidebar-js.html edits, checks test-js.js coverage). .claspignore broadened to *.js + Tests-client.html. test-device_bridge.md updated. FILES: test-js.js, Test-gs.gs, .claspignore, .claude/commands/test-device_bridge.md)
   Previous: 2026-05-06 (.claspignore: added tests-client-node.js — Node.js runner must not be pushed to GAS (causes ParseError). FILES: .claspignore)
   Previous: 2026-05-06 (Generate panel UX enhancements: (1) _renderGenerateDeviceList: updated header text — 0 cached: "N device(s) — open a device card to auto-cache its config, or Generate Configs to build all"; partial: "N of M device(s) auto-cached — open more device cards, or Generate Configs to fetch remaining"; allCached: green ✓ unchanged. Button label now managed here (guarded by !genBtn.disabled): "Regenerate Configs" when allCached, else "Generate Configs". Per-device Gen/Regen/… split-btn added as leftmost action before Copy. (2) _generateSingleDevice(name): clears configCache[name] and removes from _generateAllConfigs; adds name to window._genSingleFetching Set; re-renders (shows "…"); calls fetchFullConfig with callback that removes from Set and re-renders. (3) openGenerateAllModal: removed redundant btn.innerText override (label now set by _renderGenerateDeviceList). (4) _renderGenerateResults: moved btn.disabled=false before _renderGenerateDeviceList() call so label is set correctly; removed stale btn.innerText='Re-Generate Configs' line. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (Client-side test runner: tests-client-node.js added — pure Node.js (no deps) with MockEl DOM mock; runs same 22 cases as Tests-client.html; `node tests-client-node.js` expected 22 passed 0 failed. test-device_bridge.md updated to prefer Node.js runner over xdg-open. FILES: tests-client-node.js, .claude/commands/test-device_bridge.md)
@@ -3385,11 +3385,11 @@ DESIGN RATIONALE:
 TESTING
 ================================================================================
 
-Two test suites cover the pure (non-GAS) logic:
+Three test suites cover the pure (non-GAS) logic:
 
 ── Python (device_bridge.py) ──────────────────────────────────────────────────
 Run:  cd ~/claude/projects/topoassist && pytest tests/ -v
-File: tests/test_device_bridge.py (34 tests)
+File: tests/test_device_bridge.py (91 tests)
 
 Covered functions:
   _extract_session_diff  — EOS SSH diff parsing (7 cases)
@@ -3404,7 +3404,7 @@ conftest.py adds project root to sys.path so device_bridge imports cleanly.
 
 ── GAS (Code.gs) ──────────────────────────────────────────────────────────────
 Run:  Apps Script editor → select runAllTests → Run
-File: Tests.gs (34 tests)
+File: Test-gs.gs  (was Tests.gs — renamed 2026-05-06)
 Output: SpreadsheetApp alert (summary) + Execution Log (full detail)
 
 Covered functions:
