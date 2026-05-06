@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.8 | 2026-05-06 11:24:18 -->
+<!-- TopoAssist v260506.9 | 2026-05-06 11:27:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.8";  // keep in sync with Code.gs
+const APP_VERSION = "260506.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6552,7 +6552,7 @@ function selectDevice(deviceId) {
     fetchFullConfig(deviceId);
   } else {
     currentDeviceConfig = formatConfigText(configCache[deviceId].data);
-    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config [${devData.fetchEpoch ? formatAgeLabel(devData.fetchEpoch) : 'Cached'}]`, "#10b981", false);
+    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config [${devData?.fetchEpoch ? formatAgeLabel(devData.fetchEpoch) : 'Cached'}]`, "#10b981", false);
     triggerButtonFlash("btnDevice");
   }
 
