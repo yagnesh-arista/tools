@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-06 (configPushModal title format: device-first — "[01] leaf1: Push", "[01] leaf1: In Sync", "[01] leaf1: Verify". Applies to both modal header and dock chip. cfgModalPushInterface/cfgModalPushAll both route through same modal. FILES: Sidebar-js.html)
+  Last updated: 2026-05-06 (fix: _openCfgPanelView now sets currentRawConfig = text alongside window._cfgViewRawText — cfgModalPushInterface() was calling _extractAllInterfaceBlocks(currentRawConfig) which was stale/empty when entering via Config Center view panel, causing "interface block not found" error. FILES: Sidebar-js.html)
+  Previous: 2026-05-06 (configPushModal title format: device-first — "[01] leaf1: Push", "[01] leaf1: In Sync", "[01] leaf1: Verify". Applies to both modal header and dock chip. cfgModalPushInterface/cfgModalPushAll both route through same modal. FILES: Sidebar-js.html)
   Previous: 2026-05-06 (configPushModal dock chip + header: removed modal-header-subtitle and wrapper div (no-subtitle rule); device name merged into title. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-06 (Generate panel device list: removed [sheetIndex] prefix from row labels — sort order unchanged (still by sheetIndex), only the display label simplified to "devName · N lines". FILES: Sidebar-js.html)
   Previous: 2026-05-06 (configModal dock chip label: showConfigModal now sets title.innerText = "Config: " + _fmtDev(deviceName) — dock chip and modal header both show "Config: [01] leaf1" with "Config: " prefix restored. FILES: Sidebar-js.html)

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.42 | 2026-05-06 15:17:30 -->
+<!-- TopoAssist v260506.43 | 2026-05-06 15:20:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.42";  // keep in sync with Code.gs
+const APP_VERSION = "260506.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16629,6 +16629,7 @@ function _openCfgPanelView(name) {
   var text = _getConfigTextForDevice(name);
   if (!text) return;
   window._cfgViewRawText = text;
+  currentRawConfig = text;
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
   if (title) title.innerHTML =
