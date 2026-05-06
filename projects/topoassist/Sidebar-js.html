@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.43 | 2026-05-06 15:20:41 -->
+<!-- TopoAssist v260506.44 | 2026-05-06 15:22:36 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.43";  // keep in sync with Code.gs
+const APP_VERSION = "260506.44";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16628,7 +16628,6 @@ function _viewGeneratedConfigByName(name) {
 function _openCfgPanelView(name) {
   var text = _getConfigTextForDevice(name);
   if (!text) return;
-  window._cfgViewRawText = text;
   currentRawConfig = text;
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
@@ -16670,18 +16669,18 @@ function _cfgViewSearchHandler() {
   var body  = document.getElementById('cfgViewBody');
   var clr   = document.getElementById('cfgViewSearchClear');
   var badge = document.getElementById('cfgViewMatchCount');
-  if (!inp || !body || !window._cfgViewRawText) return;
+  if (!inp || !body || !currentRawConfig) return;
   var rawTerm = inp.value.toLowerCase().trim();
   if (clr) clr.classList.toggle('hidden', !rawTerm);
   if (!rawTerm) {
-    body.innerHTML = _renderWithLineNums(window._cfgViewRawText.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
+    body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
     if (badge) badge.classList.add('hidden');
     return;
   }
   var lineJump = rawTerm.match(/^:(\d+)$/);
   if (lineJump) {
     var targetLine = parseInt(lineJump[1], 10);
-    var allLines = window._cfgViewRawText.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; });
+    var allLines = currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; });
     body.innerHTML = _renderWithLineNums(allLines, targetLine);
     if (badge) { badge.textContent = 'Line ' + targetLine; badge.classList.remove('hidden'); }
     var hlEl = body.querySelector('.cfg-line-hl');
@@ -16696,7 +16695,7 @@ function _cfgViewSearchHandler() {
     .replace(/^lo\s?/, 'loopback')
     .replace(/^mgmt/, 'management')
     .replace(/vlan\s/g, 'vlan');
-  var blocks = _splitConfigIntoBlocks(window._cfgViewRawText);
+  var blocks = _splitConfigIntoBlocks(currentRawConfig);
   var matched = blocks.filter(function(b) {
     var all = (b.header ? [b.header] : []).concat(b.lines);
     return all.some(function(l) { return l.text.toLowerCase().includes(term); });
@@ -16723,7 +16722,7 @@ function _clearCfgViewSearch() {
 }
 
 function _cfgViewCopyAll() {
-  var text = window._cfgViewRawText;
+  var text = currentRawConfig;
   if (!text) return;
   var btn = document.getElementById('btnCfgViewCopyAll');
   var doFeedback = function() {
@@ -16746,7 +16745,7 @@ function _cfgViewCopyAll() {
 }
 
 function _cfgViewCopyInterface() {
-  var text = _extractAllInterfaceBlocks(window._cfgViewRawText);
+  var text = _extractAllInterfaceBlocks(currentRawConfig);
   if (!text) return;
   var btn = document.getElementById('btnCfgViewCopyIface');
   var doFeedback = function() {
