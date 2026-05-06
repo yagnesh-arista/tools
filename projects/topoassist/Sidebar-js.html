@@ -16483,12 +16483,10 @@ function openGenerateAllModal(panel) {
   _resetStopPushBtn();
   _renderGenerateDeviceList();
   const btn = document.getElementById('btnRunGenerateAll');
+  if (btn) btn.disabled = false;
   const stopBtn = document.getElementById('btnStopGenerate');
   if (window._generateAllConfigs && window._generateAllConfigs.length) {
-    if (btn) { btn.disabled = false; btn.innerText = 'Re-Generate Configs'; }
     if (stopBtn) { stopBtn.disabled = false; stopBtn.className = 'btn-success-mono genall-btn'; stopBtn.textContent = 'Copy All'; stopBtn.onclick = copyAllConfigs; }
-  } else {
-    if (btn) { btn.disabled = false; btn.innerText = 'Generate Configs'; }
   }
   _switchCfgPanel(panel || 'generate');
   if (modal) modal.style.display = 'flex';
@@ -16583,6 +16581,8 @@ function _renderGenerateResults(configs, meta) {
   window._generateAllConfigs = configs;
   if (meta) window._generateAllMeta = meta;
   try { localStorage.setItem('ta_gen_cache', JSON.stringify({configs: configs, meta: window._generateAllMeta})); } catch(e) {}
+  const btn = document.getElementById('btnRunGenerateAll');
+  if (btn) btn.disabled = false;
   _renderGenerateDeviceList();
   const stopBtn = document.getElementById('btnStopGenerate');
   if (stopBtn) {
@@ -16591,8 +16591,6 @@ function _renderGenerateResults(configs, meta) {
     stopBtn.textContent = 'Copy All';
     stopBtn.onclick = copyAllConfigs;
   }
-  const btn = document.getElementById('btnRunGenerateAll');
-  if (btn) { btn.disabled = false; btn.innerText = 'Re-Generate Configs'; }
 }
 
 function _viewGeneratedConfig(idx) {
@@ -16805,22 +16803,29 @@ function _renderGenerateDeviceList() {
   }
 
   const totalCached = devices.filter(n => !!_getConfigTextForDevice(n)).length;
+  const allCached = totalCached === devices.length && totalCached > 0;
   const m = window._generateAllMeta || {};
   const ts = m.ts
     ? ' <span style="font-weight:400;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:11px;">' + m.ts + '</span>'
     : '';
   let header;
-  if (totalCached === devices.length && totalCached > 0) {
+  if (allCached) {
     const sheetName = m.sheetName || 'Configs';
     header = '<div style="color:#10b981;font-weight:700;margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
       + '✓ ' + totalCached + ' device(s) → written to <b>' + escapeHtml(sheetName) + '</b> tab' + ts + '</div>';
   } else if (totalCached > 0) {
     header = '<div style="color:var(--text-muted);margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">'
-      + totalCached + ' of ' + devices.length + ' device(s) cached'
-      + ' — click <b>Generate Configs</b> to build all.</div>';
+      + totalCached + ' of ' + devices.length + ' device(s) auto-cached'
+      + ' — open more device cards, or <b>Generate Configs</b> to fetch remaining.</div>';
   } else {
     header = '<div style="color:var(--text-muted);margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">'
-      + devices.length + ' device(s) — click <b>Generate Configs</b> to build.</div>';
+      + devices.length + ' device(s) — open a device card to auto-cache its config,'
+      + ' or <b>Generate Configs</b> to build all.</div>';
+  }
+
+  const genBtn = document.getElementById('btnRunGenerateAll');
+  if (genBtn && !genBtn.disabled) {
+    genBtn.innerText = allCached ? 'Regenerate Configs' : 'Generate Configs';
   }
 
   let html = '<div style="padding:4px 0;">' + header;
@@ -16831,6 +16836,12 @@ function _renderGenerateDeviceList() {
     const safeAttr = escapeHtml(name);
     const label = escapeHtml('[' + (allDevicesData[name].sheetIndex || '') + '] ' + _fmtDev(name)
       + (lines !== null ? ' · ' + lines + ' lines' : ''));
+    const isFetching = window._genSingleFetching && window._genSingleFetching.has(name);
+    const genSingleBtn = isFetching
+      ? '<button class="split-action" disabled style="font-family:\'JetBrains Mono\',monospace;">…</button>'
+      : text
+        ? '<button class="split-action" data-dev="' + safeAttr + '" onclick="_generateSingleDevice(this.dataset.dev)" style="font-family:\'JetBrains Mono\',monospace;">Regen</button>'
+        : '<button class="split-action" data-dev="' + safeAttr + '" onclick="_generateSingleDevice(this.dataset.dev)" style="font-family:\'JetBrains Mono\',monospace;">Gen</button>';
     const copyBtn = text
       ? '<button class="split-action copy-action" data-dev="' + safeAttr + '" onclick="_copyGenRow(this.dataset.dev,this)">Copy</button>'
       : '<button class="split-action copy-action" disabled>Copy</button>';
@@ -16840,6 +16851,8 @@ function _renderGenerateDeviceList() {
     html += '<div class="split-btn" data-dev="' + safeAttr + '" style="display:flex;background:' + bg + ';margin-bottom:3px;width:100%;">'
       + '<span class="split-label" style="flex:1;min-width:0;">' + label + '</span>'
       + '<div class="split-action-divider"></div>'
+      + genSingleBtn
+      + '<div class="split-action-divider"></div>'
       + copyBtn
       + '<div class="split-action-divider"></div>'
       + viewBtn
@@ -16847,7 +16860,7 @@ function _renderGenerateDeviceList() {
   });
   html += '</div>';
   left.innerHTML = html;
-  left.dataset.generated = (totalCached === devices.length && totalCached > 0) ? '1' : '0';
+  left.dataset.generated = allCached ? '1' : '0';
 }
 
 function _refreshGenerateRow(devName) {
@@ -16861,6 +16874,21 @@ function _refreshGenerateRow(devName) {
   if (!text) return;
   // Re-render the full list so the header count and all rows stay consistent
   _renderGenerateDeviceList();
+}
+
+function _generateSingleDevice(name) {
+  delete configCache[name];
+  if (window._generateAllConfigs) {
+    const idx = window._generateAllConfigs.findIndex(c => c.name === name);
+    if (idx !== -1) window._generateAllConfigs.splice(idx, 1);
+  }
+  if (!window._genSingleFetching) window._genSingleFetching = new Set();
+  window._genSingleFetching.add(name);
+  _renderGenerateDeviceList();
+  fetchFullConfig(name, function() {
+    if (window._genSingleFetching) window._genSingleFetching.delete(name);
+    _renderGenerateDeviceList();
+  });
 }
 
 // =====================================================================
