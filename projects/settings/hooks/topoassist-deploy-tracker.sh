@@ -10,7 +10,7 @@ f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
 echo "$f" | grep -q '/projects/topoassist/' || exit 0
 
 TOPODIR=/home/yagnesh/claude/projects/topoassist
-GAS_FILES=(Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Tests.gs)
+GAS_FILES=(Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Test-gs.gs)
 LOCAL_FILES=(device_bridge.py)
 
 # Determine which files changed (working tree vs HEAD)
