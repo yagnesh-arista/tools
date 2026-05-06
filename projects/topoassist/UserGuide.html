@@ -1,4 +1,4 @@
-<!-- TopoAssist v260505.60 | 2026-05-05 15:45:56 -->
+<!-- TopoAssist v260506.1 | 2026-05-06 09:57:17 -->
 <!DOCTYPE html>
 <html>
 
@@ -336,6 +336,30 @@
       font-family: inherit;
       font-style: inherit;
     }
+    mark.ug-mark.ug-mark-active {
+      background: #f97316;
+      color: #fff;
+      outline: 2px solid #ea580c;
+    }
+    .ug-nav-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      color: #64748b;
+      padding: 0;
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .ug-nav-btn:hover { background: #f1f5f9; color: #334155; }
+    .ug-nav-btn:disabled { opacity: 0.35; cursor: default; }
 
     /* Print / Download — right side */
     .doc-actions-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -460,6 +484,12 @@
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </button>
         </div>
+        <button id="ugPrevBtn" class="ug-nav-btn" onclick="ugJump(-1)" title="Previous match (Shift+Enter)">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8 10L4 6l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="ugNextBtn" class="ug-nav-btn" onclick="ugJump(1)" title="Next match (Enter)">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <span id="ugMatchCount" class="ug-match-count"></span>
       </div>
 
@@ -1845,6 +1875,9 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     // ── Search ────────────────────────────────────────────────────────────────
     var _ugTimer = null;
+    var _ugMarks = [];
+    var _ugCurMark = -1;
+
     function ugSearchInput(val) {
       var clr = document.getElementById('ugSearchClear');
       if (clr) clr.style.display = val ? 'flex' : 'none';
@@ -1854,6 +1887,32 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     function ugClear() {
       var inp = document.getElementById('ugSearchInput');
       if (inp) { inp.value = ''; ugSearchInput(''); inp.focus(); }
+    }
+    function ugJump(dir) {
+      if (!_ugMarks.length) return;
+      if (_ugCurMark >= 0 && _ugCurMark < _ugMarks.length)
+        _ugMarks[_ugCurMark].classList.remove('ug-mark-active');
+      _ugCurMark = (_ugCurMark + dir + _ugMarks.length) % _ugMarks.length;
+      var m = _ugMarks[_ugCurMark];
+      m.classList.add('ug-mark-active');
+      m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _ugUpdateCount();
+      var inp = document.getElementById('ugSearchInput');
+      if (inp) inp.focus();
+    }
+    function _ugUpdateCount() {
+      var countEl = document.getElementById('ugMatchCount');
+      if (!countEl) return;
+      var n = _ugMarks.length;
+      if (!n) { countEl.textContent = ''; return; }
+      var pos = _ugCurMark >= 0 ? (_ugCurMark + 1) + ' / ' + n : n + (n === 1 ? ' match' : ' matches');
+      countEl.textContent = pos;
+    }
+    function _ugSetNavVisible(show) {
+      ['ugPrevBtn','ugNextBtn'].forEach(function(id) {
+        var b = document.getElementById(id);
+        if (b) b.style.display = show ? 'flex' : 'none';
+      });
     }
     function _ugRunSearch(query) {
       var container = document.querySelector('.container');
@@ -1871,6 +1930,8 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
       if (!query || !query.trim()) {
         if (countEl) countEl.textContent = '';
+        _ugMarks = []; _ugCurMark = -1;
+        _ugSetNavVisible(false);
         return;
       }
 
@@ -1926,13 +1987,29 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
         d.open = !!d.querySelector('mark.ug-mark');
       });
 
-      if (countEl) countEl.textContent = hits > 0 ? hits + (hits === 1 ? ' match' : ' matches') : 'no match';
-      var first = container.querySelector('mark.ug-mark');
-      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _ugMarks = Array.from(container.querySelectorAll('mark.ug-mark'));
+      _ugCurMark = _ugMarks.length ? 0 : -1;
+      if (_ugCurMark === 0) _ugMarks[0].classList.add('ug-mark-active');
+      _ugSetNavVisible(_ugMarks.length > 1);
+      if (countEl) {
+        if (!_ugMarks.length) countEl.textContent = query.trim() ? 'no match' : '';
+        else _ugUpdateCount();
+      }
+      if (_ugMarks.length) _ugMarks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     // ── Section collapsing ────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
+      var ugInp = document.getElementById('ugSearchInput');
+      if (ugInp) {
+        ugInp.addEventListener('keydown', function(e) {
+          if (!_ugMarks.length) return;
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            ugJump(e.shiftKey ? -1 : 1);
+          }
+        });
+      }
       var container = document.querySelector('.container');
       if (!container) return;
       var expandAll = document.body.dataset.ugExpandAll === '1';
