@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260506.21 | 2026-05-06 12:56:15
+# settings v260506.22 | 2026-05-06 12:56:20
 # stamp.sh — unified version stamp hook (replaces topoassist-stamp.sh + project-stamp.sh)
 # PostToolUse Write|Edit
 #

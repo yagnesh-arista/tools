@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260506.11 | 2026-05-06 12:16:53
+# settings v260506.24 | 2026-05-06 12:56:36
 # topoassist-gas-test-check.sh
 # Fires on every Code.gs edit:
 #   1. Detects new/changed functions in the diff
