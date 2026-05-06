@@ -3,7 +3,7 @@
 # topoassist-gas-test-check.sh
 # Fires on every Code.gs edit:
 #   1. Detects new/changed functions in the diff
-#   2. Checks which ones have no test cases in Tests.gs — lists specifically
+#   2. Checks which ones have no test cases in Test-gs.gs — lists specifically
 #   3. Reminds to run runAllTests() manually in Apps Script editor
 
 input=$(cat)
@@ -20,7 +20,7 @@ NEW_FNS=$(git -C "$HOME/claude" diff HEAD -- projects/topoassist/Code.gs 2>/dev/
   | grep -v -E '^(onOpen|onEdit|doGet|include)$' \
   | sort -u)
 
-# ── 2. Check which new functions have no test coverage in Tests.gs ─────────────
+# ── 2. Check which new functions have no test coverage in Test-gs.gs ─────────────
 UNTESTED=""
 COVERED=""
 if [ -n "$NEW_FNS" ] && [ -f "$TESTS_FILE" ]; then
@@ -38,9 +38,9 @@ fi
 [ -z "$UNTESTED" ] && [ -z "$COVERED" ] && exit 0
 
 if [ -n "$UNTESTED" ]; then
-  MSG="[TESTS] ⚠ NEW FUNCTIONS WITHOUT GAS TESTS: ${UNTESTED}— add cases to Tests.gs, then run runAllTests() in Apps Script editor"
+  MSG="[TESTS] ⚠ NEW FUNCTIONS WITHOUT GAS TESTS: ${UNTESTED}— add cases to Test-gs.gs, then run runAllTests() in Apps Script editor"
 else
-  MSG="[TESTS] ✓ new functions already covered in Tests.gs: ${COVERED}— run runAllTests() to verify"
+  MSG="[TESTS] ✓ new functions already covered in Test-gs.gs: ${COVERED}— run runAllTests() to verify"
 fi
 
 jq -n --arg ctx "$MSG" '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":$ctx}}'
