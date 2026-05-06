@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.81 | 2026-05-06 19:42:14 -->
+<!-- TopoAssist v260506.83 | 2026-05-06 19:59:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.81";  // keep in sync with Code.gs
+const APP_VERSION = "260506.83";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14532,27 +14532,27 @@ function _renderLldpResults(results, orphans) {
     return `<div class="br-sec"${hidden ? ' style="display:none"' : ''}><div class="br-sec-hdr" onclick="_toggleBrSec('${key}')"><span class="br-chev${col ? ' collapsed' : ''}" id="brChev_${key}">${svgChev}</span><span class="br-sec-title">${title}</span><span class="br-sec-badge ${badgeCls}">${badgeText}</span></div><div class="br-sec-body${col ? ' collapsed' : ''}" id="brSecBody_${key}">${bodyHtml}</div></div>`;
   }
 
-  // ── Issues section body ────────────────────────────────────────────────
+  // ── Issues section body — order: New LLDP link / Mismatch / L1 Quality / down / shut / no-nbr
   const issueParts = [];
   if (orphanCount) {
     const rows = orphans.map((o, i) =>
       `<label class="bridge-disc-row"><input type="checkbox" class="bridge-disc-check" id="disc_${i}" data-pair="${encodeURIComponent(JSON.stringify(o))}"><span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span></label>`
     ).join('');
     issueParts.push(
-      subHtml('New link', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
+      subHtml('New LLDP link', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
       `<div class="bridge-disc-actions"><button id="btnAddDiscovered" class="btn-mono" onclick="addSelectedDiscovered()">Add Selected</button></div>`
     );
   }
   if (mismatchR.length) {
-    issueParts.push(subHtml('Mismatch', mismatchR.length,
+    issueParts.push(subHtml('LLDP Mismatch', mismatchR.length,
       mismatchR.map(r => rowHtml(r, svgX, 'bridge-row-fail', r.msg, 'LLDP mismatch — click to select link')).join('')));
   }
-  if (noNbrR.length) {
-    issueParts.push(subHtml('No neighbour', noNbrR.length,
-      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — click to select link')).join('')));
-  }
-  if (noNbrDownR.length || noNbrShutR.length) {
-    issueParts.push('<div class="br-group-label">Interface States</div>');
+  if (l1ErrR.length) {
+    issueParts.push(subHtml('L1 Quality (FCS/Symbol/Align)', l1ErrR.length,
+      l1ErrR.map(({ r, uErr, vErr }) => {
+        const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
+        return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link');
+      }).join('')));
   }
   if (noNbrDownR.length) {
     issueParts.push(subHtml('Interface down (notconnect)', noNbrDownR.length,
@@ -14568,13 +14568,9 @@ function _renderLldpResults(results, orphans) {
         return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link');
       }).join('')));
   }
-  if (l1ErrR.length) {
-    issueParts.push('<div class="br-group-label">L1 Quality</div>');
-    issueParts.push(subHtml('CRC / FCS errors', l1ErrR.length,
-      l1ErrR.map(({ r, uErr, vErr }) => {
-        const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
-        return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link');
-      }).join('')));
+  if (noNbrR.length) {
+    issueParts.push(subHtml('No LLDP neighbour (Interface is up)', noNbrR.length,
+      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — interface is up but no peer seen')).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
@@ -14583,18 +14579,21 @@ function _renderLldpResults(results, orphans) {
   const okBody = okR.map(r => rowHtml(r, svgCheck, 'bridge-row-ok', '', 'Click to select this link in topology')).join('')
     || `<div class="br-empty-msg">No matched links</div>`;
 
-  // ── No EOS section body ────────────────────────────────────────────────
-  const noeosBody = noeosR.map(r => {
+  // ── Other section body (partial / unknown / excluded) ──────────────────
+  const otherBody = noeosR.map(r => {
     if (r.status === 'partial') return rowHtml(r, svgPart, 'bridge-row-part', 'SSH failed — ' + r.msg, 'Partial: one or both sides unreachable via SSH');
-    if (r.status === 'unknown') return rowHtml(r, svgUnk, 'bridge-row-unk', 'Not queried — no IP configured for either device', 'Neither device was included in the bridge check (no IP set)');
-    return rowHtml(r, svgSkip, 'bridge-row-skip', r.msg, '');
-  }).join('') || `<div class="br-empty-msg">No skipped links</div>`;
+    if (r.status === 'unknown') return rowHtml(r, svgUnk, 'bridge-row-unk', 'Not queried — no DNS/IP configured', 'Neither device was included in the bridge check (no IP set)');
+    return rowHtml(r, svgSkip, 'bridge-row-skip', 'Excluded — ' + r.msg, 'Non-Arista or excluded from bridge check');
+  }).join('') || `<div class="br-empty-msg">No other links</div>`;
+
+  // ── Interface States title with total link count ────────────────────────
+  const titleHtml = `<div class="bridge-results-title"><span>Interface States</span><span class="br-total-badge">${results.length}</span></div>`;
 
   // ── Assemble all sections ──────────────────────────────────────────────
-  sectionsEl.innerHTML =
+  sectionsEl.innerHTML = titleHtml +
     secHtml('issues', 'Issues', issueBadge[0], issueBadge[1], issueBody, false) +
     secHtml('ok',     'OK',     'br-sec-badge-green', `${okR.length}/${checkable}`, okBody, false) +
-    secHtml('noeos',  'No EOS', 'br-sec-badge-gray',  String(noeosR.length), noeosBody, noeosR.length === 0);
+    secHtml('other',  'Other',  'br-sec-badge-gray',  String(noeosR.length), otherBody, noeosR.length === 0);
 
   container.style.display = 'block';
   _setBridgeOrphanBadge(orphanCount);

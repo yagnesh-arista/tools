@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.81 | 2026-05-06 19:42:14 -->
+<!-- TopoAssist v260506.83 | 2026-05-06 19:59:48 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6048,6 +6048,20 @@
   .br-empty-msg {
     font-family: 'JetBrains Mono', monospace; font-size: 10px;
     color: var(--text-muted); font-style: italic; padding: 6px 2px;
+  }
+  .bridge-results-title {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+    color: var(--text-main);
+    padding: 6px 10px 6px 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    user-select: none; -webkit-user-select: none;
+  }
+  .br-total-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 400;
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1px 8px; color: var(--text-muted);
   }
 
   /* ── Reconcile results ────────────────────────────────────────────────── */
