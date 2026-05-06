@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.47 | 2026-05-06 16:15:19 -->
+<!-- TopoAssist v260506.48 | 2026-05-06 16:22:07 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.47";  // keep in sync with Code.gs
+const APP_VERSION = "260506.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14366,8 +14366,9 @@ function _renderLldpResults(results, orphans, dsData) {
   });
 
   const orphanCount = orphans ? orphans.length : 0;
-  // Shut never counts (intentional); Down only counts when flag is ON
-  const issueCount  = orphanCount + mismatchR.length + noNbrR.length + (bridgeAuditFlagDown ? noNbrDownR.length : 0);
+  const issueCount  = orphanCount + mismatchR.length + noNbrR.length
+    + (bridgeAuditFlagDown ? noNbrDownR.length : 0)
+    + (bridgeAuditFlagShut ? noNbrShutR.length : 0);
   const skipCount   = results.filter(r => r.status === 'skip').length;
   const checkable   = results.length - skipCount;
 
@@ -14420,7 +14421,7 @@ function _renderLldpResults(results, orphans, dsData) {
   }
   if (bridgeAuditFlagShut && noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
-      noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — not flagged as issue')).join('')));
+      noNbrShutR.map(r => rowHtml(r, svgShut, 'bridge-row-shut', '', 'Admin shutdown — click to select link')).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
