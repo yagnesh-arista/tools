@@ -944,6 +944,22 @@ For any new code added this session that accesses `allDevicesData[x]` or `allNod
 
 ---
 
+## Check 35 — Bridge Port Sub-type SSoT (`bridgePortSubType`)
+
+Sub-type classification (`'shut'`/`'down'`/`'other'`) for missing bridge ports must come exclusively from
+the pre-computed `bridgePortSubType` map — never re-derived from `devStatusMap` or `dsData` ad-hoc.
+
+**How to verify:**
+- [ ] No function other than `_populateBridgePortSubTypes` writes to `bridgePortSubType`
+- [ ] No helper function reads link/interface status from `devStatusMap` or `dsData` to classify a port sub-type outside of `_populateBridgePortSubTypes`
+- [ ] All consumers — `_bridgeEffectiveClass`, `_renderLldpResults`, `_logBridgeIssuesToStatusLog`, `runValidation` — read only from `bridgePortSubType`
+- [ ] `_populateBridgePortSubTypes(dsData)` is called in both bridge paths (auto + manual) BEFORE any rendering/logging call and BEFORE `devStatusMap` is reassigned
+- [ ] Link-level priority is applied: `shut` wins over `down`; either side of the link being `disabled` → whole link is `'shut'`
+
+**Why this check exists:** Prior to 2026-05-06 there were three separate derivations from two different data sources. `_bridgeMissingSubType` read from `devStatusMap` (potentially stale), `_portLinkSt` and `_ls` read from `dsData` (correct but repeated). The timing divergence caused admin-shut ports to show as `down` in audit counts and dots to stay red after disabling an audit flag.
+
+---
+
 ## Output Format
 
 ```

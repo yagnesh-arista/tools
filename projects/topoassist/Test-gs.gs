@@ -1,4 +1,4 @@
-// TopoAssist v260506.52 | 2026-05-06 17:04:29
+// TopoAssist v260506.54 | 2026-05-06 17:09:19
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1384,6 +1384,80 @@ function test_deviceIdSnapshot() {
 }
 
 // ── Runner ─────────────────────────────────────────────────────────────────────
+
+// ── expandVlanString ──────────────────────────────────────────────────────────
+
+function test_expandVlanString() {
+  const t = assert_;
+  // Converts VLAN string (ranges, comma/space/newline separated) to a Set of ints.
+  // NaN tokens and reversed ranges (start > end) are silently skipped.
+  const asArr = str => [...expandVlanString(str)].sort((a, b) => a - b);
+  return [
+    t("null → empty",                          asArr(null),            []),
+    t("empty string → empty",                  asArr(''),              []),
+    t("single number",                         asArr('10'),            [10]),
+    t("range",                                 asArr('10-12'),         [10, 11, 12]),
+    t("comma-separated",                       asArr('10,20,30'),      [10, 20, 30]),
+    t("space-separated",                       asArr('10 20 30'),      [10, 20, 30]),
+    t("newline-separated",                     asArr('10\n20'),        [10, 20]),
+    t("mixed range + comma",                   asArr('10-12,20'),      [10, 11, 12, 20]),
+    t("NaN tokens skipped, valid kept",        asArr('abc,10,nan-20'), [10]),
+    t("reversed range skipped (start > end)",  asArr('20-10'),         []),
+  ];
+}
+
+
+// ── compressVlanRanges ────────────────────────────────────────────────────────
+
+function test_compressVlanRanges() {
+  const t = assert_;
+  // Compresses a Set of numbers to a range string: {10,11,12,20} → "10-12,20"
+  // Filters NaN, sorts numerically. Inverse of expandVlanString.
+  return [
+    t("null → empty string",          compressVlanRanges(null),                    ""),
+    t("empty set → empty string",      compressVlanRanges(new Set()),               ""),
+    t("single number",                 compressVlanRanges(new Set([10])),           "10"),
+    t("consecutive range",             compressVlanRanges(new Set([10,11,12])),     "10-12"),
+    t("two non-consecutive singles",   compressVlanRanges(new Set([10,20])),        "10,20"),
+    t("range + isolated",              compressVlanRanges(new Set([10,11,12,20])), "10-12,20"),
+    t("unsorted input → sorted",       compressVlanRanges(new Set([30,10,20,11])), "10-11,20,30"),
+    t("NaN filtered, rest kept",       compressVlanRanges(new Set([NaN,10,11])),   "10-11"),
+  ];
+}
+
+
+// ── parseAndExpandDevices ─────────────────────────────────────────────────────
+
+function test_parseAndExpandDevices() {
+  const t = assert_;
+  // Expands "prefix[start-end]suffix" range patterns into individual device names.
+  // Zero-pads when start has a leading zero. Deduplicates. Skips ranges > 50.
+  // Auto-swaps reversed ranges (start > end).
+  return [
+    t("plain comma list",
+      parseAndExpandDevices('leaf1,leaf2,leaf3'),
+      ['leaf1','leaf2','leaf3']),
+    t("range expansion",
+      parseAndExpandDevices('leaf[1-3]'),
+      ['leaf1','leaf2','leaf3']),
+    t("zero-padded range",
+      parseAndExpandDevices('leaf[01-03]'),
+      ['leaf01','leaf02','leaf03']),
+    t("reversed range auto-swapped + padding preserved",
+      parseAndExpandDevices('leaf[03-01]'),
+      ['leaf01','leaf02','leaf03']),
+    t("range > 50 entries skipped",
+      parseAndExpandDevices('leaf[1-100]'),
+      []),
+    t("mixed plain + range",
+      parseAndExpandDevices('leaf1,spine[1-2]'),
+      ['leaf1','spine1','spine2']),
+    t("deduplication",
+      parseAndExpandDevices('leaf1,leaf1,leaf2'),
+      ['leaf1','leaf2']),
+  ];
+}
+
 
 function runAllTests() {
   const suites = [
