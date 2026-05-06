@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.56 | 2026-05-06 17:11:49 -->
+<!-- TopoAssist v260506.58 | 2026-05-06 17:24:16 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.56";  // keep in sync with Code.gs
+const APP_VERSION = "260506.58";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10328,6 +10328,7 @@ let _topologyReady      = false; // true after fetchData() completes; guards _au
 let _lastBridgeLinkSig    = null;  // link signature at last Bridge run; null = never run; used to skip LLDP on config-only fetchData
 let _bridgeDeviceTimeout = 15;  // per-attempt push timeout (seconds) — updated from /health on connect
 let _bridgeReconnectTimer = null; // auto-reconnect: setTimeout ID for 60s retry when bridge is down
+let _bridgeAutoCheckTimer = null; // periodic auto-check: setInterval handle while bridge is up
 let _nonAristaSyncNotice = null; // set when IXIA/SPIRENT role saved — shown after next fetchData completes
 
 function downloadBridgeScript() {
@@ -12101,6 +12102,32 @@ function _syncBridgeEnableCheckbox() {
   if (chk) chk.checked = localStorage.getItem('bridgeEnabled') !== 'false';
   const chkR = document.getElementById('chkBridgeAutoReconnect');
   if (chkR) chkR.checked = localStorage.getItem('bridgeAutoReconnect') !== 'false';
+  const inp = document.getElementById('bridgeAutoCheckInterval');
+  if (inp) inp.value = localStorage.getItem('bridgeAutoCheckInterval') || '30';
+}
+
+function _startBridgeAutoCheck() {
+  _stopBridgeAutoCheck();
+  const mins = Math.max(5, parseInt(localStorage.getItem('bridgeAutoCheckInterval') || '30', 10));
+  _bridgeAutoCheckTimer = setInterval(function () {
+    if (_bridgeUpState && _topologyReady && localStorage.getItem('bridgeEnabled') !== 'false') {
+      dbg('Bridge auto-check: periodic timer fired (interval=' + mins + 'min)');
+      _autoRunBridge();
+    }
+  }, mins * 60 * 1000);
+}
+
+function _stopBridgeAutoCheck() {
+  if (_bridgeAutoCheckTimer) { clearInterval(_bridgeAutoCheckTimer); _bridgeAutoCheckTimer = null; }
+}
+
+function onBridgeAutoCheckIntervalChange() {
+  const inp = document.getElementById('bridgeAutoCheckInterval');
+  if (!inp) return;
+  const val = Math.max(5, Math.min(480, parseInt(inp.value, 10) || 30));
+  inp.value = val;
+  localStorage.setItem('bridgeAutoCheckInterval', val);
+  if (_bridgeUpState) _startBridgeAutoCheck();
 }
 
 // Silent health check — only updates toolbar icon, does not touch modal DOM.
