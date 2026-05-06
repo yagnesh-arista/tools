@@ -16543,7 +16543,7 @@ function _getConfigTextForDevice(name) {
   return null;
 }
 
-function _iconBtn(type, name, disabled) {
+function _iconBtn_UNUSED(type, name, disabled) {
   const base = 'display:inline-flex;align-items:center;justify-content:center;'
     + 'width:22px;height:18px;padding:0;border-radius:3px;flex-shrink:0;'
     + 'font-family:\'JetBrains Mono\',monospace;user-select:none;-webkit-user-select:none;'
@@ -16566,12 +16566,34 @@ function _iconBtn(type, name, disabled) {
 
 function _viewGeneratedConfigByName(name) {
   const text = _getConfigTextForDevice(name);
-  if (text) showConfigModal(name, text);
+  if (text) showConfigModal(name, text, {noAutoMinimize: true});
 }
 
-function _copyDeviceConfigByName(name, btn) {
-  const text = _getConfigTextForDevice(name);
-  if (text) handleCopy(text, btn);
+function _copyGenRow(devName, btn) {
+  const text = _getConfigTextForDevice(devName);
+  if (!text) return;
+  const wrapper = btn ? btn.closest('.split-btn') : null;
+  const doFeedback = () => {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied';
+    if (wrapper) wrapper.style.background = '#3b82f6';
+    setTimeout(() => {
+      btn.textContent = orig;
+      if (wrapper) wrapper.style.background = '#10b981';
+    }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(() => alert('Copy failed.'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); doFeedback(); } catch(e) { alert('Copy failed.'); }
+    document.body.removeChild(ta);
+  }
 }
 
 function _renderGenerateDeviceList() {
@@ -16592,7 +16614,7 @@ function _renderGenerateDeviceList() {
   const totalCached = devices.filter(n => !!_getConfigTextForDevice(n)).length;
   const m = window._generateAllMeta || {};
   const ts = m.ts
-    ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">' + m.ts + '</span>'
+    ? ' <span style="font-weight:400;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:11px;">' + m.ts + '</span>'
     : '';
   let header;
   if (totalCached === devices.length && totalCached > 0) {
@@ -16608,19 +16630,26 @@ function _renderGenerateDeviceList() {
       + devices.length + ' device(s) — click <b>Generate Configs</b> to build.</div>';
   }
 
-  let html = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 0;">' + header;
+  let html = '<div style="padding:4px 0;">' + header;
   devices.forEach(function(name) {
     const text = _getConfigTextForDevice(name);
     const lines = text ? text.split('\n').length : null;
-    const rowOp = text ? '' : 'opacity:0.45;';
-    html += '<div data-dev="' + escapeHtml(name) + '" style="display:flex;align-items:center;gap:8px;padding:4px 8px;'
-      + 'margin-bottom:2px;background:var(--bg-secondary,#1e293b);border-radius:3px;' + rowOp + '">'
-      + '<span style="color:var(--text-main);flex:1;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
-      + escapeHtml(_fmtDev(name)) + '</span>'
-      + '<span style="color:var(--text-muted);flex-shrink:0;font-family:\'JetBrains Mono\',monospace;font-size:11px;">'
-      + (lines !== null ? lines + ' lines' : '—') + '</span>'
-      + _iconBtn('view', name, !text)
-      + _iconBtn('copy', name, !text)
+    const bg = text ? '#10b981' : '#475569';
+    const safeAttr = escapeHtml(name);
+    const label = escapeHtml('[' + (allDevicesData[name].sheetIndex || '') + '] ' + _fmtDev(name)
+      + (lines !== null ? ' · ' + lines + ' lines' : ''));
+    const copyBtn = text
+      ? '<button class="split-action copy-action" data-dev="' + safeAttr + '" onclick="_copyGenRow(this.dataset.dev,this)">Copy</button>'
+      : '<button class="split-action copy-action" disabled>Copy</button>';
+    const viewBtn = text
+      ? '<button class="split-action view-action" data-dev="' + safeAttr + '" onclick="_viewGeneratedConfigByName(this.dataset.dev)">View</button>'
+      : '<button class="split-action view-action" disabled>View</button>';
+    html += '<div class="split-btn" data-dev="' + safeAttr + '" style="display:flex;background:' + bg + ';margin-bottom:3px;width:100%;">'
+      + '<span class="split-label" style="flex:1;min-width:0;">' + label + '</span>'
+      + '<div class="split-action-divider"></div>'
+      + copyBtn
+      + '<div class="split-action-divider"></div>'
+      + viewBtn
       + '</div>';
   });
   html += '</div>';
