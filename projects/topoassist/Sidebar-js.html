@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.71 | 2026-05-06 18:46:07 -->
+<!-- TopoAssist v260506.72 | 2026-05-06 18:56:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.71";  // keep in sync with Code.gs
+const APP_VERSION = "260506.72";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14901,7 +14901,7 @@ function _renderCablingBridgeFilter() {
   if (!bar) return;
   const hasBridge = Object.keys(bridgePortStatus).length > 0 || Object.keys(bridgePortL1Errors).length > 0;
   if (!hasBridge) {
-    bar.innerHTML = '<div class="info-box info-box--dim" style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;">No bridge data — connect Device Bridge and run a check to enable issue filtering.</div>';
+    bar.innerHTML = '<div class="info-box info-box--dim" style="margin-bottom:10px;font-size:11px;">No bridge data — connect Device Bridge and run a check to enable issue filtering.</div>';
     return;
   }
   const { cableGroups, sheetIndexMap } = buildCableGroups();
