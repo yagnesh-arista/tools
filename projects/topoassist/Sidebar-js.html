@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.64 | 2026-05-06 17:42:40 -->
+<!-- TopoAssist v260506.65 | 2026-05-06 17:47:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.64";  // keep in sync with Code.gs
+const APP_VERSION = "260506.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8336,8 +8336,6 @@ function render(data) {
       let bUDev = b.u.split(':')[0];
       return aUDev.localeCompare(bUDev, undefined, { numeric: true, sensitivity: 'base' });
     });
-    globalLinks = links;
-
     let surface = document.getElementById("canvas-surface");
     let cvs = document.getElementById("canvas-layer");
     const nodesLayer = document.getElementById("nodes-layer");
@@ -8348,9 +8346,11 @@ function render(data) {
     }
     canvasCtx = cvs.getContext("2d");
 
-    // Reset Globals
+    // Reset Globals — clear stale state before assigning new data (SSoT: no partial-state window)
     linkMap = {}; portMap = {}; allNodesData = {}; allDevicesData = {};
     devicePortsMap = {}; globalPortElements = {}; nodeIndexMap = {};
+    currentDeviceConfig = ''; currentLeftConfig = ''; currentRightConfig = '';
+    globalLinks = links; // assigned after reset so consumers never see new links + old maps
     nodesLayer.innerHTML = "";
     svgLayer.innerHTML = "";
 
@@ -10268,42 +10268,43 @@ function toggleMinimize() {
 const BRIDGE_URL = 'http://localhost:8765';
 let bridgePortStatus = {};    // "dev:Et1" → 'match'|'mismatch'|'missing'
 let bridgePortSubType = {};  // "dev:Et1" → 'shut'|'down'|'other' — set alongside bridgePortStatus
-let bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
-let bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
-let bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF
-let bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF
-let bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
-
-// ---- Topology audit per-check flags (localStorage, default ON) ----
-let auditFlagPoMismatch      = localStorage.getItem('auditFlagPoMismatch')      !== 'false';
-let auditFlagPoAsymmetry     = localStorage.getItem('auditFlagPoAsymmetry')     !== 'false';
-let auditFlagVlanMismatch    = localStorage.getItem('auditFlagVlanMismatch')     !== 'false';
-let auditFlagModeIncompat    = localStorage.getItem('auditFlagModeIncompat')     !== 'false';
-let auditFlagSpeedMismatch   = localStorage.getItem('auditFlagSpeedMismatch')    !== 'false';
-let auditFlagUnsupportedInt  = localStorage.getItem('auditFlagUnsupportedInt')   !== 'false';
-let auditFlagMlagL3          = localStorage.getItem('auditFlagMlagL3')           !== 'false';
-let auditFlagDuplicateInt    = localStorage.getItem('auditFlagDuplicateInt')     !== 'false';
-let auditFlagInvalidSvi      = localStorage.getItem('auditFlagInvalidSvi')       !== 'false';
-let auditFlagMissingIpSvi    = localStorage.getItem('auditFlagMissingIpSvi')     !== 'false';
-let auditFlagMissingIpL3     = localStorage.getItem('auditFlagMissingIpL3')      !== 'false';
-let auditFlagStaleIpType     = localStorage.getItem('auditFlagStaleIpType')      !== 'false';
-let auditFlagDupGateway      = localStorage.getItem('auditFlagDupGateway')       !== 'false';
-let auditFlagNativeNonTrunk  = localStorage.getItem('auditFlagNativeNonTrunk')   !== 'false';
-let auditFlagSviVlanMismatch = localStorage.getItem('auditFlagSviVlanMismatch')  !== 'false';
-let auditFlagVlanUsage       = localStorage.getItem('auditFlagVlanUsage')        !== 'false';
-let auditFlagDupP2pVlan      = localStorage.getItem('auditFlagDupP2pVlan')       !== 'false';
-let auditFlagMissingPo       = localStorage.getItem('auditFlagMissingPo')        !== 'false';
-let auditFlagStalePo         = localStorage.getItem('auditFlagStalePo')          !== 'false';
-let auditFlagStaleSvi        = localStorage.getItem('auditFlagStaleSvi')         !== 'false';
-let auditFlagPoNoPeer        = localStorage.getItem('auditFlagPoNoPeer')          !== 'false';
-let auditFlagStaleVlan       = localStorage.getItem('auditFlagStaleVlan')        !== 'false';
-let auditFlagStaleVrf        = localStorage.getItem('auditFlagStaleVrf')         !== 'false';
-let auditFlagStaleXcvrSpeed  = localStorage.getItem('auditFlagStaleXcvrSpeed')   !== 'false';
-let auditFlagMissingVlan     = localStorage.getItem('auditFlagMissingVlan')      !== 'false';
-let auditFlagMlagPeerLink    = localStorage.getItem('auditFlagMlagPeerLink')     !== 'false';
-let auditFlagUndeclaredMlag  = localStorage.getItem('auditFlagUndeclaredMlag')   !== 'false';
-let auditFlagSnakeIpType     = localStorage.getItem('auditFlagSnakeIpType')      !== 'false';
-let auditFlagIxiaIpType      = localStorage.getItem('auditFlagIxiaIpType')       !== 'false';
+// Audit flags — var (not let) so window[name] dynamic access works in _getAuditFlag/_setAuditFlag.
+// Single registry: add new flags here only. _getAuditFlag/_setAuditFlag need no changes.
+// Default ON  → parse as !== 'false'   Default OFF → parse as === 'true'
+var bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
+var bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
+var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF
+var bridgeAuditFlagShut         = localStorage.getItem('bridgeAuditFlagShut')         === 'true';  // default OFF
+var bridgeAuditFlagInternalVlan = localStorage.getItem('bridgeAuditFlagInternalVlan') !== 'false'; // default ON
+var auditFlagPoMismatch         = localStorage.getItem('auditFlagPoMismatch')         !== 'false';
+var auditFlagPoAsymmetry        = localStorage.getItem('auditFlagPoAsymmetry')        !== 'false';
+var auditFlagVlanMismatch       = localStorage.getItem('auditFlagVlanMismatch')        !== 'false';
+var auditFlagModeIncompat       = localStorage.getItem('auditFlagModeIncompat')        !== 'false';
+var auditFlagSpeedMismatch      = localStorage.getItem('auditFlagSpeedMismatch')       !== 'false';
+var auditFlagUnsupportedInt     = localStorage.getItem('auditFlagUnsupportedInt')      !== 'false';
+var auditFlagMlagL3             = localStorage.getItem('auditFlagMlagL3')              !== 'false';
+var auditFlagDuplicateInt       = localStorage.getItem('auditFlagDuplicateInt')        !== 'false';
+var auditFlagInvalidSvi         = localStorage.getItem('auditFlagInvalidSvi')          !== 'false';
+var auditFlagMissingIpSvi       = localStorage.getItem('auditFlagMissingIpSvi')        !== 'false';
+var auditFlagMissingIpL3        = localStorage.getItem('auditFlagMissingIpL3')         !== 'false';
+var auditFlagStaleIpType        = localStorage.getItem('auditFlagStaleIpType')         !== 'false';
+var auditFlagDupGateway         = localStorage.getItem('auditFlagDupGateway')          !== 'false';
+var auditFlagNativeNonTrunk     = localStorage.getItem('auditFlagNativeNonTrunk')      !== 'false';
+var auditFlagSviVlanMismatch    = localStorage.getItem('auditFlagSviVlanMismatch')     !== 'false';
+var auditFlagVlanUsage          = localStorage.getItem('auditFlagVlanUsage')           !== 'false';
+var auditFlagDupP2pVlan         = localStorage.getItem('auditFlagDupP2pVlan')          !== 'false';
+var auditFlagMissingPo          = localStorage.getItem('auditFlagMissingPo')           !== 'false';
+var auditFlagStalePo            = localStorage.getItem('auditFlagStalePo')             !== 'false';
+var auditFlagStaleSvi           = localStorage.getItem('auditFlagStaleSvi')            !== 'false';
+var auditFlagPoNoPeer           = localStorage.getItem('auditFlagPoNoPeer')            !== 'false';
+var auditFlagStaleVlan          = localStorage.getItem('auditFlagStaleVlan')           !== 'false';
+var auditFlagStaleVrf           = localStorage.getItem('auditFlagStaleVrf')            !== 'false';
+var auditFlagStaleXcvrSpeed     = localStorage.getItem('auditFlagStaleXcvrSpeed')      !== 'false';
+var auditFlagMissingVlan        = localStorage.getItem('auditFlagMissingVlan')         !== 'false';
+var auditFlagMlagPeerLink       = localStorage.getItem('auditFlagMlagPeerLink')        !== 'false';
+var auditFlagUndeclaredMlag     = localStorage.getItem('auditFlagUndeclaredMlag')      !== 'false';
+var auditFlagSnakeIpType        = localStorage.getItem('auditFlagSnakeIpType')         !== 'false';
+var auditFlagIxiaIpType         = localStorage.getItem('auditFlagIxiaIpType')          !== 'false';
 
 // Audit run state — tracks which checks fired issues in the last run
 let auditHasRun = false;
@@ -11828,85 +11829,23 @@ const _ALL_AUDIT_FLAGS = [
   'auditFlagPoNoPeer'
 ];
 
+// Audit flag getter/setter — use window[name] dynamic lookup so the switch list
+// never needs updating when a new flag is added to the var block above.
 function _getAuditFlag(name) {
-  switch (name) {
-    case 'auditFlagPoMismatch':         return auditFlagPoMismatch;
-    case 'auditFlagPoAsymmetry':        return auditFlagPoAsymmetry;
-    case 'auditFlagMissingPo':          return auditFlagMissingPo;
-    case 'auditFlagStalePo':            return auditFlagStalePo;
-    case 'auditFlagPoNoPeer':           return auditFlagPoNoPeer;
-    case 'auditFlagUnsupportedInt':     return auditFlagUnsupportedInt;
-    case 'auditFlagDuplicateInt':       return auditFlagDuplicateInt;
-    case 'auditFlagMlagL3':             return auditFlagMlagL3;
-    case 'auditFlagVlanMismatch':       return auditFlagVlanMismatch;
-    case 'auditFlagNativeNonTrunk':     return auditFlagNativeNonTrunk;
-    case 'auditFlagSviVlanMismatch':    return auditFlagSviVlanMismatch;
-    case 'auditFlagVlanUsage':          return auditFlagVlanUsage;
-    case 'auditFlagDupP2pVlan':         return auditFlagDupP2pVlan;
-    case 'auditFlagInvalidSvi':         return auditFlagInvalidSvi;
-    case 'auditFlagMissingIpSvi':       return auditFlagMissingIpSvi;
-    case 'auditFlagMissingIpL3':        return auditFlagMissingIpL3;
-    case 'auditFlagStaleIpType':        return auditFlagStaleIpType;
-    case 'auditFlagDupGateway':         return auditFlagDupGateway;
-    case 'auditFlagModeIncompat':       return auditFlagModeIncompat;
-    case 'auditFlagSpeedMismatch':      return auditFlagSpeedMismatch;
-    case 'auditFlagStaleSvi':           return auditFlagStaleSvi;
-    case 'auditFlagStaleVlan':          return auditFlagStaleVlan;
-    case 'auditFlagStaleVrf':           return auditFlagStaleVrf;
-    case 'auditFlagStaleXcvrSpeed':     return auditFlagStaleXcvrSpeed;
-    case 'auditFlagMissingVlan':        return auditFlagMissingVlan;
-    case 'auditFlagMlagPeerLink':       return auditFlagMlagPeerLink;
-    case 'auditFlagUndeclaredMlag':     return auditFlagUndeclaredMlag;
-    case 'bridgeAuditFlagMismatch':     return bridgeAuditFlagMismatch;
-    case 'bridgeAuditFlagMissing':      return bridgeAuditFlagMissing;
-    case 'bridgeAuditFlagDown':         return bridgeAuditFlagDown;
-    case 'bridgeAuditFlagShut':         return bridgeAuditFlagShut;
-    case 'bridgeAuditFlagInternalVlan': return bridgeAuditFlagInternalVlan;
-    case 'auditFlagSnakeIpType':        return auditFlagSnakeIpType;
-    case 'auditFlagIxiaIpType':         return auditFlagIxiaIpType;
-    default: return true;
-  }
+  return (name in window) ? window[name] : true;
 }
 
 function _setAuditFlag(name, val) {
+  window[name] = val;
   localStorage.setItem(name, val);
-  switch (name) {
-    case 'auditFlagPoMismatch':         auditFlagPoMismatch = val; break;
-    case 'auditFlagPoAsymmetry':        auditFlagPoAsymmetry = val; break;
-    case 'auditFlagMissingPo':          auditFlagMissingPo = val; break;
-    case 'auditFlagStalePo':            auditFlagStalePo = val; break;
-    case 'auditFlagPoNoPeer':           auditFlagPoNoPeer = val; break;
-    case 'auditFlagUnsupportedInt':     auditFlagUnsupportedInt = val; break;
-    case 'auditFlagDuplicateInt':       auditFlagDuplicateInt = val; break;
-    case 'auditFlagMlagL3':             auditFlagMlagL3 = val; break;
-    case 'auditFlagVlanMismatch':       auditFlagVlanMismatch = val; break;
-    case 'auditFlagNativeNonTrunk':     auditFlagNativeNonTrunk = val; break;
-    case 'auditFlagSviVlanMismatch':    auditFlagSviVlanMismatch = val; break;
-    case 'auditFlagVlanUsage':          auditFlagVlanUsage = val; break;
-    case 'auditFlagDupP2pVlan':         auditFlagDupP2pVlan = val; break;
-    case 'auditFlagInvalidSvi':         auditFlagInvalidSvi = val; break;
-    case 'auditFlagMissingIpSvi':       auditFlagMissingIpSvi = val; break;
-    case 'auditFlagMissingIpL3':        auditFlagMissingIpL3 = val; break;
-    case 'auditFlagStaleIpType':        auditFlagStaleIpType = val; break;
-    case 'auditFlagDupGateway':         auditFlagDupGateway = val; break;
-    case 'auditFlagModeIncompat':       auditFlagModeIncompat = val; break;
-    case 'auditFlagSpeedMismatch':      auditFlagSpeedMismatch = val; break;
-    case 'auditFlagStaleSvi':           auditFlagStaleSvi = val; break;
-    case 'auditFlagStaleVlan':          auditFlagStaleVlan = val; break;
-    case 'auditFlagStaleVrf':           auditFlagStaleVrf = val; break;
-    case 'auditFlagStaleXcvrSpeed':     auditFlagStaleXcvrSpeed = val; break;
-    case 'auditFlagMissingVlan':        auditFlagMissingVlan = val; break;
-    case 'auditFlagMlagPeerLink':       auditFlagMlagPeerLink = val; break;
-    case 'auditFlagUndeclaredMlag':     auditFlagUndeclaredMlag = val; break;
-    case 'bridgeAuditFlagMismatch':     bridgeAuditFlagMismatch = val; break;
-    case 'bridgeAuditFlagMissing':      bridgeAuditFlagMissing = val; break;
-    case 'bridgeAuditFlagDown':         bridgeAuditFlagDown = val; break;
-    case 'bridgeAuditFlagShut':         bridgeAuditFlagShut = val; break;
-    case 'bridgeAuditFlagInternalVlan': bridgeAuditFlagInternalVlan = val; break;
-    case 'auditFlagSnakeIpType':        auditFlagSnakeIpType = val; break;
-    case 'auditFlagIxiaIpType':         auditFlagIxiaIpType = val; break;
-  }
 }
+
+// Cross-tab SSoT: if another tab calls _setAuditFlag, propagate here immediately.
+window.addEventListener('storage', function(e) {
+  if (!e.key || e.newValue === null) return;
+  if (!e.key.startsWith('auditFlag') && !e.key.startsWith('bridgeAuditFlag')) return;
+  if (e.key in window) window[e.key] = e.newValue === 'true';
+});
 
 function openAuditSettingsModal() {
   _autoMinimizeOpenModal();
