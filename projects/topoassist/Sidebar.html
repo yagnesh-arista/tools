@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.84 | 2026-05-06 20:03:40 -->
+<!-- TopoAssist v260506.85 | 2026-05-06 20:22:48 -->
 <!DOCTYPE html>
 <html>
 
@@ -1039,36 +1039,31 @@
       <button class="btn-modal-close" onclick="closeCablingModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div style="padding: 20px;">
-      <div id="cablingBridgeFilterBar"></div>
-      <div class="export-title">⬡ Topology Patching List</div>
-      <div class="export-desc">Flat list ordered by device. Best for planning a new topology &amp; auditing total connections.</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn-mono btn-block" style="flex:1;" onclick="_viewCablingReport('netlist')">View</button>
-        <button class="btn-primary-mono btn-block" style="flex:2;" onclick="downloadCablingReport('netlist')">Download</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
-          <button class="btn-primary-mono" style="font-family:'JetBrains Mono',monospace;" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;text-align:center;">For Excel / Google Sheets</span>
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
-          <button class="btn-primary-mono" style="font-family:'JetBrains Mono',monospace;" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy Markdown</button>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;text-align:center;">For GitHub / Docs</span>
+      <div id="cablingBridgeFilterBar" style="margin-bottom:10px;"></div>
+
+      <div class="cabling-section-row">
+        <span class="cabling-section-title">⬡ Topology List</span>
+        <div class="cabling-action-btns">
+          <button class="btn-mono" onclick="_viewCablingReport('netlist')">View</button>
+          <button class="btn-mono" onclick="downloadCablingReport('netlist')">Download</button>
+          <button class="btn-mono" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
+          <button class="btn-mono" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy MD</button>
         </div>
       </div>
+      <div class="export-desc">Flat list ordered by sheet. Best for auditing total connections.</div>
 
-      <div class="export-divider"></div>
-
-      <div class="export-title">◻ Device Patching List</div>
-      <div class="export-desc">Patching from each device's perspective. Best when adding a new device — scroll to that device's section to see only its cabling.</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn-mono btn-block" style="flex:1;" onclick="_viewCablingReport('device')">View</button>
-        <button class="btn-primary-mono btn-block" style="flex:2;" onclick="downloadCablingReport('device')">Download</button>
+      <div class="cabling-section-row" style="margin-top:10px;">
+        <span class="cabling-section-title">◻ Device List</span>
+        <div class="cabling-action-btns">
+          <button class="btn-mono" onclick="_viewCablingReport('device')">View</button>
+          <button class="btn-mono" onclick="downloadCablingReport('device')">Download</button>
+        </div>
       </div>
+      <div class="export-desc">Grouped by device. Best for field engineers patching one rack at a time.</div>
 
       <div id="cablingPreviewArea" style="display:none;margin-top:12px;">
         <div class="cabling-preview-header">
-          <span id="cablingPreviewTitle" class="cabling-filter-label" style="margin:0;font-style:normal;"></span>
+          <span id="cablingPreviewTitle" class="cabling-section-title"></span>
           <div style="display:flex;gap:4px;">
             <button class="btn-mono" id="btnCablingPreviewCopy" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_copyCablingPreview()">Copy</button>
             <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_closeCablingPreview()">Hide</button>

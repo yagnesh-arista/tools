@@ -1,4 +1,4 @@
-<!-- TopoAssist v260506.84 | 2026-05-06 20:03:40 -->
+<!-- TopoAssist v260506.85 | 2026-05-06 20:23:11 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1199,6 +1199,58 @@
   }
   .cabling-pill-active:hover:not(:disabled) {
     background: #bae6fd;
+  }
+
+  /* Cabling Export — compact filter row */
+  .cabling-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .cabling-filter-ctrl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .cabling-filter-ctrl:hover:not(:disabled) { background: var(--bg-secondary); }
+  .cabling-filter-ctrl:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cabling-filter-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    margin: 0 2px;
+    flex-shrink: 0;
+  }
+
+  /* Cabling Export — section rows */
+  .cabling-section-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .cabling-section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .cabling-action-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
   /* Cabling Export — inline text preview */

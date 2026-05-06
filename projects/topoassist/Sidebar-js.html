@@ -1,7 +1,7 @@
-<!-- TopoAssist v260506.84 | 2026-05-06 20:03:40 -->
+<!-- TopoAssist v260506.85 | 2026-05-06 20:21:52 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260506.84";  // keep in sync with Code.gs
+const APP_VERSION = "260506.85";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14823,11 +14823,11 @@ function _sortCableGroups(cableGroups, sheetIndexMap) {
 }
 
 const _CABLING_BRIDGE_CATS = [
-  { val: 'mismatch', label: 'Mismatch'  },
-  { val: 'missing',  label: 'Missing'   },
-  { val: 'down',     label: 'Down'      },
-  { val: 'shut',     label: 'Shut'      },
-  { val: 'l1',       label: 'L1 Errors' },
+  { val: 'mismatch', label: 'Mismatch' },
+  { val: 'missing',  label: 'Miss'     },
+  { val: 'down',     label: 'Down'     },
+  { val: 'shut',     label: 'Shut'     },
+  { val: 'l1',       label: 'Error'    },
 ];
 
 // Returns Set of bridge issue categories for a cable group.
@@ -14912,38 +14912,36 @@ function _renderCablingBridgeFilter() {
   const bar = document.getElementById('cablingBridgeFilterBar');
   if (!bar) return;
   const hasBridge = Object.keys(bridgePortStatus).length > 0 || Object.keys(bridgePortL1Errors).length > 0;
-  if (!hasBridge) {
-    bar.innerHTML = '<div class="info-box info-box--dim" style="margin-bottom:10px;font-size:11px;">No bridge data — connect Device Bridge and run a check to enable issue filtering.</div>';
-    return;
-  }
-  const { cableGroups, sheetIndexMap } = buildCableGroups();
-  const allSorted = _sortCableGroups(cableGroups, sheetIndexMap);
   const counts = {};
   _CABLING_BRIDGE_CATS.forEach(function(c) { counts[c.val] = 0; });
-  allSorted.forEach(function(g) {
-    _cableGroupBridgeCategories(g).forEach(function(cat) { if (cat in counts) counts[cat]++; });
-  });
-  const filtered = _filterCableGroupsByBridge(allSorted);
+  let allSorted = [], filtered = [];
+  if (hasBridge) {
+    const built = buildCableGroups();
+    allSorted = _sortCableGroups(built.cableGroups, built.sheetIndexMap);
+    allSorted.forEach(function(g) {
+      _cableGroupBridgeCategories(g).forEach(function(cat) { if (cat in counts) counts[cat]++; });
+    });
+    filtered = _filterCableGroupsByBridge(allSorted);
+  }
   const pills = _CABLING_BRIDGE_CATS.map(function(c) {
     const active = _cablingBridgeFilter.has(c.val);
     const cnt = counts[c.val] || 0;
-    const disabled = cnt === 0;
+    const disabled = !hasBridge || cnt === 0;
     return '<button class="cabling-pill' + (active ? ' cabling-pill-active' : '') + '"'
       + (disabled ? ' disabled' : ` onclick="_toggleCablingBridgeFilter('${c.val}')"`)
-      + '>'
-      + c.label + ' (' + cnt + ')</button>';
+      + '>' + c.label + ' (' + cnt + ')</button>';
   }).join('');
-  const summary = _cablingBridgeFilter.size
-    ? '<span class="cabling-filter-summary">'
-      + filtered.length + ' of ' + allSorted.length + ' cable groups</span>'
+  const summary = (_cablingBridgeFilter.size && hasBridge)
+    ? '<span class="cabling-filter-summary">' + filtered.length + '/' + allSorted.length + '</span>'
     : '';
-  bar.innerHTML = '<div style="margin-bottom:12px;">'
-    + '<div class="cabling-filter-label">'
-    + 'Filter by bridge issue:'
-    + '<button class="btn-mono" style="padding:2px 7px;font-size:10px;" onclick="_cablingBridgeSelectAll()">All</button>'
-    + '<button class="btn-mono" style="padding:2px 7px;font-size:10px;" onclick="_cablingBridgeSelectNone()">None</button>'
-    + '</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">' + pills + summary + '</div>'
+  const noData = !hasBridge ? ' disabled title="No bridge data — run a Device Bridge check first"' : '';
+  bar.innerHTML = '<div class="cabling-filter-row">'
+    + '<span class="cabling-filter-label" style="margin:0;white-space:nowrap;">Filter by Issues:</span>'
+    + '<button class="cabling-filter-ctrl"' + noData + ' onclick="_cablingBridgeSelectAll()">All</button>'
+    + '<button class="cabling-filter-ctrl"' + noData + ' onclick="_cablingBridgeSelectNone()">None</button>'
+    + '<div class="cabling-filter-sep"></div>'
+    + pills
+    + summary
     + '</div>';
 }
 
