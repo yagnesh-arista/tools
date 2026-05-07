@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.14 | 2026-05-07 12:51:54 -->
+<!-- TopoAssist v260507.15 | 2026-05-07 12:53:16 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1302,38 +1302,46 @@
     margin-bottom: 4px;
   }
 
-  /* Cabling modal — split-pane layout */
-  #exportCablingModal.cabling-view-open {
-    width: min(860px, calc(100vw - 40px));
-    max-height: 80vh;
-  }
-  .cabling-split-container {
+  /* Cabling modal — tab layout */
+  .cabling-tab-bar {
     display: flex;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .cabling-split-left {
-    width: 340px;
-    flex-shrink: 0;
-    overflow-y: auto;
-    padding: 16px;
-  }
-  #exportCablingModal.cabling-view-open .cabling-split-left {
-    border-right: 1px solid var(--border);
-  }
-  .cabling-split-right {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    min-width: 380px;
-    overflow: hidden;
-  }
-  .cabling-view-title-bar {
-    padding: 8px 12px 6px;
-    flex-shrink: 0;
+    gap: 0;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg-modal, #ffffff);
+  }
+  .cabling-tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-muted, #64748b);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: color 0.12s, border-color 0.12s;
+    margin-bottom: -1px;
+  }
+  .cabling-tab:hover { color: var(--text-main); }
+  .cabling-tab.cabling-tab-active {
+    color: #0369a1;
+    border-bottom-color: #0369a1;
+    font-weight: 600;
+  }
+  .cabling-panel-controls {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 16px;
+  }
+  .cabling-panel-view {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
   }
   .cabling-view-toolbar {
     display: flex;
