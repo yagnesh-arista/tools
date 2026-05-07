@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.21 | 2026-05-07 17:53:19 -->
+<!-- TopoAssist v260507.22 | 2026-05-07 18:07:02 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5932,8 +5932,8 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  @keyframes bridge-scan { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-  #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.9s ease-in-out infinite; }
+  @keyframes bridge-scan { 0%,100% { opacity: 1; color: #3b82f6; } 50% { opacity: 0.2; color: var(--text-muted); } }
+  #btnBridgeToolbar.bridge-scanning   { animation: bridge-scan 0.65s ease-in-out infinite; transition: none; }
   /* Generate/Push toolbar icon — flashes while generate or push is running */
   #btnGenerateAllToolbar.is-active    { animation: bridge-scan 0.9s ease-in-out infinite; }
   /* Signal dot on generate/push toolbar button */
