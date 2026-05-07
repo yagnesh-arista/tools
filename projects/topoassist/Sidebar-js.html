@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.27 | 2026-05-07 18:23:08 -->
+<!-- TopoAssist v260507.28 | 2026-05-07 18:34:36 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.27";  // keep in sync with Code.gs
+const APP_VERSION = "260507.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14715,6 +14715,7 @@ function openCablingModal() {
 
   if (modal) {
     modal.style.display = 'flex';
+    _cablingShowTab('export');
     setActiveModalChip('exportCablingModal');
     loadNotebookLMQuestions();
     _renderCablingBridgeFilter();
