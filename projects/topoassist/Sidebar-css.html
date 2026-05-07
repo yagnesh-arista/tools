@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.22 | 2026-05-07 18:07:02 -->
+<!-- TopoAssist v260507.23 | 2026-05-07 18:13:15 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -611,6 +611,12 @@
     height: 10px;
     border-radius: 50%;
     border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  /* LL legend dots use bridge-port-dot class — match devcard appearance (no border) */
+  .l-item .bridge-port-dot {
+    width: 10px;
+    height: 10px;
   }
 
   .l-item .square {
@@ -3046,12 +3052,15 @@
   }
 
   .dot.connected {
-    background-color: var(--success)
+    background-color: var(--success);
+    border-radius: 2px;
   }
 
   .dot.disconnected {
-    background-color: #94a3b8;
-    box-shadow: 0 0 0 2px #ef4444;
+    background-color: transparent;
+    border: 1.5px dashed #94a3b8;
+    border-radius: 2px;
+    box-shadow: none;
   }
 
   /* --- BRIDGE PORT STATUS DOT --- */
@@ -3073,7 +3082,7 @@
   .bridge-port-dot.bridge-port-down         { background: #f59e0b; box-shadow: 0 0 3px rgba(245,158,11,0.5); }
   .bridge-port-dot.bridge-port-shut         { background: #94a3b8; }
   .bridge-port-dot.bridge-port-missing-quiet { background: #94a3b8; }
-  .bridge-port-dot.has-l1                   { box-shadow: 0 0 0 2px #eab308; }
+  .bridge-port-dot.has-l1                   { outline: 2px solid #eab308; outline-offset: 1px; }
 
   /* --- EOS VERSION LINE (under hostname in device card header) --- */
   .dev-version-line {
@@ -3113,10 +3122,11 @@
   .dev-model-line.model-mismatch { color: #fbbf24 !important; }
 
   /* --- PORT OP-STATUS DOT OVERRIDES (applied by applyDevStatusToCards) --- */
-  .dot.op-up          { background-color: #22c55e !important; box-shadow: 0 0 3px rgba(34,197,94,0.5); }
-  .dot.op-down        { background-color: #f59e0b !important; }
-  .dot.op-errdisabled { background-color: #ef4444 !important; box-shadow: 0 0 3px rgba(239,68,68,0.4); }
-  .dot.op-disabled    { background-color: #94a3b8 !important; }
+  /* Reset design-phase square shape back to circle for live states */
+  .dot.op-up          { background-color: #22c55e !important; box-shadow: 0 0 3px rgba(34,197,94,0.5); border-radius: 50%; border: none; }
+  .dot.op-down        { background-color: #f59e0b !important; border-radius: 50%; border: none; }
+  .dot.op-errdisabled { background-color: #ef4444 !important; box-shadow: 0 0 3px rgba(239,68,68,0.4); border-radius: 50%; border: none; }
+  .dot.op-disabled    { background-color: #94a3b8 !important; border-radius: 50%; border: none; }
 
   /* --- SEARCH & SELECTION LOGIC --- */
   .port-row.hidden-local,
@@ -3140,9 +3150,10 @@
     font-weight: 700;
   }
 
-  /* Reset selection dot glow */
+  /* Selection indicator for cabled port (now a square) */
   .port-row.highlight .dot.connected {
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    outline: 2px solid rgba(59, 130, 246, 0.5);
+    outline-offset: 1px;
   }
 
   .port-box {
