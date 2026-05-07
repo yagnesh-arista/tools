@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.1 | 2026-05-07 11:21:35 -->
+<!-- TopoAssist v260507.2 | 2026-05-07 11:29:26 -->
 <!DOCTYPE html>
 <html>
 
@@ -909,7 +909,7 @@
         <div class="bridge-audit-flags-grid" style="margin-top:3px;align-items:center;">
           <span class="bridge-audit-cat"></span>
           <label class="bridge-chk-label" title="Report links with CRC/FCS error counts above this threshold. Minimum 1.">
-            <span class="bridge-chk-spacer"></span>
+            <input type="checkbox" style="visibility:hidden;" disabled tabindex="-1">
             L1 error threshold
             <input type="number" id="bridgeL1Threshold" min="1" value="1"
               oninput="onBridgeL1ThresholdChange(this.value)"

@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-06 (ui: align L1 threshold row with checkbox rows — .bridge-chk-spacer (13px inline-block) before label text; CSS rule added. FILES: Sidebar.html, Sidebar-css.html)
+  Last updated: 2026-05-07 (ui: L1 threshold row alignment — replaced .bridge-chk-spacer span with visibility:hidden disabled checkbox (pixel-perfect match); removed .bridge-chk-spacer CSS rule. FILES: Sidebar.html, Sidebar-css.html)
   Previous: 2026-05-06 (fix: Topology List button order → [Copy MD][Copy CSV][View][Download]; DUT summary in _buildCablingReportStr now filtered to devices that appear in sortedGroups — respects bridge issue filter. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-06 (redesign: exportCablingModal — compact single-row filter bar (Filter by Issues: All|None|pills) via .cabling-filter-row/.cabling-filter-ctrl/.cabling-filter-sep; section rows (⬡ Topology List / ◻ Device List) with title+4-button layout via .cabling-section-row/.cabling-section-title/.cabling-action-btns; removed export-divider between sections; pill labels shortened: Missing→Miss, L1 Errors→Error. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-06 (ui: shorten bridge sub-label "No LLDP neighbour (Interface is up)" → "No LLDP neighbour (up)". FILES: Sidebar-js.html)
