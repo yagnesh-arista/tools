@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.6 | 2026-05-07 12:01:18 -->
+<!-- TopoAssist v260507.7 | 2026-05-07 12:10:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.6";  // keep in sync with Code.gs
+const APP_VERSION = "260507.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -581,6 +581,8 @@ function initApp() {
 
     // Apply drag to all standard (non-fullscreen) modals
     document.querySelectorAll('.modal-std:not(.modal-large)').forEach(m => _makeDraggable(m));
+    // Cabling view panel — draggable, retains position across open/close
+    _makeDraggable('cablingViewPanel', { headerSel: '#cablingViewPanelHdr', noReset: true, saveKey: 'cablingViewPanelPos' });
     // Bridge: restore icon state, silent startup check
     _updateBridgeToolbarIcon('idle');
     _silentBridgeCheck();
@@ -15455,37 +15457,103 @@ function _viewCablingReport(mode) {
     setStatus("No topology data found. Please refresh.", "status-error");
     return;
   }
-  const area  = document.getElementById('cablingPreviewArea');
-  const txt   = document.getElementById('cablingPreviewText');
-  const title = document.getElementById('cablingPreviewTitle');
-  if (!area || !txt) return;
-  if (area.style.display !== 'none' && area.dataset.mode === mode) {
-    _closeCablingPreview();
+  const panel = document.getElementById('cablingViewPanel');
+  const txt   = document.getElementById('cablingViewPanelText');
+  const title = document.getElementById('cablingViewPanelTitle');
+  if (!panel || !txt) return;
+  if (panel.style.display !== 'none' && panel.dataset.mode === mode) {
+    _closeCablingViewPanel();
     return;
   }
   txt.value = _buildCablingReportStr(mode) || '';
-  if (title) title.textContent = (mode === 'device') ? 'Device Patching List' : 'Topology Patching List';
-  area.dataset.mode = mode;
-  area.style.display = 'block';
+  if (title) title.textContent = mode === 'device' ? 'Device Patching List' : 'Topology Patching List';
+  panel.dataset.mode = mode;
+  panel.style.display = 'flex';
   txt.scrollTop = 0;
+  // Reset find bar
+  const findInp = document.getElementById('cablingViewFind');
+  const findCnt = document.getElementById('cablingViewFindCount');
+  if (findInp) findInp.value = '';
+  if (findCnt) findCnt.textContent = '';
+  _cablingViewFindMatches = []; _cablingViewFindIdx = -1;
+  // Active state on View buttons
   const btnN = document.getElementById('btnCablingViewNetlist');
   const btnD = document.getElementById('btnCablingViewDevice');
   if (btnN) btnN.classList.toggle('cabling-pill-active', mode === 'netlist');
   if (btnD) btnD.classList.toggle('cabling-pill-active', mode === 'device');
 }
 
-function _closeCablingPreview() {
-  const area = document.getElementById('cablingPreviewArea');
-  if (area) { area.style.display = 'none'; delete area.dataset.mode; }
+function _closeCablingViewPanel() {
+  const panel = document.getElementById('cablingViewPanel');
+  if (panel) { panel.style.display = 'none'; delete panel.dataset.mode; }
   const btnN = document.getElementById('btnCablingViewNetlist');
   const btnD = document.getElementById('btnCablingViewDevice');
   if (btnN) btnN.classList.remove('cabling-pill-active');
   if (btnD) btnD.classList.remove('cabling-pill-active');
 }
 
-function _copyCablingPreview() {
-  const txt = document.getElementById('cablingPreviewText');
-  if (txt && txt.value) handleCopy(txt.value, 'btnCablingPreviewCopy');
+function _copyCablingViewPanel() {
+  const txt = document.getElementById('cablingViewPanelText');
+  if (txt && txt.value) handleCopy(txt.value, 'btnCablingViewPanelCopy');
+}
+
+function _downloadFromCablingViewPanel() {
+  const panel = document.getElementById('cablingViewPanel');
+  if (panel && panel.dataset.mode) downloadCablingReport(panel.dataset.mode);
+}
+
+// Cabling view panel — find-bar state
+let _cablingViewFindMatches = [], _cablingViewFindIdx = -1;
+
+function _cablingViewFindUpdate() {
+  const inp = document.getElementById('cablingViewFind');
+  const ta  = document.getElementById('cablingViewPanelText');
+  const cnt = document.getElementById('cablingViewFindCount');
+  if (!inp || !ta) return;
+  const q = inp.value;
+  _cablingViewFindMatches = []; _cablingViewFindIdx = -1;
+  if (!q) { if (cnt) cnt.textContent = ''; inp.focus(); return; }
+  const lt = ta.value.toLowerCase(), lq = q.toLowerCase();
+  let pos = 0;
+  while ((pos = lt.indexOf(lq, pos)) !== -1) { _cablingViewFindMatches.push(pos); pos += lq.length; }
+  if (cnt) cnt.textContent = _cablingViewFindMatches.length ? '1/' + _cablingViewFindMatches.length : 'No results';
+  if (_cablingViewFindMatches.length) { _cablingViewFindIdx = 0; _cablingViewFindJump(); } else inp.focus();
+}
+
+function _cablingViewFindJump() {
+  const inp = document.getElementById('cablingViewFind');
+  const ta  = document.getElementById('cablingViewPanelText');
+  const cnt = document.getElementById('cablingViewFindCount');
+  if (!inp || !ta || !_cablingViewFindMatches.length || _cablingViewFindIdx < 0) return;
+  const start = _cablingViewFindMatches[_cablingViewFindIdx];
+  const end   = start + inp.value.length;
+  ta.focus(); ta.setSelectionRange(start, end);
+  const lineH = parseInt(getComputedStyle(ta).lineHeight) || 15;
+  const lines = ta.value.substring(0, start).split('\n').length - 1;
+  ta.scrollTop = Math.max(0, lines * lineH - ta.clientHeight / 2);
+  if (cnt) cnt.textContent = (_cablingViewFindIdx + 1) + '/' + _cablingViewFindMatches.length;
+  inp.focus(); // always return focus to find input (find bar rule)
+}
+
+function _cablingViewFindNext() {
+  if (!_cablingViewFindMatches.length) return;
+  _cablingViewFindIdx = (_cablingViewFindIdx + 1) % _cablingViewFindMatches.length;
+  _cablingViewFindJump();
+}
+
+function _cablingViewFindPrev() {
+  if (!_cablingViewFindMatches.length) return;
+  _cablingViewFindIdx = (_cablingViewFindIdx - 1 + _cablingViewFindMatches.length) % _cablingViewFindMatches.length;
+  _cablingViewFindJump();
+}
+
+function _cablingViewFindKey(e) {
+  if (e.key === 'Enter') { e.shiftKey ? _cablingViewFindPrev() : _cablingViewFindNext(); }
+  else if (e.key === 'Escape') {
+    const inp = document.getElementById('cablingViewFind');
+    if (inp && inp.value.trim() !== '') { inp.value = ''; _cablingViewFindUpdate(); }
+    else _closeCablingViewPanel();
+  }
 }
 
 // --- HELPER: Normalize breakout port to lane-1 anchor ---
@@ -16692,7 +16760,7 @@ function closeHelpModal() {
 }
 
 function closeCablingModal() {
-  _closeCablingPreview();
+  _closeCablingViewPanel();
   _onModalClose(document.getElementById('exportCablingModal'));
   document.getElementById('exportCablingModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.6 | 2026-05-07 11:54:53 -->
+<!-- TopoAssist v260507.7 | 2026-05-07 12:08:37 -->
 <!DOCTYPE html>
 <html>
 
@@ -1067,17 +1067,6 @@
       </div>
       <div class="export-desc">Grouped by device. Best for field engineers patching one rack at a time.</div>
 
-      <div id="cablingPreviewArea" style="display:none;margin-top:12px;">
-        <div class="cabling-preview-header">
-          <span id="cablingPreviewTitle" class="cabling-section-title"></span>
-          <div style="display:flex;gap:4px;">
-            <button class="btn-mono" id="btnCablingPreviewCopy" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_copyCablingPreview()">Copy</button>
-            <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_closeCablingPreview()">Hide</button>
-          </div>
-        </div>
-        <textarea id="cablingPreviewText" readonly class="cabling-preview-text" placeholder=""></textarea>
-      </div>
-
       <div class="export-divider"></div>
       <div class="export-title" style="display:flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -1087,6 +1076,25 @@
       <textarea id="notebookLMQuestions" rows="5" onblur="saveNotebookLMQuestions()" style="width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;" placeholder="Loading…"></textarea>
       <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()" style="margin-top:6px;">Ask NotebookLM</button>
       <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;user-select:none;-webkit-user-select:none;"></div>
+    </div>
+  </div>
+
+  <!-- Cabling View Panel — floating draggable preview -->
+  <div id="cablingViewPanel" class="modal-floating" style="display:none;">
+    <div class="modal-header" id="cablingViewPanelHdr">
+      <div class="modal-header-title" id="cablingViewPanelTitle">Cabling Report</div>
+      <button class="btn-modal-close" onclick="_closeCablingViewPanel()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="cabling-view-toolbar">
+      <input type="text" id="cablingViewFind" class="gcfg-find-input" placeholder="Find…" oninput="_cablingViewFindUpdate()" onkeydown="_cablingViewFindKey(event)">
+      <span id="cablingViewFindCount" class="gcfg-find-count"></span>
+      <button class="gcfg-find-btn" onclick="_cablingViewFindPrev()" title="Previous (Shift+Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="gcfg-find-btn" onclick="_cablingViewFindNext()" title="Next (Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn-mono" id="btnCablingViewPanelCopy" onclick="_copyCablingViewPanel()" style="margin-left:auto;">Copy</button>
+      <button class="btn-mono" onclick="_downloadFromCablingViewPanel()">Download</button>
+    </div>
+    <div class="cabling-view-body">
+      <textarea id="cablingViewPanelText" readonly class="cabling-preview-text" placeholder=""></textarea>
     </div>
   </div>
 

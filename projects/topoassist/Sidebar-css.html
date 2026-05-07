@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.6 | 2026-05-07 11:58:45 -->
+<!-- TopoAssist v260507.7 | 2026-05-07 12:08:59 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1300,6 +1300,43 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 4px;
+  }
+
+  /* Cabling View Panel — floating draggable preview */
+  #cablingViewPanel {
+    width: min(560px, calc(100vw - 40px));
+    max-height: min(75vh, 640px);
+    position: fixed;
+    top: 80px;
+    left: calc(50% - 280px);
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-modal, #ffffff);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  }
+  .cabling-view-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-modal, #ffffff);
+  }
+  .cabling-view-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding: 8px;
+  }
+  .cabling-view-body .cabling-preview-text {
+    min-height: 300px;
+    max-height: none;
+    resize: vertical;
   }
 
   /* Standard Buttons (Modal Actions) */
