@@ -1,10 +1,10 @@
-// TopoAssist v260507.28 | 2026-05-07 18:34:36
+// TopoAssist v260507.29 | 2026-05-07 18:39:19
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260507.28";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260507.29";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4428,7 +4428,7 @@ function getDeviceConfig(deviceName) {
     };
     const _userTpl = getGlobalConfig();
     if (_userTpl && _userTpl.trim()) {
-      configMap["000_TEMPLATE"] = {
+      configMap["000_CTPL"] = {
         full: _userTpl,
         blockStatus: "User Template"
       };
