@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.32 | 2026-05-07 18:41:36 -->
+<!-- TopoAssist v260507.33 | 2026-05-07 18:41:58 -->
 <!DOCTYPE html>
 <html>
 
@@ -1739,10 +1739,10 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li>If nothing changed, an <b>Already in Sync</b> modal appears and auto-closes after 5 s.</li>
     </ol>
 
-    <p style="font-size:13px;"><b>Push All</b> — from the Device Bridge modal:</p>
+    <p style="font-size:13px;"><b>Push All (Push Targets)</b> — via Config Center → Push panel:</p>
     <ol style="font-size:13px;">
-      <li>Open the <b>Device Bridge</b> modal and confirm the bridge is running (green dot).</li>
-      <li>Click <b>Push All</b>. No prior config generation needed — configs are fetched automatically per device (cache hit = instant, cache miss = fetched from the sheet).</li>
+      <li>Confirm the bridge is running (green dot in Device Bridge modal), then open <b>Config Center</b> (toolbar grid icon) and click the <b>Push</b> nav item.</li>
+      <li>Click <b>Push Targets</b>. No prior config generation needed — configs are fetched automatically per device (cache hit = instant, cache miss = fetched from the sheet).</li>
       <li>Up to 3 devices are pushed concurrently. Each row shows live status: <code>fetching config…</code> → <code>pushing…</code> → <code>verifying…</code> → result.</li>
       <li>Results: <span style="color:#10b981;font-weight:600;">Push successful, no config diff</span> (green) = committed and verified clean. Amber = committed but residual diff or verify check failed. Red = push failed.</li>
       <li>Failed attempts retry up to 3 times automatically before reporting an error.</li>
