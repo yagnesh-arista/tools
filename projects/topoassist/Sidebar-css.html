@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.4 | 2026-05-07 11:42:28 -->
+<!-- TopoAssist v260507.6 | 2026-05-07 11:58:45 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2383,6 +2383,10 @@
     max-width: 600px;
     user-select: none;
     -webkit-user-select: none;
+  }
+  .node.has-audit-error {
+    border: 1.5px solid #ef4444 !important;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.2);
   }
 
   /* --- Card Collapse --- */
@@ -6002,12 +6006,12 @@
   }
   .bridge-ip-inp:focus { border-color: #3b82f6; }
   .bridge-dev-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); display: inline-block; justify-self: center; }
-  .bridge-dev-dot.dot-green  { background: #16a34a; }
+  .bridge-dev-dot.dot-green  { background: #22c55e; }
   .bridge-dev-dot.dot-red    { background: #dc2626; }
   .bridge-dev-dot.dot-gray   { background: #94a3b8; }
   .bridge-dev-dot.dot-orange { background: #f97316; }
   .bridge-hn-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; justify-self: center; }
-  .bridge-hn-dot.hn-match    { background: #16a34a; }
+  .bridge-hn-dot.hn-match    { background: #22c55e; }
   .bridge-hn-dot.hn-mismatch { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
   .bridge-empty { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); padding: 8px 0; }
   .bridge-run-status {

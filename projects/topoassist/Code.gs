@@ -1,10 +1,10 @@
-// TopoAssist v260507.4 | 2026-05-07 11:41:25
+// TopoAssist v260507.6 | 2026-05-07 11:55:19
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260507.4";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260507.6";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1951,7 +1951,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=REGEXMATCH($${mC}3,"^l3")`)
-        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, sviIdx, lastRow - 2, 1)]).build());
     }
 
@@ -1959,7 +1959,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (poIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=REGEXMATCH($${mC}3,"^l2-et|^l3-et")`)
-        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, poIdx, lastRow - 2, 1)]).build());
     }
 
@@ -1967,7 +1967,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (ipIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
-        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
 
@@ -1982,7 +1982,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
         if (idx > 0) {
           rules.push(SpreadsheetApp.newConditionalFormatRule()
             .whenFormulaSatisfied(xcvrNaFormula)
-            .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+            .setBackground("#c8d5e3").setFontColor("#94a3b8")
             .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
         }
       });
@@ -1993,7 +1993,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
       if (idx > 0) {
         rules.push(SpreadsheetApp.newConditionalFormatRule()
           .whenFormulaSatisfied(vxFormula)
-          .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+          .setBackground("#c8d5e3").setFontColor("#94a3b8")
           .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
       }
     });
@@ -2002,7 +2002,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (vrfIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
-        .setBackground("#e2e8f0").setFontColor("#cbd5e1")
+        .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
 
@@ -4007,8 +4007,8 @@ function onEdit(e) {
           // Immediate cell backgrounds: po_ grey for Et modes; svi_vlan_ grey for l3 only
           const poColNum = getIdx("po_");
           const isEtMode = /^l[23]-et/.test(modeVal);
-          if (poColNum > 0) bgUpdates.push({ row: startRow + r, col: poColNum, bg: isEtMode ? "#e2e8f0" : null });
-          if (sviIdx > 0) bgUpdates.push({ row: startRow + r, col: sviIdx, bg: modeVal.startsWith("l3") ? "#e2e8f0" : null });
+          if (poColNum > 0) bgUpdates.push({ row: startRow + r, col: poColNum, bg: isEtMode ? "#c8d5e3" : null });
+          if (sviIdx > 0) bgUpdates.push({ row: startRow + r, col: sviIdx, bg: modeVal.startsWith("l3") ? "#c8d5e3" : null });
         }
 
         // === USER EDITED: SVI COLUMN — auto-clear of ip_type_ removed; audit (Check I) flags it ===
