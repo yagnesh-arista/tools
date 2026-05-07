@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.36 | 2026-05-07 18:57:32 -->
+<!-- TopoAssist v260507.37 | 2026-05-07 19:00:42 -->
 <!DOCTYPE html>
 <html>
 
@@ -873,7 +873,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M6 12h12"/><path d="M6 12v4"/><path d="M18 12v4"/></svg></span></td>
-        <td><b>Cabling Export</b> (VIEW) — generates a structured cabling table. Download as formatted text, or use <b>Copy CSV</b> / <b>Copy Markdown</b> to copy all connections (DeviceA, PortA, DeviceB, PortB, Speed) directly to clipboard. The <b>AI Validate</b> section copies the cabling table and a validation prompt to clipboard, then opens your NotebookLM notebook — paste in the chat to check xcvr compatibility, speed mismatches, and breakout consistency.</td>
+        <td><b>Cabling Export</b> (VIEW) — generates a structured cabling table in three tabs: <b>Export</b> (Copy CSV / Copy Markdown / Download; AI Validate section pastes the cabling table + validation prompt into NotebookLM for xcvr compatibility, speed, and breakout checks), <b>Topology List</b> (flat list ordered by sheet row — best for auditing total connections; View or Download as text), <b>Device List</b> (connections grouped by device — best for field engineers patching one rack at a time; View or Download as text).</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span></td>
@@ -1106,6 +1106,10 @@ clasp login --no-localhost</pre>
     <div class="info-box info-box--dim">
       Check Sync is read-only — it reports issues but does not modify the sheet. Use <b>Save &amp; Sync</b> to repair missing or orphaned columns.
     </div>
+
+    <h3>New Project — Reset All Data</h3>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; New Project — Reset All Data</span>
+    <p style="font-size:13px;">Erases all topology data — cables, devices, VLAN definitions, and device properties — and returns the sheet to a blank starting state. A confirmation dialog lists exactly what will be removed and requires explicit confirmation before proceeding. Use this when starting a completely new lab project on the same spreadsheet. <b>This action is irreversible</b> — create a Sheet Checkpoint first if you may need to recover the existing data.</p>
 
     <h3>Live Sheet Validation</h3>
     <p style="font-size:13px;">TopoAssist automatically validates and cleans sheet data on every manual edit — no explicit action required. Three layers run in sequence:</p>
@@ -1857,7 +1861,9 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <h3>Checkpoints (Snapshots)</h3>
     <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
-    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Use <b>Restore Sheet Checkpoint</b> to roll back to any saved snapshot. Useful as a safety net before running a schema change or a large sheet reorganisation.</p>
+    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Useful as a safety net before running a schema change or a large sheet reorganisation.</p>
+    <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Restore Sheet Checkpoint</span>
+    <p style="font-size:13px;">Roll back the sheet to any saved checkpoint. A wizard lists all available snapshots — select one and confirm to restore.</p>
 
     <h3>Snake Test</h3>
     <p style="font-size:13px;">The Snake Test chains switch ports with external loopback cables to measure forwarding throughput end-to-end. Full setup documentation — supported modes, sheet wiring, EP1/EP2 config, VRF chain, TTL reset — is in the <a href="#config-generation">Configuration Generation</a> section under <b>8. Snake Test (L2 / L3)</b>.</p>
