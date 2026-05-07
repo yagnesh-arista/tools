@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.29 | 2026-05-07 18:39:19 -->
+<!-- TopoAssist v260507.30 | 2026-05-07 18:39:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.29";  // keep in sync with Code.gs
+const APP_VERSION = "260507.30";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6865,13 +6865,13 @@ function selectPortOrLink(portId) {
   }
 }
 
-// Returns 000_BASE + 000_TEMPLATE concatenated — device baseline + user template.
+// Returns 000_BASE + 000_CTPL concatenated — device baseline + user template.
 // Used by "Copy Base+Ifs" to prepend before interface blocks.
 function _getBaseBlock(deviceName) {
   const data = configCache[deviceName] && configCache[deviceName].data;
   if (!data) return '';
   const base = (data['000_BASE'] && data['000_BASE'].full) || '';
-  const tpl  = (data['000_TEMPLATE'] && data['000_TEMPLATE'].full) || '';
+  const tpl  = (data['000_CTPL'] && data['000_CTPL'].full) || '';
   if (base && tpl) return base + '\n!\n' + tpl;
   return base || tpl;
 }

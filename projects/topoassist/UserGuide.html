@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.29 | 2026-05-07 18:39:19 -->
+<!-- TopoAssist v260507.30 | 2026-05-07 18:40:39 -->
 <!DOCTYPE html>
 <html>
 
@@ -845,12 +845,8 @@ clasp login --no-localhost</pre>
         <td><b>IP Configuration</b> (CONFIG) — set base subnets, VRF mappings, and IP preferences used during config generation.</td>
       </tr>
       <tr>
-        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg></span></td>
-        <td><b>Global Config Template</b> (CONFIG) — view and copy the raw EOS config that TopoAssist generates for any device, without writing it to the sheet. Useful for previewing changes before committing. See <a href="#config-generation">Configuration Generation §6</a>.</td>
-      </tr>
-      <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span></td>
-        <td><b>Generate All Configs</b> (CONFIG) — generates EOS config for all visible Arista devices and writes to the <b>Configs</b> sheet tab. Shows a per-device summary with line counts. Use <b>Copy All</b> to copy every config to clipboard at once.</td>
+        <td><b>Config Center</b> (CONFIG) — four-panel hub: <b>Generate</b> (generate all configs; <b>Copy All</b> or <b>Copy Base+Ifs</b> to clipboard), <b>Template</b> (define a base NTP/AAA/management config prepended to every device), <b>Cleanup</b> (remove stale <code>__TA</code> orphans), <b>Push</b> (batch-push all devices). See <a href="#config-generation">Configuration Generation §6</a>.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span></td>
@@ -935,7 +931,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="pill" style="background:#334155;color:#e2e8f0;">HISTORY</span></td>
-        <td><b>Status Log</b> — opens the log drawer showing all messages from the current session across five tabs: All · Config · Bridge · Errors · Audit. Use the filter box to search within the log.</td>
+        <td><b>Status Log</b> — opens the log drawer showing all messages from the current session across six tabs: All · Errors · Audit · Bridge · Config · Push. Use the filter box to search within the log.</td>
       </tr>
     </table>
 

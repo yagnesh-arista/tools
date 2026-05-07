@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-07 (fix: openCablingModal() now calls _cablingShowTab('export') after display:flex — ensures modal always reopens on Export tab regardless of which tab was active when it was last closed. FILES: Sidebar-js.html)
+  Last updated: 2026-05-07 (fix: rename 000_TEMPLATE → 000_CTPL so user template sorts between 000_BASE and 000_LO0 (C < L) — template now visible near top of View Config, not buried after loopbacks; _getBaseBlock() updated to read 000_CTPL; FILES: Code.gs, Sidebar-js.html, INSTRUCTIONS_topoassist.txt)
+  Previous: 2026-05-07 (fix: openCablingModal() now calls _cablingShowTab('export') after display:flex — ensures modal always reopens on Export tab regardless of which tab was active when it was last closed. FILES: Sidebar-js.html)
   Previous: 2026-05-07 (docs: UserGuide legend sync — LL/St column bullet points rewritten: LL now shows 6 states (match/mismatch/missing/down/shut/+L1) with correct 6px inline dots; St column documents both phases (design=square, live=circle); Interface Operational State table relabeled Up/No Link/Err-Dis/Disabled with 6px dots + glow; line 833 "Red dots" → "Dashed square dots"; +L1 legend item now has-l1 only (no bridge-port-shut base). FILES: UserGuide.html, Sidebar.html)
   Previous: 2026-05-07 (ui: .dot.connected cabled square — no fill, solid border only (transparent bg, 1.5px solid #64748b, border-radius:2px). Green fill removed to avoid redundancy with op-up live state. FILES: Sidebar-css.html)
   Previous: 2026-05-07 (fix: exportCablingModal width 480px→700px for readable cabling text. FILES: Sidebar-css.html)
@@ -1016,7 +1017,7 @@ When any of these are violated, visible bugs result immediately.
    Update the date on BOTH copies whenever either is changed.
 
 7. configCache[deviceName].data IS THE FULL configMap
-   Format: { "050_Et1": { full: "...", ... }, "000_BASE": { full: "..." }, "000_TEMPLATE": { full: "..." }, ... }
+   Format: { "050_Et1": { full: "...", ... }, "000_BASE": { full: "..." }, "000_CTPL": { full: "..." }, ... }
    It is NOT a per-port string. Code that reads it must key by prefixed port name.
 
 8. allNodesData IS FULLY REPOPULATED ON EVERY render() CALL
@@ -2580,7 +2581,8 @@ Server functions (Code.gs):
 CONFIGMAP KEY FORMAT (source of truth for both Configs sheet and tooltip):
   getDeviceConfig() returns configMap with prefixed keys for deterministic ordering:
     "000_BASE"          — hostname + mandatory device baseline (ip routing, service routing protocols, varp mac)
-    "000_TEMPLATE"      — user's custom template (NTP, AAA, interface defaults/mtu, etc.) — omitted if getGlobalConfig() is empty
+    "000_CTPL"          — user's custom template (NTP, AAA, interface defaults/mtu, etc.) — omitted if getGlobalConfig() is empty
+                          key chosen so C < L → sorts between 000_BASE and 000_LO0 (template near top of View Config)
     "001_SYSTEM"        — loopback, router general, VRFs, VLANs
     "050_<port>"        — physical interface (e.g. "050_Et1", "050_Ma0")
     "050_Vx1"           — AP VLAN SVI blocks (see AP VLAN GW section)
