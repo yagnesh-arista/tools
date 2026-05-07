@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.9 | 2026-05-07 12:29:59 -->
+<!-- TopoAssist v260507.10 | 2026-05-07 12:33:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.9";  // keep in sync with Code.gs
+const APP_VERSION = "260507.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -581,8 +581,6 @@ function initApp() {
 
     // Apply drag to all standard (non-fullscreen) modals
     document.querySelectorAll('.modal-std:not(.modal-large)').forEach(m => _makeDraggable(m));
-    // Cabling view panel — draggable, retains position across open/close
-    _makeDraggable('cablingViewPanel', { headerSel: '#cablingViewPanelHdr', noReset: true, saveKey: 'cablingViewPanelPos' });
     // Bridge: restore icon state, silent startup check
     _updateBridgeToolbarIcon('idle');
     _silentBridgeCheck();
@@ -15459,19 +15457,21 @@ function _viewCablingReport(mode) {
     setStatus("No topology data found. Please refresh.", "status-error");
     return;
   }
-  const panel = document.getElementById('cablingViewPanel');
+  const right = document.getElementById('cablingViewRight');
   const txt   = document.getElementById('cablingViewPanelText');
   const title = document.getElementById('cablingViewPanelTitle');
-  if (!panel || !txt) return;
-  if (panel.style.display !== 'none' && panel.dataset.mode === mode) {
+  if (!right || !txt) return;
+  if (right.style.display !== 'none' && right.dataset.mode === mode) {
     _closeCablingViewPanel();
     return;
   }
   txt.value = _buildCablingReportStr(mode) || '';
   if (title) title.textContent = mode === 'device' ? 'Device Patching List' : 'Topology Patching List';
-  panel.dataset.mode = mode;
-  panel.style.display = 'flex';
+  right.dataset.mode = mode;
+  right.style.display = 'flex';
   txt.scrollTop = 0;
+  const modal = document.getElementById('exportCablingModal');
+  if (modal) modal.classList.add('cabling-view-open');
   // Reset find bar
   const findInp = document.getElementById('cablingViewFind');
   const findCnt = document.getElementById('cablingViewFindCount');
@@ -15486,8 +15486,10 @@ function _viewCablingReport(mode) {
 }
 
 function _closeCablingViewPanel() {
-  const panel = document.getElementById('cablingViewPanel');
-  if (panel) { panel.style.display = 'none'; delete panel.dataset.mode; }
+  const right = document.getElementById('cablingViewRight');
+  if (right) { right.style.display = 'none'; delete right.dataset.mode; }
+  const modal = document.getElementById('exportCablingModal');
+  if (modal) modal.classList.remove('cabling-view-open');
   const btnN = document.getElementById('btnCablingViewNetlist');
   const btnD = document.getElementById('btnCablingViewDevice');
   if (btnN) btnN.classList.remove('cabling-pill-active');
@@ -15500,8 +15502,8 @@ function _copyCablingViewPanel() {
 }
 
 function _downloadFromCablingViewPanel() {
-  const panel = document.getElementById('cablingViewPanel');
-  if (panel && panel.dataset.mode) downloadCablingReport(panel.dataset.mode);
+  const right = document.getElementById('cablingViewRight');
+  if (right && right.dataset.mode) downloadCablingReport(right.dataset.mode);
 }
 
 // Cabling view panel — find-bar state

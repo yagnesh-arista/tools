@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.9 | 2026-05-07 12:28:19 -->
+<!-- TopoAssist v260507.10 | 2026-05-07 12:32:25 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -1302,21 +1302,39 @@
     margin-bottom: 4px;
   }
 
-  /* Cabling View Panel — floating draggable preview */
-  #cablingViewPanel {
-    width: min(560px, calc(100vw - 40px));
-    max-height: min(75vh, 640px);
-    position: fixed;
-    top: 80px;
-    left: calc(50% - 280px);
-    z-index: 1200;
+  /* Cabling modal — split-pane layout */
+  #exportCablingModal { display: flex; flex-direction: column; }
+  #exportCablingModal.cabling-view-open {
+    width: min(860px, calc(100vw - 40px));
+    max-height: 80vh;
+  }
+  .cabling-split-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .cabling-split-left {
+    width: 340px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  #exportCablingModal.cabling-view-open .cabling-split-left {
+    border-right: 1px solid var(--border);
+  }
+  .cabling-split-right {
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    min-width: 380px;
     overflow: hidden;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg-modal, #ffffff);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  }
+  .cabling-view-title-bar {
+    padding: 8px 12px 6px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
   }
   .cabling-view-toolbar {
     display: flex;
@@ -1334,9 +1352,9 @@
     padding: 8px;
   }
   .cabling-view-body .cabling-preview-text {
-    min-height: 300px;
+    min-height: 200px;
     max-height: none;
-    resize: vertical;
+    resize: none;
   }
 
   /* Standard Buttons (Modal Actions) */
