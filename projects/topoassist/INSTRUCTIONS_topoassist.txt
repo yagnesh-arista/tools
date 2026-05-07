@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-07 (ui: .dot.connected cabled square — no fill, solid border only (transparent bg, 1.5px solid #64748b, border-radius:2px). Green fill removed to avoid redundancy with op-up live state. FILES: Sidebar-css.html)
+  Last updated: 2026-05-07 (docs: UserGuide legend sync — LL/St column bullet points rewritten: LL now shows 6 states (match/mismatch/missing/down/shut/+L1) with correct 6px inline dots; St column documents both phases (design=square, live=circle); Interface Operational State table relabeled Up/No Link/Err-Dis/Disabled with 6px dots + glow; line 833 "Red dots" → "Dashed square dots"; +L1 legend item now has-l1 only (no bridge-port-shut base). FILES: UserGuide.html, Sidebar.html)
+  Previous: 2026-05-07 (ui: .dot.connected cabled square — no fill, solid border only (transparent bg, 1.5px solid #64748b, border-radius:2px). Green fill removed to avoid redundancy with op-up live state. FILES: Sidebar-css.html)
   Previous: 2026-05-07 (fix: exportCablingModal width 480px→700px for readable cabling text. FILES: Sidebar-css.html)
   Previous: 2026-05-07 (fix: legend dot size consistency — .l-item .dot + .l-item .bridge-port-dot + .l-item .dot.disconnected all use box-sizing:border-box so borders don't inflate 10px target. .bridge-port-dot devcard size 7px→6px to match .dot. FILES: Sidebar-css.html)
   Previous: 2026-05-07 (fix: exportCablingModal size — 480px wide, 82vh tall (matches Config Center feel); all 3 tabs share same fixed size. FILES: Sidebar-css.html)

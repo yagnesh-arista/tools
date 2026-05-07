@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.26 | 2026-05-07 18:22:07 -->
+<!-- TopoAssist v260507.27 | 2026-05-07 18:25:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -830,7 +830,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span></td>
-        <td><b>Edit Mode</b> (CABLING) — enables interactive cabling. Red dots = unconnected ports. Click two to link them.</td>
+        <td><b>Edit Mode</b> (CABLING) — enables interactive cabling. Dashed square = uncabled port. Click two uncabled ports to link them.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span></td>
@@ -1663,18 +1663,24 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <ul>
       <li><b>EOS version line</b> — shown under the device hostname (e.g. <code>EOS 4.32.1F · 7050SX3-48YC12</code>). Populated from <code>show version</code>.</li>
       <li>
-        <b>LL column</b> — per-port LLDP indicator dot before the St column:
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;"></span> match &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#eab308;vertical-align:middle;margin:0 3px;"></span> mismatch &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> missing (when <b>Missing LLDP neighbor</b> check is enabled in Audit Checks) &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> missing (when check is disabled)
+        <b>LL column</b> — per-port LLDP indicator dot (circle, 6px):
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;box-shadow:0 0 3px rgba(34,197,94,0.5);"></span> match &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#eab308;vertical-align:middle;margin:0 3px;"></span> mismatch &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> missing &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin:0 3px;"></span> down (interface not-connected) &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> shut &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:transparent;outline:2px solid #eab308;outline-offset:1px;vertical-align:middle;margin:0 5px;"></span> +L1 (physical layer errors)
       </li>
       <li>
-        <b>St column</b> — when devstatus data is available, the port dot reflects live interface operational state:
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;"></span> connected &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin:0 3px;"></span> notconnect &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;"></span> errdisabled &nbsp;
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> other
+        <b>St column</b> — shape indicates phase; color indicates state:
+        <br>Before live fetch (design phase, square):
+        <span style="display:inline-block;width:6px;height:6px;border-radius:2px;border:1.5px solid #64748b;background:transparent;vertical-align:middle;margin:0 3px;box-sizing:border-box;"></span> cabled &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:2px;border:1.5px dashed #94a3b8;background:transparent;vertical-align:middle;margin:0 3px;box-sizing:border-box;"></span> uncabled
+        <br>After live fetch (circle):
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;vertical-align:middle;margin:0 3px;box-shadow:0 0 3px rgba(34,197,94,0.5);"></span> up &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin:0 3px;"></span> no link &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;vertical-align:middle;margin:0 3px;box-shadow:0 0 3px rgba(239,68,68,0.4);"></span> err-dis &nbsp;
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#94a3b8;vertical-align:middle;margin:0 3px;"></span> disabled
       </li>
     </ul>
     <p style="font-size:13px;">Card indicators survive topology redraws — re-rendered automatically after each refresh.</p>
@@ -1683,20 +1689,20 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <p style="font-size:13px;">The <b>St</b> column on each topology card shows the live EOS interface operational state, fetched via <code>show interfaces status</code> during a bridge check. This is separate from LLDP — a port can be LLDP-matched but still be operationally down.</p>
     <table class="legend-table" style="margin-top:8px;">
       <tr>
-        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;vertical-align:middle;"></span></td>
-        <td><b>connected</b> — link is up and the interface is operational. Physical signal detected, SFP present.</td>
+        <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 3px rgba(34,197,94,0.5);vertical-align:middle;"></span></td>
+        <td><b>Up</b> (<code>connected</code>) — link is up and the interface is operational. Physical signal detected, SFP present.</td>
       </tr>
       <tr>
-        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;vertical-align:middle;"></span></td>
-        <td><b>notconnect</b> — interface is enabled but no physical signal detected. Common causes: unplugged cable, missing or faulty SFP, peer port is down.</td>
+        <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;vertical-align:middle;"></span></td>
+        <td><b>No Link</b> (<code>notconnect</code>) — interface is enabled but no physical signal detected. Common causes: unplugged cable, missing or faulty SFP, peer port is down.</td>
       </tr>
       <tr>
-        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;vertical-align:middle;"></span></td>
-        <td><b>errdisabled</b> — EOS has administratively disabled the port due to a fault condition (e.g. BPDU guard, storm control, LACP timeout, port security). The port will not recover automatically — it requires <code>shutdown</code> / <code>no shutdown</code> to clear, after the root cause is resolved.</td>
+        <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 3px rgba(239,68,68,0.4);vertical-align:middle;"></span></td>
+        <td><b>Err-Dis</b> (<code>errdisabled</code>) — EOS has administratively disabled the port due to a fault condition (e.g. BPDU guard, storm control, LACP timeout, port security). The port will not recover automatically — it requires <code>shutdown</code> / <code>no shutdown</code> to clear, after the root cause is resolved.</td>
       </tr>
       <tr>
-        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span></td>
-        <td><b>disabled / other</b> — interface is administratively shut, or the state string returned is unrecognised. Gray is also shown when no bridge data is available for that port.</td>
+        <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span></td>
+        <td><b>Disabled</b> (<code>disabled</code> / other) — interface is administratively shut, or the state string returned is unrecognised.</td>
       </tr>
     </table>
     <div class="info-box info-box--dim" style="margin-top:8px;">
