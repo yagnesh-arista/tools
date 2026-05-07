@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.33 | 2026-05-07 18:41:58 -->
+<!-- TopoAssist v260507.34 | 2026-05-07 18:48:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.33";  // keep in sync with Code.gs
+const APP_VERSION = "260507.34";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3278,14 +3278,29 @@ function fetchFullConfig(deviceName, callback, customSuccessMsg) {
 * ==========================================
 */
 
+function _cfgSectionLabel(key) {
+  if (key === '000_BASE')           return '! --- BASELINE ---';
+  if (key === '000_GTPL')           return '! --- GLOBAL TEMPLATE ---';
+  if (key === '000_LO0')            return '! --- LOOPBACKS ---';
+  if (key === '001_SYSTEM')         return '! --- SYSTEM ---';
+  if (key === '070_MLAG')           return '! --- MLAG ---';
+  if (key === '080_SNAKE')          return '! --- SNAKE TESTING ---';
+  if (key === '090_OSPF_UNDERLAY')  return '! --- OSPF UNDERLAY ---';
+  if (key === '091_OSPF3_UNDERLAY') return '! --- OSPFv3 UNDERLAY ---';
+  if (key.startsWith('100_BGP'))    return '! --- BGP ---';
+  return null;
+}
+
 function formatConfigText(configMap) {
   if (!configMap) return "";
   const keys = Object.keys(configMap).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const lines = [];
+  const sections = [];
   keys.forEach(k => {
-    if (configMap[k].full) lines.push(configMap[k].full);
+    if (!configMap[k] || !configMap[k].full) return;
+    const label = _cfgSectionLabel(k);
+    sections.push(label ? label + '\n' + configMap[k].full : configMap[k].full);
   });
-  return lines.join('\n!\n');
+  return sections.join('\n!\n');
 }
 
 function switchLayout(mode) {
@@ -6865,13 +6880,13 @@ function selectPortOrLink(portId) {
   }
 }
 
-// Returns 000_BASE + 000_CTPL concatenated — device baseline + user template.
+// Returns 000_BASE + 000_GTPL concatenated — device baseline + user template.
 // Used by "Copy Base+Ifs" to prepend before interface blocks.
 function _getBaseBlock(deviceName) {
   const data = configCache[deviceName] && configCache[deviceName].data;
   if (!data) return '';
   const base = (data['000_BASE'] && data['000_BASE'].full) || '';
-  const tpl  = (data['000_CTPL'] && data['000_CTPL'].full) || '';
+  const tpl  = (data['000_GTPL'] && data['000_GTPL'].full) || '';
   if (base && tpl) return base + '\n!\n' + tpl;
   return base || tpl;
 }

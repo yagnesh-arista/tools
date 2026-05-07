@@ -1,10 +1,10 @@
-// TopoAssist v260507.33 | 2026-05-07 18:41:58
+// TopoAssist v260507.34 | 2026-05-07 18:49:00
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260507.33";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260507.34";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4428,7 +4428,7 @@ function getDeviceConfig(deviceName) {
     };
     const _userTpl = getGlobalConfig();
     if (_userTpl && _userTpl.trim()) {
-      configMap["000_CTPL"] = {
+      configMap["000_GTPL"] = {
         full: _userTpl,
         blockStatus: "User Template"
       };
@@ -6897,11 +6897,28 @@ function resetToNewProject(keepDevice, deviceName) {
  * Server-side equivalent of client-side formatConfigText().
  * Sorts config map keys numerically and joins .full values with EOS section separator.
  */
+function _cfgSectionLabel(key) {
+  if (key === '000_BASE')           return '! --- BASELINE ---';
+  if (key === '000_GTPL')           return '! --- GLOBAL TEMPLATE ---';
+  if (key === '000_LO0')            return '! --- LOOPBACKS ---';
+  if (key === '001_SYSTEM')         return '! --- SYSTEM ---';
+  if (key === '070_MLAG')           return '! --- MLAG ---';
+  if (key === '080_SNAKE')          return '! --- SNAKE TESTING ---';
+  if (key === '090_OSPF_UNDERLAY')  return '! --- OSPF UNDERLAY ---';
+  if (key === '091_OSPF3_UNDERLAY') return '! --- OSPFv3 UNDERLAY ---';
+  if (key.startsWith('100_BGP'))    return '! --- BGP ---';
+  return null;
+}
+
 function formatConfigMap(configMap) {
   if (!configMap) return "";
   const keys = Object.keys(configMap).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const parts = [];
-  keys.forEach(k => { if (configMap[k] && configMap[k].full) parts.push(configMap[k].full); });
+  keys.forEach(k => {
+    if (!configMap[k] || !configMap[k].full) return;
+    const label = _cfgSectionLabel(k);
+    parts.push(label ? label + '\n' + configMap[k].full : configMap[k].full);
+  });
   return parts.join('\n!\n');
 }
 
