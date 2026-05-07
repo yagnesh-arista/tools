@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.3 | 2026-05-07 11:31:18 -->
+<!-- TopoAssist v260507.4 | 2026-05-07 11:41:45 -->
 <!DOCTYPE html>
 <html>
 
@@ -1042,21 +1042,27 @@
       <div id="cablingBridgeFilterBar" style="margin-bottom:10px;"></div>
 
       <div class="cabling-section-row">
-        <span class="cabling-section-title">⬡ Topology List</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span class="cabling-section-title">⬡ Topology List</span>
+          <span id="cablingTopoCount" class="cabling-count-badge"></span>
+        </div>
         <div class="cabling-action-btns">
           <button class="btn-mono" id="btnCablingMd" onclick="copyCablingMarkdown()">Copy MD</button>
           <button class="btn-mono" id="btnCablingCsv" onclick="copyCablingCsv()">Copy CSV</button>
-          <button class="btn-mono" onclick="_viewCablingReport('netlist')">View</button>
-          <button class="btn-mono" onclick="downloadCablingReport('netlist')">Download</button>
+          <button class="btn-mono" id="btnCablingViewNetlist" onclick="_viewCablingReport('netlist')">View</button>
+          <button class="btn-mono" id="btnCablingDownloadNetlist" onclick="downloadCablingReport('netlist')">Download</button>
         </div>
       </div>
       <div class="export-desc">Flat list ordered by sheet. Best for auditing total connections.</div>
 
       <div class="cabling-section-row" style="margin-top:10px;">
-        <span class="cabling-section-title">◻ Device List</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span class="cabling-section-title">◻ Device List</span>
+          <span id="cablingDeviceCount" class="cabling-count-badge"></span>
+        </div>
         <div class="cabling-action-btns">
-          <button class="btn-mono" onclick="_viewCablingReport('device')">View</button>
-          <button class="btn-mono" onclick="downloadCablingReport('device')">Download</button>
+          <button class="btn-mono" id="btnCablingViewDevice" onclick="_viewCablingReport('device')">View</button>
+          <button class="btn-mono" id="btnCablingDownloadDevice" onclick="downloadCablingReport('device')">Download</button>
         </div>
       </div>
       <div class="export-desc">Grouped by device. Best for field engineers patching one rack at a time.</div>
@@ -1069,7 +1075,7 @@
             <button class="btn-mono" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;" onclick="_closeCablingPreview()">Hide</button>
           </div>
         </div>
-        <textarea id="cablingPreviewText" readonly class="cabling-preview-text" rows="14" placeholder=""></textarea>
+        <textarea id="cablingPreviewText" readonly class="cabling-preview-text" placeholder=""></textarea>
       </div>
 
       <div class="export-divider"></div>

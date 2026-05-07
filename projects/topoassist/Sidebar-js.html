@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.3 | 2026-05-07 11:31:36 -->
+<!-- TopoAssist v260507.4 | 2026-05-07 11:43:20 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.3";  // keep in sync with Code.gs
+const APP_VERSION = "260507.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14923,6 +14923,8 @@ function _renderCablingBridgeFilter() {
     });
     filtered = _filterCableGroupsByBridge(allSorted);
   }
+  const isFiltered = _cablingBridgeFilter.size > 0 && hasBridge;
+  const zeroMatch  = isFiltered && filtered.length === 0;
   const pills = _CABLING_BRIDGE_CATS.map(function(c) {
     const active = _cablingBridgeFilter.has(c.val);
     const cnt = counts[c.val] || 0;
@@ -14931,11 +14933,11 @@ function _renderCablingBridgeFilter() {
       + (disabled ? ' disabled' : ` onclick="_toggleCablingBridgeFilter('${c.val}')"`)
       + '>' + c.label + ' (' + cnt + ')</button>';
   }).join('');
-  const summary = (_cablingBridgeFilter.size && hasBridge)
+  const summary = (isFiltered && !zeroMatch)
     ? '<span class="cabling-filter-summary">' + filtered.length + '/' + allSorted.length + '</span>'
     : '';
   const noData = !hasBridge ? ' disabled title="No bridge data — run a Device Bridge check first"' : '';
-  bar.innerHTML = '<div class="cabling-filter-row">'
+  let html = '<div class="cabling-filter-row">'
     + '<span class="cabling-filter-label" style="margin:0;white-space:nowrap;">Filter by Issues:</span>'
     + '<button class="cabling-filter-ctrl"' + noData + ' onclick="_cablingBridgeSelectAll()">All</button>'
     + '<button class="cabling-filter-ctrl"' + noData + ' onclick="_cablingBridgeSelectNone()">None</button>'
@@ -14943,6 +14945,28 @@ function _renderCablingBridgeFilter() {
     + pills
     + summary
     + '</div>';
+  if (!hasBridge) {
+    html += '<div class="cabling-note">Run Device Bridge to enable issue filtering</div>';
+  } else if (zeroMatch) {
+    html += '<div class="cabling-note">No cables match the current filter</div>';
+  }
+  bar.innerHTML = html;
+
+  // Count badges on section titles
+  const countText = (isFiltered && !zeroMatch) ? filtered.length + '/' + allSorted.length : '';
+  ['cablingTopoCount', 'cablingDeviceCount'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = countText;
+    el.style.display = countText ? 'inline' : 'none';
+  });
+
+  // Disable all action buttons when filter is active but nothing matches
+  ['btnCablingMd', 'btnCablingCsv', 'btnCablingViewNetlist', 'btnCablingDownloadNetlist',
+   'btnCablingViewDevice', 'btnCablingDownloadDevice'].forEach(function(id) {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = zeroMatch;
+  });
 }
 
 function _toggleCablingBridgeFilter(cat) {
@@ -15423,11 +15447,19 @@ function _viewCablingReport(mode) {
   area.dataset.mode = mode;
   area.style.display = 'block';
   txt.scrollTop = 0;
+  const btnN = document.getElementById('btnCablingViewNetlist');
+  const btnD = document.getElementById('btnCablingViewDevice');
+  if (btnN) btnN.classList.toggle('cabling-pill-active', mode === 'netlist');
+  if (btnD) btnD.classList.toggle('cabling-pill-active', mode === 'device');
 }
 
 function _closeCablingPreview() {
   const area = document.getElementById('cablingPreviewArea');
   if (area) { area.style.display = 'none'; delete area.dataset.mode; }
+  const btnN = document.getElementById('btnCablingViewNetlist');
+  const btnD = document.getElementById('btnCablingViewDevice');
+  if (btnN) btnN.classList.remove('cabling-pill-active');
+  if (btnD) btnD.classList.remove('cabling-pill-active');
 }
 
 function _copyCablingPreview() {
