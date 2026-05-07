@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.8 | 2026-05-07 12:19:47 -->
+<!-- TopoAssist v260507.9 | 2026-05-07 12:29:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.8";  // keep in sync with Code.gs
+const APP_VERSION = "260507.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2307,13 +2307,14 @@ function _updateAuditToolbarIcon(hasIssues, count) {
 
 function _applyAuditCardIndicators() {
   const devSet = new Set();
+  // _auditIssues is the flag-gated SSoT — only entries that passed audit flag checks are here.
+  // Design: device name embedded as "[NN] DevName"; Live: port IDs as "devname:port".
   _auditIssues.forEach(issue => {
     if (issue.src === 'design') {
       for (const m of issue.msg.matchAll(/\[\d+\]\s+([\w.-]+)/g)) devSet.add(m[1]);
+    } else {
+      for (const m of issue.msg.matchAll(/([\w.-]+):\w+/g)) devSet.add(m[1]);
     }
-  });
-  Object.entries(bridgePortStatus).forEach(([portId, status]) => {
-    if (status === 'mismatch' || status === 'missing') devSet.add(portId.split(':')[0]);
   });
   document.querySelectorAll('.node').forEach(card => {
     const devName = card.dataset.id || card.getAttribute('data-id');

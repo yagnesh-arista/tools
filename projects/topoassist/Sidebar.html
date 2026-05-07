@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.8 | 2026-05-07 12:17:36 -->
+<!-- TopoAssist v260507.9 | 2026-05-07 12:29:51 -->
 <!DOCTYPE html>
 <html>
 
@@ -357,7 +357,17 @@
         <div class="legend-group">
           <div class="group-label">Links</div>
           <div class="legend-row">
-            <div class="l-item"><span class="l-link" style="background:#8b5cf6"></span>MLAG Peer</div>
+            <div class="l-item"><span class="l-link" style="background:#cbd5e1"></span>Bus Cable</div>
+            <div class="l-item"><span class="l-link" style="background:#94a3b8"></span>Cable</div>
+            <div class="l-item"><span class="l-link" style="background:#0d9488"></span>Port-Channel</div>
+            <div class="l-item"><span class="l-link" style="background:#8b5cf6"></span>MLAG</div>
+            <div class="l-item"><span class="l-link" style="background:#1e293b"></span>MLAG ISL</div>
+            <div class="l-item"><span class="l-link" style="background:#f97316"></span>Snake</div>
+            <div class="l-item"><span class="l-link" style="background:#f59e0b"></span>Non-EOS</div>
+            <div class="l-item"><span class="l-link" style="background:#eab308"></span>LLDP Mismatch</div>
+            <div class="l-item"><span class="l-link" style="height:0;background:none;border-top:3px dashed #ef4444"></span>Audit Error</div>
+            <div class="l-item"><span class="l-link" style="background:#d946ef"></span>Search</div>
+            <div class="l-item"><span class="l-link" style="background:#3b82f6"></span>Selected</div>
           </div>
         </div>
 
@@ -1033,12 +1043,14 @@
   </div>
 
   <!-- Cabling Modal -->
-  <div id="exportCablingModal" class="modal-std modal-body-padded">
+  <div id="exportCablingModal" class="modal-std">
     <div class="modal-header">
       <div class="modal-header-title">Export Cabling</div>
       <button class="btn-modal-close" onclick="closeCablingModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div style="padding: 20px;">
+    <div class="cabling-split-container">
+      <!-- Left: controls -->
+      <div class="cabling-split-left">
       <div id="cablingBridgeFilterBar" style="margin-bottom:10px;"></div>
 
       <div class="cabling-section-row">
@@ -1076,26 +1088,26 @@
       <textarea id="notebookLMQuestions" rows="5" onblur="saveNotebookLMQuestions()" style="width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;" placeholder="Loading…"></textarea>
       <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()" style="margin-top:6px;">Ask NotebookLM</button>
       <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;user-select:none;-webkit-user-select:none;"></div>
-    </div>
-  </div>
+      </div><!-- /cabling-split-left -->
 
-  <!-- Cabling View Panel — floating draggable preview -->
-  <div id="cablingViewPanel" class="modal-floating" style="display:none;">
-    <div class="modal-header" id="cablingViewPanelHdr">
-      <div class="modal-header-title" id="cablingViewPanelTitle">Cabling Report</div>
-      <button class="btn-modal-close" onclick="_closeCablingViewPanel()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="cabling-view-toolbar">
-      <input type="text" id="cablingViewFind" class="gcfg-find-input" placeholder="Find…" oninput="_cablingViewFindUpdate()" onkeydown="_cablingViewFindKey(event)">
-      <span id="cablingViewFindCount" class="gcfg-find-count"></span>
-      <button class="gcfg-find-btn" onclick="_cablingViewFindPrev()" title="Previous (Shift+Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="gcfg-find-btn" onclick="_cablingViewFindNext()" title="Next (Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="btn-mono" id="btnCablingViewPanelCopy" onclick="_copyCablingViewPanel()" style="margin-left:auto;">Copy</button>
-      <button class="btn-mono" onclick="_downloadFromCablingViewPanel()">Download</button>
-    </div>
-    <div class="cabling-view-body">
-      <textarea id="cablingViewPanelText" readonly class="cabling-preview-text" placeholder=""></textarea>
-    </div>
+      <!-- Right: cabling text view (hidden until View clicked) -->
+      <div id="cablingViewRight" class="cabling-split-right" style="display:none;">
+        <div class="cabling-view-title-bar">
+          <span id="cablingViewPanelTitle" class="cabling-section-title"></span>
+        </div>
+        <div class="cabling-view-toolbar">
+          <input type="text" id="cablingViewFind" class="gcfg-find-input" placeholder="Find…" oninput="_cablingViewFindUpdate()" onkeydown="_cablingViewFindKey(event)">
+          <span id="cablingViewFindCount" class="gcfg-find-count"></span>
+          <button class="gcfg-find-btn" onclick="_cablingViewFindPrev()" title="Previous (Shift+Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="gcfg-find-btn" onclick="_cablingViewFindNext()" title="Next (Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="btn-mono" id="btnCablingViewPanelCopy" onclick="_copyCablingViewPanel()" style="margin-left:auto;">Copy</button>
+          <button class="btn-mono" onclick="_downloadFromCablingViewPanel()">Download</button>
+        </div>
+        <div class="cabling-view-body">
+          <textarea id="cablingViewPanelText" readonly class="cabling-preview-text" placeholder=""></textarea>
+        </div>
+      </div><!-- /cablingViewRight -->
+    </div><!-- /cabling-split-container -->
   </div>
 
   <!-- Help Modal -->
