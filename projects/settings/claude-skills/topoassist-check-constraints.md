@@ -1,4 +1,6 @@
 Check that the critical design constraints are being followed after this session's changes.
+TRIGGER when: any Code.gs, Sidebar-js.html, Sidebar-css.html, or device_bridge.py was edited this session; before running any deploy command on TopoAssist.
+SKIP: read-only sessions, documentation-only changes, non-TopoAssist work.
 
 Run the following checks in order:
 
