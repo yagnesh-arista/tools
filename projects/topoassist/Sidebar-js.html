@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.7 | 2026-05-07 12:10:30 -->
+<!-- TopoAssist v260507.8 | 2026-05-07 12:19:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.7";  // keep in sync with Code.gs
+const APP_VERSION = "260507.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14532,12 +14532,13 @@ function _renderLldpResults(results, orphans) {
   const checkable   = results.length - skipCount;
 
   // ── Row renderer ───────────────────────────────────────────────────────
-  function rowHtml(r, icon, cls, detail, rowTitle) {
+  function rowHtml(r, icon, cls, detail, rowTitle, dotCls) {
     const clickable = r.status !== 'skip' && r.status !== 'unknown';
     const attrs = clickable
       ? ` onclick="_selectBridgeLink('${r.u}','${r.v}')" title="${rowTitle}"`
       : (rowTitle ? ` title="${rowTitle}"` : '');
-    return `<div class="bridge-result-row ${cls}"${attrs}><span class="bridge-row-icon">${icon}</span><span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>${detail ? `<span class="bridge-row-detail">${detail}</span>` : ''}</div>`;
+    const dot = dotCls ? `<span class="bridge-port-dot ${dotCls}" style="margin-right:3px"></span>` : '';
+    return `<div class="bridge-result-row ${cls}"${attrs}><span class="bridge-row-icon">${dot}${icon}</span><span class="bridge-row-cable">${r.u} ↔ ${r.v}</span>${detail ? `<span class="bridge-row-detail">${detail}</span>` : ''}</div>`;
   }
 
   // ── Sub-section builder ────────────────────────────────────────────────
@@ -14559,7 +14560,7 @@ function _renderLldpResults(results, orphans) {
   const issueParts = [];
   if (orphanCount) {
     const rows = orphans.map((o, i) =>
-      `<label class="bridge-disc-row"><input type="checkbox" class="bridge-disc-check" id="disc_${i}" data-pair="${encodeURIComponent(JSON.stringify(o))}"><span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span></label>`
+      `<label class="bridge-disc-row"><input type="checkbox" class="bridge-disc-check" id="disc_${i}" data-pair="${encodeURIComponent(JSON.stringify(o))}"><span class="bridge-port-dot bridge-port-mismatch"></span><span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span></label>`
     ).join('');
     issueParts.push(
       subHtml('New LLDP link', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
@@ -14568,43 +14569,43 @@ function _renderLldpResults(results, orphans) {
   }
   if (mismatchR.length) {
     issueParts.push(subHtml('LLDP Mismatch', mismatchR.length,
-      mismatchR.map(r => rowHtml(r, svgX, 'bridge-row-fail', r.msg, 'LLDP mismatch — click to select link')).join('')));
+      mismatchR.map(r => rowHtml(r, svgX, 'bridge-row-fail', r.msg, 'LLDP mismatch — click to select link', 'bridge-port-mismatch')).join('')));
   }
   if (l1ErrR.length) {
     issueParts.push(subHtml('L1 Quality (FCS/Symbol/Align)', l1ErrR.length,
       l1ErrR.map(({ r, uErr, vErr }) => {
         const detail = _l1ErrDetail(r.u, uErr, r.v, vErr);
-        return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link');
+        return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link', 'bridge-port-mismatch');
       }).join('')));
   }
   if (noNbrDownR.length) {
     issueParts.push(subHtml('Interface down (notconnect)', noNbrDownR.length,
       noNbrDownR.map(r => {
         const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
-        return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link');
+        return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link', 'bridge-port-missing-quiet');
       }).join('')));
   }
   if (noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
       noNbrShutR.map(r => {
         const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
-        return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link');
+        return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link', 'bridge-port-missing-quiet');
       }).join('')));
   }
   if (noNbrR.length) {
     issueParts.push(subHtml('No LLDP neighbour (up)', noNbrR.length,
-      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — interface is up but no peer seen')).join('')));
+      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — interface is up but no peer seen', 'bridge-port-missing')).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
 
   // ── OK section body ────────────────────────────────────────────────────
-  const okBody = okR.map(r => rowHtml(r, svgCheck, 'bridge-row-ok', '', 'Click to select this link in topology')).join('')
+  const okBody = okR.map(r => rowHtml(r, svgCheck, 'bridge-row-ok', '', 'Click to select this link in topology', 'bridge-port-match')).join('')
     || `<div class="br-empty-msg">No matched links</div>`;
 
   // ── Other section body (partial / unknown / excluded) ──────────────────
   const otherBody = noeosR.map(r => {
-    if (r.status === 'partial') return rowHtml(r, svgPart, 'bridge-row-part', 'SSH failed — ' + r.msg, 'Partial: one or both sides unreachable via SSH');
+    if (r.status === 'partial') return rowHtml(r, svgPart, 'bridge-row-part', 'SSH failed — ' + r.msg, 'Partial: one or both sides unreachable via SSH', 'bridge-port-missing-quiet');
     if (r.status === 'unknown') return rowHtml(r, svgUnk, 'bridge-row-unk', 'Not queried — no DNS/IP configured', 'Neither device was included in the bridge check (no IP set)');
     return rowHtml(r, svgSkip, 'bridge-row-skip', 'Excluded — ' + r.msg, 'Non-Arista or excluded from bridge check');
   }).join('') || `<div class="br-empty-msg">No other links</div>`;
