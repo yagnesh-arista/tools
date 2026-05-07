@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.23 | 2026-05-07 18:13:15 -->
+<!-- TopoAssist v260507.24 | 2026-05-07 18:17:41 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -611,12 +611,19 @@
     height: 10px;
     border-radius: 50%;
     border: 1px solid rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+  }
+
+  /* disconnected dashed square: border-box so 1.5px dashed stays within 10px */
+  .l-item .dot.disconnected {
+    box-sizing: border-box;
   }
 
   /* LL legend dots use bridge-port-dot class — match devcard appearance (no border) */
   .l-item .bridge-port-dot {
     width: 10px;
     height: 10px;
+    box-sizing: border-box;
   }
 
   .l-item .square {
@@ -1360,8 +1367,8 @@
     padding: 14px 16px;
   }
   #exportCablingModal {
-    width: min(500px, calc(100vw - 40px));
-    height: min(620px, 78vh);
+    width: min(480px, calc(100vw - 40px));
+    height: 82vh;
   }
   .cabling-panel-view {
     flex: 1;
