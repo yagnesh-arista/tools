@@ -1,10 +1,10 @@
-// TopoAssist v260507.13 | 2026-05-07 12:46:44
+// TopoAssist v260507.14 | 2026-05-07 12:51:14
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260507.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260507.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4420,11 +4420,19 @@ function getDeviceConfig(deviceName) {
     const configMap = {};
     const eosHostname = (targetDeviceObj && targetDeviceObj.hostname) ? targetDeviceObj.hostname : deviceName;
 
-    // [SECTION 000] GLOBAL
-    configMap["000_GLOBAL"] = {
-      full: `hostname ${eosHostname}\n!\n` + generateGlobalBlock(isEvpnDevice, settings, mlagState.isActive, deviceRole === 'LEAF'),
+    // [SECTION 000_BASE] Hostname + mandatory device baseline (ip routing, protocol commands)
+    // [SECTION 000_TEMPLATE] User's custom template (NTP, AAA, interface defaults, etc.)
+    configMap["000_BASE"] = {
+      full: `hostname ${eosHostname}\n` + generateGlobalBlock(isEvpnDevice, settings, mlagState.isActive, deviceRole === 'LEAF'),
       blockStatus: mlagState.isActive ? "MLAG Active" : "Standalone"
     };
+    const _userTpl = getGlobalConfig();
+    if (_userTpl && _userTpl.trim()) {
+      configMap["000_TEMPLATE"] = {
+        full: _userTpl,
+        blockStatus: "User Template"
+      };
+    }
 
     // [SECTIONS 000_LO0 / 000_LO1 / 001_SYSTEM] LOOPBACK0 + LOOPBACK1 (MLAG VTEP) + SYSTEM
     const sysBlocks = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings, ipPrefs);
@@ -5682,7 +5690,6 @@ function processP2pNeighbor(bgpNeighbors, peerObj, details, pName, ipPrefs, rowI
 }
 
 function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
-  let globalCfgText = getGlobalConfig() || "";
   let mandatory = ["!"];
   // multi-agent model is required for EVPN; skip on pure-underlay devices (e.g. HARNESS)
   if (isEvpnDevice) {
@@ -5702,7 +5709,7 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
   mandatory.push("!");
-  return globalCfgText + "\n" + mandatory.join("\n");
+  return mandatory.join("\n");
 }
 
 /**

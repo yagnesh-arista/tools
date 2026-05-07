@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.13 | 2026-05-07 12:46:44 -->
+<!-- TopoAssist v260507.14 | 2026-05-07 12:52:43 -->
 <!DOCTYPE html>
 <html>
 
@@ -1059,9 +1059,14 @@
       <div class="modal-header-title">Export Cabling</div>
       <button class="btn-modal-close" onclick="closeCablingModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div class="cabling-split-container">
-      <!-- Left: controls -->
-      <div class="cabling-split-left">
+    <div class="cabling-tab-bar">
+      <button class="cabling-tab cabling-tab-active" id="cablingTabExport" onclick="_cablingShowTab('export')">Export</button>
+      <button class="cabling-tab" id="cablingTabNetlist" onclick="_cablingShowTab('netlist')">Topology List</button>
+      <button class="cabling-tab" id="cablingTabDevice" onclick="_cablingShowTab('device')">Device List</button>
+    </div>
+
+    <!-- Export controls panel -->
+    <div id="cablingControlsPanel" class="cabling-panel-controls">
       <div id="cablingBridgeFilterBar" style="margin-bottom:10px;"></div>
 
       <div class="cabling-section-row">
@@ -1099,26 +1104,22 @@
       <textarea id="notebookLMQuestions" rows="5" onblur="saveNotebookLMQuestions()" style="width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;" placeholder="Loading…"></textarea>
       <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()" style="margin-top:6px;">Ask NotebookLM</button>
       <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;user-select:none;-webkit-user-select:none;"></div>
-      </div><!-- /cabling-split-left -->
+    </div><!-- /cablingControlsPanel -->
 
-      <!-- Right: cabling text view (hidden until View clicked) -->
-      <div id="cablingViewRight" class="cabling-split-right" style="display:none;">
-        <div class="cabling-view-title-bar">
-          <span id="cablingViewPanelTitle" class="cabling-section-title"></span>
-        </div>
-        <div class="cabling-view-toolbar">
-          <input type="text" id="cablingViewFind" class="gcfg-find-input" placeholder="Find…" oninput="_cablingViewFindUpdate()" onkeydown="_cablingViewFindKey(event)">
-          <span id="cablingViewFindCount" class="gcfg-find-count"></span>
-          <button class="gcfg-find-btn" onclick="_cablingViewFindPrev()" title="Previous (Shift+Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="gcfg-find-btn" onclick="_cablingViewFindNext()" title="Next (Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="btn-mono" id="btnCablingViewPanelCopy" onclick="_copyCablingViewPanel()" style="margin-left:auto;">Copy</button>
-          <button class="btn-mono" onclick="_downloadFromCablingViewPanel()">Download</button>
-        </div>
-        <div class="cabling-view-body">
-          <textarea id="cablingViewPanelText" readonly class="cabling-preview-text" placeholder=""></textarea>
-        </div>
-      </div><!-- /cablingViewRight -->
-    </div><!-- /cabling-split-container -->
+    <!-- Text view panel (shown when Topology List / Device List tab active) -->
+    <div id="cablingViewRight" class="cabling-panel-view" style="display:none;">
+      <div class="cabling-view-toolbar">
+        <input type="text" id="cablingViewFind" class="gcfg-find-input" placeholder="Find…" oninput="_cablingViewFindUpdate()" onkeydown="_cablingViewFindKey(event)">
+        <span id="cablingViewFindCount" class="gcfg-find-count"></span>
+        <button class="gcfg-find-btn" onclick="_cablingViewFindPrev()" title="Previous (Shift+Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,10 8,5 13,10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="gcfg-find-btn" onclick="_cablingViewFindNext()" title="Next (Enter)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><polyline points="3,6 8,11 13,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn-mono" id="btnCablingViewPanelCopy" onclick="_copyCablingViewPanel()" style="margin-left:auto;">Copy</button>
+        <button class="btn-mono" onclick="_downloadFromCablingViewPanel()">Download</button>
+      </div>
+      <div class="cabling-view-body">
+        <textarea id="cablingViewPanelText" readonly class="cabling-preview-text" placeholder=""></textarea>
+      </div>
+    </div><!-- /cablingViewRight -->
   </div>
 
   <!-- Help Modal -->
@@ -1359,7 +1360,7 @@
         </div>
         <span id="configMatchCount" class="match-badge hidden">0 matches</span>
         <div class="divider-v" style="height: 18px; margin: 0 4px;"></div>
-        <button class="btn-mono btn-sm" id="btnCfgCopyInterface" onclick="copyInterfaceConfig()" title="Copy interface blocks only">Copy Interface</button>
+        <button class="btn-mono btn-sm" id="btnCfgCopyInterface" onclick="copyInterfaceConfig()" title="Copy Base config + user template + all interface blocks">Copy Base+Ifs</button>
         <button class="btn-mono btn-sm" id="btnCfgCopyAll" onclick="copyAllConfig()" title="Copy full device config">Copy All</button>
         <div class="divider-v" id="cfgPushDivider" style="height: 18px; margin: 0 4px; display:none;"></div>
         <button class="btn-mono btn-sm" id="btnCfgPushIface" onclick="cfgModalPushInterface()" title="Push interface config(s) via Device Bridge" style="display:none;">Push Interface</button>
@@ -1445,7 +1446,7 @@
             </div>
             <span id="cfgViewMatchCount" class="match-badge hidden"></span>
             <div class="divider-v" style="height:18px;margin:0 2px;flex-shrink:0;"></div>
-            <button class="btn-mono btn-sm" id="btnCfgViewCopyIface" onclick="_cfgViewCopyInterface()" style="font-family:'JetBrains Mono',monospace;">Copy Interface</button>
+            <button class="btn-mono btn-sm" id="btnCfgViewCopyIface" onclick="_cfgViewCopyInterface()" title="Copy Base config + user template + all interface blocks" style="font-family:'JetBrains Mono',monospace;">Copy Base+Ifs</button>
             <button class="btn-mono btn-sm" id="btnCfgViewCopyAll" onclick="_cfgViewCopyAll()" style="font-family:'JetBrains Mono',monospace;">Copy All</button>
             <div class="divider-v" id="cfgViewPushDiv" style="height:18px;margin:0 2px;flex-shrink:0;display:none;"></div>
             <button class="btn-mono btn-sm" id="btnCfgViewPushIface" onclick="cfgModalPushInterface()" title="Push interface config(s) via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push Interface</button>
