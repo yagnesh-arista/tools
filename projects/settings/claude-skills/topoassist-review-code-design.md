@@ -163,11 +163,13 @@ after any code change was made this session.
 
 ## Check 9 — generateConfig() Param Count
 
-Grep for `generateConfig(` in Code.gs. Every call site must pass exactly 5 arguments:
-`(portName, d, ipPrefs, seenPos, netSettings)`. Omitting the 5th silently drops all
-protocol-family-gated commands.
+Grep for `generateConfig(` in Code.gs. The signature is:
+`(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet)` — 6 parameters.
+`vx1VlanSet` is optional: callers from `getTopologyData` may omit it intentionally — that is correct.
+Every call must pass at least 5 args; omitting `netSettings` (arg 5) silently drops all protocol-family-gated commands.
 
 ✗ FAIL if any call site has fewer than 5 arguments — cite file and line.
+⚠ WARN if a non-getTopologyData caller omits vx1VlanSet (arg 6) unexpectedly.
 
 ---
 
