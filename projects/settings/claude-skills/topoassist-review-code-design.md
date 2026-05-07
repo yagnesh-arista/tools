@@ -1024,6 +1024,7 @@ TOPOASSIST CODE REVIEW
 33 — alert() in error/async paths      ✓ / ✗ / ⚠
 34 — allDevicesData null guards        ✓ / ✗ / ⚠
 35 — Bridge sub-type SSoT             ✓ / ✗ / ⚠
+36 — device_bridge template sync      ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
