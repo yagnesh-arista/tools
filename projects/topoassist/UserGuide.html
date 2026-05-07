@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.34 | 2026-05-07 18:48:09 -->
+<!-- TopoAssist v260507.35 | 2026-05-07 18:49:20 -->
 <!DOCTYPE html>
 <html>
 
@@ -1539,23 +1539,33 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <tr><td rowspan="3"><b>Interface</b></td><td>Unsupported interface type</td><td><code>int_</code> does not start with <code>Et</code> or <code>Vx</code>.</td></tr>
       <tr><td>Duplicate interface</td><td>The same interface name appears more than once on a device.</td></tr>
       <tr><td>L3 port in MLAG group</td><td>A routed (L3) port is assigned to an MLAG Port-Channel (not supported by EOS).</td></tr>
-      <tr><td rowspan="5"><b>VLAN</b></td><td>VLAN mismatch on PO link</td><td>The <code>vlan_</code> values differ across the two sides of a cable.</td></tr>
+      <tr><td rowspan="8"><b>VLAN</b></td><td>VLAN mismatch on PO link</td><td>The <code>vlan_</code> values differ across the two sides of a cable.</td></tr>
       <tr><td>Native VLAN on non-trunk</td><td><code>nv&lt;N&gt;</code> native VLAN token present on a non-trunk port.</td></tr>
       <tr><td>SVI VLAN not in trunk allowed-list</td><td>A VLAN in <code>svi_vlan_</code> is absent from <code>vlan_</code> — no SVI will be generated for it.</td></tr>
       <tr><td>VLAN referenced but not defined</td><td>A VLAN is used in the topology but not listed in the global VLAN definitions.</td></tr>
       <tr><td>Duplicate P2P VLAN</td><td>The same VLAN ID is used as a P2P VLAN on more than one link.</td></tr>
-      <tr><td rowspan="5"><b>IP / Gateway</b></td><td>Invalid SVI (VLAN not trunk-allowed)</td><td>An SVI is configured for a VLAN that is not in the port's trunk allowed list.</td></tr>
+      <tr><td>Stale VLAN (non-L2 mode)</td><td><code>vlan_</code> contains multiple values but <code>sp_mode_</code> is not an L2 or sub-interface mode — extra VLANs are silently ignored by config generation.</td></tr>
+      <tr><td>Stale SVI (non-L2 mode)</td><td><code>svi_vlan_</code> has a value but <code>sp_mode_</code> is not an L2 mode — SVIs cannot be generated without an L2 trunk context.</td></tr>
+      <tr><td>Missing VLAN (L3 mode)</td><td><code>sp_mode_</code> is <code>l3-et-int</code> or <code>l3-po-int</code> but <code>vlan_</code> is blank — required for IP subnet derivation on L3 int modes.</td></tr>
+      <tr><td rowspan="6"><b>IP / Gateway</b></td><td>Invalid SVI (VLAN not trunk-allowed)</td><td>An SVI is configured for a VLAN that is not in the port's trunk allowed list.</td></tr>
       <tr><td>SVI missing IP</td><td>An SVI interface has no IP address configured.</td></tr>
       <tr><td>L3 port missing IP</td><td>A routed port has no IP address in the <code>ip_</code> columns.</td></tr>
       <tr><td>IP type conflict</td><td>Conflicting IPv4/IPv6 IP type settings across a cable.</td></tr>
       <tr><td>Duplicate gateway IP</td><td>The same gateway IP is assigned to different VLANs across devices.</td></tr>
-      <tr><td rowspan="2"><b>Mode / Speed</b></td><td>Mode incompatibility</td><td>The <code>sp_mode_</code> combination across a cable is not a valid access/trunk pairing.</td></tr>
+      <tr><td>Stale VRF (non-SVI mode)</td><td><code>vrf_</code> has a value but <code>sp_mode_</code> is not SVI-capable — the VRF assignment has no effect and config generation ignores it.</td></tr>
+      <tr><td rowspan="3"><b>Mode / Speed</b></td><td>Mode incompatibility</td><td>The <code>sp_mode_</code> combination across a cable is not a valid access/trunk pairing.</td></tr>
       <tr><td>Speed mismatch</td><td>Both sides of a cable must have the same <code>speed_</code> value.</td></tr>
+      <tr><td>Incomplete xcvr speed</td><td><code>xcvr_speed_</code> has a value but <code>xcvr_type_</code> is blank — the transceiver type is needed for breakout and cabling detection.</td></tr>
       <tr><td rowspan="2"><b>MLAG</b></td><td>MLAG peer-link not declared</td><td>Devices appear to be MLAG peers but no peer-link is declared in Device Manager.</td></tr>
       <tr><td>MLAG device not declared</td><td>An interface references an MLAG configuration but the device is not declared as MLAG in Device Manager.</td></tr>
-      <tr><td rowspan="3"><b>Bridge / LLDP</b></td><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
+      <tr><td rowspan="2"><b>Snake / IXIA</b></td><td>Snake loopback port not p2p</td><td>A snake loopback interface's <code>ip_type_</code> is not <code>p2p</code> — required for correct snake test IP assignment.</td></tr>
+      <tr><td>IXIA EP port not p2p</td><td>An IXIA endpoint interface's <code>ip_type_</code> is not <code>p2p</code> — required for IXIA traffic IP assignment.</td></tr>
+      <tr><td rowspan="6"><b>Bridge / LLDP</b></td><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
       <tr><td>Missing LLDP neighbor</td><td>No LLDP neighbor was seen on a port that the topology expects to be connected.</td></tr>
+      <tr><td>Interface down</td><td>A cabled port shows <code>notconnect</code> in <code>show interfaces status</code> — the link is not up. Disabled by default; down ports are common in lab setups with unplugged or powered-off devices.</td></tr>
+      <tr><td>Interface shut</td><td>A cabled port is admin-disabled (<code>disabled</code> in <code>show interfaces status</code>). Disabled by default; shut ports are intentional in many lab setups.</td></tr>
       <tr><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation.</td></tr>
+      <tr><td>L1 errors (CRC / FCS)</td><td>Interface error counters (FCS, CRC, symbol, align errors) exceed the configured threshold. Enabled by default — indicates physical layer issues. The threshold is configurable in the Audit Checks modal (default: 1 error).</td></tr>
     </table>
     <p style="font-size:13px;">Each check row has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled and has issues, <b>gray</b> = disabled or audit has not been run yet. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle all checks at once.</p>
 
