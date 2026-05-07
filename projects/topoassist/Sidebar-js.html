@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.11 | 2026-05-07 12:34:52 -->
+<!-- TopoAssist v260507.12 | 2026-05-07 12:44:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.11";  // keep in sync with Code.gs
+const APP_VERSION = "260507.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7788,8 +7788,8 @@ function redrawLinks() {
     else if (isValidationMode && validationErrors[link.id]) layers.error.push(link);
     else if (searchActiveLinks.has(link.id)) layers.search.push(link);
     else if (activeLinkColors[link.id]) layers.trace.push(link);
-    else if (bridgePortStatus[link.u] === 'mismatch' || bridgePortStatus[link.u] === 'missing' ||
-             bridgePortStatus[link.v] === 'mismatch' || bridgePortStatus[link.v] === 'missing') layers.bridge_mismatch.push(link);
+    else if (['mismatch', 'missing'].includes(_bridgeEffectiveClass(bridgePortStatus[link.u], link.u)) ||
+             ['mismatch', 'missing'].includes(_bridgeEffectiveClass(bridgePortStatus[link.v], link.v))) layers.bridge_mismatch.push(link);
     else if (link.type === 'snake') layers.snake.push(link);
     else if (link.type === 'peer') layers.peer.push(link);
     else if (link.type === 'mlag') layers.mlag.push(link);
@@ -14679,7 +14679,7 @@ function openCablingModal() {
   const modal = document.getElementById('exportCablingModal');
 
   if (modal) {
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
     setActiveModalChip('exportCablingModal');
     loadNotebookLMQuestions();
     _renderCablingBridgeFilter();
