@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.35 | 2026-05-07 18:49:20 -->
+<!-- TopoAssist v260507.36 | 2026-05-07 18:57:32 -->
 <!DOCTYPE html>
 <html>
 
@@ -1303,8 +1303,17 @@ clasp login --no-localhost</pre>
     </ul>
 
     <h3>6. Global Config Template</h3>
-    <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="3"/><path d="m21.5 19.5-1.5-1.5"/></svg></span> toolbar button (Global Configuration Template)
-    <p style="font-size:13px;">Define a base config template (NTP, management, AAA, etc.) that is prepended to every device's generated output.</p>
+    <p style="font-size:13px;">Open <b>Config Center</b> (grid icon in toolbar) and click <b>Template</b> in the left nav. The template panel contains a free-text textarea for commands that should appear in every device's generated config (NTP servers, AAA, SNMP, management interfaces, logging, banners, etc.). Click <b>Save &amp; Apply</b> to store the template — it is included on the next Generate or Push.</p>
+    <div class="info-box slate" style="font-size:12px;">
+      <b>Two baseline blocks in the generated config</b><br>
+      Every Arista device config starts with two auto-managed blocks before any interface or protocol config:
+      <ul style="margin:4px 0 0 0;">
+        <li><code>000_BASE</code> — <b>Auto-generated</b>: <code>hostname</code>, <code>ip routing</code>, <code>service routing protocols model multi-agent</code>, switching-mode, spanning-tree, MLAG peer-link globals, and other mandatory EOS baseline commands. Not user-editable.</li>
+        <li><code>000_GTPL</code> — <b>User template</b>: the content you enter in the Template panel (NTP, AAA, management, etc.). Inserted immediately after the baseline, before loopbacks and interfaces.</li>
+      </ul>
+      When the template textarea is empty, <code>000_GTPL</code> is omitted entirely from the generated output.
+    </div>
+    <p style="font-size:13px;"><b>Copy Base+Ifs</b> (button in the Generate and Config View panels) copies <code>000_BASE + 000_GTPL + all interface blocks</code> to the clipboard — skipping loopbacks, system VLANs, and protocol blocks. Useful for incremental interface-only pushes or pasting into a targeted configure session. <b>Copy All</b> copies the full generated config.</p>
 
     <h3>7. Technology Stack</h3>
     <p style="font-size:13px;">Configure interface types and routing protocols via the <span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6.5-10 6.5L2 8.5Z"/><path d="M22 17 12 23.5 2 17"/><path d="M22 12 12 18.5 2 12"/></svg></span> toolbar button. These flags control which config blocks are included in the generated output.</p>
