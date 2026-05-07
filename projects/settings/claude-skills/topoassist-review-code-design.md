@@ -962,6 +962,32 @@ the pre-computed `bridgePortSubType` map — never re-derived from `devStatusMap
 
 ---
 
+## Check 36 — device_bridge.py ↔ Embedded Template Sync
+
+`downloadBridgeScript()` in Sidebar-js.html embeds a full copy of `device_bridge.py` as a
+template string. Shared functions in both files must stay byte-for-byte equivalent.
+Functions to verify: `_extract_eos_errors`, `_push_config`, `_abort_stale_sessions`
+(and any other function that exists in both places).
+
+```bash
+# Confirm function exists in device_bridge.py
+grep -n "^def _extract_eos_errors\|^def _push_config\|^def _abort_stale_sessions" \
+  ~/claude/projects/topoassist/device_bridge.py
+
+# Confirm same functions exist in the embedded template
+grep -n "_extract_eos_errors\|_push_config\|_abort_stale_sessions" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep "^def \|def " | head -10
+```
+
+If this session changed any such function in one file, manually diff the function body
+in `device_bridge.py` against the same function in the `downloadBridgeScript()` template block
+in `Sidebar-js.html`. Both must be identical (ignoring surrounding JS string quoting).
+
+✗ FAIL if any shared function body differs between device_bridge.py and the embedded template
+✗ FAIL if a function was added to device_bridge.py but not mirrored in the embedded template
+
+---
+
 ## Output Format
 
 ```
