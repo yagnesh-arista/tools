@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-04-27 (Rule 26 added — label-column alignment: fixed-width label column + flex:1 options for tabular row alignment; nested sub-labels use same fixed width; wrap label+icon in one span)
+Last updated: 2026-05-07 (memory review: added Rule 24 row; removed deleted topoassist-check-constraints command; added topoassist-client-test-check.sh + topoassist-ui-inventory-check.sh to hooks table)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -40,6 +40,7 @@ Last updated: 2026-04-27 (Rule 26 added — label-column alignment: fixed-width 
 | 21 | Modal button standard — SVG × header (`.btn-modal-close`); footer order: Delete-isolated-left · Cancel · Primary-right; view-only = no footer; no duplicate close/cancel; every new modal must register in `modalOrder` + `closeFuncs` for Esc handling. **Cancel + dirty-state**: every edit/confirm modal must have Cancel btn immediately left of Save; canonical close function calls `_confirmDirtyClose(isDirty, label)`; capture `initialState` at end of open fn; reset to `''` in save/delete success handlers | `rules/` | `rules/ui.md` |
 | 22 | Search/filter input height — browser UA inflates `<input>` to ~26px; compact inputs must pin `height: 20px; padding: 0 7px; line-height: 20px; box-sizing: border-box`; match height to sibling icons/rows; full-form modal inputs exempt | `rules/` | `rules/ui.md` |
 | 23 | Memory tiering — Tier 2 never duplicates Tier 1; before writing any memory file: check Tier 1 + existing Tier 2 for overlap, ask user before creating; "missing from memory" ≠ undocumented | `CLAUDE.md` | `CLAUDE.md` |
+| 24 | Modal scroll + floating panel minimize — every `.modal-std` body needs `overflow-y: auto; flex: 1; min-height: 0`; floating panels minimize via JS height-pinning; `.modal-std` minimize uses `display:none` + dock chip via `_updateModalDock()`; overlay hidden on minimize + restored on un-minimize via `data-had-overlay`; `_onModalClose()` strips stale dock chip on close | `rules/` | `rules/ui.md` |
 | 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
 | 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
 
@@ -112,7 +113,6 @@ Session end (Stop)
 | `/project:topoassist-deploy-inst-gas-clasp` | Instructions: re-authenticate `clasp` for headless/SSH sessions |
 | `/project:topoassist-deploy-demo-template` | Push current code to demo/template sheet (intentional releases only) |
 | `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
-| `/project:topoassist-check-constraints` | Verify design invariants: canonicalizeInterface sync, generateConfig param count, hasKey usage, device_bridge↔template sync, VERSION sync, no MLAG heuristics |
 | `/project:eos-tricks` | Search EOS_CLI_Tricks.md — with arg: grep filtered; without arg: fzf fuzzy search |
 
 ---
@@ -130,8 +130,10 @@ Session end (Stop)
 | Edit `~/.claude/**` or `~/claude/CLAUDE.md` | `settings-backup.sh` | Auto-syncs to `settings/` + commits + pushes |
 | Edit any `~/claude/projects/*/.claude/commands/*.md` | `project-commands-sync.sh` | Copies command file to `~/.claude/commands/` |
 | Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written |
-| Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in Tests.gs; lists gaps |
+| Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in `Test-gs.gs`; lists gaps |
+| Edit `topoassist/Sidebar-js.html` | `topoassist-client-test-check.sh` | Checks test-js.js for coverage gaps in client-side JS closures |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
+| Edit any `topoassist/Sidebar.html` or `Code.gs` | `topoassist-ui-inventory-check.sh` | Reminds to update INSTRUCTIONS Section 26 (UI Element Inventory) |
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
 | Edit `topoassist/device_bridge.py` | `topoassist-bridge-version.sh` | Auto-bumps `VERSION = "YYMMDD.N"` in `device_bridge.py` + embedded template in `Sidebar-js.html` |
 | Edit `eos-tricks/` files | `eos-tricks-publish.sh` | Publishes `eos-tricks.html` to `public_html/` |
