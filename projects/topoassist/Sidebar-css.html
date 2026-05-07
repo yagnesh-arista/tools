@@ -1,4 +1,4 @@
-<!-- TopoAssist v260507.16 | 2026-05-07 13:00:01 -->
+<!-- TopoAssist v260507.17 | 2026-05-07 16:07:50 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3030,7 +3030,8 @@
   }
 
   .dot.disconnected {
-    background-color: var(--danger)
+    background-color: #94a3b8;
+    box-shadow: 0 0 0 2px #ef4444;
   }
 
   /* --- BRIDGE PORT STATUS DOT --- */
@@ -3049,9 +3050,10 @@
   .bridge-port-dot.bridge-port-match        { background: #22c55e; box-shadow: 0 0 3px rgba(34,197,94,0.5); }
   .bridge-port-dot.bridge-port-mismatch     { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
   .bridge-port-dot.bridge-port-missing      { background: #ef4444; box-shadow: 0 0 3px rgba(239,68,68,0.5); }
-  .bridge-port-dot.bridge-port-down         { background: #f97316; box-shadow: 0 0 3px rgba(249,115,22,0.5); }
+  .bridge-port-dot.bridge-port-down         { background: #f59e0b; box-shadow: 0 0 3px rgba(245,158,11,0.5); }
   .bridge-port-dot.bridge-port-shut         { background: #94a3b8; }
   .bridge-port-dot.bridge-port-missing-quiet { background: #94a3b8; }
+  .bridge-port-dot.has-l1                   { box-shadow: 0 0 0 2px #eab308; }
 
   /* --- EOS VERSION LINE (under hostname in device card header) --- */
   .dev-version-line {
