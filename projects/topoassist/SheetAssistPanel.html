@@ -1,4 +1,4 @@
-<!-- TopoAssist v260509.7 | 2026-05-09 02:39:06 -->
+<!-- TopoAssist v260509.7 | 2026-05-09 02:39:32 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -1232,6 +1232,33 @@
       })
       .withFailureHandler(function() {})
       .getSheetVlanSummary();
+
+    var _internalPollActive = false;
+
+    function _pollInternalVlans() {
+      if (_internalPollActive) return;
+      _internalPollActive = true;
+      google.script.run
+        .withSuccessHandler(function(data) {
+          _internalPollActive = false;
+          if (!data) return;
+          internalVlanData = data;
+          buildSapVlanStrip();
+          _updateInternalVlanTimestamp();
+        })
+        .withFailureHandler(function() { _internalPollActive = false; })
+        .getInternalVlans();
+    }
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        if (data) internalVlanData = data;
+        buildSapVlanStrip();
+        _updateInternalVlanTimestamp();
+        setInterval(_pollInternalVlans, 30000);
+      })
+      .withFailureHandler(function() {})
+      .getInternalVlans();
   </script>
 </body>
 </html>
