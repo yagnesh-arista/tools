@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.6 | 2026-05-09 02:03:46 -->
+<!-- TopoAssist v260509.7 | 2026-05-09 02:38:21 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.6";  // keep in sync with Code.gs
+const APP_VERSION = "260509.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12464,6 +12464,7 @@ function _autoRunBridge() {
         if (ds.ok && ds.internalVlans && ds.internalVlans.length)
           deviceInternalVlans[devId.toLowerCase()] = ds.internalVlans;
       });
+      google.script.run.saveInternalVlans(deviceInternalVlans);
       _autoDetectBridgeMac(devStatusMap);
       _applyHostnameIndicators(devices);
       applyDevStatusToCards();
@@ -12842,6 +12843,7 @@ function runBridgeCheck() {
           if (ds.ok && ds.internalVlans && ds.internalVlans.length)
             deviceInternalVlans[devId.toLowerCase()] = ds.internalVlans;
         });
+        google.script.run.saveInternalVlans(deviceInternalVlans);
         _autoDetectBridgeMac(devStatusMap);
         _applyHostnameIndicators(devices);
         applyDevStatusToCards();
@@ -13128,7 +13130,63 @@ function _buildCleanupConfig(items) {
 function _renderCleanupResults(results, reconBody) {
   _cleanupItemStore = [];
 
-  function addItem(dev, type, data, labelHtml, badgeHtml) {
+  const btnStyle = 'font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;';
+  const chevronSvg = '<svg class="cleanup-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">' +
+    '<polyline points="2,2 7,5 2,8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  let html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">' +
+    '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-family:\'JetBrains Mono\',monospace;font-size:11px;user-select:none;-webkit-user-select:none;">' +
+    '<input type="checkbox" id="reconSelectAll" onchange="toggleReconSelectAll()"> Select All</label>' +
+    '<button id="btnCleanSelected" class="btn-mono" onclick="runCleanSelected()" disabled style="' + btnStyle + '">Clean Selected (0)</button>' +
+    '<button class="btn-mono" onclick="runCleanAll()" style="' + btnStyle + '">Clean All</button>' +
+    '<button class="btn-mono" onclick="_cleanupExpandAll()" style="' + btnStyle + 'margin-left:auto;">Expand All</button>' +
+    '<button class="btn-mono" onclick="_cleanupCollapseAll()" style="' + btnStyle + '">Collapse All</button>' +
+    '</div>';
+
+  Object.entries(results)
+    .sort(([a], [b]) => (allDevicesData[a]?.sheetIndex || 0) - (allDevicesData[b]?.sheetIndex || 0))
+    .forEach(([dev, r]) => {
+      const totalStale = (!r || !r.ok) ? 0 :
+        (r.interfaces||[]).length + (r.bgp||[]).length + (r.vlans||[]).length + (r.vrfs||[]).length + (r.ospf||[]).length;
+
+      html += '<div class="bridge-recon-dev" data-dev="' + _esc(dev) + '">';
+      if (!r || !r.ok) {
+        html += '<div class="bridge-recon-dev-hdr">' + chevronSvg +
+                '<span>' + _esc(_fmtDev(dev)) + '</span>' +
+                '<span class="bridge-recon-counts" style="color:#dc2626;">' + _esc(r ? r.error : 'no response') + '</span></div>';
+      } else {
+        html += '<div class="bridge-recon-dev-hdr cleanup-hdr-clickable" onclick="_toggleCleanupDev(\'' + _esc(dev) + '\')">' + chevronSvg;
+        if (totalStale > 0) {
+          html += '<input type="checkbox" class="recon-dev-cb" data-dev="' + _esc(dev) + '" ' +
+                  'onclick="event.stopPropagation();" onchange="_cleanupDevCheck(\'' + _esc(dev) + '\', this)">';
+        }
+        html += '<span style="font-size:12px;font-weight:700;">' + _esc(_fmtDev(dev)) + '</span>' +
+                '<span class="bridge-recon-counts">' +
+                (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
+                '</span></div>';
+      }
+      html += '<div class="bridge-recon-dev-body" style="display:none;"></div>';
+      html += '</div>';
+    });
+
+  reconBody.innerHTML = html || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No results.</div>';
+  updateReconSelCount();
+}
+
+function _cleanupRenderDevBody(dev, bodyEl) {
+  if (bodyEl.dataset.rendered) return;
+  bodyEl.dataset.rendered = '1';
+  const r = _cleanupResults[dev];
+  if (!r || !r.ok) return;
+
+  const ifaceOrphans = r.interfaces || [];
+  const bgpOrphans   = r.bgp || [];
+  const vlanOrphans  = r.vlans || [];
+  const vrfOrphans   = r.vrfs || [];
+  const ospfOrphans  = r.ospf || [];
+  const totalStale   = ifaceOrphans.length + bgpOrphans.length + vlanOrphans.length + vrfOrphans.length + ospfOrphans.length;
+
+  function addItem(type, data, labelHtml, badgeHtml) {
     const idx = _cleanupItemStore.length;
     _cleanupItemStore.push({ dev, type, data });
     return '<div class="bridge-orphan-row" style="display:flex;align-items:center;gap:6px;padding:3px 0;">' +
@@ -13138,120 +13196,129 @@ function _renderCleanupResults(results, reconBody) {
       '</label>' + badgeHtml + '</div>';
   }
 
-  let html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">' +
-    '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-family:\'JetBrains Mono\',monospace;font-size:11px;user-select:none;-webkit-user-select:none;">' +
-    '<input type="checkbox" id="reconSelectAll" onchange="toggleReconSelectAll()"> Select All</label>' +
-    '<button id="btnCleanSelected" class="btn-mono" onclick="runCleanSelected()" disabled ' +
-    'style="font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;">Clean Selected (0)</button>' +
-    '<button class="btn-mono" onclick="runCleanAll()" ' +
-    'style="font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:2px 8px;height:20px;box-sizing:border-box;line-height:16px;">Clean All</button>' +
-    '</div>';
+  let html = '';
+  const detectionErrs = r.detection_errors || {};
+  const detectionErrKeys = Object.keys(detectionErrs);
+  if (detectionErrKeys.length) {
+    html += '<div style="font-family:\'JetBrains Mono\',monospace;font-size:10px;' +
+            'color:#92400e;background:#fffbeb;border-radius:3px;padding:4px 8px;' +
+            'margin:3px 0 4px;line-height:1.5;">' +
+            '<b>Some categories could not be checked — results may be incomplete:</b><br>' +
+            detectionErrKeys.map(k => _esc(k) + ': ' + _esc(detectionErrs[k])).join('<br>') +
+            '</div>';
+  }
 
-  Object.entries(results)
-    .sort(([a], [b]) => (allDevicesData[a]?.sheetIndex || 0) - (allDevicesData[b]?.sheetIndex || 0))
-    .forEach(([dev, r]) => {
-    html += '<div class="bridge-recon-dev">';
-    if (!r || !r.ok) {
-      html += '<div class="bridge-recon-dev-hdr">' + _esc(_fmtDev(dev)) +
-              '<span class="bridge-recon-counts" style="color:#dc2626;">' +
-              _esc(r ? r.error : 'no response') + '</span></div>';
-    } else {
-      const ifaceOrphans = r.interfaces || [];
-      const bgpOrphans   = r.bgp || [];
-      const vlanOrphans  = r.vlans || [];
-      const vrfOrphans   = r.vrfs || [];
-      const ospfOrphans  = r.ospf || [];
-      const totalStale   = ifaceOrphans.length + bgpOrphans.length + vlanOrphans.length + vrfOrphans.length + ospfOrphans.length;
-
-      html += '<div class="bridge-recon-dev-hdr" style="display:flex;align-items:center;gap:6px;">';
-      if (totalStale > 0) {
-        html += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;-webkit-user-select:none;">' +
-                '<input type="checkbox" class="recon-dev-cb" data-dev="' + _esc(dev) + '" onchange="toggleReconDevItems(\'' + _esc(dev) + '\')">' +
-                '</label>';
-      }
-      html += '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:700;user-select:none;-webkit-user-select:none;">' + _esc(_fmtDev(dev)) + '</span>' +
-              '<span class="bridge-recon-counts">' +
-              (totalStale ? totalStale + ' stale' : r.matched + '/' + r.ta_total + ' matched') +
-              '</span></div>';
-
-      const detectionErrs = r.detection_errors || {};
-      const detectionErrKeys = Object.keys(detectionErrs);
-      if (detectionErrKeys.length) {
-        html += '<div style="font-family:\'JetBrains Mono\',monospace;font-size:10px;' +
-                'color:#92400e;background:#fffbeb;border-radius:3px;padding:4px 8px;' +
-                'margin:3px 0 4px;line-height:1.5;">' +
-                '<b>Some categories could not be checked — results may be incomplete:</b><br>' +
-                detectionErrKeys.map(k => _esc(k) + ': ' + _esc(detectionErrs[k])).join('<br>') +
-                '</div>';
-      }
-
-      if (totalStale === 0) {
-        html += '<div class="bridge-recon-ok-msg">All __TA config accounted for.</div>';
-      } else {
-        if (ifaceOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale Interfaces</div><div class="bridge-orphan-list">';
-          ifaceOrphans.forEach(o => {
-            const proto    = (o.linkStatus || o.protocol || '').toLowerCase();
-            const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
-            html += addItem(dev, 'interface', o,
-              '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
-              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
-              '<span class="bridge-link-badge ' + badgeCls + '" style="flex-shrink:0;">' + _esc(proto || 'unk') + '</span>');
-          });
-          html += '</div>';
-        }
-        if (bgpOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale BGP Neighbors</div><div class="bridge-orphan-list">';
-          bgpOrphans.forEach(o => {
-            html += addItem(dev, 'bgp', o,
-              '<span class="bridge-orphan-name">' + _esc(o.neighbor) + '</span>' +
-              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
-              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>');
-          });
-          html += '</div>';
-        }
-        if (vlanOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale VLANs</div><div class="bridge-orphan-list">';
-          vlanOrphans.forEach(o => {
-            html += addItem(dev, 'vlan', o,
-              '<span class="bridge-orphan-name">VLAN ' + _esc(String(o.vid)) + '</span>' +
-              '<span class="bridge-orphan-desc">' + _esc(o.name) + '</span>',
-              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>');
-          });
-          html += '</div>';
-        }
-        if (vrfOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale VRFs</div><div class="bridge-orphan-list">';
-          vrfOrphans.forEach(o => {
-            html += addItem(dev, 'vrf', o,
-              '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
-              '<span class="bridge-orphan-desc">vrf instance ' + _esc(o.name) + ' __TA</span>',
-              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>');
-          });
-          html += '</div>';
-        }
-        if (ospfOrphans.length) {
-          html += '<div class="bridge-recon-sub-hdr">Stale OSPF Passive-Interfaces</div><div class="bridge-orphan-list">';
-          ospfOrphans.forEach(o => {
-            html += addItem(dev, 'ospf', o,
-              '<span class="bridge-orphan-name">' + _esc(o.iface) + '</span>' +
-              '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.context) + '</span>',
-              '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">OSPF</span>');
-          });
-          html += '</div>';
-        }
-      }
+  if (totalStale === 0) {
+    html += '<div class="bridge-recon-ok-msg">All __TA config accounted for.</div>';
+  } else {
+    if (ifaceOrphans.length) {
+      html += '<div class="bridge-recon-sub-hdr">Stale Interfaces</div><div class="bridge-orphan-list">';
+      ifaceOrphans.forEach(o => {
+        const proto    = (o.linkStatus || o.protocol || '').toLowerCase();
+        const badgeCls = proto === 'up' ? 'badge-up' : proto === 'down' ? 'badge-down' : 'badge-unk';
+        html += addItem('interface', o,
+          '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+          '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
+          '<span class="bridge-link-badge ' + badgeCls + '" style="flex-shrink:0;">' + _esc(proto || 'unk') + '</span>');
+      });
+      html += '</div>';
     }
-    html += '</div>';
-  });
+    if (bgpOrphans.length) {
+      html += '<div class="bridge-recon-sub-hdr">Stale BGP Neighbors</div><div class="bridge-orphan-list">';
+      bgpOrphans.forEach(o => {
+        html += addItem('bgp', o,
+          '<span class="bridge-orphan-name">' + _esc(o.neighbor) + '</span>' +
+          '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.description) + '</span>',
+          '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">BGP</span>');
+      });
+      html += '</div>';
+    }
+    if (vlanOrphans.length) {
+      html += '<div class="bridge-recon-sub-hdr">Stale VLANs</div><div class="bridge-orphan-list">';
+      vlanOrphans.forEach(o => {
+        html += addItem('vlan', o,
+          '<span class="bridge-orphan-name">VLAN ' + _esc(String(o.vid)) + '</span>' +
+          '<span class="bridge-orphan-desc">' + _esc(o.name) + '</span>',
+          '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VLAN</span>');
+      });
+      html += '</div>';
+    }
+    if (vrfOrphans.length) {
+      html += '<div class="bridge-recon-sub-hdr">Stale VRFs</div><div class="bridge-orphan-list">';
+      vrfOrphans.forEach(o => {
+        html += addItem('vrf', o,
+          '<span class="bridge-orphan-name">' + _esc(o.name) + '</span>' +
+          '<span class="bridge-orphan-desc">vrf instance ' + _esc(o.name) + ' __TA</span>',
+          '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">VRF</span>');
+      });
+      html += '</div>';
+    }
+    if (ospfOrphans.length) {
+      html += '<div class="bridge-recon-sub-hdr">Stale OSPF Passive-Interfaces</div><div class="bridge-orphan-list">';
+      ospfOrphans.forEach(o => {
+        html += addItem('ospf', o,
+          '<span class="bridge-orphan-name">' + _esc(o.iface) + '</span>' +
+          '<span class="bridge-orphan-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(o.context) + '</span>',
+          '<span class="bridge-link-badge badge-unk" style="flex-shrink:0;">OSPF</span>');
+      });
+      html += '</div>';
+    }
+  }
+  bodyEl.innerHTML = html;
+}
 
-  reconBody.innerHTML = html || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No results.</div>';
+function _toggleCleanupDev(dev) {
+  const section = document.querySelector('.bridge-recon-dev[data-dev="' + dev + '"]');
+  if (!section) return;
+  const body = section.querySelector('.bridge-recon-dev-body');
+  if (!body) return;
+  if (section.classList.contains('cleanup-open')) {
+    section.classList.remove('cleanup-open');
+    body.style.display = 'none';
+  } else {
+    _cleanupRenderDevBody(dev, body);
+    body.style.display = '';
+    section.classList.add('cleanup-open');
+  }
+}
+
+function _cleanupDevCheck(dev, cb) {
+  const section = document.querySelector('.bridge-recon-dev[data-dev="' + dev + '"]');
+  if (!section) return;
+  const body = section.querySelector('.bridge-recon-dev-body');
+  if (body && body.style.display === 'none') {
+    _cleanupRenderDevBody(dev, body);
+    body.style.display = '';
+    section.classList.add('cleanup-open');
+  }
+  if (body) body.querySelectorAll('.recon-item-cb').forEach(c => { c.checked = cb.checked; });
   updateReconSelCount();
+}
+
+function _cleanupExpandAll() {
+  document.querySelectorAll('.bridge-recon-dev[data-dev]').forEach(section => {
+    if (section.classList.contains('cleanup-open')) return;
+    const dev  = section.dataset.dev;
+    const body = section.querySelector('.bridge-recon-dev-body');
+    if (!body) return;
+    _cleanupRenderDevBody(dev, body);
+    body.style.display = '';
+    section.classList.add('cleanup-open');
+  });
+}
+
+function _cleanupCollapseAll() {
+  document.querySelectorAll('.bridge-recon-dev').forEach(section => {
+    const body = section.querySelector('.bridge-recon-dev-body');
+    if (body) body.style.display = 'none';
+    section.classList.remove('cleanup-open');
+  });
 }
 
 function toggleReconSelectAll() {
   const master = document.getElementById('reconSelectAll');
   if (!master) return;
+  if (master.checked) _cleanupExpandAll();
   document.querySelectorAll('.recon-item-cb').forEach(cb => { cb.checked = master.checked; });
   document.querySelectorAll('.recon-dev-cb').forEach(cb => { cb.checked = master.checked; });
   updateReconSelCount();
@@ -13260,8 +13327,7 @@ function toggleReconSelectAll() {
 function toggleReconDevItems(dev) {
   const devCb = document.querySelector('.recon-dev-cb[data-dev="' + dev + '"]');
   if (!devCb) return;
-  document.querySelectorAll('.recon-item-cb[data-dev="' + dev + '"]').forEach(cb => { cb.checked = devCb.checked; });
-  updateReconSelCount();
+  _cleanupDevCheck(dev, devCb);
 }
 
 function updateReconSelCount() {

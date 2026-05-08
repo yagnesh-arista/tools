@@ -1,4 +1,4 @@
-<!-- TopoAssist v260509.6 | 2026-05-09 02:03:46 -->
+<!-- TopoAssist v260509.7 | 2026-05-09 02:39:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -713,50 +713,90 @@
             <div class="ip-ex-peer-sep"></div>
 
             <div id="gw-ex4-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none">GW IPv4</div>
-            <div class="ip-ex-key">GW MLAG phy</div>
-            <div id="gw-ex4-std-mphy1" class="ip-ex-val"></div>
-            <div id="gw-ex4-std-mphy2" class="ip-ex-val"></div>
-            <div class="ip-ex-key">GW phy</div>
-            <div id="gw-ex4-std-solo" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW Anycast</div>
-            <div id="gw-ex4-std-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW VARP</div>
-            <div id="gw-ex4-std-vip" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div id="gw-ex4-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:3px 0 2px;user-select:none;-webkit-user-select:none">wide &lt;/24:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
-            <div class="ip-ex-key">GW MLAG phy</div>
-            <div id="gw-ex4-wide-mphy1" class="ip-ex-val"></div>
-            <div id="gw-ex4-wide-mphy2" class="ip-ex-val"></div>
-            <div class="ip-ex-key">GW phy</div>
-            <div id="gw-ex4-wide-solo" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW Anycast</div>
-            <div id="gw-ex4-wide-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW VARP</div>
-            <div id="gw-ex4-wide-vip" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div id="gw-ex4-caution" style="display:none;grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;padding:2px 0;user-select:none;-webkit-user-select:none"></div>
+            <!-- Standard ≥/24 — dims when wide/super-wide active -->
+            <div id="gw-ex4-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Standard &#x2265;/24</div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex4-std-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex4-std-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex4-std-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex4-std-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex4-std-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+            </div>
+            <!-- Wide /16–/23 — dims when standard or super-wide active -->
+            <div id="gw-ex4-wide-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div id="gw-ex4-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Wide /16–/23:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex4-wide-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex4-wide-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex4-wide-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex4-wide-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex4-wide-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+            </div>
+            <!-- Super-wide /8–/15 — dims when standard or wide active -->
+            <div id="gw-ex4-sw-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div id="gw-ex4-sw-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Super-wide /8–/15:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b> (oct3=<span class="f-dyn">20</span> dropped)</div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex4-sw-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex4-sw-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex4-sw-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex4-sw-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex4-sw-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div id="gw-ex4-caution" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;padding:2px 0;user-select:none;-webkit-user-select:none"></div>
+            </div>
 
             <div class="ip-ex-peer-sep"></div>
 
             <div id="gw-ex6-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0;user-select:none;-webkit-user-select:none">GW IPv6</div>
-            <div class="ip-ex-key">GW MLAG phy</div>
-            <div id="gw-ex6-std-mphy1" class="ip-ex-val"></div>
-            <div id="gw-ex6-std-mphy2" class="ip-ex-val"></div>
-            <div class="ip-ex-key">GW phy</div>
-            <div id="gw-ex6-std-solo" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW Anycast</div>
-            <div id="gw-ex6-std-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW VARP</div>
-            <div id="gw-ex6-std-vip" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div id="gw-ex6-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:3px 0 2px;user-select:none;-webkit-user-select:none">wide &lt;/64:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
-            <div class="ip-ex-key">GW MLAG phy</div>
-            <div id="gw-ex6-wide-mphy1" class="ip-ex-val"></div>
-            <div id="gw-ex6-wide-mphy2" class="ip-ex-val"></div>
-            <div class="ip-ex-key">GW phy</div>
-            <div id="gw-ex6-wide-solo" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW Anycast</div>
-            <div id="gw-ex6-wide-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div class="ip-ex-key">GW VARP</div>
-            <div id="gw-ex6-wide-vip" class="ip-ex-val" style="grid-column:2/4"></div>
-            <div id="gw-ex6-caution" style="display:none;grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;padding:2px 0;user-select:none;-webkit-user-select:none"></div>
+            <!-- Standard ≥/64 — dims when wide/super-wide active -->
+            <div id="gw-ex6-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Standard &#x2265;/64</div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex6-std-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex6-std-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex6-std-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex6-std-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex6-std-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+            </div>
+            <!-- Wide /48–/63 — dims when standard or super-wide active -->
+            <div id="gw-ex6-wide-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div id="gw-ex6-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Wide /48–/63:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex6-wide-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex6-wide-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex6-wide-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex6-wide-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex6-wide-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+            </div>
+            <!-- Super-wide /32–/47 — dims when standard or wide active -->
+            <div id="gw-ex6-sw-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
+              <div id="gw-ex6-sw-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0;user-select:none;-webkit-user-select:none">Super-wide /32–/47:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b> (oct3=<span class="f-dyn">20</span> dropped)</div>
+              <div class="ip-ex-key">GW MLAG phy</div>
+              <div id="gw-ex6-sw-mphy1" class="ip-ex-val"></div>
+              <div id="gw-ex6-sw-mphy2" class="ip-ex-val"></div>
+              <div class="ip-ex-key">GW phy</div>
+              <div id="gw-ex6-sw-solo" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW Anycast</div>
+              <div id="gw-ex6-sw-anycast" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div class="ip-ex-key">GW VARP</div>
+              <div id="gw-ex6-sw-vip" class="ip-ex-val" style="grid-column:2/4"></div>
+              <div id="gw-ex6-caution" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;padding:2px 0;user-select:none;-webkit-user-select:none"></div>
+            </div>
 
             <div class="ip-ex-peer-sep"></div>
 
@@ -870,6 +910,25 @@
           Override GW octets per device. Empty = inherit global. MLAG pairs must share the same first octet.
         </div>
         <div id="gwDeviceOverrideTable"></div>
+        <div class="info-box info-box--dim" style="margin-top:8px">
+          <table style="width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:10px">
+            <tr>
+              <th style="text-align:left;padding:1px 12px 3px 0;border-bottom:1px solid var(--border-light);font-weight:700;white-space:nowrap;color:#64748b;font-style:normal">Protocol</th>
+              <th style="text-align:left;padding:1px 12px 3px 0;border-bottom:1px solid var(--border-light);font-weight:700;white-space:nowrap;color:#64748b;font-style:normal">Range</th>
+              <th style="text-align:left;padding:1px 0 3px 0;border-bottom:1px solid var(--border-light);font-weight:700;color:#64748b;font-style:normal">Tiers</th>
+            </tr>
+            <tr>
+              <td style="padding:3px 12px 1px 0;white-space:nowrap;color:#64748b;font-style:normal">IPv4</td>
+              <td style="padding:3px 12px 1px 0;white-space:nowrap;color:#64748b;font-style:normal">/8 &ndash; /32</td>
+              <td style="padding:3px 0 1px 0;color:#94a3b8"><b style="color:#64748b;font-style:normal">/8&ndash;/15</b> super-wide &middot; <b style="color:#64748b;font-style:normal">/16&ndash;/23</b> wide &middot; <b style="color:#64748b;font-style:normal">/24&ndash;/32</b> standard</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 12px 0 0;white-space:nowrap;color:#64748b;font-style:normal">IPv6</td>
+              <td style="padding:3px 12px 0 0;white-space:nowrap;color:#64748b;font-style:normal">/32 &ndash; /128</td>
+              <td style="padding:3px 0 0 0;color:#94a3b8"><b style="color:#64748b;font-style:normal">/32&ndash;/47</b> super-wide &middot; <b style="color:#64748b;font-style:normal">/48&ndash;/63</b> wide &middot; <b style="color:#64748b;font-style:normal">/64&ndash;/128</b> standard</td>
+            </tr>
+          </table>
+        </div>
       </div>
 
       <div class="section-header">VXLAN VNI Mapping</div>

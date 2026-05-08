@@ -1,4 +1,4 @@
-<!-- TopoAssist v260509.6 | 2026-05-09 02:03:46 -->
+<!-- TopoAssist v260509.7 | 2026-05-09 02:39:06 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -366,12 +366,13 @@
       border: 1px solid transparent; opacity: 0.72;
       transition: opacity 0.12s, box-shadow 0.12s;
     }
-    .vlan-chip.chip-vtep   { background: #ccfbf1; color: #0f766e; border-color: #5eead4; }
-    .vlan-chip.chip-svi    { background: #dcfce7; color: #166534; border-color: #86efac; }
-    .vlan-chip.chip-trunk  { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
-    .vlan-chip.chip-native { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
-    .vlan-chip.active      { box-shadow: 0 0 0 2px #3b82f6; opacity: 1; }
-    .vlan-chip:hover       { opacity: 1; }
+    .vlan-chip.chip-vtep     { background: #ccfbf1; color: #0f766e; border-color: #5eead4; }
+    .vlan-chip.chip-svi      { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .vlan-chip.chip-l2       { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+    .vlan-chip.chip-l3       { background: #fff7ed; color: #c2410c; border-color: #fb923c; }
+    .vlan-chip.chip-internal { background: #faf5ff; color: #7c3aed; border-color: #c4b5fd; cursor: default; pointer-events: none; }
+    .vlan-chip.active        { box-shadow: 0 0 0 2px #3b82f6; opacity: 1; }
+    .vlan-chip:hover         { opacity: 1; }
     .vlan-clear {
       font-family: "JetBrains Mono", monospace;
       font-size: 9px; font-weight: 700; text-transform: uppercase;
@@ -455,8 +456,10 @@
     <div class="vlan-legend">
       <span class="vlan-chip chip-vtep">vtep</span>
       <span class="vlan-chip chip-svi">svi</span>
-      <span class="vlan-chip chip-trunk">trunk</span>
-      <span class="vlan-chip chip-native">native</span>
+      <span class="vlan-chip chip-l2">l2</span>
+      <span class="vlan-chip chip-l3">l3</span>
+      <span class="vlan-chip chip-internal">internal</span>
+      <span id="internalVlanTs" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#cbd5e1;font-style:italic;margin-left:auto;display:none;"></span>
     </div>
     <div class="vlan-strip" id="vlanStrip"></div>
   </div>
@@ -1046,22 +1049,47 @@
     }
 
     /* ── VLAN CHIP STRIP ──────────────────────────────── */
-    var vlanSummary   = [];
-    var sapVlanFilter = [];
+    var vlanSummary      = [];
+    var sapVlanFilter    = [];
+    var internalVlanData = { vlans: [], updatedAt: null };
+
+    function _updateInternalVlanTimestamp() {
+      var el = document.getElementById('internalVlanTs');
+      if (!el) return;
+      if (!internalVlanData || !internalVlanData.updatedAt) { el.style.display = 'none'; return; }
+      var mins = Math.floor((Date.now() - new Date(internalVlanData.updatedAt).getTime()) / 60000);
+      el.textContent = 'EOS internal \u00b7 ' + (mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.floor(mins / 60) + 'h ago');
+      el.style.display = '';
+    }
 
     function buildSapVlanStrip() {
       var strip = document.getElementById('vlanStrip');
       var clearBtn = document.getElementById('vlanClear');
       if (!strip) return;
-      if (!vlanSummary.length) {
+
+      var sheetVids = {};
+      vlanSummary.forEach(function(v) { sheetVids[v.vid] = true; });
+      var internalOnly = (internalVlanData.vlans || []).filter(function(n) { return !sheetVids[String(n)]; });
+
+      if (!vlanSummary.length && !internalOnly.length) {
         strip.innerHTML = '<span class="vlan-empty">no vlans</span>';
         if (clearBtn) clearBtn.style.display = 'none';
         return;
       }
-      strip.innerHTML = vlanSummary.map(function(v) {
-        var cls = v.hasVtep ? 'chip-vtep' : (v.hasSvi ? 'chip-svi' : (v.trunkCount > 0 ? 'chip-trunk' : 'chip-native'));
+
+      var items = [];
+      vlanSummary.forEach(function(v) { items.push({ vidNum: parseInt(v.vid, 10), type: 'sheet', data: v }); });
+      internalOnly.forEach(function(n) { items.push({ vidNum: n, type: 'internal', data: null }); });
+      items.sort(function(a, b) { return a.vidNum - b.vidNum; });
+
+      strip.innerHTML = items.map(function(item) {
+        if (item.type === 'internal') {
+          return '<span class="vlan-chip chip-internal" title="EOS internal VLAN (not in sheet)">' + item.vidNum + '</span>';
+        }
+        var v = item.data;
+        var cls = v.hasVtep ? 'chip-vtep' : (v.hasSvi ? 'chip-svi' : (v.hasL2 ? 'chip-l2' : (v.hasL3 ? 'chip-l3' : 'chip-l2')));
         var active = sapVlanFilter.indexOf(v.vid) !== -1 ? ' active' : '';
-        var count = v.rowCount || v.trunkCount || 0;
+        var count = v.rowCount || 0;
         var devList = v.devices.join(', ') || '';
         var title = (count > 0 ? count + (count === 1 ? ' row' : ' rows') : '') + (devList ? ' \u00b7 ' + devList : '');
         return '<span class="vlan-chip ' + cls + active + '" onclick="toggleSapVlanChip(event,\'' + v.vid + '\')" title="' + title + '">' +

@@ -1,10 +1,10 @@
-// TopoAssist v260509.6 | 2026-05-09 02:03:46
+// TopoAssist v260509.7 | 2026-05-09 02:36:00
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260509.6";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260509.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -271,43 +271,53 @@ function getSheetVlanSummary() {
     if (lastRow < 3 || lastCol < 2) return [];
 
     const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-    const devVlanCol = {};   // device name → vlan_ col index (0-based)
-    const devSviCol  = {};   // device name → svi_vlan_ col index (0-based)
-    const devIntCol  = {};   // device name → int_ col index (0-based)
+    const devVlanCol    = {}; // device name → vlan_ col index (0-based)
+    const devSviCol     = {}; // device name → svi_vlan_ col index (0-based)
+    const devIntCol     = {}; // device name → int_ col index (0-based)
+    const devSpModeCol  = {}; // device name → sp_mode_ col index (0-based)
     headers.forEach(function(h, i) {
       const s = String(h);
-      if      (s.startsWith('vlan_'))     devVlanCol[s.slice(5)] = i;
-      else if (s.startsWith('svi_vlan_')) devSviCol[s.slice(9)]  = i;
-      else if (s.startsWith('int_'))      devIntCol[s.slice(4)]  = i;
+      if      (s.startsWith('vlan_'))     devVlanCol[s.slice(5)]   = i;
+      else if (s.startsWith('svi_vlan_')) devSviCol[s.slice(9)]    = i;
+      else if (s.startsWith('int_'))      devIntCol[s.slice(4)]    = i;
+      else if (s.startsWith('sp_mode_')) devSpModeCol[s.slice(8)]  = i;
     });
 
     const dataRowCount = lastRow - 2;
     if (dataRowCount <= 0) return [];
     const allData = sheet.getRange(3, 1, dataRowCount, lastCol).getValues();
 
-    const vlanInfo = {}; // vid → { hasSvi, hasVtep, trunkCount, rowCount, devices: Set }
+    const vlanInfo = {}; // vid → { hasSvi, hasVtep, hasL2, hasL3, rowCount, devices: Set }
     Object.keys(devVlanCol).forEach(function(devName) {
-      const vCol   = devVlanCol[devName];
-      const sviCol = devSviCol.hasOwnProperty(devName) ? devSviCol[devName] : -1;
-      const intCol = devIntCol.hasOwnProperty(devName) ? devIntCol[devName] : -1;
+      const vCol      = devVlanCol[devName];
+      const sviCol    = devSviCol.hasOwnProperty(devName)    ? devSviCol[devName]    : -1;
+      const intCol    = devIntCol.hasOwnProperty(devName)    ? devIntCol[devName]    : -1;
+      const spModeCol = devSpModeCol.hasOwnProperty(devName) ? devSpModeCol[devName] : -1;
       allData.forEach(function(row) {
         const vlanRaw = String(row[vCol] || '').trim();
         if (!vlanRaw) return;
         const parsed  = parseVlanWithNative(vlanRaw);
-        const sviRaw  = sviCol >= 0 ? String(row[sviCol] || '').trim().toLowerCase() : '';
-        const intRaw  = intCol >= 0 ? String(row[intCol] || '').trim() : '';
+        const sviRaw  = sviCol    >= 0 ? String(row[sviCol]    || '').trim().toLowerCase() : '';
+        const intRaw  = intCol    >= 0 ? String(row[intCol]    || '').trim() : '';
+        const spMode  = spModeCol >= 0 ? String(row[spModeCol] || '').trim().toLowerCase() : '';
         const isVx1   = intRaw && canonicalizeInterface(intRaw) === 'Vx1';
+        const isL3    = !isVx1 && spMode.startsWith('l3');
 
-        // Allowed (trunk) VLANs
+        function _markVlan(vid) {
+          if (!vlanInfo[vid]) vlanInfo[vid] = { hasSvi: false, hasVtep: false, hasL2: false, hasL3: false, rowCount: 0, devices: new Set() };
+          vlanInfo[vid].rowCount++;
+          vlanInfo[vid].devices.add(devName);
+          if (isVx1) vlanInfo[vid].hasVtep = true;
+          else if (isL3) vlanInfo[vid].hasL3 = true;
+          else vlanInfo[vid].hasL2 = true;
+        }
+
+        // Allowed VLANs
         if (parsed.vlans) {
           parsed.vlans.split(',').forEach(function(v) {
             v = v.trim();
             if (!v || isNaN(parseInt(v, 10))) return;
-            if (!vlanInfo[v]) vlanInfo[v] = { hasSvi: false, hasVtep: false, trunkCount: 0, rowCount: 0, devices: new Set() };
-            vlanInfo[v].trunkCount++;
-            vlanInfo[v].rowCount++;
-            vlanInfo[v].devices.add(devName);
-            if (isVx1) vlanInfo[v].hasVtep = true;
+            _markVlan(v);
             if (sviRaw === 'all') {
               vlanInfo[v].hasSvi = true;
             } else if (sviRaw) {
@@ -322,10 +332,7 @@ function getSheetVlanSummary() {
         // Native VLAN
         if (parsed.native) {
           const n = parsed.native;
-          if (!vlanInfo[n]) vlanInfo[n] = { hasSvi: false, hasVtep: false, trunkCount: 0, rowCount: 0, devices: new Set() };
-          vlanInfo[n].rowCount++;
-          vlanInfo[n].devices.add(devName);
-          if (isVx1) vlanInfo[n].hasVtep = true;
+          _markVlan(n);
           if (sviRaw) {
             sviRaw.split(',').forEach(function(tok) {
               tok = tok.trim();
@@ -342,10 +349,37 @@ function getSheetVlanSummary() {
       .map(function(vid) {
         const info = vlanInfo[vid];
         return { vid: vid, hasSvi: info.hasSvi, hasVtep: info.hasVtep,
-                 trunkCount: info.trunkCount, rowCount: info.rowCount,
-                 nativeOnly: info.trunkCount === 0, devices: Array.from(info.devices) };
+                 hasL2: info.hasL2, hasL3: info.hasL3,
+                 rowCount: info.rowCount, devices: Array.from(info.devices) };
       });
   } catch (e) { return []; }
+}
+
+function saveInternalVlans(vlansMap) {
+  try {
+    if (!vlansMap || typeof vlansMap !== 'object') return;
+    const seen = {};
+    const allVlans = [];
+    Object.values(vlansMap).forEach(function(arr) {
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function(n) {
+        const v = parseInt(n, 10);
+        if (!isNaN(v) && !seen[v]) { seen[v] = true; allVlans.push(v); }
+      });
+    });
+    allVlans.sort(function(a, b) { return a - b; });
+    PropertiesService.getDocumentProperties()
+      .setProperty('INTERNAL_VLANS', JSON.stringify({ vlans: allVlans, updatedAt: new Date().toISOString() }));
+  } catch(e) { /* fire-and-forget */ }
+}
+
+function getInternalVlans() {
+  try {
+    const raw = PropertiesService.getDocumentProperties().getProperty('INTERNAL_VLANS');
+    if (!raw) return { vlans: [], updatedAt: null };
+    const parsed = JSON.parse(raw);
+    return { vlans: Array.isArray(parsed.vlans) ? parsed.vlans : [], updatedAt: parsed.updatedAt || null };
+  } catch(e) { return { vlans: [], updatedAt: null }; }
 }
 
 // Navigate to the Nth occurrence of vid across all devices' vlan_ columns.

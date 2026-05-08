@@ -1,4 +1,4 @@
-<!-- TopoAssist v260509.6 | 2026-05-09 02:03:46 -->
+<!-- TopoAssist v260509.7 | 2026-05-09 02:38:44 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6267,6 +6267,16 @@
     color: var(--text-main);
     user-select: none; -webkit-user-select: none;
   }
+  .cleanup-hdr-clickable { cursor: pointer; }
+  .cleanup-hdr-clickable:hover { background: var(--bg-hover, #e2e8f0); }
+  .cleanup-chevron {
+    flex-shrink: 0; color: var(--text-muted);
+    transition: transform 0.15s ease;
+  }
+  .bridge-recon-dev.cleanup-open > .bridge-recon-dev-hdr .cleanup-chevron {
+    transform: rotate(90deg);
+  }
+  .bridge-recon-dev-body { border-top: 1px solid var(--border-light); }
   .bridge-recon-counts {
     font-weight: 400; font-size: 10px; color: var(--text-muted);
     margin-left: auto;
