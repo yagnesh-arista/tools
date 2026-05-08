@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.19 | 2026-05-08 18:24:59 -->
+<!-- TopoAssist v260508.20 | 2026-05-08 18:26:39 -->
 <!DOCTYPE html>
 <html>
 
@@ -619,8 +619,7 @@
       </div>
       <div id="infoVgw" class="info-popup-box">
         <b style="font-style:normal;">Anycast GW</b>: emits <code class="inline-code">ip address virtual</code> on SVIs — requires EVPN for MAC/IP Type-2 route distribution.<br><br>
-        <b style="font-style:normal;">VARP</b>: emits <code class="inline-code">ip virtual-router address</code> on SVIs — used with MLAG active-active gateway (EVPN optional).<br><br>
-        <b style="font-style:normal;">Virtual Router MAC</b>: <code class="inline-code">ip virtual-router mac-address</code> — same MAC on all devices; required for both modes.
+        <b style="font-style:normal;">VARP</b>: emits <code class="inline-code">ip virtual-router address</code> on SVIs — used with MLAG active-active gateway (EVPN optional). Requires a shared virtual-router MAC (configured below when selected).
       </div>
       <div id="infoBundleGroups" class="info-popup-box" style="max-width:340px;">
         <b style="font-style:normal;">Why bundles?</b> In vlan-aware-bundle mode the RT must be identical on all VTEPs for routes to exchange. Two VTEPs with completely different VLAN sets need separate bundles with different RTs so each pair can still find a common RT.<br><br>
