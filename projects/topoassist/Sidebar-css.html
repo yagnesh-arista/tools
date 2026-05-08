@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.5 | 2026-05-08 11:25:22 -->
+<!-- TopoAssist v260508.7 | 2026-05-08 11:39:32 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -2274,7 +2274,7 @@
     bottom: 16px;
     right: 16px;
     display: none; /* shown via JS when in holistic view */
-    flex-direction: column;
+    flex-direction: column-reverse; /* label+btns pinned at bottom; group list grows upward */
     align-items: stretch;
     gap: 0;
     background: var(--bg-card);
@@ -2309,7 +2309,7 @@
   }
   #groupListPanel {
     display: none;
-    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light); /* separator below list, above buttons */
     max-height: 240px;
     overflow-y: auto;
     overscroll-behavior: contain;
