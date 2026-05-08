@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.2 | 2026-05-09 01:40:53 -->
+<!-- TopoAssist v260509.3 | 2026-05-09 01:48:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.2";  // keep in sync with Code.gs
+const APP_VERSION = "260509.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6750,6 +6750,19 @@ function getPeerId(portId) {
   return (linkObj.u === portId) ? linkObj.v : linkObj.u;
 }
 
+function _deselectAll() {
+  if (!selectedLineId && !selectedDeviceId) return;
+  if (selectedLineId && linkMap[selectedLineId]) restoreLinkStyle(linkMap[selectedLineId]);
+  selectedLineId = null; savedSelectionId = null; selectedDeviceId = null;
+  document.querySelectorAll(".node.selected").forEach(n => n.classList.remove("selected"));
+  document.querySelectorAll('.split-btn').forEach(el => el.style.display = "none");
+  const cg = document.getElementById("copyGroup"); if (cg) cg.style.display = "none";
+  const ss = document.getElementById("selectionStatus");
+  if (ss) { ss.innerHTML = ''; ss.style.color = ''; ss.style.fontWeight = ''; ss.title = ''; }
+  setStatus(getReadyStatus());
+  requestAnimationFrame(redrawLinks);
+}
+
 /**
 * Handles device selection and updates the toolbar to show Device-level actions.
 */
@@ -6797,44 +6810,34 @@ function selectDevice(deviceId) {
     triggerButtonFlash("btnDevice");
   }
 
-  // 6. [NEW] AUDIT SUMMARY DISPLAY
-  const status = document.getElementById("selectionStatus");
-  if (status) {
-    let devErrors = new Set();
-    // Get all ports belonging to this device
-    const ports = devicePortsMap[deviceId] || [];
+  // 6. AUDIT SUMMARY DISPLAY — always clear prior link-error annotation first
+  const selSt = document.getElementById("selectionStatus");
+  if (selSt) { selSt.innerHTML = ''; selSt.style.color = ''; selSt.style.fontWeight = ''; selSt.title = ''; }
 
-    // Aggregate errors from all connected links and port-level errors
-    ports.forEach(portId => {
-      const links = portMap[portId] || [];
-      links.forEach(lid => {
-        if (typeof validationErrors !== 'undefined' && validationErrors[lid]) {
-          validationErrors[lid].forEach(e => devErrors.add(e));
-        }
-      });
-      // Port-level errors (e.g. duplicate interface on unconnected port)
-      if (typeof validationErrors !== 'undefined' && validationErrors[portId]) {
-        validationErrors[portId].forEach(e => devErrors.add(e));
+  let devErrors = new Set();
+  const ports = devicePortsMap[deviceId] || [];
+  ports.forEach(portId => {
+    const links = portMap[portId] || [];
+    links.forEach(lid => {
+      if (typeof validationErrors !== 'undefined' && validationErrors[lid]) {
+        validationErrors[lid].forEach(e => devErrors.add(e));
       }
     });
-
-    if (devErrors.size > 0) {
-      // Show Red Warning with Count
-      setStatus(`△ ${deviceId} <span style="opacity:0.8; font-weight:normal;">(${devErrors.size} Issues Found)</span>`, "status-error");
-      // Tooltip shows the actual error list
-      document.getElementById("status").title = Array.from(devErrors).join("\n");
-    } else {
-      // Standard Blue Selection Text
-      setStatus("Selected Device: " + _fmtDev(deviceId));
-      document.getElementById("status").title = "";
+    if (typeof validationErrors !== 'undefined' && validationErrors[portId]) {
+      validationErrors[portId].forEach(e => devErrors.add(e));
     }
+  });
+
+  if (devErrors.size > 0) {
+    setStatus(`△ ${deviceId} <span style="opacity:0.8; font-weight:normal;">(${devErrors.size} Issues Found)</span>`, "status-error");
+    document.getElementById("status").title = Array.from(devErrors).join("\n");
+  } else {
+    setStatus("Selected Device: " + _fmtDev(deviceId));
+    document.getElementById("status").title = "";
   }
 
   const copyGroup = document.getElementById("copyGroup");
   if (copyGroup) copyGroup.style.display = "flex";
-
-  let st = document.getElementById("status");
-  if (statusLog.length > 0 && statusLog[statusLog.length-1].msg.includes("△")) setStatus(getReadyStatus());
 }
 
 /**
@@ -6930,9 +6933,10 @@ function selectLine(id) {
         statusEl.style.fontWeight = "bold";
         statusEl.title = validationErrors[id].join("\n");
       } else {
-        // No errors, clear the status text
-        setStatus("");
+        // No errors — clear any prior annotation
+        statusEl.innerHTML = "";
         statusEl.style.color = "";
+        statusEl.style.fontWeight = "";
         statusEl.title = "";
       }
     }
@@ -8211,17 +8215,7 @@ function setupCanvasInteraction() {
     if (hit) {
       selectLine(hit.id);
     } else {
-      if (selectedLineId || selectedDeviceId) {
-        if (selectedLineId && linkMap[selectedLineId]) { restoreLinkStyle(linkMap[selectedLineId]); }
-        selectedLineId = null; savedSelectionId = null; selectedDeviceId = null;
-        document.querySelectorAll(".node.selected").forEach(n => n.classList.remove("selected"));
-        document.querySelectorAll('.split-btn').forEach(el => el.style.display = "none");
-        document.getElementById("copyGroup").style.display = "none";
-        document.getElementById("selectionStatus").innerText = "";
-        let st = document.getElementById("status");
-        setStatus(getReadyStatus());
-        requestAnimationFrame(redrawLinks);
-      }
+      _deselectAll();
     }
   });
 
@@ -8618,7 +8612,7 @@ function render(data) {
       const _savedW = (JSON.parse(localStorage.getItem('nb_card_width') || '{}'))[node.id];
       if (_savedW) el.style.width = _savedW + 'px';
       resizeObserver.observe(el);
-      el.onclick = function (e) { e.stopPropagation(); };
+      el.onclick = function (e) { e.stopPropagation(); _deselectAll(); };
 
       // --- HEADER & BODY CONSTRUCTION ---
       let header = document.createElement("div");
