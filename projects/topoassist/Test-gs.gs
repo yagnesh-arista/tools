@@ -1,4 +1,4 @@
-// TopoAssist v260508.2 | 2026-05-08 11:20:48
+// TopoAssist v260508.3 | 2026-05-08 11:22:45
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -174,11 +174,18 @@ function test_parseVrfList() {
 function test_resolveVrfAtIndex() {
   const t = assert_;
   return [
-    t("empty list → null",                   _resolveVrfAtIndex([], 0),           null),
-    t("single entry → always that VRF",      _resolveVrfAtIndex(['A'], 5),        'A'),
-    t("multi: index 0",                      _resolveVrfAtIndex(['A','B'], 0),    'A'),
-    t("multi: index 1",                      _resolveVrfAtIndex(['A','B'], 1),    'B'),
-    t("multi: out-of-bounds → null",         _resolveVrfAtIndex(['A','B'], 2),    null),
+    t("empty list → null",                   _resolveVrfAtIndex([], 0),                    null),
+    t("single entry → always that VRF",      _resolveVrfAtIndex(['A'], 5),                 'A'),
+    t("multi: index 0",                      _resolveVrfAtIndex(['A','B'], 0),             'A'),
+    t("multi: index 1",                      _resolveVrfAtIndex(['A','B'], 1),             'B'),
+    t("multi: out-of-bounds → null",         _resolveVrfAtIndex(['A','B'], 2),             null),
+    // 'default' is implicit in EOS — must resolve to null everywhere
+    t("single 'default' → null",             _resolveVrfAtIndex(['default'], 0),           null),
+    t("single 'Default' (mixed case) → null",_resolveVrfAtIndex(['Default'], 0),           null),
+    t("multi: 'default' at idx 0 → null",    _resolveVrfAtIndex(['default','vrf1'], 0),    null),
+    t("multi: real VRF at idx 1 kept",       _resolveVrfAtIndex(['default','vrf1'], 1),    'vrf1'),
+    t("multi: 'default' at idx 1 → null",    _resolveVrfAtIndex(['vrf1','default'], 1),    null),
+    t("multi: out-of-bounds still null",     _resolveVrfAtIndex(['default','vrf1'], 5),    null),
   ];
 }
 

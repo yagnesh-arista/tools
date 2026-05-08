@@ -1,10 +1,10 @@
-// TopoAssist v260508.2 | 2026-05-08 11:20:48
+// TopoAssist v260508.3 | 2026-05-08 11:22:19
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260508.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260508.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4196,11 +4196,12 @@ function _parseVrfList(vrfVal) {
  * vrfList=[]        → null (no VRF assigned via sheet)
  * vrfList=['A']     → 'A' (single, applies to all)
  * vrfList=['A','B'] → vrfList[idx] or null if out of bounds
+ * 'default' (any case) → null ('default' VRF is implicit in EOS; never declared)
  */
 function _resolveVrfAtIndex(vrfList, idx) {
   if (!vrfList || vrfList.length === 0) return null;
-  if (vrfList.length === 1) return vrfList[0];
-  return vrfList[idx] || null;
+  const v = vrfList.length === 1 ? vrfList[0] : (vrfList[idx] || null);
+  return (v && v.toLowerCase() === 'default') ? null : v;
 }
 
 /**
@@ -5149,7 +5150,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
       lines.push(` vrf SNAKE_${portName}`);
     } else {
       const effectiveVrf = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
-      if (effectiveVrf) lines.push(` vrf ${effectiveVrf}`);
+      if (effectiveVrf && effectiveVrf.toLowerCase() !== 'default') lines.push(` vrf ${effectiveVrf}`);
     }
 
     let ipType = (d.ip_type_ || "").toLowerCase();
@@ -5369,8 +5370,12 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     const spMode  = (details.sp_mode_ || "").toLowerCase();
     const isL2    = spMode.includes('l2'); // l2-et-access/trunk, l2-po-access/trunk
 
-    // 1. Collect VRFs
-    if (details.vrf_) vrfs.add(details.vrf_);
+    // 1. Collect VRFs (parse comma-list; skip 'default' — implicit in EOS, never declared)
+    if (details.vrf_) {
+      _parseVrfList(details.vrf_).forEach(function(v) {
+        if (v.toLowerCase() !== 'default') vrfs.add(v);
+      });
+    }
 
     // 2. Count P2P Interfaces (Routing)
     if (ipType.includes("p2p")) {
