@@ -1,7 +1,7 @@
-<!-- TopoAssist v260508.11 | 2026-05-08 12:11:45 -->
+<!-- TopoAssist v260508.12 | 2026-05-08 14:32:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260508.11";  // keep in sync with Code.gs
+const APP_VERSION = "260508.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5504,9 +5504,10 @@ function getCurrentTechState() {
     vxlan_ipv6:      getChk('chkVxlanIpv6'),
     evpn_ipv4:       getChk('chkEvpnIpv4'),
     evpn_ipv6:       getChk('chkEvpnIpv6'),
-    evpn_service:    (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
-    gw_l3_type:      (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
-    varp_mac:        (document.getElementById('inputVarpMac') || {}).value || ''
+    evpn_service:        (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
+    evpn_bundle_groups:  _getEvpnBundleGroups(),
+    gw_l3_type:          (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
+    varp_mac:            (document.getElementById('inputVarpMac') || {}).value || ''
   });
 }
 
@@ -5517,6 +5518,58 @@ function updateVarpMacVisibility() {
   const rowVarpMac = document.getElementById('rowVarpMac');
   if (rowVarpMac) rowVarpMac.style.display = gwType ? 'flex' : 'none';
   if (typeof checkTechDirty === 'function') checkTechDirty();
+}
+
+function _updateBundleGroupsVisibility() {
+  const isBundle = (document.querySelector('input[name="evpnService"]:checked') || {}).value === 'vlan-aware-bundle';
+  const sec = document.getElementById('evpnBundleGroupsSection');
+  if (sec) sec.style.display = isBundle ? '' : 'none';
+}
+
+function _renderEvpnBundleList(groups) {
+  const list = document.getElementById('evpnBundleList');
+  if (!list) return;
+  list.innerHTML = '';
+  (groups || []).forEach((range, idx) => _appendEvpnBundleRow(range, idx + 1));
+}
+
+function addEvpnBundleRow() {
+  const list = document.getElementById('evpnBundleList');
+  if (!list) return;
+  _appendEvpnBundleRow('', list.children.length + 1);
+  checkTechDirty();
+}
+
+function _appendEvpnBundleRow(value, n) {
+  const list = document.getElementById('evpnBundleList');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'evpn-bundle-row';
+  row.style.cssText = 'display:flex; align-items:center; gap:6px;';
+  row.innerHTML = `<span class="evpn-bundle-lbl" style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono',monospace; min-width:18px; flex-shrink:0; user-select:none; -webkit-user-select:none;">B${n}</span>` +
+    `<input type="text" class="evpn-bundle-input" placeholder="e.g. 1-1000" value="${value}" style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main); background:var(--bg-body); border:1px solid var(--border-light); border-radius:4px; padding:3px 7px; outline:none; min-width:0; box-sizing:border-box;">` +
+    `<button onclick="removeEvpnBundleRow(this)" title="Remove" style="flex-shrink:0; background:none; border:none; cursor:pointer; padding:2px; color:#94a3b8; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
+  row.querySelector('input').oninput = function() { checkTechDirty(); };
+  list.appendChild(row);
+}
+
+function removeEvpnBundleRow(btn) {
+  btn.closest('.evpn-bundle-row').remove();
+  _renumberEvpnBundleRows();
+  checkTechDirty();
+}
+
+function _renumberEvpnBundleRows() {
+  document.querySelectorAll('#evpnBundleList .evpn-bundle-row').forEach((row, i) => {
+    const lbl = row.querySelector('.evpn-bundle-lbl');
+    if (lbl) lbl.textContent = `B${i + 1}`;
+  });
+}
+
+function _getEvpnBundleGroups() {
+  return Array.from(document.querySelectorAll('#evpnBundleList .evpn-bundle-input'))
+    .map(el => el.value.trim())
+    .filter(v => v.length > 0);
 }
 
 // Tracks whether any MLAG pairs are declared (loaded from server on modal open).
@@ -5766,10 +5819,12 @@ function openTechModal() {
       setChk('chkEvpnIpv4',      settings.evpn_ipv4);
       setChk('chkEvpnIpv6',      settings.evpn_ipv6);
 
-      // 4. Load EVPN service model radio
+      // 4. Load EVPN service model radio + bundle groups
       const evpnSvcVal = settings.evpn_service || 'per-vlan';
       const evpnSvcRadio = document.querySelector(`input[name="evpnService"][value="${evpnSvcVal}"]`);
       if (evpnSvcRadio) evpnSvcRadio.checked = true;
+      _renderEvpnBundleList(settings.evpn_bundle_groups || []);
+      _updateBundleGroupsVisibility();
 
       // 5. Load L3 GW type radio + VARP MAC input
       const gwL3Val = settings.gw_l3_type || 'anycast';
@@ -5797,7 +5852,7 @@ function openTechModal() {
         if (el) el.onchange = function() { applyEvpnGating(); checkTechDirty(); };
       });
       document.querySelectorAll('#networkStackModal input[name="evpnService"]').forEach(el => {
-        el.onchange = checkTechDirty;
+        el.onchange = function() { _updateBundleGroupsVisibility(); checkTechDirty(); };
       });
       document.querySelectorAll('#networkStackModal input[name="gwL3Type"]').forEach(el => {
         el.onchange = updateVarpMacVisibility;
@@ -6041,9 +6096,10 @@ function saveTechSettings() {
     vxlan_ipv6:      getChk('chkVxlanIpv6'),
     evpn_ipv4:       getChk('chkEvpnIpv4'),
     evpn_ipv6:       getChk('chkEvpnIpv6'),
-    evpn_service:    (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
-    gw_l3_type:      (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
-    varp_mac:        ((document.getElementById('inputVarpMac') || {}).value || '').trim()
+    evpn_service:        (document.querySelector('input[name="evpnService"]:checked') || {}).value || 'per-vlan',
+    evpn_bundle_groups:  _getEvpnBundleGroups(),
+    gw_l3_type:          (document.querySelector('input[name="gwL3Type"]:checked') || {}).value || 'anycast',
+    varp_mac:            ((document.getElementById('inputVarpMac') || {}).value || '').trim()
   };
 
   showGlobalLoading("Saving Technology Settings...");

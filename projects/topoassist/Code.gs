@@ -1,10 +1,10 @@
-// TopoAssist v260508.11 | 2026-05-08 12:12:03
+// TopoAssist v260508.12 | 2026-05-08 14:30:33
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260508.11";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260508.12";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -673,6 +673,8 @@ function getNetworkSettings() {
   const evpn_service = getString('EVPN_SERVICE', 'per-vlan');
   const gw_l3_type   = getString('GW_L3_TYPE',   'anycast');
   const varp_mac     = getString('VARP_MAC',      '001c.7300.0099');
+  const _bgRaw = props.getProperty('EVPN_BUNDLE_GROUPS');
+  const evpn_bundle_groups = _bgRaw ? JSON.parse(_bgRaw) : [];
 
   // ── Derived scalar for legacy callers ────────────────────────────────────
   const hasBgp  = bgp_ipv4 || bgp_ipv6 || bgp_ipv6_unnum || bgp_rfc5549;
@@ -692,8 +694,8 @@ function getNetworkSettings() {
     vxlan_ipv4, vxlan_ipv6,
     // EVPN
     evpn_ipv4, evpn_ipv6,
-    // EVPN service model + L3 GW type
-    evpn_service, gw_l3_type, varp_mac,
+    // EVPN service model + L3 GW type + bundle groups
+    evpn_service, gw_l3_type, varp_mac, evpn_bundle_groups,
     // Legacy derived (used by old call sites)
     underlay,
     vxlan: String(vxlan_ipv4 || vxlan_ipv6),
@@ -723,9 +725,10 @@ function saveNetworkSettings(settings) {
     'VXLAN_IPV6':     b(settings.vxlan_ipv6),
     'EVPN_IPV4':      b(settings.evpn_ipv4),
     'EVPN_IPV6':      b(settings.evpn_ipv6),
-    'EVPN_SERVICE':   settings.evpn_service   || 'per-vlan',
-    'GW_L3_TYPE':     settings.gw_l3_type     || 'anycast',
-    'VARP_MAC':       settings.varp_mac        || '001c.7300.0099'
+    'EVPN_SERVICE':        settings.evpn_service   || 'per-vlan',
+    'GW_L3_TYPE':          settings.gw_l3_type     || 'anycast',
+    'VARP_MAC':            settings.varp_mac        || '001c.7300.0099',
+    'EVPN_BUNDLE_GROUPS':  JSON.stringify(Array.isArray(settings.evpn_bundle_groups) ? settings.evpn_bundle_groups : [])
   });
   return { success: true };
 }
@@ -6096,12 +6099,25 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
     });
     if (gwVlans && gwVlans.size > 0) {
       if (s.evpn_service === 'vlan-aware-bundle') {
-        // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
-        configLines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
-        configLines.push(`   vlan ${_compressVlanList(gwVlans)}`);
-        configLines.push(`   rd auto`);
-        configLines.push(`   route-target both ${asnBase}:1`);
-        configLines.push(`   redistribute learned`);
+        const bundleGroups = Array.isArray(s.evpn_bundle_groups) ? s.evpn_bundle_groups.filter(r => r) : [];
+        if (bundleGroups.length > 0) {
+          bundleGroups.forEach((rangeStr, idx) => {
+            const intersection = _bundleVlanIntersection(gwVlans, rangeStr);
+            if (intersection.size === 0) return;
+            const n = idx + 1;
+            configLines.push(`  vlan-aware-bundle EVPN_BUNDLE_${n}`);
+            configLines.push(`   vlan ${_compressVlanList(intersection)}`);
+            configLines.push(`   rd auto`);
+            configLines.push(`   route-target both ${asnBase}:${n}`);
+            configLines.push(`   redistribute learned`);
+          });
+        } else {
+          configLines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
+          configLines.push(`   vlan ${_compressVlanList(gwVlans)}`);
+          configLines.push(`   rd auto`);
+          configLines.push(`   route-target both ${asnBase}:1`);
+          configLines.push(`   redistribute learned`);
+        }
       } else {
         // Per-VLAN (default): separate EVPN instance per VLAN
         Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
@@ -6344,12 +6360,25 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 
   if (gwVlans && gwVlans.size > 0) {
     if (s.evpn_service === 'vlan-aware-bundle') {
-      // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
-      lines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
-      lines.push(`   vlan ${_compressVlanList(gwVlans)}`);
-      lines.push(`   rd auto`);
-      lines.push(`   route-target both ${asnBase}:1`);
-      lines.push(`   redistribute learned`);
+      const bundleGroups = Array.isArray(s.evpn_bundle_groups) ? s.evpn_bundle_groups.filter(r => r) : [];
+      if (bundleGroups.length > 0) {
+        bundleGroups.forEach((rangeStr, idx) => {
+          const intersection = _bundleVlanIntersection(gwVlans, rangeStr);
+          if (intersection.size === 0) return;
+          const n = idx + 1;
+          lines.push(`  vlan-aware-bundle EVPN_BUNDLE_${n}`);
+          lines.push(`   vlan ${_compressVlanList(intersection)}`);
+          lines.push(`   rd auto`);
+          lines.push(`   route-target both ${asnBase}:${n}`);
+          lines.push(`   redistribute learned`);
+        });
+      } else {
+        lines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
+        lines.push(`   vlan ${_compressVlanList(gwVlans)}`);
+        lines.push(`   rd auto`);
+        lines.push(`   route-target both ${asnBase}:1`);
+        lines.push(`   redistribute learned`);
+      }
     } else {
       // Per-VLAN (default)
       Array.from(gwVlans).sort((a, b) => a - b).forEach(v => {
@@ -6363,6 +6392,17 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 
   lines.push("!");
   return lines.join("\n");
+}
+
+/**
+ * Intersect gwVlans (Set<number>) with a user-defined range string (e.g. "1-1000,2000-2999").
+ * Returns a new Set containing only VLANs present in both. Pure function.
+ */
+function _bundleVlanIntersection(gwVlans, rangeStr) {
+  const bundleSet = expandVlanString(String(rangeStr || ''));
+  const result = new Set();
+  bundleSet.forEach(v => { if (gwVlans.has(v)) result.add(v); });
+  return result;
 }
 
 /**

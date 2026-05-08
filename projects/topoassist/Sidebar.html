@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.11 | 2026-05-08 12:11:45 -->
+<!-- TopoAssist v260508.12 | 2026-05-08 14:31:10 -->
 <!DOCTYPE html>
 <html>
 
@@ -576,6 +576,15 @@
               </span>
               <label id="rowEvpnSvcPerVlan" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServicePerVlan" value="per-vlan" class="chk-input"> Per-VLAN</label>
               <label id="rowEvpnSvcBundle" class="tech-radio-label"><input type="radio" name="evpnService" id="evpnServiceBundle" value="vlan-aware-bundle" class="chk-input"> Bundle</label>
+            </div>
+            <!-- EVPN Bundle Groups — shown only when vlan-aware-bundle is selected -->
+            <div id="evpnBundleGroupsSection" style="border-top:1px solid var(--border-light); padding:8px 0; display:none;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">BUNDLES</span>
+                <button onclick="addEvpnBundleRow()" style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:#3b82f6; background:none; border:1px solid #3b82f6; border-radius:3px; padding:1px 7px; cursor:pointer; user-select:none; -webkit-user-select:none;">+ Add</button>
+              </div>
+              <div id="evpnBundleList" style="display:flex; flex-direction:column; gap:4px;"></div>
+              <div style="font-size:10px; font-style:italic; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:5px; line-height:1.4;">Bundle N → RT asnBase:N. Device VLANs intersected per bundle.<br>Empty = single bundle (all VLANs, RT asnBase:1).</div>
             </div>
             <!-- VGW group: fixed 80px sub-label + aligned options; MAC wraps to full-width next line -->
             <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:0 8px; flex-wrap:wrap;">

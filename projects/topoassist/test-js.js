@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260506.76 | 2026-05-06 19:31:07
+// topoassist v260508.12 | 2026-05-08 14:33:56
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -253,6 +253,29 @@ t('_l1ErrDetail: fcs+sym+align',
 t('_l1ErrDetail: both null → empty',
   _l1ErrDetail('dev1:Et1', null, 'dev2:Et1', null),
   '');
+
+// ── _getEvpnBundleGroups (pure extraction logic) ──────────────────────────
+// SYNC: filter logic matches _getEvpnBundleGroups in Sidebar-js.html.
+// addEvpnBundleRow / removeEvpnBundleRow / _renderEvpnBundleList are DOM-only — not tested here.
+function _getEvpnBundleGroupsPure(values) {
+  return values.map(v => (v || '').trim()).filter(v => v.length > 0);
+}
+
+t('_getEvpnBundleGroups: non-empty values pass through',
+  _getEvpnBundleGroupsPure(['1-1000', '2000-2999']),
+  ['1-1000', '2000-2999']);
+
+t('_getEvpnBundleGroups: empty strings filtered',
+  _getEvpnBundleGroupsPure(['1-1000', '', '  ', '2000-2999']),
+  ['1-1000', '2000-2999']);
+
+t('_getEvpnBundleGroups: all empty → []',
+  _getEvpnBundleGroupsPure(['', '  ']),
+  []);
+
+t('_getEvpnBundleGroups: trims whitespace',
+  _getEvpnBundleGroupsPure(['  1-100  ']),
+  ['1-100']);
 
 // ── Report ────────────────────────────────────────────────────────────────
 
