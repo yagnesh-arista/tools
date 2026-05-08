@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.18 | 2026-05-08 18:18:53 -->
+<!-- TopoAssist v260508.19 | 2026-05-08 18:24:59 -->
 <!DOCTYPE html>
 <html>
 
@@ -612,8 +612,10 @@
       </div>
 
       <div id="infoEvpnService" class="info-popup-box">
-        <b style="font-style:normal;">Per-VLAN</b>: separate EVPN instance per VLAN — RT = <code class="inline-code">VLAN:VLAN</code>.<br>
-        <b style="font-style:normal;">Bundle</b>: single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, RT = <code class="inline-code">ASN_BASE:1</code> — must be identical on all VTEPs.
+        <b style="font-style:normal;">Per-VLAN</b>: separate EVPN instance per VLAN — RT = <code class="inline-code">VLAN:VLAN</code>.<br><br>
+        <b style="font-style:normal;">Bundle</b>: vlan-aware-bundle mode — RT must be identical on all VTEPs per bundle.<br>
+        &nbsp;• Default (no groups): single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code>, all Vx1 VLANs, RT = <code class="inline-code">ASN_BASE:1</code>.<br>
+        &nbsp;• With bundle groups: <code class="inline-code">EVPN_BUNDLE_N</code> per range, RT = <code class="inline-code">ASN_BASE:N</code> — see ⓘ under BUNDLES for a worked example.
       </div>
       <div id="infoVgw" class="info-popup-box">
         <b style="font-style:normal;">Anycast GW</b>: emits <code class="inline-code">ip address virtual</code> on SVIs — requires EVPN for MAC/IP Type-2 route distribution.<br><br>

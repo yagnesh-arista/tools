@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-08 (ui: EVPN BUNDLES hint text — updated to clarify default (empty = all Vx1 VLANs → single bundle RT asnBase:1) + per-range behavior. FILES: Sidebar.html)
+  Last updated: 2026-05-08 (ui: infoEvpnService popup — Bundle description updated to cover both default (single EVPN_VLAN_AWARE_BUNDLE, RT ASN_BASE:1) and multi-bundle groups (EVPN_BUNDLE_N, RT ASN_BASE:N). FILES: Sidebar.html)
+  Previous: 2026-05-08 (ui: EVPN BUNDLES hint text — updated to clarify default (empty = all Vx1 VLANs → single bundle RT asnBase:1) + per-range behavior. FILES: Sidebar.html)
   Previous: 2026-05-08 (ui: TOPO EDIT — [New Group]+[Toggle] grouped together in segmented-group with margin-left:auto, flush right; [Size-][+] left-aligned. FILES: Sidebar.html)
   Previous: 2026-05-08 (ui: TOPO EDIT — toggle/expand button moved to extreme right via margin-left:auto; [Size-][+] and [New Group] left-aligned; hc-btns justify-content:flex-start. FILES: Sidebar.html, Sidebar-css.html)
   Previous: 2026-05-08 (ui: EVPN BUNDLES info popup — added i btn-info-popup to BUNDLES label in evpnBundleGroupsSection; popup id=infoBundleGroups shows 3-device worked example (DevA/B/C, 2 bundle ranges, BGP stanzas per device, RT sharing explanation). FILES: Sidebar.html)
