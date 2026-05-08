@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.16 | 2026-05-09 02:57:23 -->
+<!-- TopoAssist v260509.18 | 2026-05-09 03:05:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.16";  // keep in sync with Code.gs
+const APP_VERSION = "260509.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11377,37 +11377,65 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._abort_stale_sessions(ip)
         except Exception:
             pass
-        if all_ifaces and not dry_run:
+        # _detect_orphans already parallelises its 5 inner checks; running _find_bgp_asn_change
+        # concurrently with it eliminates the extra sequential round-trip that was visible
+        # in the log as a separate 'include router bgp' query after the orphan queries.
+        # Best-effort for orphan detection -- failures must never block push.
+        asn_changed    = None
+        bgp_asn_cmds   = []
+        _orphan_result = [None]
+        _asn_result    = [[], None]
+
+        def _run_detect_orphans():
             try:
-                orphans = self._detect_orphans(ip, config_text=config_text,
-                                               all_device_names=all_device_names)
-                if orphans.get('ok'):
-                    orphan_cmds = _orphans_to_cmds(orphans)
-                    if orphan_cmds:
-                        _asn_extra["orphans_cleaned"] = {
-                            "interfaces": orphans.get("interfaces", []),
-                            "bgp":        orphans.get("bgp", []),
-                            "vlans":      orphans.get("vlans", []),
-                            "vrfs":       orphans.get("vrfs", []),
-                            "ospf":       orphans.get("ospf", []),
-                        }
-                        if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                            for _bn, _batch in enumerate(
-                                    _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
-                                try:
-                                    self._push_config(ip, "\\n".join(_batch),
-                                                      dry_run=False, all_ifaces=False,
-                                                      all_device_names=None)
-                                except Exception as _be:
-                                    if VERBOSE:
-                                        print(f"  [orphan-batch] {ip}: batch {_bn} failed -- {_be}")
-                                    break
-                        else:
-                            lines = orphan_cmds + lines
+                _orphan_result[0] = self._detect_orphans(ip, config_text=config_text,
+                                                          all_device_names=all_device_names)
             except Exception:
                 pass
-        asn_changed = None
-        bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
+
+        def _run_asn_check():
+            try:
+                _asn_result[0], _asn_result[1] = self._find_bgp_asn_change(ip, config_text)
+            except Exception:
+                pass
+
+        if all_ifaces and not dry_run:
+            _td = threading.Thread(target=_run_detect_orphans, daemon=True)
+            _ta = threading.Thread(target=_run_asn_check,    daemon=True)
+            _td.start(); _ta.start()
+            _td.join(timeout=TIMEOUT * 3); _ta.join(timeout=TIMEOUT * 3)
+        else:
+            # Non-full push (cleanup batch, open-only): skip orphan detection, still check ASN.
+            _run_asn_check()
+
+        bgp_asn_cmds = _asn_result[0] or []
+        asn_changed  = _asn_result[1]
+
+        orphans = _orphan_result[0]
+        if orphans and orphans.get('ok'):
+            orphan_cmds = _orphans_to_cmds(orphans)
+            if orphan_cmds:
+                _asn_extra["orphans_cleaned"] = {
+                    "interfaces": orphans.get("interfaces", []),
+                    "bgp":        orphans.get("bgp", []),
+                    "vlans":      orphans.get("vlans", []),
+                    "vrfs":       orphans.get("vrfs", []),
+                    "ospf":       orphans.get("ospf", []),
+                }
+                if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
+                    for _bn, _batch in enumerate(
+                            _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
+                        try:
+                            self._push_config(ip, "\\n".join(_batch),
+                                              dry_run=False, all_ifaces=False,
+                                              all_device_names=None)
+                        except Exception as _be:
+                            if VERBOSE:
+                                print(f"  [orphan-batch] {ip}: batch {_bn} failed -- {_be}")
+                            break
+                else:
+                    lines = orphan_cmds + lines
+
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
         session   = f"topoassist_{int(time.time())}"
