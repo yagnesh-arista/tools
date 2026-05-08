@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.16 | 2026-05-09 03:02:23
+# topoassist v260509.19 | 2026-05-09 03:24:28
 """
 TopoAssist Device Bridge
 ========================
@@ -1238,6 +1238,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Best-effort for orphan detection — failures must never block push.
         asn_changed    = None
         bgp_asn_cmds   = []
+        _asn_extra     = {}
         _orphan_result = [None]
         _asn_result    = [[], None]
 
@@ -1303,7 +1304,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
-        _asn_extra = {"asn_changed": asn_changed} if asn_changed else {}
+        if asn_changed:
+            _asn_extra["asn_changed"] = asn_changed
 
         # 'end' exits from any sub-mode depth to exec mode (session stays pending).
         # Re-entering puts us at session root so show/commit/abort all work correctly.

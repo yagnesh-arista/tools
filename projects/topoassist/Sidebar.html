@@ -1,4 +1,4 @@
-<!-- TopoAssist v260509.18 | 2026-05-09 03:05:58 -->
+<!-- TopoAssist v260509.19 | 2026-05-09 03:26:02 -->
 <!DOCTYPE html>
 <html>
 
@@ -713,7 +713,7 @@
             <div id="gw-ex4-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0">GW IPv4</div>
             <!-- Standard ≥/24 — dims when wide/super-wide active -->
             <div id="gw-ex4-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
-              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/24</div>
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/24 &#x2014; any VLAN</div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex4-std-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex4-std-mphy2" class="ip-ex-val"></div>
@@ -757,7 +757,7 @@
             <div id="gw-ex6-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0">GW IPv6</div>
             <!-- Standard ≥/64 — dims when wide/super-wide active -->
             <div id="gw-ex6-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
-              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/64</div>
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/64 &#x2014; any VLAN</div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex6-std-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex6-std-mphy2" class="ip-ex-val"></div>
@@ -830,13 +830,13 @@
               <span class="legend-label" style="font-size:10px">P2P:</span>
               <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">ID</span>
               <span class="legend-label" style="font-size:10px">GW /8–/15:</span>
-              <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
+              <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct3</span></span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
               <span class="legend-label" style="font-size:10px">GW /16–/23:</span>
               <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
               <span class="legend-label" style="font-size:10px">GW /24–/32:</span>
               <span class="legend-octet f-var">first</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">.</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">.</span><span class="legend-octet f-var">last</span>
               <span class="legend-label" style="font-size:10px">GW v6 /32–/47:</span>
-              <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
+              <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct3</span></span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
               <span class="legend-label" style="font-size:10px">GW v6 /48–/63:</span>
               <span class="legend-octet" style="padding:4px 6px"><span style="color:#94a3b8">1</span><span class="f-dyn">oct2</span></span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">:</span><span class="legend-octet" style="color:#94a3b8">0</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
               <span class="legend-label" style="font-size:10px">GW v6 /64–/128:</span>
@@ -1861,6 +1861,10 @@
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagDupGateway" onchange="toggleAuditCheck('auditFlagDupGateway',this.checked)"><span>Duplicate gateway IP</span></label>
         <span class="audit-issue-ind" id="auditDot_auditFlagDupGateway"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_auditFlagEvpnVlanMismatch" onchange="toggleAuditCheck('auditFlagEvpnVlanMismatch',this.checked)"><span>EVPN per-vlan: disjoint VTEP VLAN sets (no route exchange)</span></label>
+        <span class="audit-issue-ind" id="auditDot_auditFlagEvpnVlanMismatch"></span>
       </div>
 
       <div class="audit-cat-hdr">Mode / Speed</div>
