@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260506.67 | 2026-05-06 18:08:59
+# topoassist v260509.1 | 2026-05-09 01:33:18
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260506.1"
+VERSION           = "260509.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -736,12 +736,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
             # /pushconfig — ipMap values are {ip, config} dicts, not plain IPs
             # Pre-initialize every device to None so the key always exists in the
             # response even if the thread doesn't finish before join() returns.
-            results = {dev: None for dev in ip_map}
+            results  = {dev: None for dev in ip_map}
+            _n_lines = {}  # dev → config line count, for timeout diagnostics
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
             def run_push(dev, entry):
                 ip     = (entry.get("ip") or "").strip()
                 config = entry.get("config", "")
+                _n_lines[dev] = len(config.splitlines())
                 if not ip:
                     with lock: results[dev] = {"ok": False, "error": "No IP configured"}
                     return
@@ -755,11 +757,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             with lock: results[dev] = res
                             break
                         except subprocess.TimeoutExpired:
+                            _nl = _n_lines.get(dev, '?')
                             if attempt < PUSH_RETRIES:
-                                if VERBOSE: print(f"  [push] {dev} ({ip}): timeout, retrying (attempt {attempt+1})")
+                                if VERBOSE: print(f"  [push] {dev} ({ip}): timeout ({_nl} lines, {PUSH_TIMEOUT}s), retrying (attempt {attempt+1})")
                                 time.sleep(PUSH_RETRY_DELAY); continue
-                            if VERBOSE: print(f"  [push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts")
-                            with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                            if VERBOSE: print(f"  [push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts ({_nl} lines)")
+                            with lock: results[dev] = {"ok": False, "error": f"Push timed out — {_nl} config lines, {PUSH_TIMEOUT}s limit exceeded — verify config was applied manually"}
                             break
                         except RuntimeError as e:
                             if ("connection refused" in str(e).lower()
@@ -793,9 +796,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
             with lock:
                 for dev in results:
                     if results[dev] is None:
+                        _nl = _n_lines.get(dev, '?')
                         results[dev] = {
                             "ok": False,
-                            "error": "Push timed out — verify config was applied manually",
+                            "error": f"Push timed out — {_nl} config lines, {PUSH_TIMEOUT}s limit exceeded — verify config was applied manually",
                         }
             self._json(200, results)
 
