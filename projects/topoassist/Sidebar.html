@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.17 | 2026-05-08 15:55:09 -->
+<!-- TopoAssist v260508.18 | 2026-05-08 18:18:53 -->
 <!DOCTYPE html>
 <html>
 
@@ -588,7 +588,7 @@
                 <button onclick="addEvpnBundleRow()" style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:#3b82f6; background:none; border:1px solid #3b82f6; border-radius:3px; padding:1px 7px; cursor:pointer; user-select:none; -webkit-user-select:none;">+ Add</button>
               </div>
               <div id="evpnBundleList" style="display:flex; flex-direction:column; gap:4px;"></div>
-              <div style="font-size:10px; font-style:italic; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:5px; line-height:1.4;">Each range → one EVPN_BUNDLE_N with RT asnBase:N. Device VLANs intersected per bundle.</div>
+              <div style="font-size:10px; font-style:italic; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:5px; line-height:1.4;">Default (empty): all Vx1 VLANs → single bundle, RT asnBase:1.<br>Each added range → EVPN_BUNDLE_N with RT asnBase:N; device VLANs intersected per bundle.</div>
             </div>
             <!-- VGW group: fixed 80px sub-label + aligned options; MAC wraps to full-width next line -->
             <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:0 8px; flex-wrap:wrap;">

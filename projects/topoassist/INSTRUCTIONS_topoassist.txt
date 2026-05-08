@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-08 (ui: TOPO EDIT — [New Group]+[Toggle] grouped together in segmented-group with margin-left:auto, flush right; [Size-][+] left-aligned. FILES: Sidebar.html)
+  Last updated: 2026-05-08 (ui: EVPN BUNDLES hint text — updated to clarify default (empty = all Vx1 VLANs → single bundle RT asnBase:1) + per-range behavior. FILES: Sidebar.html)
+  Previous: 2026-05-08 (ui: TOPO EDIT — [New Group]+[Toggle] grouped together in segmented-group with margin-left:auto, flush right; [Size-][+] left-aligned. FILES: Sidebar.html)
   Previous: 2026-05-08 (ui: TOPO EDIT — toggle/expand button moved to extreme right via margin-left:auto; [Size-][+] and [New Group] left-aligned; hc-btns justify-content:flex-start. FILES: Sidebar.html, Sidebar-css.html)
   Previous: 2026-05-08 (ui: EVPN BUNDLES info popup — added i btn-info-popup to BUNDLES label in evpnBundleGroupsSection; popup id=infoBundleGroups shows 3-device worked example (DevA/B/C, 2 bundle ranges, BGP stanzas per device, RT sharing explanation). FILES: Sidebar.html)
   Previous: 2026-05-08 (feat: EVPN multi-bundle groups — Tech Stack modal BUNDLES panel (shown when vlan-aware-bundle selected) lets user define N VLAN ranges; each becomes EVPN_BUNDLE_N with RT asnBase:N; device VLANs intersected per bundle so only relevant bundles are emitted. Stored as EVPN_BUNDLE_GROUPS JSON in DocumentProperties. Helpers: _bundleVlanIntersection() in Code.gs. Falls back to single EVPN_VLAN_AWARE_BUNDLE when no groups defined. FILES: Code.gs, Sidebar.html, Sidebar-js.html, test-js.js)
