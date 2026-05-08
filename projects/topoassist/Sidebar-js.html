@@ -1,7 +1,7 @@
-<!-- TopoAssist v260508.1 | 2026-05-08 11:04:40 -->
+<!-- TopoAssist v260508.2 | 2026-05-08 11:20:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260508.1";  // keep in sync with Code.gs
+const APP_VERSION = "260508.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5158,13 +5158,17 @@ function openIpConfigModal(btn) {
     // 3. Build per-device GW override table (after blanket binding — sets its own rich handlers)
     _buildGwDeviceOverrideTable(prefs.arista_devices || [], prefs.gw_device_overrides || {});
 
-    // 4. Capture Snapshot (after table built — captures override inputs too)
+    // 4. Settle derived state before snapshot: wide-mode locks (firstEl4/6.value = '1') +
+    //    override hint values (applyHint sets .value on empty inputs). Both modify input
+    //    values — snapshot must be taken AFTER, or those changes cause a false dirty warning.
+    _updateGwExample();
+
+    // 5. Capture Snapshot (after table built and example settled — all input values are final)
     initialIpState = getCurrentIpState();
 
-    // 5. Reset Button Visuals
+    // 6. Reset Button Visuals
     checkIpDirty();
     checkSnakeTrafficWarning();
-    _updateGwExample();
 
   }).withFailureHandler(err => {
     clearTimeout(_guard);

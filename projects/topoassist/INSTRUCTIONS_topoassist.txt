@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-08 (feat: super-wide GW prefix tier /8–/15 (IPv4) and /32–/47 (IPv6) — oct3 dropped; 3-tier formula in getIpBlock() + vx1 SVI block; mask validation min /8; _updateGwExample() super-wide formula, dynamic calc labels, VLAN 40 caution; legend updated; CLAUDE.md GW assembly rule updated. FILES: Code.gs, Sidebar.html, Sidebar-js.html, CLAUDE.md)
+  Last updated: 2026-05-08 (fix: Auto Config false dirty-state warning — moved _updateGwExample() call to BEFORE initialIpState=getCurrentIpState() in openIpConfigModal success handler; applyHint() modifies per-device override input .value from "" to hint strings, so snapshot must be taken after hints are settled. FILES: Sidebar-js.html)
+  Previous: 2026-05-08 (feat: super-wide GW prefix tier /8–/15 (IPv4) and /32–/47 (IPv6) — oct3 dropped; 3-tier formula in getIpBlock() + vx1 SVI block; mask validation min /8; _updateGwExample() super-wide formula, dynamic calc labels, VLAN 40 caution; legend updated; CLAUDE.md GW assembly rule updated. FILES: Code.gs, Sidebar.html, Sidebar-js.html, CLAUDE.md)
   Previous: 2026-05-07 (docs: UserGuide — add missing 🛡️ emoji to Audit Engine h2 header; FILES: UserGuide.html)
   Previous: 2026-05-07 (docs: UserGuide quality fixes — W1: Cabling Export toolbar row now describes 3 tabs (Export/Topology List/Device List); W2: New Project Reset section added under Sheet & Schema (menu path + description); W3: Restore Sheet Checkpoint now has its own menu-path span in Appendix; FILES: UserGuide.html)
   Previous: 2026-05-07 (docs: UserGuide §6 Global Config Template rewritten — Config Center→Template panel access, 000_BASE (auto-generated: hostname+ip routing) vs 000_GTPL (user textarea), Copy Base+Ifs = 000_BASE+000_GTPL+interface blocks, Save & Apply; FILES: UserGuide.html)
