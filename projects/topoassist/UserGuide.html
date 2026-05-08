@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.4 | 2026-05-08 11:24:41 -->
+<!-- TopoAssist v260508.5 | 2026-05-08 11:25:22 -->
 <!DOCTYPE html>
 <html>
 
@@ -1498,6 +1498,11 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Sub-interface mode</b> (<code>l3-routed-subint</code>) — each sub-interface (<code>EtX.10</code>, <code>EtX.20</code>, …) gets its own <code>vrf</code> statement from the positional mapping.</li>
       <li><b>Trunk SVI mode</b> (<code>l2-*-trunk</code> + <code>svi_vlan_</code>) — each SVI (<code>interface Vlan10</code>, <code>interface Vlan20</code>, …) gets its own <code>vrf</code> statement from the positional mapping.</li>
     </ul>
+
+    <h4 style="font-size:12px; margin:10px 0 4px;">Using 'default' as a placeholder</h4>
+    <p style="font-size:13px;">Use <code>default</code> (case-insensitive) to mean <em>"this VLAN stays in the EOS default VRF"</em> — no <code>vrf</code> line is emitted on the interface, and no <code>vrf instance default</code> block appears in the global config. This lets you mix default-VRF VLANs with named-VRF VLANs in one list:</p>
+    <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px;">vlan_ = 10,20,30 &nbsp;&nbsp; vrf_ = default,vrf1,default<br>→ VLAN 10 → default VRF (no vrf line) &nbsp;|&nbsp; VLAN 20 → vrf vrf1 &nbsp;|&nbsp; VLAN 30 → default VRF (no vrf line)</p>
+    <p style="font-size:13px;"><code>default</code> counts toward the positional VRF list — the count constraint still applies.</p>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">Constraints</h4>
     <ul style="font-size:13px;">
