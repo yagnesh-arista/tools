@@ -1,10 +1,10 @@
-// TopoAssist v260508.9 | 2026-05-08 11:47:30
+// TopoAssist v260508.10 | 2026-05-08 12:01:15
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260508.9";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260508.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6365,6 +6365,28 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
 
   lines.push("!");
   return lines.join("\n");
+}
+
+/**
+ * Compress a VLAN iterable into a range-notation string.
+ * e.g. [1,2,3,10,11] → "1-3,10-11". Pure function — exported for unit testing.
+ */
+function _compressVlanList(vlansIterable) {
+  const sorted = Array.from(vlansIterable)
+    .map(v => parseInt(v))
+    .filter(v => v >= 1 && v <= 4094)
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) return '';
+  const parts = [];
+  let i = 0;
+  while (i < sorted.length) {
+    const start = sorted[i];
+    let end = start;
+    while (i + 1 < sorted.length && sorted[i + 1] === end + 1) { i++; end = sorted[i]; }
+    parts.push(start === end ? `${start}` : `${start}-${end}`);
+    i++;
+  }
+  return parts.join(',');
 }
 
 /**
