@@ -1,4 +1,4 @@
-<!-- TopoAssist v260508.12 | 2026-05-08 14:31:10 -->
+<!-- TopoAssist v260508.13 | 2026-05-08 15:03:06 -->
 <!DOCTYPE html>
 <html>
 
@@ -580,11 +580,15 @@
             <!-- EVPN Bundle Groups — shown only when vlan-aware-bundle is selected -->
             <div id="evpnBundleGroupsSection" style="border-top:1px solid var(--border-light); padding:8px 0; display:none;">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
-                <span style="font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">BUNDLES</span>
+                <span style="display:flex; align-items:center; gap:4px; font-size:10px; font-weight:800; letter-spacing:0.06em; color:#94a3b8; text-transform:uppercase; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">BUNDLES
+                  <button class="btn-info-popup" data-popup="infoBundleGroups" onclick="toggleInfoPopup('infoBundleGroups')" title="Bundle groups worked example">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.3" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="2.8" r="0.6" fill="currentColor"/></svg>
+                  </button>
+                </span>
                 <button onclick="addEvpnBundleRow()" style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:#3b82f6; background:none; border:1px solid #3b82f6; border-radius:3px; padding:1px 7px; cursor:pointer; user-select:none; -webkit-user-select:none;">+ Add</button>
               </div>
               <div id="evpnBundleList" style="display:flex; flex-direction:column; gap:4px;"></div>
-              <div style="font-size:10px; font-style:italic; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:5px; line-height:1.4;">Bundle N → RT asnBase:N. Device VLANs intersected per bundle.<br>Empty = single bundle (all VLANs, RT asnBase:1).</div>
+              <div style="font-size:10px; font-style:italic; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:5px; line-height:1.4;">Each range → one EVPN_BUNDLE_N with RT asnBase:N. Device VLANs intersected per bundle.</div>
             </div>
             <!-- VGW group: fixed 80px sub-label + aligned options; MAC wraps to full-width next line -->
             <div id="evpnVgwSection" style="border-top:1px solid var(--border-light); padding:8px 0 0; display:flex; align-items:center; gap:0 8px; flex-wrap:wrap;">
@@ -615,6 +619,35 @@
         <b style="font-style:normal;">Anycast GW</b>: emits <code class="inline-code">ip address virtual</code> on SVIs — requires EVPN for MAC/IP Type-2 route distribution.<br><br>
         <b style="font-style:normal;">VARP</b>: emits <code class="inline-code">ip virtual-router address</code> on SVIs — used with MLAG active-active gateway (EVPN optional).<br><br>
         <b style="font-style:normal;">Virtual Router MAC</b>: <code class="inline-code">ip virtual-router mac-address</code> — same MAC on all devices; required for both modes.
+      </div>
+      <div id="infoBundleGroups" class="info-popup-box" style="max-width:340px;">
+        <b style="font-style:normal;">Why bundles?</b> In vlan-aware-bundle mode the RT must be identical on all VTEPs for routes to exchange. Two VTEPs with completely different VLAN sets need separate bundles with different RTs so each pair can still find a common RT.<br><br>
+        <b style="font-style:normal;">Worked example — 3 VTEPs, 2 bundles (ASN_BASE = 65000):</b><br><br>
+        Sheet Vx1 rows:<br>
+        &nbsp;• DevA &nbsp;vlan_ <code class="inline-code">1-1000</code><br>
+        &nbsp;• DevB &nbsp;vlan_ <code class="inline-code">2000-2999</code><br>
+        &nbsp;• DevC &nbsp;vlan_ <code class="inline-code">1-2999</code><br><br>
+        Bundle groups defined here:<br>
+        &nbsp;B1 <code class="inline-code">1-1000</code> &nbsp;&nbsp;→ RT <code class="inline-code">65000:1</code><br>
+        &nbsp;B2 <code class="inline-code">2000-2999</code> → RT <code class="inline-code">65000:2</code><br><br>
+        Generated BGP (per device, intersection):<br>
+        <b style="font-style:normal;">DevA</b> (owns 1-1000):<br>
+        <code class="inline-code" style="display:block; white-space:pre; margin:2px 0;">  vlan-aware-bundle EVPN_BUNDLE_1
+   vlan 1-1000
+   route-target both 65000:1</code>
+        <b style="font-style:normal;">DevB</b> (owns 2000-2999):<br>
+        <code class="inline-code" style="display:block; white-space:pre; margin:2px 0;">  vlan-aware-bundle EVPN_BUNDLE_2
+   vlan 2000-2999
+   route-target both 65000:2</code>
+        <b style="font-style:normal;">DevC</b> (owns 1-2999):<br>
+        <code class="inline-code" style="display:block; white-space:pre; margin:2px 0;">  vlan-aware-bundle EVPN_BUNDLE_1
+   vlan 1-1000
+   route-target both 65000:1
+  vlan-aware-bundle EVPN_BUNDLE_2
+   vlan 2000-2999
+   route-target both 65000:2</code>
+        Result: DevA ↔ DevC share RT 65000:1 (exchange VLAN 1-1000 routes). DevB ↔ DevC share RT 65000:2 (exchange VLAN 2000-2999 routes).<br><br>
+        <b style="font-style:normal;">Empty list</b> = single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code> with all device VLANs, RT <code class="inline-code">ASN_BASE:1</code> (legacy / uniform VLAN sets).
       </div>
       <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
         Greyed options require a different P2P mode — click any to switch automatically.
