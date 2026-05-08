@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.19 | 2026-05-09 03:24:28
+# topoassist v260509.24 | 2026-05-09 03:35:25
 """
 TopoAssist Device Bridge
 ========================
@@ -1626,6 +1626,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         All checks are best-effort — failure returns empty list for that section.
         """
         # ── Interface orphans ──────────────────────────────────────────────────
+        print(f"  [detect-orphans/eapi] {ip}: show interfaces description", flush=True)
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:

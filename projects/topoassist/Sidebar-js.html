@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.21 | 2026-05-09 03:26:38 -->
+<!-- TopoAssist v260509.24 | 2026-05-09 03:36:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.21";  // keep in sync with Code.gs
+const APP_VERSION = "260509.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11694,6 +11694,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             vrfs:       [{name}],
             ospf:       [{context, iface}] }
         """
+        print(f"  [detect-orphans/eapi] {ip}: show interfaces description", flush=True)
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
@@ -13478,7 +13479,7 @@ function runCleanSelected() {
   _doCleanDevItems(devItems);
 }
 
-const _CLEANUP_BATCH_SIZE = 300;
+const _CLEANUP_BATCH_SIZE = 1000;
 
 async function _doCleanDevItems(devItems) {
   const total    = Object.values(devItems).reduce((s, a) => s + a.length, 0);
@@ -13509,16 +13510,22 @@ async function _doCleanDevItems(devItems) {
       ipMap[dev] = { ip: (_cleanupIpMap[dev] || {}).ip || '', config: _buildCleanupConfig(chunk) };
     });
 
-    const batchLabel = numBatches > 1
-      ? `Cleanup batch ${bi + 1}/${numBatches} (${Object.values(ipMap).reduce((s, e) => s + e.config.split('\n').filter(Boolean).length, 0)} cmds)…`
-      : `Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''}…`;
-    setStatus(batchLabel, 'status-info');
+    const cmdCount  = Object.values(ipMap).reduce((s, e) => s + e.config.split('\n').filter(Boolean).length, 0);
+    const batchBase = numBatches > 1
+      ? `Cleanup batch ${bi + 1}/${numBatches} (${cmdCount} cmds)`
+      : `Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''}`;
+    const batchT0 = Date.now();
+    const batchTimer = setInterval(() => {
+      setStatus(`${batchBase} — ${Math.floor((Date.now() - batchT0) / 1000)}s…`, 'status-info');
+    }, 1000);
+    setStatus(`${batchBase}…`, 'status-info');
 
     try {
       const r = await fetch(BRIDGE_URL + '/pushconfig', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ipMap }),
       });
+      clearInterval(batchTimer);
       if (!r.ok) throw new Error('Bridge HTTP ' + r.status);
       const results = await r.json();
       if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
@@ -13529,6 +13536,7 @@ async function _doCleanDevItems(devItems) {
         else if (!devErr[dev]) { devErr[dev] = (res && res.error) || 'no response'; }
       });
     } catch (err) {
+      clearInterval(batchTimer);
       Object.keys(ipMap).forEach(dev => { if (!devErr[dev]) devErr[dev] = err.message; });
     }
   }
