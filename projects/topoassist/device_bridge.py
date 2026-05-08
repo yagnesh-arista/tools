@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.24 | 2026-05-09 03:35:25
+# topoassist v260509.25 | 2026-05-09 03:40:33
 """
 TopoAssist Device Bridge
 ========================
@@ -1281,15 +1281,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
                     # Too many orphans to prepend — push in block-aware batches
                     # first, then the main push carries only the actual config.
-                    for _bn, _batch in enumerate(
-                            _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
+                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                    print(f"  [orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    for _bn, _batch in enumerate(_ob_batches, 1):
+                        print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
                             self._push_config(ip, '\n'.join(_batch),
                                               dry_run=False, all_ifaces=False,
                                               all_device_names=None)
+                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
-                            if VERBOSE:
-                                print(f"  [orphan-batch] {ip}: batch {_bn} failed — {_be}")
+                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
                             break
                     # lines stays as the actual config only (no prepend)
                 else:
@@ -1437,6 +1439,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            _eapi_action = "dry-run (aborted)" if dry_run else "committed"
+            _eapi_dl = len([l for l in (diff or "").splitlines() if l.strip()])
+            print(f"  [push] {ip}: session {session} {_eapi_action} — {_eapi_dl} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         if _cfg['transport'] == "ssh":
@@ -1460,11 +1465,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
-                if VERBOSE: print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)")
+                print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)", flush=True)
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             action = "dry-run (aborted)" if dry_run else "committed"
             diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
-            if VERBOSE: print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)")
+            print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         raise NotImplementedError(

@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.24 | 2026-05-09 03:36:56 -->
+<!-- TopoAssist v260509.25 | 2026-05-09 03:41:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.24";  // keep in sync with Code.gs
+const APP_VERSION = "260509.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11478,15 +11478,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     "ospf":       orphans.get("ospf", []),
                 }
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                    for _bn, _batch in enumerate(
-                            _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
+                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                    print(f"  [orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    for _bn, _batch in enumerate(_ob_batches, 1):
+                        print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
                             self._push_config(ip, "\\n".join(_batch),
                                               dry_run=False, all_ifaces=False,
                                               all_device_names=None)
+                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
-                            if VERBOSE:
-                                print(f"  [orphan-batch] {ip}: batch {_bn} failed -- {_be}")
+                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
                             break
                 else:
                     lines = orphan_cmds + lines
@@ -11593,6 +11595,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            _eapi_action = "dry-run (aborted)" if dry_run else "committed"
+            _eapi_dl = len([l for l in (diff or "").splitlines() if l.strip()])
+            print(f"  [push] {ip}: session {session} {_eapi_action} — {_eapi_dl} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
         if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
@@ -11613,7 +11618,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
+                _ssh_dl = len([l for l in (diff or "").splitlines() if l.strip()])
+                print(f"  [push] {ip}: session {session} open (pending) — {_ssh_dl} diff line(s)", flush=True)
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
+            _ssh_action = "dry-run (aborted)" if dry_run else "committed"
+            _ssh_dl = len([l for l in (diff or "").splitlines() if l.strip()])
+            print(f"  [push] {ip}: session {session} {_ssh_action} — {_ssh_dl} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
         raise NotImplementedError(f"Config push not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
 
