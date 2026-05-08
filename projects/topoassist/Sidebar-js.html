@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.7 | 2026-05-09 02:38:21 -->
+<!-- TopoAssist v260509.10 | 2026-05-09 02:40:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.7";  // keep in sync with Code.gs
+const APP_VERSION = "260509.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4987,11 +4987,13 @@ function _updateGwExample() {
   const l4n   = parseInt((document.getElementById('ip_gw_v4_last').value || '1').trim()) || 1;
   const l6n   = parseInt((document.getElementById('ip_gw_v6_last').value || '1').trim()) || 1;
 
-  // Mask for each column: use actual configured mask if it fits the mode, else representative.
-  const m4s = pfx4 >= 24 ? m4 : '/24';   // standard col: actual or /24 illustrative
-  const m4w = pfx4 <  24 ? m4 : '/16';   // wide col:     actual or /16 illustrative
-  const m6s = pfx6 >= 64 ? m6 : '/64';
-  const m6w = pfx6 <  64 ? m6 : '/32';
+  // Masks per tier — actual value when in that tier's range, illustrative otherwise.
+  const m4s  = pfx4 >= 24 ? m4 : '/24';
+  const m4w  = (pfx4 >= 16 && pfx4 < 24) ? m4 : '/16';
+  const m4sw = pfx4 < 16 ? m4 : '/8';
+  const m6s  = pfx6 >= 64 ? m6 : '/64';
+  const m6w  = (pfx6 >= 48 && pfx6 < 64) ? m6 : '/48';
+  const m6sw = pfx6 < 48 ? m6 : '/32';
 
   const sp   = (cls, v) => '<span class="' + cls + '">' + v + '</span>';
   const note = v => sp('ip-ex-note', v);
@@ -5011,6 +5013,13 @@ function _updateGwExample() {
   const w4vip   = ()   => w4p(l4n)+' '+note('&rarr; ip virtual-router address');
   const w4any   = ()   => w4p(l4n)+m4w+' '+note('&rarr; ip address virtual');
 
+  // ── IPv4 super-wide formula: {1}{oct2}.0.0.{N}/{mask} (oct3 dropped) ──
+  const sw4p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+'.0.0.'+sp('ip-ex-result',n);
+  const sw4mphy = (id) => sw4p(l4n+id)+m4sw+' '+note('last+id');
+  const sw4solo = ()   => sw4p(l4n)+m4sw+' '+note('last');
+  const sw4vip  = ()   => sw4p(l4n)+' '+note('&rarr; ip virtual-router address');
+  const sw4any  = ()   => sw4p(l4n)+m4sw+' '+note('&rarr; ip address virtual');
+
   // ── IPv6 standard formula: {f6std}:{oct2}:{oct3}::{N}/{mask} ──
   const s6p = (n) => sp('f-var',f6std)+':'+sp('f-dyn',oct2)+':'+sp('f-dyn',oct3)+'::'+sp('ip-ex-result',n);
   const s6mphy  = (id) => s6p(l6n+id)+m6s+' '+note('last+id');
@@ -5025,67 +5034,48 @@ function _updateGwExample() {
   const w6vip   = ()   => w6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
   const w6any   = ()   => w6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
 
-  // ── IPv4 super-wide formula: {1}{oct2}.0.0.{N}/{mask} (oct3 dropped) ──
-  const sw4p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+'.0.0.'+sp('ip-ex-result',n);
-  const sw4mphy = (id) => sw4p(l4n+id)+m4w+' '+note('last+id');
-  const sw4solo = ()   => sw4p(l4n)+m4w+' '+note('last');
-  const sw4vip  = ()   => sw4p(l4n)+' '+note('&rarr; ip virtual-router address');
-  const sw4any  = ()   => sw4p(l4n)+m4w+' '+note('&rarr; ip address virtual');
-
   // ── IPv6 super-wide formula: {1}{oct2}:0:0::{N}/{mask} (oct3 dropped) ──
   const sw6p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+':0:0::'+sp('ip-ex-result',n);
-  const sw6mphy = (id) => sw6p(l6n+id)+m6w+' '+note('last+id');
-  const sw6solo = ()   => sw6p(l6n)+m6w+' '+note('last');
+  const sw6mphy = (id) => sw6p(l6n+id)+m6sw+' '+note('last+id');
+  const sw6solo = ()   => sw6p(l6n)+m6sw+' '+note('last');
   const sw6vip  = ()   => sw6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
-  const sw6any  = ()   => sw6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
+  const sw6any  = ()   => sw6p(l6n)+m6sw+' '+note('&rarr; ipv6 address virtual');
 
-  // ── Update calc labels and caution notes ──
+  // ── Calc labels — each section always shows its own formula ──
   const bStyle = 'color:#64748b;font-weight:600;font-style:normal';
   const oct2s  = String(oct2);
-  set('gw-ex4-calc', superWide4
-    ? `super-wide &lt;/16:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`
-    : `wide &lt;/24:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
-  set('gw-ex6-calc', superWide6
-    ? `super-wide &lt;/48:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`
-    : `wide &lt;/64:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
+  set('gw-ex4-calc',    `Wide /16–/23:  1·${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
+  set('gw-ex4-sw-calc', `Super-wide /8–/15:  1·${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`);
+  set('gw-ex6-calc',    `Wide /48–/63:  1·${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
+  set('gw-ex6-sw-calc', `Super-wide /32–/47:  1·${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`);
 
-  // VLAN 40 caution: oct2=0, so same super-wide IP as VLANs 0–99 (first octet = "1"+"0"="10")
+  // Collision caution: VLANs 1215 & 1250 share oct2=12 → same super-wide IP
   const c4El = document.getElementById('gw-ex4-caution');
-  if (c4El) {
-    if (superWide4) {
-      c4El.innerHTML = `⚠ e.g. VLAN 40 → oct2=0 → 10.0.0.${l4n}${m4w} — same IP as VLANs 0–99; each oct2 group shares one GW IP`;
-      c4El.style.display = '';
-    } else { c4El.style.display = 'none'; }
-  }
+  if (c4El) c4El.innerHTML = `⚠ e.g. VLAN 1215 &amp; 1250 → both oct2=12 → 112.0.0.${l4n}${m4sw} — all VLANs 1200–1299 share one GW IP`;
   const c6El = document.getElementById('gw-ex6-caution');
-  if (c6El) {
-    if (superWide6) {
-      c6El.innerHTML = `⚠ e.g. VLAN 40 → oct2=0 → 10:0:0::${l6n}${m6w} — same IP as VLANs 0–99; each oct2 group shares one GW IP`;
-      c6El.style.display = '';
-    } else { c6El.style.display = 'none'; }
-  }
+  if (c6El) c6El.innerHTML = `⚠ e.g. VLAN 1215 &amp; 1250 → both oct2=12 → 112:0:0::${l6n}${m6sw} — all VLANs 1200–1299 share one GW IP`;
 
-  // ── Populate all cells — wide column uses super-wide formula when pfx < 16/48 ──
-  const W4mphy = superWide4 ? sw4mphy : w4mphy;
-  const W4solo = superWide4 ? sw4solo : w4solo;
-  const W4vip  = superWide4 ? sw4vip  : w4vip;
-  const W4any  = superWide4 ? sw4any  : w4any;
-  const W6mphy = superWide6 ? sw6mphy : w6mphy;
-  const W6solo = superWide6 ? sw6solo : w6solo;
-  const W6vip  = superWide6 ? sw6vip  : w6vip;
-  const W6any  = superWide6 ? sw6any  : w6any;
+  // ── Populate all three tier sections ──
+  set('gw-ex4-std-mphy1',  s4mphy(3));  set('gw-ex4-wide-mphy1',  w4mphy(3));  set('gw-ex4-sw-mphy1',  sw4mphy(3));
+  set('gw-ex4-std-mphy2',  s4mphy(4));  set('gw-ex4-wide-mphy2',  w4mphy(4));  set('gw-ex4-sw-mphy2',  sw4mphy(4));
+  set('gw-ex4-std-solo',   s4solo());   set('gw-ex4-wide-solo',   w4solo());   set('gw-ex4-sw-solo',   sw4solo());
+  set('gw-ex4-std-anycast',s4any());    set('gw-ex4-wide-anycast', w4any());    set('gw-ex4-sw-anycast', sw4any());
+  set('gw-ex4-std-vip',    s4vip());    set('gw-ex4-wide-vip',    w4vip());    set('gw-ex4-sw-vip',    sw4vip());
 
-  set('gw-ex4-std-mphy1',  s4mphy(3)); set('gw-ex4-wide-mphy1', W4mphy(3));
-  set('gw-ex4-std-mphy2',  s4mphy(4)); set('gw-ex4-wide-mphy2', W4mphy(4));
-  set('gw-ex4-std-solo',   s4solo());  set('gw-ex4-wide-solo',  W4solo());
-  set('gw-ex4-std-anycast',s4any());   set('gw-ex4-wide-anycast',W4any());
-  set('gw-ex4-std-vip',    s4vip());   set('gw-ex4-wide-vip',   W4vip());
+  set('gw-ex6-std-mphy1',  s6mphy(3));  set('gw-ex6-wide-mphy1',  w6mphy(3));  set('gw-ex6-sw-mphy1',  sw6mphy(3));
+  set('gw-ex6-std-mphy2',  s6mphy(4));  set('gw-ex6-wide-mphy2',  w6mphy(4));  set('gw-ex6-sw-mphy2',  sw6mphy(4));
+  set('gw-ex6-std-solo',   s6solo());   set('gw-ex6-wide-solo',   w6solo());   set('gw-ex6-sw-solo',   sw6solo());
+  set('gw-ex6-std-anycast',s6any());    set('gw-ex6-wide-anycast', w6any());    set('gw-ex6-sw-anycast', sw6any());
+  set('gw-ex6-std-vip',    s6vip());    set('gw-ex6-wide-vip',    w6vip());    set('gw-ex6-sw-vip',    sw6vip());
 
-  set('gw-ex6-std-mphy1',  s6mphy(3)); set('gw-ex6-wide-mphy1', W6mphy(3));
-  set('gw-ex6-std-mphy2',  s6mphy(4)); set('gw-ex6-wide-mphy2', W6mphy(4));
-  set('gw-ex6-std-solo',   s6solo());  set('gw-ex6-wide-solo',  W6solo());
-  set('gw-ex6-std-anycast',s6any());   set('gw-ex6-wide-anycast',W6any());
-  set('gw-ex6-std-vip',    s6vip());   set('gw-ex6-wide-vip',   W6vip());
+  // ── Dim inactive tiers ──
+  const secOp = (id, active) => { const el = document.getElementById(id); if (el) el.style.opacity = active ? '' : '0.35'; };
+  secOp('gw-ex4-std-sec',  !wide4);
+  secOp('gw-ex4-wide-sec', wide4 && !superWide4);
+  secOp('gw-ex4-sw-sec',   superWide4);
+  secOp('gw-ex6-std-sec',  !wide6);
+  secOp('gw-ex6-wide-sec', wide6 && !superWide6);
+  secOp('gw-ex6-sw-sec',   superWide6);
 }
 
 // --- UPDATED OPEN FUNCTION ---
