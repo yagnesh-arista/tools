@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-08 (ui: TOPO EDIT button order — size [-][+] left, [New Group][Toggle List] right. FILES: Sidebar.html)
+  Last updated: 2026-05-08 (fix: TOPO EDIT group list defaults to collapsed — _groupListCollapsed init changed from === '1' to !== '0'; collapses on first load unless user explicitly expanded it. FILES: Sidebar-js.html)
+  Previous: 2026-05-08 (ui: TOPO EDIT button order — size [-][+] left, [New Group][Toggle List] right. FILES: Sidebar.html)
   Previous: 2026-05-08 (fix: TOPO EDIT group-list expand button stays fixed — #holistic-controls flex-direction:column-reverse pins label+buttons at bottom; group list grows upward above them; #groupListPanel border-top→border-bottom for correct separator placement. FILES: Sidebar-css.html)
   Previous: 2026-05-08 (docs: UserGuide §9 Per-VLAN VRF — added 'default' placeholder section with example showing mixed default/named VRF list; note that 'default' counts toward positional count. FILES: UserGuide.html)
   Previous: 2026-05-08 (fix: floatingLegend expand button stays fixed — flex-direction:column-reverse on .topo-legend pins the header/toggle at bottom; content grows upward; max-height:calc(100vh-60px)+overflow-y:auto on .legend-content caps height; chevron now rotate(180deg) expanded / rotate(0deg) collapsed. FILES: Sidebar-css.html)
