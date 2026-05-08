@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.12 | 2026-05-09 02:43:28
+# topoassist v260509.16 | 2026-05-09 03:02:23
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260509.3"
+VERSION           = "260509.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -587,6 +587,51 @@ def _orphans_to_cmds(orphans):
             cmds.append(f'   default passive-interface {iface}')
         cmds.append('!')
     return cmds
+
+
+def _batch_orphan_cmds(cmds, batch_size):
+    """Split orphan command list into batches that never cut mid-block.
+
+    EOS cleanup blocks (BGP, OSPF) are multi-line: 'router bgp N' / sub-cmds / '!'.
+    Slicing by raw line count can land a batch boundary inside a block, sending EOS
+    an incomplete context — the remaining sub-commands then arrive in the next batch
+    with no parent context and fail.
+
+    Strategy: segment the list first (one segment = one standalone cmd OR one complete
+    block ending with '!'), then fill batches by segment until batch_size is reached.
+    A segment boundary only occurs after a standalone line or after '!'.
+    """
+    # Build segments: each segment is a list of lines forming one logical command/block
+    segments = []
+    current = []
+    for line in cmds:
+        if line.strip() == '!':
+            current.append(line)
+            segments.append(current)
+            current = []
+        elif (not line.startswith(' ')           # non-indented → standalone or block opener
+              and current
+              and not current[-1].startswith(' ')  # previous line also non-indented
+              and current[-1].strip() != '!'):      # previous line was not a block-end
+            # Two consecutive non-indented non-'!' lines → first is a standalone command
+            segments.append(current)
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        segments.append(current)
+
+    # Pack segments into batches of up to batch_size lines
+    batches, batch = [], []
+    for seg in segments:
+        if batch and len(batch) + len(seg) > batch_size:
+            batches.append(batch)
+            batch = list(seg)
+        else:
+            batch.extend(seg)
+    if batch:
+        batches.append(batch)
+    return batches
 
 
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
@@ -1185,54 +1230,74 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _ct.start()
         _ct.join(timeout=TIMEOUT)
 
-        # Prepend cleanup for orphan __TA interfaces not present in this push.
-        # Best-effort — failures are silently ignored so a query error never blocks push.
-        # orphans_cleaned is included in the response so the UI can show a dedicated
-        # "Auto-removed N orphan(s)" banner alongside the diff.
-        #
-        # Large orphan sets (>CLEANUP_BATCH_SIZE commands, e.g. thousands of stale SVIs)
-        # are pushed in separate batched sessions BEFORE the main push, rather than
-        # prepending all commands into one session that would exceed the push timeout.
-        if all_ifaces and not dry_run:
+        # Run orphan detection and BGP-ASN-change detection concurrently when doing a
+        # full push (all_ifaces=True) — both are independent EOS read queries.
+        # _detect_orphans already parallelises its 5 inner checks; running _find_bgp_asn_change
+        # concurrently with it eliminates the extra sequential round-trip that was visible
+        # in the log as a separate 'include router bgp' query after the orphan queries.
+        # Best-effort for orphan detection — failures must never block push.
+        asn_changed    = None
+        bgp_asn_cmds   = []
+        _orphan_result = [None]
+        _asn_result    = [[], None]
+
+        def _run_detect_orphans():
             try:
-                orphans = self._detect_orphans(ip, config_text=config_text,
-                                               all_device_names=all_device_names)
-                if orphans.get('ok'):
-                    orphan_cmds = _orphans_to_cmds(orphans)
-                    if orphan_cmds:
-                        _asn_extra["orphans_cleaned"] = {
-                            "interfaces": orphans.get("interfaces", []),
-                            "bgp":        orphans.get("bgp", []),
-                            "vlans":      orphans.get("vlans", []),
-                            "vrfs":       orphans.get("vrfs", []),
-                            "ospf":       orphans.get("ospf", []),
-                        }
-                        if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                            # Too many orphans to prepend — push in batches first,
-                            # then the main push carries only the actual device config.
-                            for _bi in range(0, len(orphan_cmds), CLEANUP_BATCH_SIZE):
-                                _batch = orphan_cmds[_bi:_bi + CLEANUP_BATCH_SIZE]
-                                try:
-                                    self._push_config(ip, '\n'.join(_batch),
-                                                      dry_run=False, all_ifaces=False,
-                                                      all_device_names=None)
-                                except Exception as _be:
-                                    if VERBOSE:
-                                        print(f"  [orphan-batch] {ip}: batch {_bi//CLEANUP_BATCH_SIZE+1} failed — {_be}")
-                                    break
-                            # lines stays as the actual config only (no prepend)
-                        else:
-                            lines = orphan_cmds + lines
+                _orphan_result[0] = self._detect_orphans(ip, config_text=config_text,
+                                                          all_device_names=all_device_names)
             except Exception:
-                pass  # orphan cleanup failure must never block push
+                pass
+
+        def _run_asn_check():
+            try:
+                _asn_result[0], _asn_result[1] = self._find_bgp_asn_change(ip, config_text)
+            except Exception:
+                pass
+
+        if all_ifaces and not dry_run:
+            _td = threading.Thread(target=_run_detect_orphans, daemon=True)
+            _ta = threading.Thread(target=_run_asn_check,    daemon=True)
+            _td.start(); _ta.start()
+            _td.join(timeout=TIMEOUT * 3); _ta.join(timeout=TIMEOUT * 3)
+        else:
+            # Non-full push (cleanup batch, open-only): skip orphan detection, still check ASN.
+            _run_asn_check()
+
+        bgp_asn_cmds = _asn_result[0] or []
+        asn_changed  = _asn_result[1]
+
+        orphans = _orphan_result[0]
+        if orphans and orphans.get('ok'):
+            orphan_cmds = _orphans_to_cmds(orphans)
+            if orphan_cmds:
+                _asn_extra["orphans_cleaned"] = {
+                    "interfaces": orphans.get("interfaces", []),
+                    "bgp":        orphans.get("bgp", []),
+                    "vlans":      orphans.get("vlans", []),
+                    "vrfs":       orphans.get("vrfs", []),
+                    "ospf":       orphans.get("ospf", []),
+                }
+                if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
+                    # Too many orphans to prepend — push in block-aware batches
+                    # first, then the main push carries only the actual config.
+                    for _bn, _batch in enumerate(
+                            _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
+                        try:
+                            self._push_config(ip, '\n'.join(_batch),
+                                              dry_run=False, all_ifaces=False,
+                                              all_device_names=None)
+                        except Exception as _be:
+                            if VERBOSE:
+                                print(f"  [orphan-batch] {ip}: batch {_bn} failed — {_be}")
+                            break
+                    # lines stays as the actual config only (no prepend)
+                else:
+                    lines = orphan_cmds + lines
 
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
         # Runs on all push modes (dry_run included) so the diff reflects the removal
         # and the client can warn the user before they confirm the push.
-        # Returns ([], None) when config has no BGP block or ASN is unchanged.
-        asn_changed = None
-        bgp_asn_cmds, asn_changed = self._find_bgp_asn_change(ip, config_text)
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
 
