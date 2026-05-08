@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.12 | 2026-05-09 02:47:19 -->
+<!-- TopoAssist v260509.14 | 2026-05-09 02:50:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.12";  // keep in sync with Code.gs
+const APP_VERSION = "260509.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5901,6 +5901,7 @@ function closeGlobalCfgModal() {
 }
 
 function _loadGlobalCfgTemplate() {
+  initialGlobalCfgState = ''; // clear stale state — async load in progress; prevents spurious dirty warning
   const textarea = document.getElementById('globalCfgTextarea');
   const status   = document.getElementById('globalCfgStatus');
   const btn      = document.getElementById('btnSaveGlobalCfg');
@@ -17293,6 +17294,7 @@ function closeGenerateAllModal() {
   const _gcfgTa = document.getElementById('globalCfgTextarea');
   const isCfgDirty = _gcfgTa && initialGlobalCfgState !== '' && _gcfgTa.value !== initialGlobalCfgState;
   if (!_confirmDirtyClose(isCfgDirty, "Config Center")) return;
+  initialGlobalCfgState = '';
   _onModalClose(document.getElementById('configCenterModal'));
   document.getElementById('configCenterModal').style.display = 'none';
   document.getElementById('editOverlay').style.display = 'none';
