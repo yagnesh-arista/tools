@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.4 | 2026-05-09 01:49:52 -->
+<!-- TopoAssist v260509.5 | 2026-05-09 01:56:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.4";  // keep in sync with Code.gs
+const APP_VERSION = "260509.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13735,7 +13735,9 @@ async function commitPushConfig() {
         : 'No response — device unreachable or push timed out';
       _ptSet('pt2', '#f87171', 'timed out');
       _ptSet('pt3', '#475569', '—');
-      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(errMsg)}</div>`);
+      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(errMsg)}</div>` +
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;padding:2px 0 0;">` +
+        `If Bridge → Cleanup shows stale items, run Cleanup first — removal commands (default interface, no vlan) are slow on EOS and may have caused this.</div>`);
       if (titleEl) titleEl.textContent = 'Push Timed Out';
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
@@ -13854,9 +13856,12 @@ async function commitPushConfig() {
     } else {
       // Phase 2 explicit device error
       const errSafe = escapeHtml(res.error || 'something went wrong');
+      const _isTimeout = (res.error || '').toLowerCase().includes('timed out');
       _ptSet('pt2', '#f87171', 'push failed');
       _ptSet('pt3', '#475569', '—');
-      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}</div>`);
+      _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}</div>` +
+        (_isTimeout ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;padding:2px 0 0;">` +
+        `If Bridge → Cleanup shows stale items, run Cleanup first — removal commands (default interface, no vlan) are slow on EOS and may have caused this.</div>` : ''));
       if (titleEl) titleEl.textContent = 'Push Failed';
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
@@ -14351,7 +14356,9 @@ async function pushAllConfigs() {
       if (!res.ok) {
         completed++;
         _updateSummary();
-        _setResultRow(rowId, safeName, '#ef4444', res.error || 'something went wrong', null);
+        const _bulkIsTimeout = (res.error || '').toLowerCase().includes('timed out');
+        const _bulkHint = _bulkIsTimeout ? 'If Bridge → Cleanup shows stale items, run Cleanup first — removal commands (default interface, no vlan) are slow on EOS and may have caused this.' : null;
+        _setResultRow(rowId, safeName, '#ef4444', res.error || 'something went wrong', null, null, null, _bulkHint);
         return;
       }
 
