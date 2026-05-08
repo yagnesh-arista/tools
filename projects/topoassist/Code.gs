@@ -1,10 +1,10 @@
-// TopoAssist v260508.10 | 2026-05-08 12:01:15
+// TopoAssist v260508.11 | 2026-05-08 12:12:03
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260508.10";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260508.11";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6097,9 +6097,8 @@ function generateBGP(deviceSheetIndex, deviceName, bgpNeighbors, gwVlans, isEvpn
     if (gwVlans && gwVlans.size > 0) {
       if (s.evpn_service === 'vlan-aware-bundle') {
         // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
-        const vlanList = Array.from(gwVlans).sort((a, b) => a - b).join(",");
         configLines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
-        configLines.push(`   vlan ${vlanList}`);
+        configLines.push(`   vlan ${_compressVlanList(gwVlans)}`);
         configLines.push(`   rd auto`);
         configLines.push(`   route-target both ${asnBase}:1`);
         configLines.push(`   redistribute learned`);
@@ -6346,9 +6345,8 @@ function generateBGPEvpnOverlay(deviceSheetIndex, deviceName, bgpNeighbors, gwVl
   if (gwVlans && gwVlans.size > 0) {
     if (s.evpn_service === 'vlan-aware-bundle') {
       // Single bundle for all VLANs — RT must be identical on every VTEP, so use asnBase:1
-      const vlanList = Array.from(gwVlans).sort((a, b) => a - b).join(",");
       lines.push(`  vlan-aware-bundle EVPN_VLAN_AWARE_BUNDLE`);
-      lines.push(`   vlan ${vlanList}`);
+      lines.push(`   vlan ${_compressVlanList(gwVlans)}`);
       lines.push(`   rd auto`);
       lines.push(`   route-target both ${asnBase}:1`);
       lines.push(`   redistribute learned`);
