@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.6 | 2026-05-09 02:03:01
+# topoassist v260509.12 | 2026-05-09 02:43:28
 """
 TopoAssist Device Bridge
 ========================
@@ -134,7 +134,7 @@ def _arg(flag):
 
 VERBOSE = "-v" in sys.argv
 
-VERSION           = "260509.1"
+VERSION           = "260509.3"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -148,6 +148,7 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                  str(max(TIMEOUT * 4, 300))))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
+CLEANUP_BATCH_SIZE = 300  # max orphan-cleanup commands per configure session (prevents timeout on large orphan sets)
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
@@ -1188,6 +1189,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # Best-effort — failures are silently ignored so a query error never blocks push.
         # orphans_cleaned is included in the response so the UI can show a dedicated
         # "Auto-removed N orphan(s)" banner alongside the diff.
+        #
+        # Large orphan sets (>CLEANUP_BATCH_SIZE commands, e.g. thousands of stale SVIs)
+        # are pushed in separate batched sessions BEFORE the main push, rather than
+        # prepending all commands into one session that would exceed the push timeout.
         if all_ifaces and not dry_run:
             try:
                 orphans = self._detect_orphans(ip, config_text=config_text,
@@ -1195,7 +1200,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if orphans.get('ok'):
                     orphan_cmds = _orphans_to_cmds(orphans)
                     if orphan_cmds:
-                        lines = orphan_cmds + lines
                         _asn_extra["orphans_cleaned"] = {
                             "interfaces": orphans.get("interfaces", []),
                             "bgp":        orphans.get("bgp", []),
@@ -1203,6 +1207,22 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "vrfs":       orphans.get("vrfs", []),
                             "ospf":       orphans.get("ospf", []),
                         }
+                        if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
+                            # Too many orphans to prepend — push in batches first,
+                            # then the main push carries only the actual device config.
+                            for _bi in range(0, len(orphan_cmds), CLEANUP_BATCH_SIZE):
+                                _batch = orphan_cmds[_bi:_bi + CLEANUP_BATCH_SIZE]
+                                try:
+                                    self._push_config(ip, '\n'.join(_batch),
+                                                      dry_run=False, all_ifaces=False,
+                                                      all_device_names=None)
+                                except Exception as _be:
+                                    if VERBOSE:
+                                        print(f"  [orphan-batch] {ip}: batch {_bi//CLEANUP_BATCH_SIZE+1} failed — {_be}")
+                                    break
+                            # lines stays as the actual config only (no prepend)
+                        else:
+                            lines = orphan_cmds + lines
             except Exception:
                 pass  # orphan cleanup failure must never block push
 
