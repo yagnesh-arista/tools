@@ -1,10 +1,10 @@
-// TopoAssist v260507.38 | 2026-05-07 19:54:54
+// TopoAssist v260508.1 | 2026-05-08 01:15:51
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260507.38";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260508.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4547,12 +4547,16 @@ function getDeviceConfig(deviceName) {
             const oct3 = v % 100;
             const gwPfx4_vx1 = parseInt((cfg2.gw_v4_mask || '/24').replace('/', '')) || 24;
             const gwPfx6_vx1 = parseInt((cfg2.gw_v6_mask || '/64').replace('/', '')) || 64;
-            const vx1Pv4Px = gwPfx4_vx1 < 24
-              ? `${cfg2.gw_v4_first}${oct2}.${oct3}.0`
-              : `${cfg2.gw_v4_first}.${oct2}.${oct3}`;
-            const vx1Pv6Px = gwPfx6_vx1 < 64
-              ? `${cfg2.gw_v6_first}${oct2}:${oct3}:0`
-              : `${cfg2.gw_v6_first}:${oct2}:${oct3}`;
+            const vx1Pv4Px = gwPfx4_vx1 < 16
+              ? `${cfg2.gw_v4_first}${oct2}.0.0`
+              : gwPfx4_vx1 < 24
+                ? `${cfg2.gw_v4_first}${oct2}.${oct3}.0`
+                : `${cfg2.gw_v4_first}.${oct2}.${oct3}`;
+            const vx1Pv6Px = gwPfx6_vx1 < 48
+              ? `${cfg2.gw_v6_first}${oct2}:0:0`
+              : gwPfx6_vx1 < 64
+                ? `${cfg2.gw_v6_first}${oct2}:${oct3}:0`
+                : `${cfg2.gw_v6_first}:${oct2}:${oct3}`;
             const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
             const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
             // GW command: anycast (ip address virtual) vs VARP (ip address + ip virtual-router address)
@@ -5187,18 +5191,26 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     // Non-LEAF (SPINE/HARNESS/etc): plain ip address using gwLastV4/V6 (operator-configured last
     // octet) — same value the operator set for the virtual/anycast IP, applied as a plain address.
     else if (ipType.includes("gw")) {
-      // Wide prefix (< /24): merge gw_v4_first+oct2 into the first octet, shift oct3 to second, fix
-      // the third to 0. Formula: {first}{oct2}.{oct3}.0.{last}/{mask}
-      // e.g. gw_v4_first="1", VLAN 4050 → 140.50.0.1/16  (oct2=40, oct3=50; "1"+"40"="140")
-      // Standard /24+: {first}.{oct2}.{oct3}.{last}/{mask} — unchanged (backwards compatible).
+      // Three-tier prefix formula (IPv4 and IPv6 cutoffs are independent):
+      // Super-wide /8–/15:  {first}{oct2}.0.0.{last}/{mask}  e.g. VLAN 4050 → 140.0.0.1/8
+      // Wide /16–/23:       {first}{oct2}.{oct3}.0.{last}/{mask}  e.g. VLAN 4050 → 140.50.0.1/16
+      // Standard /24+:      {first}.{oct2}.{oct3}.{last}/{mask}  e.g. VLAN 4050 → 100.40.50.1/24
+      // IPv6 super-wide /32–/47: {first}{oct2}:0:0::{last}/{mask}
+      // IPv6 wide /48–/63:       {first}{oct2}:{oct3}:0::{last}/{mask}
+      // IPv6 standard /64+:      {first}:{oct2}:{oct3}::{last}/{mask}
+      // In all wide/super-wide tiers: gw_v4_first is locked to "1" in the UI.
       const gwPfx4 = parseInt((cfg.gw_v4_mask || '/24').replace('/', '')) || 24;
       const gwPfx6 = parseInt((cfg.gw_v6_mask || '/64').replace('/', '')) || 64;
-      const ipv4Px = gwPfx4 < 24
-        ? `${cfg.gw_v4_first}${oct2}.${oct3}.0`
-        : `${cfg.gw_v4_first}.${oct2}.${oct3}`;
-      const ipv6Px = gwPfx6 < 64
-        ? `${cfg.gw_v6_first}${oct2}:${oct3}:0`
-        : `${cfg.gw_v6_first}:${oct2}:${oct3}`;
+      const ipv4Px = gwPfx4 < 16
+        ? `${cfg.gw_v4_first}${oct2}.0.0`
+        : gwPfx4 < 24
+          ? `${cfg.gw_v4_first}${oct2}.${oct3}.0`
+          : `${cfg.gw_v4_first}.${oct2}.${oct3}`;
+      const ipv6Px = gwPfx6 < 48
+        ? `${cfg.gw_v6_first}${oct2}:0:0`
+        : gwPfx6 < 64
+          ? `${cfg.gw_v6_first}${oct2}:${oct3}:0`
+          : `${cfg.gw_v6_first}:${oct2}:${oct3}`;
       // Description prefix: ANYCAST_GW for LEAF+EVPN, GW for everything else.
       // Always includes VRF when set. Never just __TA alone.
       const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;

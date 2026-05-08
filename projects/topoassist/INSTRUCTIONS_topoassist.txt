@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-07 (docs: UserGuide — add missing 🛡️ emoji to Audit Engine h2 header; FILES: UserGuide.html)
+  Last updated: 2026-05-08 (feat: super-wide GW prefix tier /8–/15 (IPv4) and /32–/47 (IPv6) — oct3 dropped; 3-tier formula in getIpBlock() + vx1 SVI block; mask validation min /8; _updateGwExample() super-wide formula, dynamic calc labels, VLAN 40 caution; legend updated; CLAUDE.md GW assembly rule updated. FILES: Code.gs, Sidebar.html, Sidebar-js.html, CLAUDE.md)
+  Previous: 2026-05-07 (docs: UserGuide — add missing 🛡️ emoji to Audit Engine h2 header; FILES: UserGuide.html)
   Previous: 2026-05-07 (docs: UserGuide quality fixes — W1: Cabling Export toolbar row now describes 3 tabs (Export/Topology List/Device List); W2: New Project Reset section added under Sheet & Schema (menu path + description); W3: Restore Sheet Checkpoint now has its own menu-path span in Appendix; FILES: UserGuide.html)
   Previous: 2026-05-07 (docs: UserGuide §6 Global Config Template rewritten — Config Center→Template panel access, 000_BASE (auto-generated: hostname+ip routing) vs 000_GTPL (user textarea), Copy Base+Ifs = 000_BASE+000_GTPL+interface blocks, Save & Apply; FILES: UserGuide.html)
   Previous: 2026-05-07 (docs: UserGuide audit section — count "24 checks" → "35 checks"; table now has 35 rows (was 25): added 3 Bridge/LLDP rows (Interface down OFF-default, Interface shut OFF-default, L1 errors ON-default), 3 VLAN rows (Stale VLAN, Stale SVI, Missing VLAN), 1 IP/Gateway row (Stale VRF), 1 Mode/Speed row (Incomplete xcvr speed), new Snake/IXIA category (2 rows); rowspans corrected. FILES: UserGuide.html)

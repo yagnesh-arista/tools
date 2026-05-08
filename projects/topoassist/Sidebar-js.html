@@ -1,7 +1,7 @@
-<!-- TopoAssist v260507.38 | 2026-05-07 19:54:54 -->
+<!-- TopoAssist v260508.1 | 2026-05-08 11:04:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260507.38";  // keep in sync with Code.gs
+const APP_VERSION = "260508.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4893,6 +4893,7 @@ function _updateGwExample() {
   const pfx4 = parseInt(m4.replace('/', '')) || 24;
   const pfx6 = parseInt(m6.replace('/', '')) || 64;
   const wide4 = pfx4 < 24, wide6 = pfx6 < 64;
+  const superWide4 = pfx4 < 16, superWide6 = pfx6 < 48;
 
   // ── Global first-field lock: "1" in wide mode, saved/restored on transition ──
   if (firstEl4) {
@@ -5024,19 +5025,67 @@ function _updateGwExample() {
   const w6vip   = ()   => w6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
   const w6any   = ()   => w6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
 
-  // ── Populate all cells ──
-  // Standard group (above calc hint), wide group (below). Both MLAG devices shown.
-  set('gw-ex4-std-mphy1',  s4mphy(3)); set('gw-ex4-wide-mphy1', w4mphy(3));
-  set('gw-ex4-std-mphy2',  s4mphy(4)); set('gw-ex4-wide-mphy2', w4mphy(4));
-  set('gw-ex4-std-solo',   s4solo());  set('gw-ex4-wide-solo',  w4solo());
-  set('gw-ex4-std-anycast',s4any());   set('gw-ex4-wide-anycast',w4any());
-  set('gw-ex4-std-vip',    s4vip());   set('gw-ex4-wide-vip',   w4vip());
+  // ── IPv4 super-wide formula: {1}{oct2}.0.0.{N}/{mask} (oct3 dropped) ──
+  const sw4p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+'.0.0.'+sp('ip-ex-result',n);
+  const sw4mphy = (id) => sw4p(l4n+id)+m4w+' '+note('last+id');
+  const sw4solo = ()   => sw4p(l4n)+m4w+' '+note('last');
+  const sw4vip  = ()   => sw4p(l4n)+' '+note('&rarr; ip virtual-router address');
+  const sw4any  = ()   => sw4p(l4n)+m4w+' '+note('&rarr; ip address virtual');
 
-  set('gw-ex6-std-mphy1',  s6mphy(3)); set('gw-ex6-wide-mphy1', w6mphy(3));
-  set('gw-ex6-std-mphy2',  s6mphy(4)); set('gw-ex6-wide-mphy2', w6mphy(4));
-  set('gw-ex6-std-solo',   s6solo());  set('gw-ex6-wide-solo',  w6solo());
-  set('gw-ex6-std-anycast',s6any());   set('gw-ex6-wide-anycast',w6any());
-  set('gw-ex6-std-vip',    s6vip());   set('gw-ex6-wide-vip',   w6vip());
+  // ── IPv6 super-wide formula: {1}{oct2}:0:0::{N}/{mask} (oct3 dropped) ──
+  const sw6p = (n) => sp('f-var','1')+sp('f-dyn',oct2)+':0:0::'+sp('ip-ex-result',n);
+  const sw6mphy = (id) => sw6p(l6n+id)+m6w+' '+note('last+id');
+  const sw6solo = ()   => sw6p(l6n)+m6w+' '+note('last');
+  const sw6vip  = ()   => sw6p(l6n)+' '+note('&rarr; ipv6 virtual-router address');
+  const sw6any  = ()   => sw6p(l6n)+m6w+' '+note('&rarr; ipv6 address virtual');
+
+  // ── Update calc labels and caution notes ──
+  const bStyle = 'color:#64748b;font-weight:600;font-style:normal';
+  const oct2s  = String(oct2);
+  set('gw-ex4-calc', superWide4
+    ? `super-wide &lt;/16:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`
+    : `wide &lt;/24:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
+  set('gw-ex6-calc', superWide6
+    ? `super-wide &lt;/48:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b> (oct3=${oct3} dropped)`
+    : `wide &lt;/64:&nbsp; 1&middot;${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3}`);
+
+  // VLAN 40 caution: oct2=0, so same super-wide IP as VLANs 0–99 (first octet = "1"+"0"="10")
+  const c4El = document.getElementById('gw-ex4-caution');
+  if (c4El) {
+    if (superWide4) {
+      c4El.innerHTML = `⚠ e.g. VLAN 40 → oct2=0 → 10.0.0.${l4n}${m4w} — same IP as VLANs 0–99; each oct2 group shares one GW IP`;
+      c4El.style.display = '';
+    } else { c4El.style.display = 'none'; }
+  }
+  const c6El = document.getElementById('gw-ex6-caution');
+  if (c6El) {
+    if (superWide6) {
+      c6El.innerHTML = `⚠ e.g. VLAN 40 → oct2=0 → 10:0:0::${l6n}${m6w} — same IP as VLANs 0–99; each oct2 group shares one GW IP`;
+      c6El.style.display = '';
+    } else { c6El.style.display = 'none'; }
+  }
+
+  // ── Populate all cells — wide column uses super-wide formula when pfx < 16/48 ──
+  const W4mphy = superWide4 ? sw4mphy : w4mphy;
+  const W4solo = superWide4 ? sw4solo : w4solo;
+  const W4vip  = superWide4 ? sw4vip  : w4vip;
+  const W4any  = superWide4 ? sw4any  : w4any;
+  const W6mphy = superWide6 ? sw6mphy : w6mphy;
+  const W6solo = superWide6 ? sw6solo : w6solo;
+  const W6vip  = superWide6 ? sw6vip  : w6vip;
+  const W6any  = superWide6 ? sw6any  : w6any;
+
+  set('gw-ex4-std-mphy1',  s4mphy(3)); set('gw-ex4-wide-mphy1', W4mphy(3));
+  set('gw-ex4-std-mphy2',  s4mphy(4)); set('gw-ex4-wide-mphy2', W4mphy(4));
+  set('gw-ex4-std-solo',   s4solo());  set('gw-ex4-wide-solo',  W4solo());
+  set('gw-ex4-std-anycast',s4any());   set('gw-ex4-wide-anycast',W4any());
+  set('gw-ex4-std-vip',    s4vip());   set('gw-ex4-wide-vip',   W4vip());
+
+  set('gw-ex6-std-mphy1',  s6mphy(3)); set('gw-ex6-wide-mphy1', W6mphy(3));
+  set('gw-ex6-std-mphy2',  s6mphy(4)); set('gw-ex6-wide-mphy2', W6mphy(4));
+  set('gw-ex6-std-solo',   s6solo());  set('gw-ex6-wide-solo',  W6solo());
+  set('gw-ex6-std-anycast',s6any());   set('gw-ex6-wide-anycast',W6any());
+  set('gw-ex6-std-vip',    s6vip());   set('gw-ex6-wide-vip',   W6vip());
 }
 
 // --- UPDATED OPEN FUNCTION ---
@@ -5097,7 +5146,7 @@ function openIpConfigModal(btn) {
       const el = document.getElementById(id); if (!el) return;
       el.oninput = () => { checkIpDirty(); _onMaskInput(el, errId, min, max); };
     });
-    [['ip_gw_v4_mask','err_gw_v4_mask',16,32],['ip_gw_v6_mask','err_gw_v6_mask',32,128]].forEach(([id,errId,min,max]) => {
+    [['ip_gw_v4_mask','err_gw_v4_mask',8,32],['ip_gw_v6_mask','err_gw_v6_mask',32,128]].forEach(([id,errId,min,max]) => {
       const el = document.getElementById(id); if (!el) return;
       el.oninput = () => { checkIpDirty(); _onMaskInput(el, errId, min, max); _updateGwExample(); };
     });
