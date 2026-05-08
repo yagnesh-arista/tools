@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.19 | 2026-05-09 03:25:45 -->
+<!-- TopoAssist v260509.21 | 2026-05-09 03:26:38 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.19";  // keep in sync with Code.gs
+const APP_VERSION = "260509.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5094,14 +5094,15 @@ function _updateGwExample() {
   // Collision caution: VLANs sharing same oct3 share super-wide IP; oct3=0 overlaps IXIA 10.0.x.x/16
   const c4El = document.getElementById('gw-ex4-caution');
   const c6El = document.getElementById('gw-ex6-caution');
+  const swPref = `<br><span style="color:#94a3b8;font-style:italic">💡 VLANs 1–99 preferred — oct3 = VLAN itself (e.g. VLAN 34 → 134.0.0.x)</span>`;
   if (oct3 === 0) {
     const ixia4 = `⚠ oct3=0 (VLAN is a multiple of 100) → prefix 10.0.0.x — overlaps IXIA reserved range 10.0.x.x/16`;
     const ixia6 = `⚠ oct3=0 (VLAN is a multiple of 100) → prefix 10:0:0::x — overlaps IXIA reserved range 10:0::/16`;
-    if (c4El) c4El.innerHTML = ixia4;
-    if (c6El) c6El.innerHTML = ixia6;
+    if (c4El) c4El.innerHTML = ixia4 + swPref;
+    if (c6El) c6El.innerHTML = ixia6 + swPref;
   } else {
-    if (c4El) c4El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134.0.0.${l4n}${m4sw} — VLANs sharing same last-2-digits share one GW IP`;
-    if (c6El) c6El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134:0:0::${l6n}${m6sw} — VLANs sharing same last-2-digits share one GW IP`;
+    if (c4El) c4El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134.0.0.${l4n}${m4sw} — VLANs sharing same last-2-digits share one GW IP` + swPref;
+    if (c6El) c6El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134:0:0::${l6n}${m6sw} — VLANs sharing same last-2-digits share one GW IP` + swPref;
   }
 
   // ── Populate all three tier sections ──
