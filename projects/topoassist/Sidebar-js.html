@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.14 | 2026-05-09 02:50:35 -->
+<!-- TopoAssist v260509.16 | 2026-05-09 02:57:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.14";  // keep in sync with Code.gs
+const APP_VERSION = "260509.16";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10604,7 +10604,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260509.3"
+VERSION    = "260509.1"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11054,6 +11054,39 @@ def _orphans_to_cmds(orphans):
     return cmds
 
 
+def _batch_orphan_cmds(cmds, batch_size):
+    """Split orphan command list into batches that never cut mid-block.
+    Blocks (BGP/OSPF) end with '!'; standalone commands are single non-indented lines.
+    """
+    segments = []
+    current = []
+    for line in cmds:
+        if line.strip() == "!":
+            current.append(line)
+            segments.append(current)
+            current = []
+        elif (not line.startswith(" ")
+              and current
+              and not current[-1].startswith(" ")
+              and current[-1].strip() != "!"):
+            segments.append(current)
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        segments.append(current)
+    batches, batch = [], []
+    for seg in segments:
+        if batch and len(batch) + len(seg) > batch_size:
+            batches.append(batch)
+            batch = list(seg)
+        else:
+            batch.extend(seg)
+    if batch:
+        batches.append(batch)
+    return batches
+
+
 # -- Bridge HTTP handler --------------------------------------------------------
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -11359,15 +11392,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "ospf":       orphans.get("ospf", []),
                         }
                         if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                            for _bi in range(0, len(orphan_cmds), CLEANUP_BATCH_SIZE):
-                                _batch = orphan_cmds[_bi:_bi + CLEANUP_BATCH_SIZE]
+                            for _bn, _batch in enumerate(
+                                    _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE), 1):
                                 try:
                                     self._push_config(ip, "\\n".join(_batch),
                                                       dry_run=False, all_ifaces=False,
                                                       all_device_names=None)
                                 except Exception as _be:
                                     if VERBOSE:
-                                        print(f"  [orphan-batch] {ip}: batch {_bi//CLEANUP_BATCH_SIZE+1} failed -- {_be}")
+                                        print(f"  [orphan-batch] {ip}: batch {_bn} failed -- {_be}")
                                     break
                         else:
                             lines = orphan_cmds + lines
