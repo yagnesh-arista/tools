@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.25 | 2026-05-09 03:40:33
+# topoassist v260509.26 | 2026-05-09 03:46:37
 """
 TopoAssist Device Bridge
 ========================
@@ -148,7 +148,7 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                  str(max(TIMEOUT * 4, 300))))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
-CLEANUP_BATCH_SIZE = 300  # max orphan-cleanup commands per configure session (prevents timeout on large orphan sets)
+CLEANUP_BATCH_SIZE = 1000  # max orphan-cleanup commands per configure session (prevents timeout on large orphan sets)
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
