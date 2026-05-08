@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.10 | 2026-05-09 02:40:41 -->
+<!-- TopoAssist v260509.12 | 2026-05-09 02:47:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.10";  // keep in sync with Code.gs
+const APP_VERSION = "260509.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5068,14 +5068,6 @@ function _updateGwExample() {
   set('gw-ex6-std-anycast',s6any());    set('gw-ex6-wide-anycast', w6any());    set('gw-ex6-sw-anycast', sw6any());
   set('gw-ex6-std-vip',    s6vip());    set('gw-ex6-wide-vip',    w6vip());    set('gw-ex6-sw-vip',    sw6vip());
 
-  // ── Dim inactive tiers ──
-  const secOp = (id, active) => { const el = document.getElementById(id); if (el) el.style.opacity = active ? '' : '0.35'; };
-  secOp('gw-ex4-std-sec',  !wide4);
-  secOp('gw-ex4-wide-sec', wide4 && !superWide4);
-  secOp('gw-ex4-sw-sec',   superWide4);
-  secOp('gw-ex6-std-sec',  !wide6);
-  secOp('gw-ex6-wide-sec', wide6 && !superWide6);
-  secOp('gw-ex6-sw-sec',   superWide6);
 }
 
 // --- UPDATED OPEN FUNCTION ---
@@ -10611,13 +10603,14 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260509.1"
+VERSION    = "260509.3"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
 TIMEOUT    = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                   str(max(TIMEOUT * 4, 300))))
+CLEANUP_BATCH_SIZE = 300
 
 _cfg = {
     "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "eapi"),
@@ -11357,7 +11350,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if orphans.get('ok'):
                     orphan_cmds = _orphans_to_cmds(orphans)
                     if orphan_cmds:
-                        lines = orphan_cmds + lines
                         _asn_extra["orphans_cleaned"] = {
                             "interfaces": orphans.get("interfaces", []),
                             "bgp":        orphans.get("bgp", []),
@@ -11365,6 +11357,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "vrfs":       orphans.get("vrfs", []),
                             "ospf":       orphans.get("ospf", []),
                         }
+                        if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
+                            for _bi in range(0, len(orphan_cmds), CLEANUP_BATCH_SIZE):
+                                _batch = orphan_cmds[_bi:_bi + CLEANUP_BATCH_SIZE]
+                                try:
+                                    self._push_config(ip, "\\n".join(_batch),
+                                                      dry_run=False, all_ifaces=False,
+                                                      all_device_names=None)
+                                except Exception as _be:
+                                    if VERBOSE:
+                                        print(f"  [orphan-batch] {ip}: batch {_bi//CLEANUP_BATCH_SIZE+1} failed -- {_be}")
+                                    break
+                        else:
+                            lines = orphan_cmds + lines
             except Exception:
                 pass
         asn_changed = None
@@ -13355,73 +13360,100 @@ function runCleanSelected() {
   _doCleanDevItems(devItems);
 }
 
-function _doCleanDevItems(devItems) {
+const _CLEANUP_BATCH_SIZE = 300;
+
+async function _doCleanDevItems(devItems) {
   const total    = Object.values(devItems).reduce((s, a) => s + a.length, 0);
   const devCount = Object.keys(devItems).length;
   if (!total) { setStatus('Nothing to clean', 'status-warn'); return; }
   if (!confirm('Clean ' + total + ' orphan' + (total > 1 ? 's' : '') + ' on ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '?\n\nThis pushes EOS commands to remove stale __TA config.')) return;
 
-  const ipMap = {};
+  // Split each device's items into chunks — large orphan sets (e.g. thousands of SVIs)
+  // would time out if sent as a single configure session.
+  const devChunks = {};
   Object.entries(devItems).forEach(([dev, items]) => {
-    const ip = (_cleanupIpMap[dev] || {}).ip || '';
-    ipMap[dev] = { ip, config: _buildCleanupConfig(items) };
+    const chunks = [];
+    for (let i = 0; i < items.length; i += _CLEANUP_BATCH_SIZE) chunks.push(items.slice(i, i + _CLEANUP_BATCH_SIZE));
+    devChunks[dev] = chunks;
   });
+  const numBatches = Math.max(...Object.values(devChunks).map(c => c.length));
 
-  setStatus('Pushing cleanup to ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '…', 'status-info');
-  const _guard = setTimeout(() => setStatus('Cleanup push timed out — try again', 'status-error'), 60000);
+  // Track per-device success count and first error
+  const devOk  = {};
+  const devErr = {};
+  Object.keys(devItems).forEach(dev => { devOk[dev] = 0; devErr[dev] = null; });
 
-  fetch(BRIDGE_URL + '/pushconfig', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ ipMap }),
-  })
-    .then(r => { if (!r.ok) throw new Error('Bridge HTTP ' + r.status); return r.json(); })
-    .then(results => {
-      clearTimeout(_guard);
-      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      const reconBody = document.getElementById('reconResultsBody');
-      let okCount = 0, failCount = 0, rowsHtml = '';
-      Object.entries(devItems).forEach(([dev, items]) => {
-        const r    = results[dev];
-        const safe = escapeHtml(dev);
-        const n    = items.length;
-        if (!r || !r.ok) {
-          failCount++;
-          const err = escapeHtml((r && r.error) || 'no response');
-          rowsHtml +=
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
-            'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
-            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-main);">' + safe + '</span>' +
-            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#ef4444;">Error: ' + err + '</span></div>';
-        } else {
-          okCount++;
-          rowsHtml +=
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
-            'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
-            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-main);">' + safe + '</span>' +
-            '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#10b981;">' +
-            n + ' item' + (n !== 1 ? 's' : '') + ' removed</span></div>';
-        }
+  for (let bi = 0; bi < numBatches; bi++) {
+    const ipMap = {};
+    Object.entries(devChunks).forEach(([dev, chunks]) => {
+      const chunk = chunks[bi];
+      if (!chunk) return;
+      ipMap[dev] = { ip: (_cleanupIpMap[dev] || {}).ip || '', config: _buildCleanupConfig(chunk) };
+    });
+
+    const batchLabel = numBatches > 1
+      ? `Cleanup batch ${bi + 1}/${numBatches} (${Object.values(ipMap).reduce((s, e) => s + e.config.split('\n').filter(Boolean).length, 0)} cmds)…`
+      : `Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''}…`;
+    setStatus(batchLabel, 'status-info');
+
+    try {
+      const r = await fetch(BRIDGE_URL + '/pushconfig', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipMap }),
       });
-      const ts          = new Date().toTimeString().slice(0, 8);
-      const summaryClr  = failCount > 0 ? '#f59e0b' : '#10b981';
-      const summaryText = failCount > 0
-        ? 'Clean-up: ' + okCount + ' succeeded, ' + failCount + ' failed'
-        : 'Clean-up complete: ' + total + ' item' + (total !== 1 ? 's' : '') + ' removed across ' + okCount + ' device' + (okCount !== 1 ? 's' : '');
-      if (reconBody) {
-        reconBody.innerHTML =
-          '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;padding-bottom:10px;">' +
-          '<span style="font-weight:700;color:' + summaryClr + ';">' + escapeHtml(summaryText) + '</span>' +
-          '<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">' + ts + '</span></div>' +
-          rowsHtml;
-      }
-      if (failCount > 0) {
-        setStatus('Clean-up: ' + okCount + ' succeeded, ' + failCount + ' failed', 'status-warn');
-      } else {
-        setStatus('Clean-up done — ' + total + ' orphan' + (total !== 1 ? 's' : '') + ' removed from ' + okCount + ' device' + (okCount !== 1 ? 's' : '') + '.', 'status-ok');
-      }
-    })
-    .catch(err => { clearTimeout(_guard); setStatus('Clean-up error: ' + err.message, 'status-error'); });
+      if (!r.ok) throw new Error('Bridge HTTP ' + r.status);
+      const results = await r.json();
+      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
+      Object.entries(ipMap).forEach(([dev, entry]) => {
+        const res = results[dev];
+        const n   = entry.config.split('\n').filter(Boolean).length;
+        if (res && res.ok) { devOk[dev] += n; }
+        else if (!devErr[dev]) { devErr[dev] = (res && res.error) || 'no response'; }
+      });
+    } catch (err) {
+      Object.keys(ipMap).forEach(dev => { if (!devErr[dev]) devErr[dev] = err.message; });
+    }
+  }
+
+  // Render final results
+  const reconBody = document.getElementById('reconResultsBody');
+  let okCount = 0, failCount = 0, rowsHtml = '';
+  Object.entries(devItems).forEach(([dev, items]) => {
+    const safe = escapeHtml(dev);
+    const n    = items.length;
+    if (devErr[dev]) {
+      failCount++;
+      rowsHtml +=
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
+        'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
+        `<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-main);">${safe}</span>` +
+        `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ef4444;">Error: ${escapeHtml(devErr[dev])}</span></div>`;
+    } else {
+      okCount++;
+      rowsHtml +=
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
+        'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
+        `<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-main);">${safe}</span>` +
+        `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#10b981;">${n} item${n !== 1 ? 's' : ''} removed</span></div>`;
+    }
+  });
+  const ts         = new Date().toTimeString().slice(0, 8);
+  const summaryClr = failCount > 0 ? '#f59e0b' : '#10b981';
+  const summaryTxt = failCount > 0
+    ? `Clean-up: ${okCount} succeeded, ${failCount} failed`
+    : `Clean-up complete: ${total} item${total !== 1 ? 's' : ''} removed across ${okCount} device${okCount !== 1 ? 's' : ''}`;
+  if (reconBody) {
+    reconBody.innerHTML =
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;padding-bottom:10px;">` +
+      `<span style="font-weight:700;color:${summaryClr};">${escapeHtml(summaryTxt)}</span>` +
+      `<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">${ts}${numBatches > 1 ? ` (${numBatches} batches)` : ''}</span></div>` +
+      rowsHtml;
+  }
+  if (failCount > 0) {
+    setStatus(`Clean-up: ${okCount} succeeded, ${failCount} failed`, 'status-warn');
+  } else {
+    setStatus(`Clean-up done — ${total} orphan${total !== 1 ? 's' : ''} removed from ${okCount} device${okCount !== 1 ? 's' : ''}.`, 'status-ok');
+  }
 }
 
 // Delete the sheet row AND unconfigure the interface on device via bridge.
