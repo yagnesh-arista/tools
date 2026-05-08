@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.1 | 2026-05-09 01:33:55 -->
+<!-- TopoAssist v260509.2 | 2026-05-09 01:40:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.1";  // keep in sync with Code.gs
+const APP_VERSION = "260509.2";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11453,13 +11453,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         if session not in _chk:
                             return {"ok": True, "diff": "", "late_response": True, **_asn_extra}
                         raise RuntimeError(
-                            f"Push timed out -- session '{session}' still pending. Try again.") from e
+                            f"Push timed out -- {len(lines)} config lines, session '{session}' still pending. Try again.") from e
                     except RuntimeError:
                         raise
                     except Exception:
                         pass
                 raise RuntimeError(
-                    "Push timed out -- verify: show running-config | grep __TA") from e
+                    f"Push timed out -- {len(lines)} config lines, {PUSH_TIMEOUT}s limit -- verify: show running-config | grep __TA") from e
             if open_only:
                 diff = results[-1].strip() if results else ""
             else:

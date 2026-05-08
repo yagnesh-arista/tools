@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-09 (device_bridge: push timeout error messages now include config line count and PUSH_TIMEOUT value; _n_lines dict tracks per-device line count in run_push; same change applied to embedded template in downloadBridgeScript(). FILES: device_bridge.py, Sidebar-js.html)
+  Last updated: 2026-05-09 (device_bridge: EAPI _push_config timeout RuntimeError messages now include len(lines) and PUSH_TIMEOUT; earlier change added same to SSH subprocess.TimeoutExpired path in run_push. FILES: device_bridge.py, Sidebar-js.html)
   Previous: 2026-05-08 (ui: infoVgw popup — removed Virtual Router MAC entry (redundant with inline field; was inaccurate "required for both modes"); VARP line now notes MAC is configured below. FILES: Sidebar.html)
   Previous: 2026-05-08 (ui: infoEvpnService popup — Bundle description updated to cover both default (single EVPN_VLAN_AWARE_BUNDLE, RT ASN_BASE:1) and multi-bundle groups (EVPN_BUNDLE_N, RT ASN_BASE:N). FILES: Sidebar.html)
   Previous: 2026-05-08 (ui: EVPN BUNDLES hint text — updated to clarify default (empty = all Vx1 VLANs → single bundle RT asnBase:1) + per-range behavior. FILES: Sidebar.html)

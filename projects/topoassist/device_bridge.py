@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.1 | 2026-05-09 01:33:18
+# topoassist v260509.2 | 2026-05-09 01:40:42
 """
 TopoAssist Device Bridge
 ========================
@@ -1314,14 +1314,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             # Session absent → EOS committed and cleaned it up.
                             return {"ok": True, "diff": "", "late_response": True, **_asn_extra}
                         raise RuntimeError(
-                            f"Push timed out — session '{session}' still pending on device. "
+                            f"Push timed out — {len(lines)} config lines, session '{session}' still pending on device. "
                             "Try again.") from e
                     except RuntimeError:
                         raise
                     except Exception:
                         pass  # verification query itself failed
                 raise RuntimeError(
-                    "Push timed out — verify: show running-config | grep __TA") from e
+                    f"Push timed out — {len(lines)} config lines, {PUSH_TIMEOUT}s limit — verify: show running-config | grep __TA") from e
             if open_only:
                 diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
