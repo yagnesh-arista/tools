@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.38 | 2026-05-09 11:51:58
+# topoassist v260509.40 | 2026-05-09 12:04:24
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.1"
+VERSION           = "260509.2"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -856,25 +856,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         except subprocess.TimeoutExpired:
                             _nl = _n_lines.get(dev, '?')
                             if attempt < PUSH_RETRIES:
-                                if VERBOSE: print(f"  [push] {dev} ({ip}): timeout ({_nl} lines, {PUSH_TIMEOUT}s), retrying (attempt {attempt+1})")
+                                if VERBOSE: _vlog(f"[push] {dev} ({ip}): timeout ({_nl} lines, {PUSH_TIMEOUT}s), retrying (attempt {attempt+1})")
                                 time.sleep(PUSH_RETRY_DELAY); continue
-                            if VERBOSE: print(f"  [push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts ({_nl} lines)")
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts ({_nl} lines)")
                             with lock: results[dev] = {"ok": False, "error": f"Push timed out — {_nl} config lines, {PUSH_TIMEOUT}s limit exceeded — verify config was applied manually"}
                             break
                         except RuntimeError as e:
                             if ("connection refused" in str(e).lower()
                                     or "ssh failed" in str(e).lower()) and attempt < PUSH_RETRIES:
-                                if VERBOSE: print(f"  [push] {dev} ({ip}): {e}, retrying (attempt {attempt+1})")
+                                if VERBOSE: _vlog(f"[push] {dev} ({ip}): {e}, retrying (attempt {attempt+1})")
                                 time.sleep(PUSH_RETRY_DELAY); continue
-                            if VERBOSE: print(f"  [push] {dev} ({ip}): error — {e}")
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): error — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)}
                             break
                         except NotImplementedError as e:
-                            if VERBOSE: print(f"  [push] {dev} ({ip}): not implemented — {e}")
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): not implemented — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)}
                             break
                         except Exception as e:
-                            if VERBOSE: print(f"  [push] {dev} ({ip}): unexpected error — {e}")
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): unexpected error — {e}")
                             with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
                             break
             threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
@@ -911,7 +911,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
             exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", eos_cmd]
-            if VERBOSE: print(f"  [show] {ip}: {cmd}", flush=True)
+            if VERBOSE: _vlog(f"[show] {ip}: {cmd}", flush=True)
             stderr_mode = subprocess.PIPE if VERBOSE else subprocess.DEVNULL
             try:
                 out = subprocess.check_output(exec_cmd, timeout=TIMEOUT,
@@ -921,15 +921,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _ssh_auth["failures"] = 0       # successful SSH → clear auth-failure state
                 _ssh_auth["ok"]  = True
                 _ssh_auth["msg"] = ""
-                if VERBOSE: print(f"  [show] {ip}: {cmd} → ok", flush=True)
+                if VERBOSE: _vlog(f"[show] {ip}: {cmd} → ok", flush=True)
             except subprocess.TimeoutExpired as e:
-                if VERBOSE: print(f"  [show] {ip}: {cmd} → timeout", flush=True)
+                if VERBOSE: _vlog(f"[show] {ip}: {cmd} → timeout", flush=True)
                 errors[i] = e
             except subprocess.CalledProcessError as e:
                 if VERBOSE:
                     err = (e.stderr or "").strip().splitlines()[-1] if e.stderr else ""
                     suffix = f"  [{err}]" if err else ""
-                    print(f"  [show] {ip}: {cmd} → failed (exit {e.returncode}){suffix}", flush=True)
+                    _vlog(f"[show] {ip}: {cmd} → failed (exit {e.returncode}){suffix}", flush=True)
                 # exit 255 = SSH itself failed (auth/connection), not an EOS command error.
                 # arista-ssh-agent certs can expire while still appearing in ssh-add -l;
                 # the cert is listed but EOS rejects it → SSH exits 255 before any command.
@@ -940,7 +940,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         _ssh_auth["msg"] = "bus-home session expired — run: arista-ssh login"
                 errors[i] = e
             except Exception as e:
-                if VERBOSE: print(f"  [show] {ip}: {cmd} → error: {e}", flush=True)
+                if VERBOSE: _vlog(f"[show] {ip}: {cmd} → error: {e}", flush=True)
                 errors[i] = e
 
         # Run commands sequentially — one SSH connection at a time per device.
@@ -1077,7 +1077,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             diag_cmds.extend(["end", f"configure session {session}", "abort"])
 
             if VERBOSE:
-                print(f"  [diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
+                _vlog(f"[diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
             out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
 
             # Collect consecutive % groups from PTY output — index-aligned with pairs.
@@ -1141,7 +1141,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         eAPI: reuses _eapi_push (format=text) and returns result[0].
         """
         if VERBOSE:
-            print(f"  [text-cmd/{_cfg['transport']}] {ip}: {cmd}", flush=True)
+            _vlog(f"[text-cmd/{_cfg['transport']}] {ip}: {cmd}", flush=True)
         if _cfg['transport'] == "eapi":
             result = self._eapi_push(ip, cmd)
             return result[0] if result else ""
@@ -1181,7 +1181,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         stdin_text = '\n'.join(cmds_list) + '\n'
         # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
-        if VERBOSE: print(f"  [stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
+        if VERBOSE: _vlog(f"[stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
         # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
         # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
@@ -1195,7 +1195,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.communicate()   # drain; __exit__ will close pipes + wait
-                if VERBOSE: print(f"  [stdin] {ip}: {_label} → timeout", flush=True)
+                if VERBOSE: _vlog(f"[stdin] {ip}: {_label} → timeout", flush=True)
                 raise           # let caller decide — push path retries, cleanup swallows
         out_text = _ANSI_RE.sub('', out.decode("utf-8", errors="replace"))
         err_text = err.decode("utf-8", errors="replace")
@@ -1203,9 +1203,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _auth_errs = ("permission denied", "authentication failed", "no route to host",
                           "connection refused", "connection timed out")
             if not out_text.strip() and any(k in err_text.lower() for k in _auth_errs):
-                print(f"  [stdin] {ip}: {_label} → failed: {_clean_ssh_err(err_text)[:160]}", flush=True)
+                _vlog(f"[stdin] {ip}: {_label} → failed: {_clean_ssh_err(err_text)[:160]}", flush=True)
             else:
-                print(f"  [stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
+                _vlog(f"[stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
 
     # ── Stale session cleanup ─────────────────────────────────────────────────
@@ -1277,7 +1277,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             try:
                 self._abort_stale_sessions(ip)
             except Exception as e:
-                if VERBOSE: print(f"  [cleanup] {ip}: stale-session cleanup failed — {e}")
+                if VERBOSE: _vlog(f"[cleanup] {ip}: stale-session cleanup failed — {e}")
         _ct = threading.Thread(target=_safe_abort, daemon=True)
         _ct.start()
         _ct.join(timeout=TIMEOUT)
@@ -1321,44 +1321,44 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         orphans = _orphan_result[0]
         if not orphans:
-            print(f"  [orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
+            _vlog(f"[orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
         elif not orphans.get('ok'):
-            print(f"  [orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
+            _vlog(f"[orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
         else:
             _oi = len(orphans.get('interfaces', []))
             _ob = len(orphans.get('bgp', []))
             _ov = len(orphans.get('vlans', []))
             _ovrf = len(orphans.get('vrfs', []))
             _oo = len(orphans.get('ospf', []))
-            print(f"  [orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
+            _vlog(f"[orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
             if not orphan_cmds:
-                print(f"  [orphan-detect] {ip}: 0 orphan cmds generated — nothing to clean", flush=True)
+                _vlog(f"[orphan-detect] {ip}: 0 orphan cmds generated — nothing to clean", flush=True)
             else:
-                print(f"  [orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
+                _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
                 _orphan_committed = False
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
                     # Too many orphans to prepend — push in block-aware batches
                     # first, then the main push carries only the actual config.
                     _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                    print(f"  [orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
                     _orphan_committed = True  # set True now; cleared on first failure
                     for _bn, _batch in enumerate(_ob_batches, 1):
-                        print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
                             self._push_config(ip, '\n'.join(_batch),
                                               dry_run=False, all_ifaces=False,
                                               all_device_names=None)
-                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
-                            print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
                             _orphan_committed = False
                             break
                     # lines stays as the actual config only (no prepend)
                 else:
-                    print(f"  [orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
+                    _vlog(f"[orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
                     lines = orphan_cmds + lines
                     _orphan_committed = True  # committed with the main push below
                 # Only report orphans_cleaned when all batches actually committed
@@ -1515,7 +1515,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             _eapi_action = "dry-run (aborted)" if dry_run else "committed"
             _eapi_dl = len([l for l in (diff or "").splitlines() if l.strip()])
-            print(f"  [push] {ip}: session {session} {_eapi_action} — {_eapi_dl} diff line(s)", flush=True)
+            _vlog(f"[push] {ip}: session {session} {_eapi_action} — {_eapi_dl} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         if _cfg['transport'] == "ssh":
@@ -1526,7 +1526,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
                 raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
-            if VERBOSE: print(f"  [push] {ip}: SSH connected")
+            if VERBOSE: _vlog(f"[push] {ip}: SSH connected")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
                     "EOS pending session limit reached — Device Bridge will auto-clean "
@@ -1539,11 +1539,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
                 diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
-                print(f"  [push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)", flush=True)
+                _vlog(f"[push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)", flush=True)
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
             action = "dry-run (aborted)" if dry_run else "committed"
             diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
-            print(f"  [push] {ip}: session {session} {action} — {diff_lines} diff line(s)", flush=True)
+            _vlog(f"[push] {ip}: session {session} {action} — {diff_lines} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
 
         raise NotImplementedError(
@@ -1577,7 +1577,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 raise RuntimeError(
                     f"Configure session '{session_name}' not found — "
                     "it may have timed out on the device. Push again.")
-            if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed")
+            if VERBOSE: _vlog(f"[finalize] {ip}: session {session_name} {action}ed")
             return {"ok": True, "action": action}
 
         if _cfg['transport'] == "eapi":
@@ -1605,7 +1605,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         pass
                 raise RuntimeError(
                     f"Finalize timed out — verify: show configuration sessions") from e
-            if VERBOSE: print(f"  [finalize] {ip}: session {session_name} {action}ed (eapi)")
+            if VERBOSE: _vlog(f"[finalize] {ip}: session {session_name} {action}ed (eapi)")
             return {"ok": True, "action": action}
 
         raise NotImplementedError(
@@ -1705,7 +1705,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         All checks are best-effort — failure returns empty list for that section.
         """
         # ── Interface orphans ──────────────────────────────────────────────────
-        print(f"  [detect-orphans/eapi] {ip}: show interfaces description", flush=True)
+        _vlog(f"[detect-orphans/eapi] {ip}: show interfaces description", flush=True)
         try:
             (raw,), _ = self._run_cmds(ip, "show interfaces description")
         except Exception:
@@ -1924,7 +1924,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if old_asn == new_asn:
             return [], None
         if VERBOSE:
-            print(f"  [bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
+            _vlog(f"[bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
         return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
 
     # ── Parallel runner ───────────────────────────────────────────────────────
@@ -1983,7 +1983,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         if VERBOSE:
-            print(f"  [{self.client_address[0]}] {fmt % args}", flush=True)
+            _vlog(f"[{self.client_address[0]}] {fmt % args}", flush=True)
 
 
 if __name__ == "__main__":
