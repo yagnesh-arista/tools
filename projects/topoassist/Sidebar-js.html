@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.63 | 2026-05-09 17:50:18 -->
+<!-- TopoAssist v260509.64 | 2026-05-09 17:54:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.63";  // keep in sync with Code.gs
+const APP_VERSION = "260509.64";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10667,7 +10667,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.34"
+VERSION    = "260509.35"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11304,8 +11304,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _do_orphans = self._detect_orphans(_do_ip, config_text=_do_cfg,
                                                    all_device_names=_do_devs)
                 _do_errs = _do_orphans.get("detection_errors", {}) if _do_orphans else {}
-                _do_cmds = _orphans_to_cmds(_do_orphans) if _do_orphans else []
-                if (_do_orphans and _do_orphans.get('ok') and _do_cmds):
+                if (_do_orphans and _do_orphans.get('ok')
+                        and _orphans_to_cmds(_do_orphans)):
                     self._json(200, {"ok": True, "orphans_pending": {
                         "interfaces": _do_orphans.get("interfaces", []),
                         "bgp":        _do_orphans.get("bgp",        []),
@@ -11314,7 +11314,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         "ospf":       _do_orphans.get("ospf",       []),
                         "ta_total":   _do_orphans.get("ta_total",   0),
                         "matched":    _do_orphans.get("matched",    0),
-                        "cmds":       _do_cmds,
                     }, "detection_errors": _do_errs})
                 else:
                     self._json(200, {"ok": True, "orphans_pending": None,
@@ -13435,6 +13434,18 @@ function _buildCleanupConfig(items) {
     lines.push('!');
   });
   return lines.join('\n') + '\n';
+}
+
+// Converts raw _detect_orphans dict → flat EOS command lines via _buildCleanupConfig.
+// Used by the consent modal so both consent and Cleanup UI share the same command-gen path.
+function _orphansToCmdLines(orphans) {
+  const items = [];
+  (orphans.interfaces || []).forEach(d => items.push({ type: 'interface', data: d }));
+  (orphans.bgp        || []).forEach(d => items.push({ type: 'bgp',       data: d }));
+  (orphans.vlans      || []).forEach(d => items.push({ type: 'vlan',      data: d }));
+  (orphans.vrfs       || []).forEach(d => items.push({ type: 'vrf',       data: d }));
+  (orphans.ospf       || []).forEach(d => items.push({ type: 'ospf',      data: d }));
+  return _buildCleanupConfig(items).split('\n').filter(l => l);
 }
 
 function _renderCleanupResults(results, reconBody) {
@@ -16966,7 +16977,7 @@ function _showOrphanConsentInModal(orphans, detectionErrors) {
     ).join('');
 
     // EOS commands that will execute (range-collapsed, e.g. "no interface Vlan1-3999")
-    const cmds = orphans.cmds || [];
+    const cmds = _orphansToCmdLines(orphans);
     const cmdsHtml = cmds.length
       ? `<div style="margin-bottom:8px;">` +
         `<div style="font-size:10px;color:#64748b;margin-bottom:3px;` +

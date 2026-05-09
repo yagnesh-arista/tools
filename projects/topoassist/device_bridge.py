@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.62 | 2026-05-09 17:44:05
+# topoassist v260509.64 | 2026-05-09 17:53:49
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.34"
+VERSION           = "260509.35"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -839,8 +839,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _do_orphans = self._detect_orphans(_do_ip, config_text=_do_cfg,
                                                    all_device_names=_do_devs)
                 _do_errs = _do_orphans.get("detection_errors", {}) if _do_orphans else {}
-                _do_cmds = _orphans_to_cmds(_do_orphans) if _do_orphans else []
-                if (_do_orphans and _do_orphans.get('ok') and _do_cmds):
+                if (_do_orphans and _do_orphans.get('ok')
+                        and _orphans_to_cmds(_do_orphans)):
                     self._json(200, {"ok": True, "orphans_pending": {
                         "interfaces": _do_orphans.get("interfaces", []),
                         "bgp":        _do_orphans.get("bgp",        []),
@@ -849,7 +849,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         "ospf":       _do_orphans.get("ospf",       []),
                         "ta_total":   _do_orphans.get("ta_total",   0),
                         "matched":    _do_orphans.get("matched",    0),
-                        "cmds":       _do_cmds,
                     }, "detection_errors": _do_errs})
                 else:
                     self._json(200, {"ok": True, "orphans_pending": None,
