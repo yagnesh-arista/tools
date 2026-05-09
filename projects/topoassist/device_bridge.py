@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.54 | 2026-05-09 16:28:39
+# topoassist v260509.55 | 2026-05-09 16:39:46
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.21"
+VERSION           = "260509.25"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -152,7 +152,11 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure session
-CLEANUP_PUSH_TIMEOUT  = max(PUSH_TIMEOUT * 3, 900)  # orphan SVI deletion can take 10+ min for 3999-SVI ranges
+# CLEANUP_PUSH_TIMEOUT: ceiling for each orphan-cleanup batch session.
+# Range-collapsed deletions (e.g. 'no interface Vlan1-3999') commit atomically in EOS
+# and can take 10+ min for large topologies — default is 3× PUSH_TIMEOUT, min 900s.
+CLEANUP_PUSH_TIMEOUT  = int(_arg("-c") or os.environ.get("BRIDGE_CLEANUP_TIMEOUT",
+                                                          str(max(PUSH_TIMEOUT * 3, 900))))
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
@@ -704,7 +708,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
-                      "port": PORT, "method": _cfg['transport'], "timeout": TIMEOUT}
+                      "port": PORT, "method": _cfg['transport'], "timeout": TIMEOUT,
+                      "push_timeout": PUSH_TIMEOUT, "cleanup_timeout": CLEANUP_PUSH_TIMEOUT}
             # Only check arista-ssh credentials for pure key-based auth.
             # Password-based modes (sshpass or SSH_ASKPASS shim) don't use
             # arista-ssh certs, so the check is irrelevant.
@@ -2045,6 +2050,11 @@ if __name__ == "__main__":
     -p TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
                   Used for configure-session pushes (>5 cmds). Increase
                   for large configs (10k+ lines). Example: -p 600
+    -c TIMEOUT    Cleanup timeout       default: max(p*3, 900)  (seconds)
+                  Used for orphan SVI/VLAN batch cleanup before push.
+                  Range-collapsed deletions (e.g. no interface Vlan1-3999)
+                  commit atomically in EOS and can take 10+ min on large
+                  topologies. Example: -c 1800
     -v            Verbose — print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
@@ -2070,7 +2080,7 @@ if __name__ == "__main__":
     print(f"\n  TopoAssist Device Bridge  v{VERSION}")
     print(f"  ─────────────────────────────────────")
     print(f"  Listening : http://localhost:{PORT}")
-    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)")
+    print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)  |  Cleanup: {CLEANUP_PUSH_TIMEOUT}s (-c)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
     print(f"  ─────────────────────────────────────")
