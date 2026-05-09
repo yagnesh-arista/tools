@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.53 | 2026-05-09 15:49:52 -->
+<!-- TopoAssist v260509.54 | 2026-05-09 16:31:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.53";  // keep in sync with Code.gs
+const APP_VERSION = "260509.54";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10666,7 +10666,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.17"
+VERSION    = "260509.21"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11264,11 +11264,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     _print_transport_status()
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
-        ip_map           = body.get("ipMap", {})
-        dry_run          = bool(body.get("dry_run", False))
-        open_session     = bool(body.get("open_session", False))
-        all_ifaces       = bool(body.get("all_ifaces", False))
-        all_device_names = body.get("allDeviceNames")
+        ip_map              = body.get("ipMap", {})
+        dry_run             = bool(body.get("dry_run", False))
+        open_session        = bool(body.get("open_session", False))
+        all_ifaces          = bool(body.get("all_ifaces", False))
+        all_device_names    = body.get("allDeviceNames")
+        orphans_precomputed = body.get("orphans_precomputed") or None
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30-120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -11366,7 +11367,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     try:
                         with lock: results[dev] = self._push_config(
                             ip, config, dry_run=dry_run, open_only=open_session,
-                            all_ifaces=all_ifaces, all_device_names=all_device_names)
+                            all_ifaces=all_ifaces, all_device_names=all_device_names,
+                            orphans_precomputed=orphans_precomputed)
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Push timed out -- {n_lines} config lines, {PUSH_TIMEOUT}s limit exceeded -- verify config was applied manually"}
                     except NotImplementedError as e:
@@ -11510,7 +11512,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None, orphans_precomputed=None):
         lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
@@ -11542,10 +11544,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 pass
 
         if all_ifaces and not dry_run:
-            _td = threading.Thread(target=_run_detect_orphans, daemon=True)
-            _ta = threading.Thread(target=_run_asn_check,    daemon=True)
-            _td.start(); _ta.start()
-            _td.join(timeout=TIMEOUT * 3); _ta.join(timeout=TIMEOUT * 3)
+            _ta = threading.Thread(target=_run_asn_check, daemon=True)
+            _ta.start()
+            if orphans_precomputed is not None:
+                _orphan_result[0] = {'ok': True, **orphans_precomputed}
+                _vlog(f"[orphan-detect] {ip}: using pre-detected orphan data (skipped re-detection)", flush=True)
+            else:
+                _td = threading.Thread(target=_run_detect_orphans, daemon=True)
+                _td.start()
+                _td.join(timeout=TIMEOUT * 3)
+            _ta.join(timeout=TIMEOUT * 3)
         else:
             # Non-full push (cleanup batch, open-only): skip orphan detection, still check ASN.
             _run_asn_check()
@@ -13894,24 +13902,28 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   const _allDevNames = currentData && currentData.nodes
     ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id)
     : [];
+  let _orphansPrecomputed = null;
   if (!portFilter) {
-    const _proceed = await _detectOrphansAndConsent(ip, config, _allDevNames);
-    if (!_proceed) {
+    const { proceed, orphans } = await _detectOrphansAndConsent(ip, config, _allDevNames);
+    if (!proceed) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       closePushConfirmModal();
       return;
     }
+    _orphansPrecomputed = orphans; // null when no orphans found; passed to bridge to skip re-detection
   }
 
   // Phase 1: open configure session, push config, get diff, leave session PENDING on EOS.
   // Orphan cleanup already ran (if any) inside _push_config before the session is opened.
   // Bridge returns session_name so Phase 2 can commit/abort without re-pushing config.
   try {
+    const _p1Body = { ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter,
+      allDeviceNames: _allDevNames };
+    if (_orphansPrecomputed) _p1Body.orphans_precomputed = _orphansPrecomputed;
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter,
-        allDeviceNames: _allDevNames }),
+      body:    JSON.stringify(_p1Body),
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
@@ -16916,8 +16928,10 @@ function _showOrphanConsentInModal(orphans) {
 }
 
 // Calls /pushconfig/detect_orphans; if orphans found, shows consent inside push confirm modal.
-// Returns true = proceed with push (no orphans, or user consented).
-// Returns false = user cancelled. Detection failures are non-blocking (returns true).
+// Returns {proceed: bool, orphans: object|null}.
+// proceed=true + orphans=object → user consented; pass orphans_precomputed to Phase 1 to skip re-detection.
+// proceed=true + orphans=null  → no orphans found (or detection failed — non-blocking).
+// proceed=false               → user cancelled.
 async function _detectOrphansAndConsent(ip, config, allDevNames) {
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig/detect_orphans', {
@@ -16925,12 +16939,13 @@ async function _detectOrphansAndConsent(ip, config, allDevNames) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ip, config, allDeviceNames: allDevNames }),
     });
-    if (!resp.ok) return true;
+    if (!resp.ok) return { proceed: true, orphans: null };
     const data = await resp.json();
-    if (!data.ok || !data.orphans_pending) return true;
-    return await _showOrphanConsentInModal(data.orphans_pending);
+    if (!data.ok || !data.orphans_pending) return { proceed: true, orphans: null };
+    const proceed = await _showOrphanConsentInModal(data.orphans_pending);
+    return { proceed, orphans: proceed ? data.orphans_pending : null };
   } catch (_) {
-    return true; // network error — don't block push
+    return { proceed: true, orphans: null }; // network error — don't block push
   }
 }
 

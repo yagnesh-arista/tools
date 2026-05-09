@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.53 | 2026-05-09 15:47:56
+# topoassist v260509.54 | 2026-05-09 16:28:39
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.17"
+VERSION           = "260509.21"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -759,11 +759,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     _print_transport_status()
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
-        ip_map           = body.get("ipMap", {})
-        dry_run          = bool(body.get("dry_run", False))
-        open_session     = bool(body.get("open_session", False))
-        all_ifaces       = bool(body.get("all_ifaces", False))
-        all_device_names = body.get("allDeviceNames")  # for BGP __TA neighbor cleanup
+        ip_map              = body.get("ipMap", {})
+        dry_run             = bool(body.get("dry_run", False))
+        open_session        = bool(body.get("open_session", False))
+        all_ifaces          = bool(body.get("all_ifaces", False))
+        all_device_names    = body.get("allDeviceNames")  # for BGP __TA neighbor cleanup
+        orphans_precomputed = body.get("orphans_precomputed") or None  # skip re-detection when JS provides it
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -881,7 +882,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             res = self._push_config(ip, config, dry_run=dry_run,
                                                     open_only=open_session,
                                                     all_ifaces=all_ifaces,
-                                                    all_device_names=all_device_names)
+                                                    all_device_names=all_device_names,
+                                                    orphans_precomputed=orphans_precomputed)
                             with lock: results[dev] = res
                             break
                         except subprocess.TimeoutExpired:
@@ -1272,7 +1274,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     # ── Config push via configure session ────────────────────────────────────
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None, orphans_precomputed=None):
         """Push config_text to device using a uniquely-named EOS configure session.
 
         Modes:
@@ -1339,10 +1341,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 pass
 
         if all_ifaces and not dry_run:
-            _td = threading.Thread(target=_run_detect_orphans, daemon=True)
-            _ta = threading.Thread(target=_run_asn_check,    daemon=True)
-            _td.start(); _ta.start()
-            _td.join(timeout=TIMEOUT * 3); _ta.join(timeout=TIMEOUT * 3)
+            _ta = threading.Thread(target=_run_asn_check, daemon=True)
+            _ta.start()
+            if orphans_precomputed is not None:
+                # Reuse orphan data from pre-push consent step — skip duplicate detection.
+                _orphan_result[0] = {'ok': True, **orphans_precomputed}
+                _vlog(f"[orphan-detect] {ip}: using pre-detected orphan data (skipped re-detection)", flush=True)
+            else:
+                _td = threading.Thread(target=_run_detect_orphans, daemon=True)
+                _td.start()
+                _td.join(timeout=TIMEOUT * 3)
+            _ta.join(timeout=TIMEOUT * 3)
         else:
             # Non-full push (cleanup batch, open-only): skip orphan detection, still check ASN.
             _run_asn_check()
