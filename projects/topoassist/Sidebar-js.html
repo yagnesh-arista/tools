@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.56 | 2026-05-09 16:50:04 -->
+<!-- TopoAssist v260509.57 | 2026-05-09 16:57:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.56";  // keep in sync with Code.gs
+const APP_VERSION = "260509.57";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11273,7 +11273,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         all_ifaces          = bool(body.get("all_ifaces", False))
         all_device_names    = body.get("allDeviceNames")
         # None = not provided (run detection); {} or {data} = provided (skip re-detection).
-        # Do NOT use `or None` — empty dict {} is a valid "detection ran, found nothing" signal.
+        # Do NOT use "or None" here — empty dict {} is a valid "detection ran, nothing found" signal.
         orphans_precomputed = body.get("orphans_precomputed")
         # Caller may pass push_timeout (int seconds) to override PUSH_TIMEOUT for this request.
         # Cleanup UI passes CLEANUP_PUSH_TIMEOUT so range-collapsed cmds (e.g. no interface Vlan1-3999)
