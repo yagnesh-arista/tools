@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.59 | 2026-05-09 17:21:37 -->
+<!-- TopoAssist v260509.60 | 2026-05-09 17:29:49 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.59";  // keep in sync with Code.gs
+const APP_VERSION = "260509.60";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10667,7 +10667,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.32"
+VERSION    = "260509.33"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11312,6 +11312,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         "vlans":      _do_orphans.get("vlans",      []),
                         "vrfs":       _do_orphans.get("vrfs",       []),
                         "ospf":       _do_orphans.get("ospf",       []),
+                        "ta_total":   _do_orphans.get("ta_total",   0),
+                        "matched":    _do_orphans.get("matched",    0),
                     }, "detection_errors": _do_errs})
                 else:
                     self._json(200, {"ok": True, "orphans_pending": None,
@@ -16916,27 +16918,29 @@ function _showOrphanConsentInModal(orphans, detectionErrors) {
     const cancelFtr = document.getElementById('btnCancelPushFtr');
     const closeBtn  = document.getElementById('btnPushConfirmClose');
 
-    const iCount  = (orphans.interfaces || []).length;
-    const vCount  = (orphans.vlans      || []).length;
-    const bCount  = (orphans.bgp        || []).length;
-    const rfCount = (orphans.vrfs       || []).length;
-    const oCount  = (orphans.ospf       || []).length;
-
-    // Section rows: only non-zero counts shown
+    // Section rows: only non-zero counts shown; show first 5 names + "… and N more"
     const rows = [
-      { label: 'Interfaces',    count: iCount  },
-      { label: 'VLANs',         count: vCount  },
-      { label: 'BGP neighbors', count: bCount  },
-      { label: 'VRFs',          count: rfCount },
-      { label: 'OSPF passive',  count: oCount  },
-    ].filter(r => r.count > 0);
+      { label: 'Interfaces',    items: orphans.interfaces || [] },
+      { label: 'VLANs',         items: orphans.vlans      || [] },
+      { label: 'BGP neighbors', items: orphans.bgp        || [] },
+      { label: 'VRFs',          items: orphans.vrfs       || [] },
+      { label: 'OSPF passive',  items: orphans.ospf       || [] },
+    ].filter(r => r.items.length > 0);
 
-    const rowHtml = rows.map(r =>
-      `<tr><td style="padding:2px 12px 2px 0;color:#64748b;white-space:nowrap;` +
-      `user-select:none;-webkit-user-select:none;">${escapeHtml(r.label)}</td>` +
-      `<td style="padding:2px 0;font-weight:600;color:#713f12;text-align:right;` +
-      `user-select:text;-webkit-user-select:text;">${r.count.toLocaleString()}</td></tr>`
-    ).join('');
+    const rowHtml = rows.map(r => {
+      const shown = r.items.slice(0, 5);
+      const extra = r.items.length - shown.length;
+      const detail = shown.map(x => escapeHtml(String(x))).join(', ') +
+                     (extra > 0 ? ` … and ${extra.toLocaleString()} more` : '');
+      return `<tr>` +
+        `<td style="padding:2px 8px 2px 0;color:#64748b;white-space:nowrap;vertical-align:top;` +
+        `user-select:none;-webkit-user-select:none;">${escapeHtml(r.label)}</td>` +
+        `<td style="padding:2px 8px 2px 0;font-weight:600;color:#713f12;white-space:nowrap;` +
+        `vertical-align:top;user-select:text;-webkit-user-select:text;">${r.items.length.toLocaleString()}</td>` +
+        `<td style="padding:2px 0;font-size:10px;color:#92400e;vertical-align:top;word-break:break-all;` +
+        `user-select:text;-webkit-user-select:text;">${detail}</td>` +
+        `</tr>`;
+    }).join('');
 
     // Detection error rows: shown when a category's query failed (e.g. show vlan timed out)
     const errKeys = { vlans: 'VLANs', bgp: 'BGP', vrfs: 'VRFs', ospf: 'OSPF' };

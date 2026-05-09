@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.58 | 2026-05-09 17:12:41
+# topoassist v260509.60 | 2026-05-09 17:29:21
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.32"
+VERSION           = "260509.33"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -847,6 +847,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         "vlans":      _do_orphans.get("vlans",      []),
                         "vrfs":       _do_orphans.get("vrfs",       []),
                         "ospf":       _do_orphans.get("ospf",       []),
+                        "ta_total":   _do_orphans.get("ta_total",   0),
+                        "matched":    _do_orphans.get("matched",    0),
                     }, "detection_errors": _do_errs})
                 else:
                     self._json(200, {"ok": True, "orphans_pending": None,
