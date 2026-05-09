@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.42 | 2026-05-09 12:33:29
+# topoassist v260509.45 | 2026-05-09 12:44:16
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.4"
+VERSION           = "260509.5"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1320,17 +1320,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
         asn_changed  = _asn_result[1]
 
         orphans = _orphan_result[0]
-        if not orphans:
-            _vlog(f"[orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
-        elif not orphans.get('ok'):
-            _vlog(f"[orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
-        else:
-            _oi = len(orphans.get('interfaces', []))
-            _ob = len(orphans.get('bgp', []))
-            _ov = len(orphans.get('vlans', []))
-            _ovrf = len(orphans.get('vrfs', []))
-            _oo = len(orphans.get('ospf', []))
-            _vlog(f"[orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
+        if all_ifaces and not dry_run:
+            if not orphans:
+                _vlog(f"[orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
+            elif not orphans.get('ok'):
+                _vlog(f"[orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
+            else:
+                _oi = len(orphans.get('interfaces', []))
+                _ob = len(orphans.get('bgp', []))
+                _ov = len(orphans.get('vlans', []))
+                _ovrf = len(orphans.get('vrfs', []))
+                _oo = len(orphans.get('ospf', []))
+                _vlog(f"[orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
             if not orphan_cmds:

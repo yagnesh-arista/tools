@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.44 | 2026-05-09 12:37:52 -->
+<!-- TopoAssist v260509.45 | 2026-05-09 12:44:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.44";  // keep in sync with Code.gs
+const APP_VERSION = "260509.45";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10668,7 +10668,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.4"
+VERSION    = "260509.5"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11531,17 +11531,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
         asn_changed  = _asn_result[1]
 
         orphans = _orphan_result[0]
-        if not orphans:
-            _vlog(f"[orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
-        elif not orphans.get('ok'):
-            _vlog(f"[orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
-        else:
-            _oi = len(orphans.get('interfaces', []))
-            _ob = len(orphans.get('bgp', []))
-            _ov = len(orphans.get('vlans', []))
-            _ovrf = len(orphans.get('vrfs', []))
-            _oo = len(orphans.get('ospf', []))
-            _vlog(f"[orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
+        if all_ifaces and not dry_run:
+            if not orphans:
+                _vlog(f"[orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
+            elif not orphans.get('ok'):
+                _vlog(f"[orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
+            else:
+                _oi = len(orphans.get('interfaces', []))
+                _ob = len(orphans.get('bgp', []))
+                _ov = len(orphans.get('vlans', []))
+                _ovrf = len(orphans.get('vrfs', []))
+                _oo = len(orphans.get('ospf', []))
+                _vlog(f"[orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
             if not orphan_cmds:
