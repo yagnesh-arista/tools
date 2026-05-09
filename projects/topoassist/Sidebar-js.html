@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.48 | 2026-05-09 13:53:42 -->
+<!-- TopoAssist v260509.49 | 2026-05-09 14:06:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.48";  // keep in sync with Code.gs
+const APP_VERSION = "260509.49";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5097,14 +5097,12 @@ function _updateGwExample() {
   set('gw-ex6-wide-pref', `Preferred: VLANs ≥100 (oct2≥1)`);
   set('gw-ex6-sw-pref',   `Preferred: VLANs 1–99 (oct3 = VLAN itself)`);
 
-  // Super-wide caution: collision (dynamic) + IXIA reserved range (always) + preferred (always)
+  // Super-wide caution: collision warning (dynamic)
   const c4El = document.getElementById('gw-ex4-caution');
   const c6El = document.getElementById('gw-ex6-caution');
   const exVlan = oct2 * 100 + oct3;   // 1520 when oct2=15, oct3=20
-  const swIxia4 = `<br><span style="color:#ef4444;font-style:italic">⚠ VLANs divisible by 100 (100, 200…) → oct3=0 → prefix 10.0.0.x — overlaps IXIA reserved 10.0.x.x/16</span>`;
-  const swIxia6 = `<br><span style="color:#ef4444;font-style:italic">⚠ VLANs divisible by 100 (100, 200…) → oct3=0 → prefix 10:0:0::x — overlaps IXIA reserved 10:0::/16</span>`;
-  if (c4El) c4El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}.0.0.${l4n}${m4sw} — VLANs sharing last-2-digits share one GW IP` + swIxia4;
-  if (c6El) c6El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}:0:0::${l6n}${m6sw} — VLANs sharing last-2-digits share one GW IP` + swIxia6;
+  if (c4El) c4El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}.0.0.${l4n}${m4sw} — VLANs sharing last-2-digits share one GW IP`;
+  if (c6El) c6El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}:0:0::${l6n}${m6sw} — VLANs sharing last-2-digits share one GW IP`;
 
   // ── Populate all three tier sections ──
   set('gw-ex4-std-mphy1',  s4mphy(3));  set('gw-ex4-wide-mphy1',  w4mphy(3));  set('gw-ex4-sw-mphy1',  sw4mphy(3));
