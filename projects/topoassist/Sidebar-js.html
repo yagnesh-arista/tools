@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.27 | 2026-05-09 03:53:47 -->
+<!-- TopoAssist v260509.28 | 2026-05-09 10:33:50 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.27";  // keep in sync with Code.gs
+const APP_VERSION = "260509.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11074,15 +11074,58 @@ def _clean_ssh_err(err_text):
     return cleaned or err_text.strip()
 
 
+def _contiguous_ranges(nums):
+    """Convert a sorted list of ints to [(start, end), ...] contiguous range tuples."""
+    if not nums:
+        return []
+    ranges = []
+    start = end = nums[0]
+    for n in nums[1:]:
+        if n == end + 1:
+            end = n
+        else:
+            ranges.append((start, end))
+            start = end = n
+    ranges.append((start, end))
+    return ranges
+
+
 def _orphans_to_cmds(orphans):
-    """Convert _detect_orphans() result to flat EOS CLI cleanup commands."""
+    """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
+
+    SVI orphans (VlanN)   → no interface VlanX-Y  (range — collapses thousands of SVIs)
+    Sub-interface orphans → no interface X          (individual — no EOS range for sub-int)
+    Physical / PO orphans → default interface X     (individual)
+    BGP orphans           → router bgp ASN / no neighbor X / !
+    VLAN orphans          → no vlan X-Y             (range)
+    VRF orphans           → no vrf instance X
+    OSPF orphans          → router ospf_kw / default passive-interface X / !
+    """
     cmds = []
+    svi_vids     = []
+    other_ifaces = []
+
     for o in orphans.get("interfaces", []):
         name = o["name"]
-        if "." in name or re.match(r"^vlan\\d+$", name, re.IGNORECASE):
-            cmds.append(f"no interface {name}")
+        m = re.match(r"^[Vv]lan(\\d+)$", name)
+        if m:
+            svi_vids.append(int(m.group(1)))
+        elif "." in name:
+            other_ifaces.append(("no", name))
         else:
-            cmds.append(f"default interface {name}")
+            other_ifaces.append(("default", name))
+
+    if svi_vids:
+        svi_vids.sort()
+        for start, end in _contiguous_ranges(svi_vids):
+            if start == end:
+                cmds.append(f"no interface Vlan{start}")
+            else:
+                cmds.append(f"no interface Vlan{start}-{end}")
+
+    for cmd_type, name in other_ifaces:
+        cmds.append(f'{"no" if cmd_type == "no" else "default"} interface {name}')
+
     bgp_by_asn = {}
     for o in orphans.get("bgp", []):
         asn = o.get("asn")
@@ -11093,10 +11136,17 @@ def _orphans_to_cmds(orphans):
         for n in neighbors:
             cmds.append(f"   no neighbor {n}")
         cmds.append("!")
-    for o in orphans.get("vlans", []):
-        cmds.append(f'no vlan {o["vid"]}')
+
+    vlan_vids = sorted(int(o["vid"]) for o in orphans.get("vlans", []))
+    for start, end in _contiguous_ranges(vlan_vids):
+        if start == end:
+            cmds.append(f"no vlan {start}")
+        else:
+            cmds.append(f"no vlan {start}-{end}")
+
     for o in orphans.get("vrfs", []):
         cmds.append(f'no vrf instance {o["name"]}')
+
     ospf_by_ctx = {}
     for o in orphans.get("ospf", []):
         ospf_by_ctx.setdefault(o["context"], []).append(o["iface"])
@@ -11470,16 +11520,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
             if orphan_cmds:
-                _asn_extra["orphans_cleaned"] = {
-                    "interfaces": orphans.get("interfaces", []),
-                    "bgp":        orphans.get("bgp", []),
-                    "vlans":      orphans.get("vlans", []),
-                    "vrfs":       orphans.get("vrfs", []),
-                    "ospf":       orphans.get("ospf", []),
-                }
+                _orphan_committed = False
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
                     _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
                     print(f"  [orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _orphan_committed = True
                     for _bn, _batch in enumerate(_ob_batches, 1):
                         print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
@@ -11489,9 +11534,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
                             print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                            _orphan_committed = False
                             break
                 else:
                     lines = orphan_cmds + lines
+                    _orphan_committed = True
+                if _orphan_committed:
+                    _asn_extra["orphans_cleaned"] = {
+                        "interfaces": orphans.get("interfaces", []),
+                        "bgp":        orphans.get("bgp", []),
+                        "vlans":      orphans.get("vlans", []),
+                        "vrfs":       orphans.get("vrfs", []),
+                        "ospf":       orphans.get("ospf", []),
+                    }
 
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
@@ -13220,13 +13275,35 @@ async function _doRunCleanup(btn, reconBody, devices) {
     });
 }
 
+function _jsContiguousRanges(nums) {
+  if (!nums.length) return [];
+  const ranges = [];
+  let start = nums[0], end = nums[0];
+  for (let i = 1; i < nums.length; i++) {
+    if (nums[i] === end + 1) { end = nums[i]; }
+    else { ranges.push([start, end]); start = end = nums[i]; }
+  }
+  ranges.push([start, end]);
+  return ranges;
+}
+
 function _buildCleanupConfig(items) {
   const lines = [];
+  const sviVids = [], otherIfaces = [];
   items.filter(x => x.type === 'interface').forEach(x => {
     const n = x.data.name;
-    if (n.includes('.') || /^vlan\d+$/i.test(n)) lines.push('no interface ' + n);
-    else lines.push('default interface ' + n);
+    const m = n.match(/^[Vv]lan(\d+)$/);
+    if (m) sviVids.push(parseInt(m[1], 10));
+    else if (n.includes('.')) otherIfaces.push(['no', n]);
+    else otherIfaces.push(['default', n]);
   });
+  if (sviVids.length) {
+    sviVids.sort((a, b) => a - b);
+    _jsContiguousRanges(sviVids).forEach(([s, e]) => {
+      lines.push(s === e ? `no interface Vlan${s}` : `no interface Vlan${s}-${e}`);
+    });
+  }
+  otherIfaces.forEach(([t, n]) => lines.push((t === 'no' ? 'no' : 'default') + ' interface ' + n));
   const bgpByAsn = {};
   items.filter(x => x.type === 'bgp').forEach(x => {
     if (x.data.asn) { bgpByAsn[x.data.asn] = bgpByAsn[x.data.asn] || []; bgpByAsn[x.data.asn].push(x.data.neighbor); }
@@ -13236,7 +13313,10 @@ function _buildCleanupConfig(items) {
     ns.forEach(n => lines.push('   no neighbor ' + n));
     lines.push('!');
   });
-  items.filter(x => x.type === 'vlan').forEach(x => lines.push('no vlan ' + x.data.vid));
+  const vlanVids = items.filter(x => x.type === 'vlan').map(x => parseInt(x.data.vid, 10)).sort((a, b) => a - b);
+  _jsContiguousRanges(vlanVids).forEach(([s, e]) => {
+    lines.push(s === e ? `no vlan ${s}` : `no vlan ${s}-${e}`);
+  });
   items.filter(x => x.type === 'vrf').forEach(x => lines.push('no vrf instance ' + x.data.name));
   const ospfByCtx = {};
   items.filter(x => x.type === 'ospf').forEach(x => {

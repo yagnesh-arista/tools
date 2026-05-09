@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.27 | 2026-05-09 03:53:14
+# topoassist v260509.28 | 2026-05-09 10:34:16
 """
 TopoAssist Device Bridge
 ========================
@@ -547,23 +547,63 @@ def _norm_iface(name):
     return n.lower()
 
 
+def _contiguous_ranges(nums):
+    """Convert a sorted list of ints to [(start, end), ...] contiguous range tuples.
+
+    [100, 101, 102, 200, 201] → [(100,102), (200,201)]
+    """
+    if not nums:
+        return []
+    ranges = []
+    start = end = nums[0]
+    for n in nums[1:]:
+        if n == end + 1:
+            end = n
+        else:
+            ranges.append((start, end))
+            start = end = n
+    ranges.append((start, end))
+    return ranges
+
+
 def _orphans_to_cmds(orphans):
     """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
 
-    Interface orphans (physical/PO) → default interface X
-    Interface orphans (sub-int/SVI) → no interface X
-    BGP orphans → router bgp ASN / no neighbor X / !
-    VLAN orphans → no vlan X
-    VRF orphans → no vrf instance X
-    OSPF orphans → router ospf_kw N [vrf V] / default passive-interface X / ! (grouped by context)
+    SVI orphans (VlanN)      → no interface VlanX-Y  (range — collapses thousands of SVIs)
+    Sub-interface orphans    → no interface X          (individual — no EOS range for sub-int)
+    Physical / PO orphans    → default interface X     (individual)
+    BGP orphans              → router bgp ASN / no neighbor X / !
+    VLAN orphans             → no vlan X-Y             (range)
+    VRF orphans              → no vrf instance X
+    OSPF orphans             → router ospf_kw / default passive-interface X / !
     """
     cmds = []
+    svi_vids    = []   # (vid_int,) for VlanN interfaces → range syntax
+    other_ifaces = []  # (cmd_type, name) for sub-int / physical / PO → individual
+
     for o in orphans.get('interfaces', []):
         name = o['name']
-        if '.' in name or re.match(r'^vlan\d+$', name, re.IGNORECASE):
-            cmds.append(f'no interface {name}')
+        m = re.match(r'^[Vv]lan(\d+)$', name)
+        if m:
+            svi_vids.append(int(m.group(1)))
+        elif '.' in name:
+            other_ifaces.append(('no', name))
+        elif re.match(r'^[Pp]ort-[Cc]hannel\d+$', name) or re.match(r'^[Pp]o\d+$', name):
+            other_ifaces.append(('no', name))   # delete Po — 'default' only resets, PO persists
         else:
-            cmds.append(f'default interface {name}')
+            other_ifaces.append(('default', name))
+
+    if svi_vids:
+        svi_vids.sort()
+        for start, end in _contiguous_ranges(svi_vids):
+            if start == end:
+                cmds.append(f'no interface Vlan{start}')
+            else:
+                cmds.append(f'no interface Vlan{start}-{end}')
+
+    for cmd_type, name in other_ifaces:
+        cmds.append(f'{"no" if cmd_type == "no" else "default"} interface {name}')
+
     bgp_by_asn = {}
     for o in orphans.get('bgp', []):
         asn = o.get('asn')
@@ -574,10 +614,17 @@ def _orphans_to_cmds(orphans):
         for n in neighbors:
             cmds.append(f'   no neighbor {n}')
         cmds.append('!')
-    for o in orphans.get('vlans', []):
-        cmds.append(f'no vlan {o["vid"]}')
+
+    vlan_vids = sorted(int(o['vid']) for o in orphans.get('vlans', []))
+    for start, end in _contiguous_ranges(vlan_vids):
+        if start == end:
+            cmds.append(f'no vlan {start}')
+        else:
+            cmds.append(f'no vlan {start}-{end}')
+
     for o in orphans.get('vrfs', []):
         cmds.append(f'no vrf instance {o["name"]}')
+
     ospf_by_ctx = {}
     for o in orphans.get('ospf', []):
         ospf_by_ctx.setdefault(o['context'], []).append(o['iface'])
@@ -1271,18 +1318,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
             if orphan_cmds:
-                _asn_extra["orphans_cleaned"] = {
-                    "interfaces": orphans.get("interfaces", []),
-                    "bgp":        orphans.get("bgp", []),
-                    "vlans":      orphans.get("vlans", []),
-                    "vrfs":       orphans.get("vrfs", []),
-                    "ospf":       orphans.get("ospf", []),
-                }
+                _orphan_committed = False
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
                     # Too many orphans to prepend — push in block-aware batches
                     # first, then the main push carries only the actual config.
                     _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
                     print(f"  [orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _orphan_committed = True  # set True now; cleared on first failure
                     for _bn, _batch in enumerate(_ob_batches, 1):
                         print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
@@ -1292,10 +1334,21 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
                             print(f"  [orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
+                            _orphan_committed = False
                             break
                     # lines stays as the actual config only (no prepend)
                 else:
                     lines = orphan_cmds + lines
+                    _orphan_committed = True  # committed with the main push below
+                # Only report orphans_cleaned when all batches actually committed
+                if _orphan_committed:
+                    _asn_extra["orphans_cleaned"] = {
+                        "interfaces": orphans.get("interfaces", []),
+                        "bgp":        orphans.get("bgp", []),
+                        "vlans":      orphans.get("vlans", []),
+                        "vrfs":       orphans.get("vrfs", []),
+                        "ospf":       orphans.get("ospf", []),
+                    }
 
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
