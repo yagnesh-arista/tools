@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.62 | 2026-05-09 17:45:18 -->
+<!-- TopoAssist v260509.63 | 2026-05-09 17:50:18 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.62";  // keep in sync with Code.gs
+const APP_VERSION = "260509.63";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13444,13 +13444,20 @@ function _renderCleanupResults(results, reconBody) {
   const chevronSvg = '<svg class="cleanup-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">' +
     '<polyline points="2,2 7,5 2,8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  let html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">' +
+  let html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">' +
     '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-family:\'JetBrains Mono\',monospace;font-size:11px;user-select:none;-webkit-user-select:none;">' +
     '<input type="checkbox" id="reconSelectAll" onchange="toggleReconSelectAll()"> Select All</label>' +
     '<button id="btnCleanSelected" class="btn-mono" onclick="runCleanSelected()" disabled style="' + btnStyle + '">Clean Selected (0)</button>' +
     '<button class="btn-mono" onclick="runCleanAll()" style="' + btnStyle + '">Clean All</button>' +
     '<button class="btn-mono" onclick="_cleanupExpandAll()" style="' + btnStyle + 'margin-left:auto;">Expand All</button>' +
     '<button class="btn-mono" onclick="_cleanupCollapseAll()" style="' + btnStyle + '">Collapse All</button>' +
+    '</div>' +
+    '<div id="cleanupCmdPreview" style="display:none;margin-bottom:8px;">' +
+    '<div style="font-size:10px;color:#64748b;margin-bottom:3px;user-select:none;-webkit-user-select:none;">EOS commands to execute:</div>' +
+    '<pre id="cleanupCmdPreviewPre" style="margin:0;padding:6px 8px;background:#1e293b;color:#e2e8f0;' +
+    'border-radius:4px;font-family:\'JetBrains Mono\',monospace;font-size:10px;' +
+    'line-height:1.5;overflow-x:auto;max-height:100px;overflow-y:auto;' +
+    'user-select:text;-webkit-user-select:text;white-space:pre;"></pre>' +
     '</div>';
 
   Object.entries(results)
@@ -13647,6 +13654,27 @@ function updateReconSelCount() {
   if (btn) { btn.disabled = selected === 0; btn.textContent = 'Clean Selected (' + selected + ')'; }
   const master = document.getElementById('reconSelectAll');
   if (master) master.checked = total > 0 && selected === total;
+
+  // Live EOS command preview — grouped by device
+  const preview = document.getElementById('cleanupCmdPreview');
+  const pre     = document.getElementById('cleanupCmdPreviewPre');
+  if (!preview || !pre) return;
+  if (selected === 0) { preview.style.display = 'none'; return; }
+  const byDev = {};
+  document.querySelectorAll('.recon-item-cb:checked').forEach(cb => {
+    const entry = _cleanupItemStore[parseInt(cb.dataset.idx, 10)];
+    if (!entry) return;
+    (byDev[entry.dev] = byDev[entry.dev] || []).push(entry);
+  });
+  const devNames = Object.keys(byDev).sort((a, b) =>
+    (allDevicesData[a]?.sheetIndex || 0) - (allDevicesData[b]?.sheetIndex || 0));
+  const lines = [];
+  devNames.forEach(dev => {
+    if (devNames.length > 1) lines.push('! ' + _fmtDev(dev));
+    _buildCleanupConfig(byDev[dev]).split('\n').filter(l => l).forEach(l => lines.push(l));
+  });
+  pre.textContent = lines.join('\n');
+  preview.style.display = '';
 }
 
 function runCleanAll() {
