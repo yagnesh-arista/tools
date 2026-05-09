@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.50 | 2026-05-09 14:08:45 -->
+<!-- TopoAssist v260509.51 | 2026-05-09 14:44:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.50";  // keep in sync with Code.gs
+const APP_VERSION = "260509.51";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10666,7 +10666,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.7"
+VERSION    = "260509.9"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11263,10 +11263,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     _print_transport_status()
             self._json(200, {"ok": True, "cfg": {k: _cfg[k] for k in allowed}})
             return
-        ip_map       = body.get("ipMap", {})
-        dry_run      = bool(body.get("dry_run", False))
-        open_session = bool(body.get("open_session", False))
-        all_ifaces   = bool(body.get("all_ifaces", False))
+        ip_map           = body.get("ipMap", {})
+        dry_run          = bool(body.get("dry_run", False))
+        open_session     = bool(body.get("open_session", False))
+        all_ifaces       = bool(body.get("all_ifaces", False))
+        all_device_names = body.get("allDeviceNames")
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30-120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -11283,15 +11284,48 @@ class BridgeHandler(BaseHTTPRequestHandler):
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
         elif self.path == "/pushconfig/finalize":
-            action  = body.get("action", "abort")
-            results = {}
+            action     = body.get("action", "abort")
+            config_map = body.get("configMap", {})
+            results    = {}
             for dev, entry in ip_map.items():
                 ip           = (entry.get("ip") or "").strip()
                 session_name = (entry.get("session_name") or "").strip()
                 if not ip or not session_name:
                     results[dev] = {"ok": False, "error": "Missing ip or session_name"}; continue
                 try:
-                    results[dev] = self._finalize_session(ip, session_name, action)
+                    orphans_cleaned = None
+                    if action == "commit" and config_map.get(dev) and all_device_names:
+                        try:
+                            orphans = self._detect_orphans(ip, config_text=config_map[dev],
+                                                           all_device_names=all_device_names)
+                            if orphans and orphans.get('ok'):
+                                orphan_cmds = _orphans_to_cmds(orphans)
+                                if orphan_cmds:
+                                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                                    _vlog(f"[orphan-finalize] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es)", flush=True)
+                                    _orphan_ok = True
+                                    for _bn, _batch in enumerate(_ob_batches, 1):
+                                        try:
+                                            self._push_config(ip, "\\n".join(_batch),
+                                                              dry_run=False, all_ifaces=False,
+                                                              all_device_names=None)
+                                        except Exception as _be:
+                                            _vlog(f"[orphan-finalize] {ip}: batch {_bn} failed -- {_be}", flush=True)
+                                            _orphan_ok = False; break
+                                    if _orphan_ok:
+                                        orphans_cleaned = {
+                                            "interfaces": orphans.get("interfaces", []),
+                                            "bgp":        orphans.get("bgp", []),
+                                            "vlans":      orphans.get("vlans", []),
+                                            "vrfs":       orphans.get("vrfs", []),
+                                            "ospf":       orphans.get("ospf", []),
+                                        }
+                        except Exception as _oe:
+                            _vlog(f"[orphan-finalize] {ip}: detection failed -- {_oe}", flush=True)
+                    result = self._finalize_session(ip, session_name, action)
+                    if orphans_cleaned and result.get("ok"):
+                        result["orphans_cleaned"] = orphans_cleaned
+                    results[dev] = result
                 except subprocess.TimeoutExpired:
                     results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                 except Exception as e:
@@ -11341,7 +11375,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     try:
                         with lock: results[dev] = self._push_config(
                             ip, config, dry_run=dry_run, open_only=open_session,
-                            all_ifaces=all_ifaces)
+                            all_ifaces=all_ifaces, all_device_names=all_device_names)
                     except subprocess.TimeoutExpired:
                         with lock: results[dev] = {"ok": False, "error": f"Push timed out -- {n_lines} config lines, {PUSH_TIMEOUT}s limit exceeded -- verify config was applied manually"}
                     except NotImplementedError as e:
@@ -11548,34 +11582,41 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
-                # Always run orphan cleanup in its own separate configure session(s)
-                # before the main push — even small range-collapsed sets (e.g. 4 cmds)
-                # can represent thousands of EOS object deletions and block the session
-                # for longer than PUSH_TIMEOUT when mixed with the main config.
-                _orphan_committed = False
-                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                _orphan_committed = True
-                for _bn, _batch in enumerate(_ob_batches, 1):
-                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                    try:
-                        self._push_config(ip, "\\n".join(_batch),
-                                          dry_run=False, all_ifaces=False,
-                                          all_device_names=None)
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                    except Exception as _be:
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
-                        _orphan_committed = False
-                        break
-                # lines stays as the actual config only (never prepended)
-                if _orphan_committed:
-                    _asn_extra["orphans_cleaned"] = {
+                if open_only:
+                    # Open-session push: defer cleanup to Phase 2 (user consents via Commit).
+                    _asn_extra["orphans_pending"] = {
                         "interfaces": orphans.get("interfaces", []),
                         "bgp":        orphans.get("bgp", []),
                         "vlans":      orphans.get("vlans", []),
                         "vrfs":       orphans.get("vrfs", []),
                         "ospf":       orphans.get("ospf", []),
                     }
+                else:
+                    # Direct-commit push (bulk push): run cleanup immediately before main session.
+                    _orphan_committed = False
+                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _orphan_committed = True
+                    for _bn, _batch in enumerate(_ob_batches, 1):
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                        try:
+                            self._push_config(ip, "\\n".join(_batch),
+                                              dry_run=False, all_ifaces=False,
+                                              all_device_names=None)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                        except Exception as _be:
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                            _orphan_committed = False
+                            break
+                    # lines stays as the actual config only (never prepended)
+                    if _orphan_committed:
+                        _asn_extra["orphans_cleaned"] = {
+                            "interfaces": orphans.get("interfaces", []),
+                            "bgp":        orphans.get("bgp", []),
+                            "vlans":      orphans.get("vlans", []),
+                            "vrfs":       orphans.get("vrfs", []),
+                            "ospf":       orphans.get("ospf", []),
+                        }
 
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
@@ -13865,12 +13906,15 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
 
   // Phase 1: open configure session, push config, get diff, leave session PENDING on EOS.
   // Bridge returns session_name so Phase 2 can commit/abort without re-pushing config.
+  const _allDevNames = currentData && currentData.nodes
+    ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id)
+    : [];
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ipMap: { [deviceName]: { ip, config } }, open_session: true, all_ifaces: !portFilter,
-        allDeviceNames: currentData && currentData.nodes ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id) : [] }),
+        allDeviceNames: _allDevNames }),
     });
     if (!resp.ok) throw new Error('Bridge HTTP ' + resp.status);
     const data = await resp.json();
@@ -13927,9 +13971,9 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
       return;
     }
     // Store pending push details + session_name, show confirm modal (button stays disabled)
-    _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name };
+    _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name, allDeviceNames: _allDevNames };
     _showPushConfirmModal(label, res.diff);
-    if (res.orphans_cleaned) _injectOrphanCleanedBanner(res.orphans_cleaned);
+    if (res.orphans_pending) _injectOrphanPendingBanner(res.orphans_pending);
     if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
     if (_p1EosWarns) _injectEosWarningBanner(_p1EosWarns);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
@@ -14041,7 +14085,7 @@ function _clearPushSessionGuard() {
 async function commitPushConfig() {
   _clearPushSessionGuard();
   if (!_pendingPush) return;
-  const { deviceName, ip, config, btnId, origText, label, sessionName } = _pendingPush;
+  const { deviceName, ip, config, btnId, origText, label, sessionName, allDeviceNames } = _pendingPush;
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
@@ -14092,7 +14136,8 @@ async function commitPushConfig() {
       try {
         const _url  = _useFinalize ? BRIDGE_URL + '/pushconfig/finalize' : BRIDGE_URL + '/pushconfig';
         const _body = _useFinalize
-          ? { ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'commit' }
+          ? { ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'commit',
+              configMap: { [deviceName]: config }, allDeviceNames: allDeviceNames || [] }
           : { ipMap: { [deviceName]: { ip, config } } };
         const resp = await fetch(_url, {
           method:  'POST',
@@ -14143,6 +14188,7 @@ async function commitPushConfig() {
       const _p2Label = _lateResponse ? `committed — eAPI delayed${retryNote}` : `committed${retryNote}`;
       _ptSet('pt2', _p2Color, _p2Label);
       _ptSet('pt3', '#94a3b8', 'verifying…');
+      if (res.orphans_cleaned) _injectOrphanCleanedBanner(res.orphans_cleaned);
       if (commitBtn) commitBtn.style.display = 'none';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
       try {
@@ -16807,9 +16853,32 @@ function _injectPushAsnChangeWarning(asnChanged) {
   bodyEl.insertAdjacentHTML('afterbegin', banner);
 }
 
-// Injects a teal info banner listing auto-removed orphans from this push.
+// Injects a blue info banner showing orphan count detected in Phase 1 (not yet cleaned).
+// Shown in the push confirm modal so the user knows cleanup will happen on Commit.
+function _injectOrphanPendingBanner(orphans) {
+  const bodyEl = document.getElementById('pushConfirmBody');
+  if (!orphans || !bodyEl) return;
+  const total = (orphans.interfaces || []).length + (orphans.bgp || []).length +
+                (orphans.vlans || []).length + (orphans.vrfs || []).length +
+                (orphans.ospf || []).length;
+  if (!total) return;
+  const banner =
+    '<div id="pushOrphanPendingBanner" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;' +
+    'padding:8px 10px;margin-top:8px;color:#1e40af;line-height:1.5;">' +
+    '<span style="user-select:none;-webkit-user-select:none;">' +
+    '<b>' + total + ' orphan' + (total !== 1 ? 's' : '') + ' detected</b> — ' +
+    'stale __TA-tagged config not in this topology.' +
+    '</span>' +
+    '<div style="font-size:10px;color:#1d4ed8;margin-top:3px;user-select:none;-webkit-user-select:none;">' +
+    'Clicking Commit will clean these up before applying the config above.' +
+    '</div>' +
+    '</div>';
+  bodyEl.insertAdjacentHTML('beforeend', banner);
+}
+
+// Injects a teal info banner listing auto-removed orphans after Phase 2 commit.
 // orphans: {interfaces:[{name}], bgp:[{asn,neighbor}], vlans:[{vid}], vrfs:[{name}], ospf:[{context,iface}]}
-// Inserted AFTER the diff so user reads the diff first, then sees what was auto-cleaned below.
 function _injectOrphanCleanedBanner(orphans) {
   const bodyEl = document.getElementById('pushConfirmBody');
   if (!orphans || !bodyEl) return;
@@ -16820,23 +16889,25 @@ function _injectOrphanCleanedBanner(orphans) {
   const ospfs   = (orphans.ospf       || []);
   const total   = ifaces.length + bgps.length + vlans.length + vrfs.length + ospfs.length;
   if (!total) return;
-  const uid = 'orphan-detail-' + Date.now();
-  let detail = '';
-  if (ifaces.length)  detail += ifaces.map(o => escapeHtml(o.name)).join(', ');
-  if (bgps.length)    detail += (detail ? ' · ' : '') + bgps.map(o => 'BGP ' + escapeHtml(o.neighbor)).join(', ');
-  if (vlans.length)   detail += (detail ? ' · ' : '') + vlans.map(o => 'VLAN ' + escapeHtml(String(o.vid))).join(', ');
-  if (vrfs.length)    detail += (detail ? ' · ' : '') + vrfs.map(o => 'VRF ' + escapeHtml(o.name)).join(', ');
-  if (ospfs.length)   detail += (detail ? ' · ' : '') + ospfs.map(o => 'OSPF ' + escapeHtml(o.iface)).join(', ');
+  const parts = [];
+  ifaces.forEach(o => parts.push(escapeHtml(o.name)));
+  bgps.forEach(o => parts.push('BGP ' + escapeHtml(o.neighbor)));
+  vlans.forEach(o => parts.push('VLAN ' + escapeHtml(String(o.vid))));
+  vrfs.forEach(o => parts.push('VRF ' + escapeHtml(o.name)));
+  ospfs.forEach(o => parts.push('OSPF ' + escapeHtml(o.iface)));
+  const shown = parts.slice(0, 20);
+  const extra = parts.length - shown.length;
+  const detail = shown.join(', ') + (extra > 0 ? ' … and ' + extra + ' more' : '');
   const banner =
     '<div id="pushOrphanCleanedBanner" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
     'background:#f0f9ff;border:1px solid #7dd3fc;border-radius:4px;' +
     'padding:8px 10px;margin-top:8px;color:#0c4a6e;line-height:1.5;">' +
     '<span style="user-select:none;-webkit-user-select:none;">' +
-    '<b>Auto-removed ' + total + ' orphan' + (total !== 1 ? 's' : '') + ':</b> ' +
+    '<b>Cleaned ' + total + ' orphan' + (total !== 1 ? 's' : '') + ':</b> ' +
     '</span>' +
     '<span style="user-select:text;-webkit-user-select:text;">' + detail + '</span>' +
     '<div style="font-size:10px;color:#0369a1;margin-top:3px;user-select:none;-webkit-user-select:none;">' +
-    'These __TA-tagged items are in the diff above (- lines). Included in this push session.' +
+    'Stale __TA-tagged config removed from device before the main config was applied.' +
     '</div>' +
     '</div>';
   bodyEl.insertAdjacentHTML('beforeend', banner);
@@ -16902,7 +16973,9 @@ function _orphanDetailText(orphans) {
   (orphans.vrfs       || []).forEach(o => parts.push('VRF ' + o.name));
   (orphans.ospf       || []).forEach(o => parts.push('OSPF ' + o.iface));
   if (!parts.length) return null;
-  return 'Auto-removed orphans: ' + parts.join(', ');
+  const shown = parts.slice(0, 20);
+  const extra = parts.length - shown.length;
+  return 'Auto-removed orphans: ' + shown.join(', ') + (extra > 0 ? ` … and ${extra} more` : '');
 }
 
 // Returns deduplicated eos_warnings from a bridge response, or null if absent/empty.
