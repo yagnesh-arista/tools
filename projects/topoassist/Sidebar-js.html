@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.49 | 2026-05-09 14:06:25 -->
+<!-- TopoAssist v260509.50 | 2026-05-09 14:08:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.49";  // keep in sync with Code.gs
+const APP_VERSION = "260509.50";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6324,7 +6324,7 @@ function _refreshDock() {
       '<svg width="10" height="10" viewBox="0 0 10 10" fill="none">' +
       '<path d="M2 7l3-4 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>' + title;
-    dc.onclick = () => { _autoMinimizeOpenModal(); toggleModalMinimize(modal.id); };
+    dc.onclick = () => { _autoMinimizeOpenModal(); toggleModalMinimize(modal.id); setActiveModalChip(modal.id); };
     dock.appendChild(dc);
   });
   dock.style.display = dock.children.length ? 'flex' : 'none';
@@ -15258,7 +15258,7 @@ function openHelpModal() {
   _autoMinimizeOpenModal();
   const modal = document.getElementById('helpModal');
   if (!modal) { console.error("helpModal missing from HTML!"); return; }
-  modal.style.display = 'block';
+  modal.style.display = 'flex';
   setActiveModalChip('helpModal');
 }
 /**
@@ -17510,7 +17510,9 @@ function _switchGenTab(tab) {
 function openGenerateAllModal(panel) {
   const modal = document.getElementById('configCenterModal');
   if (modal && modal.classList.contains('modal-minimized')) {
+    _autoMinimizeOpenModal();
     toggleModalMinimize('configCenterModal');
+    setActiveModalChip('configCenterModal');
     return;
   }
   if (!window._generateAllConfigs) {
