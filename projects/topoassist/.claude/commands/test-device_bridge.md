@@ -6,7 +6,7 @@
 cd ~/claude/projects/topoassist && python3 -m pytest tests/ -v
 ```
 
-Expected: 92 passed, 0 failed.
+Expected: 126 passed, 0 failed.
 
 ## GAS — Code.gs pure functions
 

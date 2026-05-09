@@ -1,4 +1,4 @@
-# topoassist v260504.40 | 2026-05-04 18:44:56
+# topoassist v260509.34 | 2026-05-09 11:23:44
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -850,3 +850,222 @@ class TestVersionSync:
             f"VERSION mismatch: device_bridge.py={db.VERSION!r}, "
             f"Sidebar-js.html template={m.group(1)!r}"
         )
+
+
+# ── _contiguous_ranges ─────────────────────────────────────────────────────────
+
+class TestContiguousRanges:
+    def test_empty(self):
+        assert db._contiguous_ranges([]) == []
+
+    def test_single(self):
+        assert db._contiguous_ranges([5]) == [(5, 5)]
+
+    def test_all_contiguous(self):
+        assert db._contiguous_ranges([1, 2, 3, 4]) == [(1, 4)]
+
+    def test_all_separate(self):
+        assert db._contiguous_ranges([1, 3, 5]) == [(1, 1), (3, 3), (5, 5)]
+
+    def test_mixed(self):
+        assert db._contiguous_ranges([100, 101, 102, 200, 300, 301]) == [
+            (100, 102), (200, 200), (300, 301)
+        ]
+
+    def test_large_contiguous(self):
+        nums = list(range(1, 7999))  # 1–7998
+        assert db._contiguous_ranges(nums) == [(1, 7998)]
+
+    def test_two_ranges(self):
+        assert db._contiguous_ranges([10, 11, 20, 21]) == [(10, 11), (20, 21)]
+
+
+# ── _orphans_to_cmds ───────────────────────────────────────────────────────────
+
+class TestOrphansToCmds:
+
+    # ── SVI (Vlan) range syntax ────────────────────────────────────────────────
+
+    def test_svi_single(self):
+        orphans = {"interfaces": [{"name": "Vlan100"}]}
+        assert db._orphans_to_cmds(orphans) == ["no interface Vlan100"]
+
+    def test_svi_contiguous_range(self):
+        orphans = {"interfaces": [{"name": f"Vlan{i}"} for i in [100, 101, 102]]}
+        assert db._orphans_to_cmds(orphans) == ["no interface Vlan100-102"]
+
+    def test_svi_non_contiguous(self):
+        orphans = {"interfaces": [{"name": f"Vlan{i}"} for i in [100, 101, 200]]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no interface Vlan100-101", "no interface Vlan200"]
+
+    def test_svi_7998_collapses_to_one_range(self):
+        orphans = {"interfaces": [{"name": f"Vlan{i}"} for i in range(1, 7999)]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no interface Vlan1-7998"]
+
+    def test_svi_sorted_regardless_of_input_order(self):
+        orphans = {"interfaces": [{"name": "Vlan200"}, {"name": "Vlan100"}, {"name": "Vlan101"}]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no interface Vlan100-101", "no interface Vlan200"]
+
+    def test_svi_lowercase_vlan_prefix(self):
+        # EOS returns 'Vlan100' but normalise gracefully if lowercase
+        orphans = {"interfaces": [{"name": "vlan50"}]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no interface Vlan50"]
+
+    # ── Sub-interface ──────────────────────────────────────────────────────────
+
+    def test_subinterface_uses_no_interface(self):
+        orphans = {"interfaces": [{"name": "Ethernet1.100"}]}
+        assert db._orphans_to_cmds(orphans) == ["no interface Ethernet1.100"]
+
+    def test_po_subinterface_uses_no_interface(self):
+        orphans = {"interfaces": [{"name": "Port-Channel1.10"}]}
+        assert db._orphans_to_cmds(orphans) == ["no interface Port-Channel1.10"]
+
+    # ── Port-Channel ───────────────────────────────────────────────────────────
+
+    def test_port_channel_uses_no_interface(self):
+        orphans = {"interfaces": [{"name": "Port-Channel10"}]}
+        assert db._orphans_to_cmds(orphans) == ["no interface Port-Channel10"]
+
+    # ── Physical Ethernet ──────────────────────────────────────────────────────
+
+    def test_physical_ethernet_uses_default_interface(self):
+        orphans = {"interfaces": [{"name": "Ethernet1"}]}
+        assert db._orphans_to_cmds(orphans) == ["default interface Ethernet1"]
+
+    # ── VLAN table range syntax ────────────────────────────────────────────────
+
+    def test_vlan_single(self):
+        orphans = {"vlans": [{"vid": "100"}]}
+        assert db._orphans_to_cmds(orphans) == ["no vlan 100"]
+
+    def test_vlan_contiguous_range(self):
+        orphans = {"vlans": [{"vid": str(v)} for v in [100, 101, 102]]}
+        assert db._orphans_to_cmds(orphans) == ["no vlan 100-102"]
+
+    def test_vlan_non_contiguous(self):
+        orphans = {"vlans": [{"vid": str(v)} for v in [10, 11, 20]]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no vlan 10-11", "no vlan 20"]
+
+    def test_vlan_sorted_regardless_of_input_order(self):
+        orphans = {"vlans": [{"vid": "200"}, {"vid": "100"}, {"vid": "101"}]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["no vlan 100-101", "no vlan 200"]
+
+    # ── BGP ────────────────────────────────────────────────────────────────────
+
+    def test_bgp_single_neighbor(self):
+        orphans = {"bgp": [{"asn": "65001", "neighbor": "10.0.0.1"}]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["router bgp 65001", "   no neighbor 10.0.0.1", "!"]
+
+    def test_bgp_multiple_neighbors_same_asn(self):
+        orphans = {"bgp": [
+            {"asn": "65001", "neighbor": "10.0.0.1"},
+            {"asn": "65001", "neighbor": "10.0.0.2"},
+        ]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["router bgp 65001", "   no neighbor 10.0.0.1", "   no neighbor 10.0.0.2", "!"]
+
+    # ── VRF ────────────────────────────────────────────────────────────────────
+
+    def test_vrf(self):
+        orphans = {"vrfs": [{"name": "VRF_RED"}]}
+        assert db._orphans_to_cmds(orphans) == ["no vrf instance VRF_RED"]
+
+    # ── OSPF ───────────────────────────────────────────────────────────────────
+
+    def test_ospf(self):
+        orphans = {"ospf": [{"context": "router ospf 1", "iface": "Ethernet1"}]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert cmds == ["router ospf 1", "   default passive-interface Ethernet1", "!"]
+
+    # ── Empty ──────────────────────────────────────────────────────────────────
+
+    def test_empty_orphans(self):
+        assert db._orphans_to_cmds({}) == []
+
+    def test_all_empty_lists(self):
+        orphans = {"interfaces": [], "bgp": [], "vlans": [], "vrfs": [], "ospf": []}
+        assert db._orphans_to_cmds(orphans) == []
+
+    # ── Mixed categories ───────────────────────────────────────────────────────
+
+    def test_mixed_interface_types_ordering(self):
+        # SVIs come before other_ifaces in output; within other_ifaces order is preserved
+        orphans = {"interfaces": [
+            {"name": "Ethernet1"},    # physical → default interface
+            {"name": "Vlan100"},      # SVI → no interface (range)
+            {"name": "Ethernet1.10"}, # sub-int → no interface
+        ]}
+        cmds = db._orphans_to_cmds(orphans)
+        assert "no interface Vlan100" in cmds
+        assert "default interface Ethernet1" in cmds
+        assert "no interface Ethernet1.10" in cmds
+        # SVIs first
+        assert cmds.index("no interface Vlan100") < cmds.index("default interface Ethernet1")
+
+
+# ── _batch_orphan_cmds ─────────────────────────────────────────────────────────
+
+class TestBatchOrphanCmds:
+
+    def test_single_batch_when_under_limit(self):
+        cmds = ["no interface Vlan1-100", "no vlan 1-100"]
+        batches = db._batch_orphan_cmds(cmds, batch_size=10)
+        assert len(batches) == 1
+        assert batches[0] == cmds
+
+    def test_splits_standalone_commands(self):
+        cmds = [f"no vlan {i}" for i in range(1, 6)]
+        batches = db._batch_orphan_cmds(cmds, batch_size=2)
+        assert len(batches) == 3  # [2, 2, 1]
+        assert sum(len(b) for b in batches) == 5
+
+    def test_never_splits_bgp_block(self):
+        cmds = [
+            "router bgp 65001",
+            "   no neighbor 10.0.0.1",
+            "   no neighbor 10.0.0.2",
+            "!",
+            "no vlan 100",
+        ]
+        # batch_size=3 — BGP block is 4 lines, must not be split
+        batches = db._batch_orphan_cmds(cmds, batch_size=3)
+        # BGP block must land in one batch
+        for b in batches:
+            if "router bgp 65001" in b:
+                assert "!" in b, "BGP block was split — '!' missing from same batch"
+                break
+        else:
+            assert False, "router bgp 65001 not found in any batch"
+
+    def test_never_splits_ospf_block(self):
+        cmds = [
+            "router ospf 1",
+            "   default passive-interface Ethernet1",
+            "   default passive-interface Ethernet2",
+            "!",
+            "no vlan 10",
+        ]
+        batches = db._batch_orphan_cmds(cmds, batch_size=3)
+        for b in batches:
+            if "router ospf 1" in b:
+                assert "!" in b
+                break
+        else:
+            assert False, "ospf block not found"
+
+    def test_empty_input(self):
+        assert db._batch_orphan_cmds([], batch_size=10) == []
+
+    def test_all_lines_in_one_block(self):
+        cmds = ["router bgp 65001", "   no neighbor 1.1.1.1", "!"]
+        batches = db._batch_orphan_cmds(cmds, batch_size=2)
+        assert len(batches) == 1
+        assert batches[0] == cmds
