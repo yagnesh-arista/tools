@@ -6827,6 +6827,8 @@ function selectDevice(deviceId) {
   if (pushDevBtn) pushDevBtn.style.display = nonEosDev ? 'none' : '';
   if (copyDevBtn) copyDevBtn.style.display = nonEosDev ? 'none' : '';
   if (viewDevBtn) viewDevBtn.style.display = nonEosDev ? 'none' : '';
+  // Reset stale "Previewing…"/disabled — static button reused across device selections.
+  if (pushDevBtn && (!_pendingPush || _pendingPush.deviceName !== deviceId)) { pushDevBtn.textContent = 'Push'; pushDevBtn.disabled = false; }
   document.querySelectorAll('#splitDevice .split-action-divider').forEach(d => d.style.display = nonEosDev ? 'none' : '');
 
   if (devData && devData.type === 'non-arista') {
@@ -6927,6 +6929,10 @@ function selectLine(id) {
     if (pbr) pbr.style.display = nonEos2 ? 'none' : '';
     if (cbr) cbr.style.display = nonEos2 ? 'none' : '';
     if (vbr) vbr.style.display = nonEos2 ? 'none' : '';
+    // Reset stale "Previewing…"/disabled state — buttons are static DOM elements reused
+    // across device selections; skip reset only when a push is in-flight for that device.
+    if (pbl && (!_pendingPush || _pendingPush.deviceName !== dev1)) { pbl.textContent = 'Push'; pbl.disabled = false; }
+    if (pbr && (!_pendingPush || _pendingPush.deviceName !== dev2)) { pbr.textContent = 'Push'; pbr.disabled = false; }
     document.querySelectorAll('#splitLeft .split-action-divider').forEach(d => d.style.display = nonEos1 ? 'none' : '');
     document.querySelectorAll('#splitRight .split-action-divider').forEach(d => d.style.display = nonEos2 ? 'none' : '');
 
