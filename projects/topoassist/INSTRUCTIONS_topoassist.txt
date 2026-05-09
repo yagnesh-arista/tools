@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-09 (fix: ta_total and matched now included in orphans_pending response from /pushconfig/detect_orphans so the push-phase log shows correct ta_total instead of 0 when using precomputed orphan data. FILES: device_bridge.py, Sidebar-js.html)
+  Last updated: 2026-05-09 (fix: orphan consent name preview was showing [object Object] — each category uses the correct field key: interfaces→x.name, vlans→x.vid, bgp→x.neighbor, vrfs→x.name, ospf→x.iface. FILES: Sidebar-js.html)
+  Previous: 2026-05-09 (fix: ta_total and matched now included in orphans_pending response from /pushconfig/detect_orphans so the push-phase log shows correct ta_total instead of 0 when using precomputed orphan data. FILES: device_bridge.py, Sidebar-js.html)
   Previous: 2026-05-09 (orphan consent table now shows first 5 names + "… and N more" per section (was count-only); 3-column table: label | count | names preview. FILES: Sidebar-js.html)
   Previous: 2026-05-09 (fix: orphan consent 300s auto-cancel countdown now pauses while pushConfirmModal is minimized — setInterval skips decrement when modal has modal-minimized class. FILES: Sidebar-js.html)
   Previous: 2026-05-09 (fix: _detect_orphans parallel workers all now have VERBOSE logging — _w_bgp, _w_vrf, _w_ospf each log before command, after success (with counts: neighbor lines / vrf instances / no passive-interface lines), and on failure. Previously only _w_vlan had logging; silent failures in the other 3 workers made detection errors invisible in the bridge terminal. Same pattern applied to embedded template. FILES: device_bridge.py, Sidebar-js.html)
