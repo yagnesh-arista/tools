@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.56 | 2026-05-09 16:49:01
+# topoassist v260509.58 | 2026-05-09 17:12:41
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.28"
+VERSION           = "260509.32"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -838,6 +838,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             try:
                 _do_orphans = self._detect_orphans(_do_ip, config_text=_do_cfg,
                                                    all_device_names=_do_devs)
+                _do_errs = _do_orphans.get("detection_errors", {}) if _do_orphans else {}
                 if (_do_orphans and _do_orphans.get('ok')
                         and _orphans_to_cmds(_do_orphans)):
                     self._json(200, {"ok": True, "orphans_pending": {
@@ -846,9 +847,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         "vlans":      _do_orphans.get("vlans",      []),
                         "vrfs":       _do_orphans.get("vrfs",       []),
                         "ospf":       _do_orphans.get("ospf",       []),
-                    }})
+                    }, "detection_errors": _do_errs})
                 else:
-                    self._json(200, {"ok": True, "orphans_pending": None})
+                    self._json(200, {"ok": True, "orphans_pending": None,
+                                     "detection_errors": _do_errs})
             except Exception as _doe:
                 _vlog(f"[orphan-pre-detect] {_do_ip}: error — {_doe}", flush=True)
                 self._json(200, {"ok": True, "orphans_pending": None})
@@ -1814,33 +1816,53 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if not all_device_names:
                 return None, None
             try:
-                return self._text_cmd(ip, "show running-config | section router bgp"), None
+                _vlog(f"[detect-orphans] {ip}: show running-config | section router bgp", flush=True)
+                txt = self._text_cmd(ip, "show running-config | section router bgp")
+                _neighbors = txt.count('\n   neighbor ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: bgp section OK — {_neighbors} neighbor line(s)", flush=True)
+                return txt, None
             except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: bgp section FAILED — {e}", flush=True)
                 return None, str(e)[:80]
 
         def _w_vlan():
             if not config_text:
                 return None, None
             try:
+                _vlog(f"[detect-orphans] {ip}: show vlan", flush=True)
                 (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+                _tagged = sum(1 for v in (vlan_raw or {}).get('vlans', {}).values()
+                              if '__TA' in v.get('name', ''))
+                _vlog(f"[detect-orphans] {ip}: show vlan OK — {len((vlan_raw or {}).get('vlans', {}))} vlans, {_tagged} __TA-tagged", flush=True)
                 return vlan_raw, None
             except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: show vlan FAILED — {e}", flush=True)
                 return None, str(e)[:80]
 
         def _w_vrf():
             if not config_text:
                 return None, None
             try:
-                return self._text_cmd(ip, "show running-config | section vrf instance"), None
+                _vlog(f"[detect-orphans] {ip}: show running-config | section vrf instance", flush=True)
+                txt = self._text_cmd(ip, "show running-config | section vrf instance")
+                _vrfs = txt.count('\nvrf instance ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: vrf section OK — {_vrfs} vrf instance(s)", flush=True)
+                return txt, None
             except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: vrf section FAILED — {e}", flush=True)
                 return None, str(e)[:80]
 
         def _w_ospf(kw):
             if not orphan_iface_names:
                 return None, None
             try:
-                return self._text_cmd(ip, f'show running-config | section router {kw}'), None
+                _vlog(f"[detect-orphans] {ip}: show running-config | section router {kw}", flush=True)
+                txt = self._text_cmd(ip, f'show running-config | section router {kw}')
+                _passive = txt.count('\n   no passive-interface ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: {kw} section OK — {_passive} no passive-interface line(s)", flush=True)
+                return txt, None
             except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: {kw} section FAILED — {e}", flush=True)
                 return None, str(e)[:80]
 
         _workers = [
