@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.52 | 2026-05-09 15:25:09
+# topoassist v260509.53 | 2026-05-09 15:47:56
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.12"
+VERSION           = "260509.17"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -151,7 +151,8 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                  str(max(TIMEOUT * 4, 300))))
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
-CLEANUP_BATCH_SIZE = 300  # max orphan-cleanup commands per configure session (~90s on EOS; 1000 timed out at 300s on GW-SVI-heavy devices)
+CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure session
+CLEANUP_PUSH_TIMEOUT  = max(PUSH_TIMEOUT * 3, 900)  # orphan SVI deletion can take 10+ min for 3999-SVI ranges
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
@@ -1020,7 +1021,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return json.loads(r.read())
 
     # ── Transport: eAPI (text format — for config push) ───────────────────────
-    def _eapi_push(self, ip, *cmds):
+    def _eapi_push(self, ip, *cmds, _tout_override=None):
         """Run EOS commands via eAPI with format=text (for configure session).
 
         stopOnError=False causes EOS to continue executing remaining commands
@@ -1042,7 +1043,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             "Content-Type":  "application/json",
             "Authorization": f"Basic {creds}",
         })
-        _tout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
+        _tout = _tout_override if _tout_override is not None else (PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT)
         with urllib.request.urlopen(req, timeout=_tout, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
         if "error" in resp:
@@ -1271,7 +1272,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return stale
 
     # ── Config push via configure session ────────────────────────────────────
-    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None):
+    def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None):
         """Push config_text to device using a uniquely-named EOS configure session.
 
         Modes:
@@ -1385,7 +1386,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     try:
                         self._push_config(ip, '\n'.join(_batch),
                                           dry_run=False, all_ifaces=False,
-                                          all_device_names=None)
+                                          all_device_names=None,
+                                          push_timeout=CLEANUP_PUSH_TIMEOUT)
                         _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                     except Exception as _be:
                         _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
@@ -1439,7 +1441,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
             _pre_idempotency_warns = []
             try:
-                results = list(self._eapi_push(ip, *core_cmds))
+                results = list(self._eapi_push(ip, *core_cmds, _tout_override=push_timeout))
                 # Pre-scan: when EOS embeds per-command errors in text output (rather than
                 # a top-level error), pair each command with its output so the command name
                 # is available for idempotency matching — _extract_eos_errors would only see
