@@ -713,7 +713,8 @@
             <div id="gw-ex4-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0">GW IPv4</div>
             <!-- Standard ≥/24 — dims when wide/super-wide active -->
             <div id="gw-ex4-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
-              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/24 &#x2014; any VLAN</div>
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/24</div>
+              <div id="gw-ex4-std-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex4-std-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex4-std-mphy2" class="ip-ex-val"></div>
@@ -727,6 +728,7 @@
             <!-- Wide /16–/23 — dims when standard or super-wide active -->
             <div id="gw-ex4-wide-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
               <div id="gw-ex4-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Wide /16–/23:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
+              <div id="gw-ex4-wide-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex4-wide-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex4-wide-mphy2" class="ip-ex-val"></div>
@@ -740,6 +742,7 @@
             <!-- Super-wide /8–/15 — dims when standard or wide active -->
             <div id="gw-ex4-sw-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
               <div id="gw-ex4-sw-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Super-wide /8–/15:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b> (oct3=<span class="f-dyn">20</span> dropped)</div>
+              <div id="gw-ex4-sw-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex4-sw-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex4-sw-mphy2" class="ip-ex-val"></div>
@@ -757,7 +760,8 @@
             <div id="gw-ex6-header" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#64748b;padding:2px 0 0">GW IPv6</div>
             <!-- Standard ≥/64 — dims when wide/super-wide active -->
             <div id="gw-ex6-std-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
-              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/64 &#x2014; any VLAN</div>
+              <div style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Standard &#x2265;/64</div>
+              <div id="gw-ex6-std-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex6-std-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex6-std-mphy2" class="ip-ex-val"></div>
@@ -771,6 +775,7 @@
             <!-- Wide /48–/63 — dims when standard or super-wide active -->
             <div id="gw-ex6-wide-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
               <div id="gw-ex6-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Wide /48–/63:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b>, oct3=<span class="f-dyn">20</span></div>
+              <div id="gw-ex6-wide-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex6-wide-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex6-wide-mphy2" class="ip-ex-val"></div>
@@ -784,6 +789,7 @@
             <!-- Super-wide /32–/47 — dims when standard or wide active -->
             <div id="gw-ex6-sw-sec" style="grid-column:1/4;display:grid;grid-template-columns:110px 1fr 1fr;gap:3px 10px;align-items:center">
               <div id="gw-ex6-sw-calc" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0">Super-wide /32–/47:&nbsp; 1&middot;<span class="f-dyn">15</span>=<b style="color:#64748b;font-weight:600;font-style:normal">115</b> (oct3=<span class="f-dyn">20</span> dropped)</div>
+              <div id="gw-ex6-sw-pref" style="grid-column:1/4;font-family:'JetBrains Mono',monospace;font-size:10px;font-style:italic;color:#94a3b8;padding:1px 0"></div>
               <div class="ip-ex-key">GW MLAG phy</div>
               <div id="gw-ex6-sw-mphy1" class="ip-ex-val"></div>
               <div id="gw-ex6-sw-mphy2" class="ip-ex-val"></div>
@@ -842,7 +848,8 @@
               <span class="legend-label" style="font-size:10px">GW v6 /64–/128:</span>
               <span class="legend-octet f-var">first</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct2</span><span class="legend-sep">:</span><span class="legend-octet f-dyn">oct3</span><span class="legend-sep">::</span><span class="legend-octet f-var">last</span>
             </div>
-            <div style="margin-top:5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;font-style:italic">⚠ 10.0.x.x/16 and 10:0::/16 are reserved for IXIA — verify no GW address falls in this range across all tiers</div>
+            <div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;font-style:italic">Preferred VLAN: standard any &middot; wide &#x2265;100 (oct2&#x2265;1) &middot; super-wide 1&ndash;99 (oct3=VLAN itself)</div>
+            <div style="margin-top:3px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444;font-style:italic">⚠ 10.0.x.x/16 is reserved for IXIA — verify no GW address falls in this range across all tiers</div>
           </div>
         </div>
       </div>
