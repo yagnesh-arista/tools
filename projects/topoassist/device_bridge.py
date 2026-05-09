@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.40 | 2026-05-09 12:04:24
+# topoassist v260509.42 | 2026-05-09 12:33:29
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.2"
+VERSION           = "260509.4"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1338,29 +1338,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
+                # Always run orphan cleanup in its own separate configure session(s)
+                # before the main push — even small range-collapsed sets (e.g. 4 cmds)
+                # can represent thousands of EOS object deletions and block the session
+                # for longer than PUSH_TIMEOUT when mixed with the main config.
                 _orphan_committed = False
-                if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                    # Too many orphans to prepend — push in block-aware batches
-                    # first, then the main push carries only the actual config.
-                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                    _orphan_committed = True  # set True now; cleared on first failure
-                    for _bn, _batch in enumerate(_ob_batches, 1):
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                        try:
-                            self._push_config(ip, '\n'.join(_batch),
-                                              dry_run=False, all_ifaces=False,
-                                              all_device_names=None)
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                        except Exception as _be:
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
-                            _orphan_committed = False
-                            break
-                    # lines stays as the actual config only (no prepend)
-                else:
-                    _vlog(f"[orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
-                    lines = orphan_cmds + lines
-                    _orphan_committed = True  # committed with the main push below
+                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                _orphan_committed = True  # set True now; cleared on first failure
+                for _bn, _batch in enumerate(_ob_batches, 1):
+                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                    try:
+                        self._push_config(ip, '\n'.join(_batch),
+                                          dry_run=False, all_ifaces=False,
+                                          all_device_names=None)
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                    except Exception as _be:
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
+                        _orphan_committed = False
+                        break
+                # lines stays as the actual config only (never prepended)
                 # Only report orphans_cleaned when all batches actually committed
                 if _orphan_committed:
                     _asn_extra["orphans_cleaned"] = {
@@ -1403,6 +1400,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
 
+        _vlog(f"[push] {ip}: sending {len(lines)} line(s) to session {session} ({final_cmd})", flush=True)
         if _cfg['transport'] == "eapi":
             _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
             _pre_idempotency_warns = []
