@@ -14,7 +14,7 @@ SB="$HOME/claude/projects/topoassist/Sidebar-js.html"
 [ "$f" = "$DB" ] || exit 0
 
 TODAY=$(date +%y%m%d)
-CURRENT=$(grep -oP '(?<=VERSION\s{0,20}=\s{0,5}")([^"]+)' "$DB" | head -1)
+CURRENT=$(sed -n 's/^VERSION[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$DB" | head -1)
 
 if [[ "$CURRENT" == ${TODAY}.* ]]; then
     N=$(echo "$CURRENT" | cut -d. -f2)
