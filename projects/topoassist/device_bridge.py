@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.55 | 2026-05-09 16:39:46
+# topoassist v260509.56 | 2026-05-09 16:49:01
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.25"
+VERSION           = "260509.28"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -769,7 +769,13 @@ class BridgeHandler(BaseHTTPRequestHandler):
         open_session        = bool(body.get("open_session", False))
         all_ifaces          = bool(body.get("all_ifaces", False))
         all_device_names    = body.get("allDeviceNames")  # for BGP __TA neighbor cleanup
-        orphans_precomputed = body.get("orphans_precomputed") or None  # skip re-detection when JS provides it
+        # None = not provided (run detection); {} or {data} = provided (skip re-detection).
+        # Do NOT use `or None` here — empty dict {} is a valid "detection ran, found nothing" signal.
+        orphans_precomputed = body.get("orphans_precomputed")
+        # Caller may pass push_timeout (int seconds) to override PUSH_TIMEOUT for this request.
+        # Cleanup UI passes CLEANUP_PUSH_TIMEOUT so range-collapsed cmds (e.g. no interface Vlan1-3999)
+        # have enough headroom. Regular config pushes omit this → _push_config uses PUSH_TIMEOUT.
+        _req_push_timeout   = body.get("push_timeout") or None
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
         # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
@@ -888,6 +894,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                                     open_only=open_session,
                                                     all_ifaces=all_ifaces,
                                                     all_device_names=all_device_names,
+                                                    push_timeout=_req_push_timeout,
                                                     orphans_precomputed=orphans_precomputed)
                             with lock: results[dev] = res
                             break
