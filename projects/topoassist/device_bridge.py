@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.28 | 2026-05-09 10:34:16
+# topoassist v260509.31 | 2026-05-09 10:36:05
 """
 TopoAssist Device Bridge
 ========================
@@ -571,7 +571,8 @@ def _orphans_to_cmds(orphans):
 
     SVI orphans (VlanN)      → no interface VlanX-Y  (range — collapses thousands of SVIs)
     Sub-interface orphans    → no interface X          (individual — no EOS range for sub-int)
-    Physical / PO orphans    → default interface X     (individual)
+    PO orphans               → no interface X          (individual — 'default' only resets, PO persists)
+    Physical orphans         → default interface X     (individual)
     BGP orphans              → router bgp ASN / no neighbor X / !
     VLAN orphans             → no vlan X-Y             (range)
     VRF orphans              → no vrf instance X
