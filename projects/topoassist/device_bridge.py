@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.33 | 2026-05-09 11:20:57
+# topoassist v260509.38 | 2026-05-09 11:51:58
 """
 TopoAssist Device Bridge
 ========================
@@ -133,6 +133,9 @@ def _arg(flag):
         return None
 
 VERBOSE = "-v" in sys.argv
+
+def _vlog(msg, flush=True):
+    print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
 VERSION           = "260509.1"
 PORT              = 8765
@@ -1009,7 +1012,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             "Content-Type":  "application/json",
             "Authorization": f"Basic {creds}",
         })
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
+        _tout = PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT
+        with urllib.request.urlopen(req, timeout=_tout, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
         if "error" in resp:
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
