@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.51 | 2026-05-09 14:44:01 -->
+<!-- TopoAssist v260509.52 | 2026-05-09 15:29:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.51";  // keep in sync with Code.gs
+const APP_VERSION = "260509.52";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10666,7 +10666,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.9"
+VERSION    = "260509.12"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11235,7 +11235,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/pushconfig/finalize",
-                              "/reconcile", "/settings"):
+                              "/pushconfig/detect_orphans", "/reconcile", "/settings"):
             self._json(404, {"error": "not found"}); return
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -11283,49 +11283,39 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
+        elif self.path == "/pushconfig/detect_orphans":
+            _do_ip   = (body.get("ip") or "").strip()
+            _do_cfg  = body.get("config", "")
+            _do_devs = body.get("allDeviceNames")
+            if not _do_ip or not _do_cfg:
+                self._json(400, {"ok": False, "error": "Missing ip or config"}); return
+            try:
+                _do_orphans = self._detect_orphans(_do_ip, config_text=_do_cfg,
+                                                   all_device_names=_do_devs)
+                if (_do_orphans and _do_orphans.get('ok')
+                        and _orphans_to_cmds(_do_orphans)):
+                    self._json(200, {"ok": True, "orphans_pending": {
+                        "interfaces": _do_orphans.get("interfaces", []),
+                        "bgp":        _do_orphans.get("bgp",        []),
+                        "vlans":      _do_orphans.get("vlans",      []),
+                        "vrfs":       _do_orphans.get("vrfs",       []),
+                        "ospf":       _do_orphans.get("ospf",       []),
+                    }})
+                else:
+                    self._json(200, {"ok": True, "orphans_pending": None})
+            except Exception as _doe:
+                _vlog(f"[orphan-pre-detect] {_do_ip}: error -- {_doe}", flush=True)
+                self._json(200, {"ok": True, "orphans_pending": None})
         elif self.path == "/pushconfig/finalize":
-            action     = body.get("action", "abort")
-            config_map = body.get("configMap", {})
-            results    = {}
+            action  = body.get("action", "abort")
+            results = {}
             for dev, entry in ip_map.items():
                 ip           = (entry.get("ip") or "").strip()
                 session_name = (entry.get("session_name") or "").strip()
                 if not ip or not session_name:
                     results[dev] = {"ok": False, "error": "Missing ip or session_name"}; continue
                 try:
-                    orphans_cleaned = None
-                    if action == "commit" and config_map.get(dev) and all_device_names:
-                        try:
-                            orphans = self._detect_orphans(ip, config_text=config_map[dev],
-                                                           all_device_names=all_device_names)
-                            if orphans and orphans.get('ok'):
-                                orphan_cmds = _orphans_to_cmds(orphans)
-                                if orphan_cmds:
-                                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                                    _vlog(f"[orphan-finalize] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es)", flush=True)
-                                    _orphan_ok = True
-                                    for _bn, _batch in enumerate(_ob_batches, 1):
-                                        try:
-                                            self._push_config(ip, "\\n".join(_batch),
-                                                              dry_run=False, all_ifaces=False,
-                                                              all_device_names=None)
-                                        except Exception as _be:
-                                            _vlog(f"[orphan-finalize] {ip}: batch {_bn} failed -- {_be}", flush=True)
-                                            _orphan_ok = False; break
-                                    if _orphan_ok:
-                                        orphans_cleaned = {
-                                            "interfaces": orphans.get("interfaces", []),
-                                            "bgp":        orphans.get("bgp", []),
-                                            "vlans":      orphans.get("vlans", []),
-                                            "vrfs":       orphans.get("vrfs", []),
-                                            "ospf":       orphans.get("ospf", []),
-                                        }
-                        except Exception as _oe:
-                            _vlog(f"[orphan-finalize] {ip}: detection failed -- {_oe}", flush=True)
-                    result = self._finalize_session(ip, session_name, action)
-                    if orphans_cleaned and result.get("ok"):
-                        result["orphans_cleaned"] = orphans_cleaned
-                    results[dev] = result
+                    results[dev] = self._finalize_session(ip, session_name, action)
                 except subprocess.TimeoutExpired:
                     results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                 except Exception as e:
@@ -11582,41 +11572,33 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
-                if open_only:
-                    # Open-session push: defer cleanup to Phase 2 (user consents via Commit).
-                    _asn_extra["orphans_pending"] = {
+                # Always run cleanup before the main push session — for open_only (single-device
+                # two-phase push) cleanup runs in Phase 1 so orphan SVIs are gone before the new
+                # config is staged (prevents overlap errors with super-wide GW addresses).
+                # User consent is obtained via a pre-push dialog in the client before Phase 1.
+                _orphan_committed = False
+                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                _orphan_committed = True
+                for _bn, _batch in enumerate(_ob_batches, 1):
+                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                    try:
+                        self._push_config(ip, "\\n".join(_batch),
+                                          dry_run=False, all_ifaces=False,
+                                          all_device_names=None)
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                    except Exception as _be:
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                        _orphan_committed = False
+                        break
+                if _orphan_committed:
+                    _asn_extra["orphans_cleaned"] = {
                         "interfaces": orphans.get("interfaces", []),
                         "bgp":        orphans.get("bgp", []),
                         "vlans":      orphans.get("vlans", []),
                         "vrfs":       orphans.get("vrfs", []),
                         "ospf":       orphans.get("ospf", []),
                     }
-                else:
-                    # Direct-commit push (bulk push): run cleanup immediately before main session.
-                    _orphan_committed = False
-                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                    _orphan_committed = True
-                    for _bn, _batch in enumerate(_ob_batches, 1):
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                        try:
-                            self._push_config(ip, "\\n".join(_batch),
-                                              dry_run=False, all_ifaces=False,
-                                              all_device_names=None)
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                        except Exception as _be:
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
-                            _orphan_committed = False
-                            break
-                    # lines stays as the actual config only (never prepended)
-                    if _orphan_committed:
-                        _asn_extra["orphans_cleaned"] = {
-                            "interfaces": orphans.get("interfaces", []),
-                            "bgp":        orphans.get("bgp", []),
-                            "vlans":      orphans.get("vlans", []),
-                            "vrfs":       orphans.get("vrfs", []),
-                            "ospf":       orphans.get("ospf", []),
-                        }
 
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
@@ -13904,11 +13886,24 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     config = ifBlock;
   }
 
-  // Phase 1: open configure session, push config, get diff, leave session PENDING on EOS.
-  // Bridge returns session_name so Phase 2 can commit/abort without re-pushing config.
+  // Pre-push orphan consent: detect stale __TA config on device before Phase 1.
+  // Skipped for port-filter pushes (single-interface; no whole-device orphan risk).
+  // Runs while the push confirm modal is in loading state — consent overlay appears on top.
   const _allDevNames = currentData && currentData.nodes
     ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id)
     : [];
+  if (!portFilter) {
+    const _proceed = await _detectOrphansAndConsent(ip, config, _allDevNames);
+    if (!_proceed) {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+      closePushConfirmModal();
+      return;
+    }
+  }
+
+  // Phase 1: open configure session, push config, get diff, leave session PENDING on EOS.
+  // Orphan cleanup already ran (if any) inside _push_config before the session is opened.
+  // Bridge returns session_name so Phase 2 can commit/abort without re-pushing config.
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig', {
       method:  'POST',
@@ -13973,7 +13968,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     // Store pending push details + session_name, show confirm modal (button stays disabled)
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name, allDeviceNames: _allDevNames };
     _showPushConfirmModal(label, res.diff);
-    if (res.orphans_pending) _injectOrphanPendingBanner(res.orphans_pending);
+    if (res.orphans_cleaned) _injectOrphanCleanedBanner(res.orphans_cleaned);
     if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
     if (_p1EosWarns) _injectEosWarningBanner(_p1EosWarns);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
@@ -14136,8 +14131,7 @@ async function commitPushConfig() {
       try {
         const _url  = _useFinalize ? BRIDGE_URL + '/pushconfig/finalize' : BRIDGE_URL + '/pushconfig';
         const _body = _useFinalize
-          ? { ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'commit',
-              configMap: { [deviceName]: config }, allDeviceNames: allDeviceNames || [] }
+          ? { ipMap: { [deviceName]: { ip, session_name: sessionName } }, action: 'commit' }
           : { ipMap: { [deviceName]: { ip, config } } };
         const resp = await fetch(_url, {
           method:  'POST',
@@ -14188,7 +14182,6 @@ async function commitPushConfig() {
       const _p2Label = _lateResponse ? `committed — eAPI delayed${retryNote}` : `committed${retryNote}`;
       _ptSet('pt2', _p2Color, _p2Label);
       _ptSet('pt3', '#94a3b8', 'verifying…');
-      if (res.orphans_cleaned) _injectOrphanCleanedBanner(res.orphans_cleaned);
       if (commitBtn) commitBtn.style.display = 'none';
       _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — Phase 3: verifying…`);
       try {
@@ -16855,26 +16848,97 @@ function _injectPushAsnChangeWarning(asnChanged) {
 
 // Injects a blue info banner showing orphan count detected in Phase 1 (not yet cleaned).
 // Shown in the push confirm modal so the user knows cleanup will happen on Commit.
-function _injectOrphanPendingBanner(orphans) {
-  const bodyEl = document.getElementById('pushConfirmBody');
-  if (!orphans || !bodyEl) return;
-  const total = (orphans.interfaces || []).length + (orphans.bgp || []).length +
-                (orphans.vlans || []).length + (orphans.vrfs || []).length +
-                (orphans.ospf || []).length;
-  if (!total) return;
-  const banner =
-    '<div id="pushOrphanPendingBanner" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
-    'background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;' +
-    'padding:8px 10px;margin-top:8px;color:#1e40af;line-height:1.5;">' +
-    '<span style="user-select:none;-webkit-user-select:none;">' +
-    '<b>' + total + ' orphan' + (total !== 1 ? 's' : '') + ' detected</b> — ' +
-    'stale __TA-tagged config not in this topology.' +
-    '</span>' +
-    '<div style="font-size:10px;color:#1d4ed8;margin-top:3px;user-select:none;-webkit-user-select:none;">' +
-    'Clicking Commit will clean these up before applying the config above.' +
-    '</div>' +
-    '</div>';
-  bodyEl.insertAdjacentHTML('beforeend', banner);
+// Shows a blocking consent dialog before Phase 1 when orphan __TA config is detected on
+// the device. Cleanup must run before Phase 1 staging to avoid EOS subnet-overlap errors
+// when new GW addresses are wider than existing orphan SVI addresses.
+// Returns a Promise<boolean>: true = proceed with push, false = user cancelled.
+function _showOrphanConsentModal(orphans) {
+  return new Promise(function(resolve) {
+    const iCount  = (orphans.interfaces || []).length;
+    const vCount  = (orphans.vlans      || []).length;
+    const bCount  = (orphans.bgp        || []).length;
+    const rfCount = (orphans.vrfs       || []).length;
+    const oCount  = (orphans.ospf       || []).length;
+    const parts = [];
+    if (iCount)  parts.push(iCount  + ' interface'        + (iCount  !== 1 ? 's' : ''));
+    if (vCount)  parts.push(vCount  + ' VLAN'             + (vCount  !== 1 ? 's' : ''));
+    if (bCount)  parts.push(bCount  + ' BGP neighbor'     + (bCount  !== 1 ? 's' : ''));
+    if (rfCount) parts.push(rfCount + ' VRF'              + (rfCount !== 1 ? 's' : ''));
+    if (oCount)  parts.push(oCount  + ' OSPF passive-iface' + (oCount !== 1 ? 's' : ''));
+
+    const stale = document.getElementById('orphanConsentOverlay');
+    if (stale) stale.remove();
+
+    const ov = document.createElement('div');
+    ov.id = 'orphanConsentOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10006;display:flex;align-items:center;' +
+                       'justify-content:center;background:rgba(0,0,0,0.45);';
+    ov.innerHTML =
+      `<div style="background:#fff;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.22);` +
+      `width:420px;max-width:90vw;font-family:'JetBrains Mono',monospace;">` +
+      `<div style="display:flex;align-items:center;justify-content:space-between;` +
+      `padding:12px 14px 10px;border-bottom:1px solid #e2e8f0;">` +
+      `<span style="font-size:13px;font-weight:600;color:#0f172a;` +
+      `user-select:none;-webkit-user-select:none;">Orphan Cleanup Required</span>` +
+      `<button id="orphanConsentClose" title="Cancel" style="display:flex;align-items:center;` +
+      `justify-content:center;width:28px;height:28px;padding:0;border:none;background:transparent;` +
+      `border-radius:4px;cursor:pointer;color:#64748b;font-family:'JetBrains Mono',monospace;` +
+      `user-select:none;-webkit-user-select:none;">` +
+      `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">` +
+      `<path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>` +
+      `</svg></button></div>` +
+      `<div style="padding:14px 16px;font-size:12px;color:#334155;line-height:1.6;">` +
+      `<div style="margin-bottom:10px;">Stale <code style="font-family:'JetBrains Mono',monospace;` +
+      `font-size:11px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:3px;` +
+      `padding:1px 4px;user-select:text;-webkit-user-select:text;">__TA</code>-tagged config ` +
+      `was found on the device that is not in this topology:</div>` +
+      `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:4px;` +
+      `padding:8px 10px;font-size:11px;color:#713f12;margin-bottom:10px;` +
+      `user-select:text;-webkit-user-select:text;">` + escapeHtml(parts.join(' · ')) + `</div>` +
+      `<div style="font-size:11px;color:#64748b;user-select:none;-webkit-user-select:none;">` +
+      `This stale config must be removed <b>before</b> the new config is staged — ` +
+      `EOS rejects pushes when orphan SVI addresses overlap with new GW prefixes.</div></div>` +
+      `<div style="display:flex;justify-content:flex-end;gap:8px;` +
+      `padding:10px 14px 12px;border-top:1px solid #e2e8f0;">` +
+      `<button id="orphanConsentCancel" class="btn-mono" ` +
+      `style="font-family:'JetBrains Mono',monospace;">Cancel</button>` +
+      `<button id="orphanConsentProceed" class="btn-success-mono" ` +
+      `style="font-family:'JetBrains Mono',monospace;">Clean up &amp; Push</button>` +
+      `</div></div>`;
+    document.body.appendChild(ov);
+
+    const _close = function(result) {
+      ov.remove();
+      const idx = modalOrder.indexOf('orphanConsentOverlay');
+      if (idx > -1) modalOrder.splice(idx, 1);
+      delete closeFuncs['orphanConsentOverlay'];
+      resolve(result);
+    };
+    modalOrder.push('orphanConsentOverlay');
+    closeFuncs['orphanConsentOverlay'] = function() { _close(false); };
+    document.getElementById('orphanConsentClose').onclick   = function() { _close(false); };
+    document.getElementById('orphanConsentCancel').onclick  = function() { _close(false); };
+    document.getElementById('orphanConsentProceed').onclick = function() { _close(true); };
+  });
+}
+
+// Calls /pushconfig/detect_orphans; if orphans found, shows consent dialog.
+// Returns true = proceed with push (no orphans, or user consented).
+// Returns false = user cancelled. Detection failures are non-blocking (returns true).
+async function _detectOrphansAndConsent(ip, config, allDevNames) {
+  try {
+    const resp = await fetch(BRIDGE_URL + '/pushconfig/detect_orphans', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ ip, config, allDeviceNames: allDevNames }),
+    });
+    if (!resp.ok) return true;
+    const data = await resp.json();
+    if (!data.ok || !data.orphans_pending) return true;
+    return await _showOrphanConsentModal(data.orphans_pending);
+  } catch (_) {
+    return true; // network error — don't block push
+  }
 }
 
 // Injects a teal info banner listing auto-removed orphans after Phase 2 commit.
