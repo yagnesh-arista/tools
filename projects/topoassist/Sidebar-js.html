@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.40 | 2026-05-09 12:03:02 -->
+<!-- TopoAssist v260509.43 | 2026-05-09 12:34:23 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.40";  // keep in sync with Code.gs
+const APP_VERSION = "260509.43";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11549,26 +11549,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
+                # Always run orphan cleanup in its own separate configure session(s)
+                # before the main push — even small range-collapsed sets (e.g. 4 cmds)
+                # can represent thousands of EOS object deletions and block the session
+                # for longer than PUSH_TIMEOUT when mixed with the main config.
                 _orphan_committed = False
-                if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
-                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                    _orphan_committed = True
-                    for _bn, _batch in enumerate(_ob_batches, 1):
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                        try:
-                            self._push_config(ip, "\\n".join(_batch),
-                                              dry_run=False, all_ifaces=False,
-                                              all_device_names=None)
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                        except Exception as _be:
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
-                            _orphan_committed = False
-                            break
-                else:
-                    _vlog(f"[orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
-                    lines = orphan_cmds + lines
-                    _orphan_committed = True
+                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                _orphan_committed = True
+                for _bn, _batch in enumerate(_ob_batches, 1):
+                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                    try:
+                        self._push_config(ip, "\\n".join(_batch),
+                                          dry_run=False, all_ifaces=False,
+                                          all_device_names=None)
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                    except Exception as _be:
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                        _orphan_committed = False
+                        break
+                # lines stays as the actual config only (never prepended)
                 if _orphan_committed:
                     _asn_extra["orphans_cleaned"] = {
                         "interfaces": orphans.get("interfaces", []),
@@ -11599,6 +11599,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + lines
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
+        _vlog(f"[push] {ip}: sending {len(lines)} line(s) to session {session} ({final_cmd})", flush=True)
         if _cfg['transport'] == "eapi":
             _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
             _pre_idempotency_warns = []
