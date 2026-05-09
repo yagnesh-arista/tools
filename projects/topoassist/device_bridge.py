@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.45 | 2026-05-09 12:44:16
+# topoassist v260509.48 | 2026-05-09 13:53:03
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.5"
+VERSION           = "260509.7"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1378,6 +1378,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
+        _log_action = "dry-run" if dry_run else "open" if open_only else "commit"
         if asn_changed:
             _asn_extra["asn_changed"] = asn_changed
 
@@ -1401,7 +1402,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
 
-        _vlog(f"[push] {ip}: sending {len(lines)} line(s) to session {session} ({final_cmd})", flush=True)
+        _vlog(f"[push] {ip}: sending {len(lines)} line(s) to session {session} ({_log_action})", flush=True)
         if _cfg['transport'] == "eapi":
             _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
             _pre_idempotency_warns = []

@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-09 (feat: IXIA reserved range always visible in GW example — static red italic note added directly under "GW IPv4" and "GW IPv6" section headers in ipExampleGrid; covers all 3 tiers without scrolling to formula key. FILES: Sidebar.html)
+  Last updated: 2026-05-09 (fix: pre-push log "(commit)" label wrong for open-session push — added _log_action = "dry-run"|"open"|"commit" separate from final_cmd so log correctly shows "(open)" for single-device open-session push; day-one bug. FILES: device_bridge.py, Sidebar-js.html)
+  Previous: 2026-05-09 (feat: IXIA reserved range always visible in GW example
   Previous: 2026-05-09 (fix: pushAllConfigs no status bar message after completion — added setStatus() at end of pushAllConfigs() after Promise.allSettled(); status bar now shows "Push complete — N/N successful", "Push partial — N/N successful", or "Push failed — 0/N successful" after every bulk push; previously only the Generate panel's inline result rows updated (user may have scrolled away during long push, seeing no notification). FILES: Sidebar-js.html)
   Previous: 2026-05-09 (fix: spurious [orphan-detect] detection failed log on batch push — orphan result block gated on `all_ifaces and not dry_run`; recursive batch calls (all_ifaces=False) no longer log false detection failure since _orphan_result[0] is intentionally None. Applied to device_bridge.py + embedded template. FILES: device_bridge.py, Sidebar-js.html)
   Previous: 2026-05-09 (fix: IP config example section now copyable — removed user-select:none from .auto-fixed-label; added user-select:text to .auto-fixed-formula, .auto-fixed-eg, .ip-ex-key, .ip-ex-val. FILES: Sidebar-css.html)
