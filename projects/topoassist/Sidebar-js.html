@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.32 | 2026-05-09 10:58:37 -->
+<!-- TopoAssist v260509.33 | 2026-05-09 11:21:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.32";  // keep in sync with Code.gs
+const APP_VERSION = "260509.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10654,7 +10654,7 @@ _SSH_AUTH_THRESHOLD = 3
 
 VERBOSE = "-v" in sys.argv
 
-VERSION    = "260509.2"
+VERSION    = "260509.1"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11516,8 +11516,23 @@ class BridgeHandler(BaseHTTPRequestHandler):
         asn_changed  = _asn_result[1]
 
         orphans = _orphan_result[0]
+        if not orphans:
+            print(f"  [orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
+        elif not orphans.get('ok'):
+            print(f"  [orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
+        else:
+            _oi = len(orphans.get('interfaces', []))
+            _ob = len(orphans.get('bgp', []))
+            _ov = len(orphans.get('vlans', []))
+            _ovrf = len(orphans.get('vrfs', []))
+            _oo = len(orphans.get('ospf', []))
+            print(f"  [orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
+            if not orphan_cmds:
+                print(f"  [orphan-detect] {ip}: 0 orphan cmds generated — nothing to clean", flush=True)
+            else:
+                print(f"  [orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
                 _orphan_committed = False
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
@@ -11536,6 +11551,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             _orphan_committed = False
                             break
                 else:
+                    print(f"  [orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
                     lines = orphan_cmds + lines
                     _orphan_committed = True
                 if _orphan_committed:

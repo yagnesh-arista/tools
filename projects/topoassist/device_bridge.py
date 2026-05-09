@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.32 | 2026-05-09 10:58:28
+# topoassist v260509.33 | 2026-05-09 11:20:57
 """
 TopoAssist Device Bridge
 ========================
@@ -1316,8 +1316,23 @@ class BridgeHandler(BaseHTTPRequestHandler):
         asn_changed  = _asn_result[1]
 
         orphans = _orphan_result[0]
+        if not orphans:
+            print(f"  [orphan-detect] {ip}: detection failed or timed out — skipping cleanup", flush=True)
+        elif not orphans.get('ok'):
+            print(f"  [orphan-detect] {ip}: detection error — {orphans.get('error', '?')} — skipping cleanup", flush=True)
+        else:
+            _oi = len(orphans.get('interfaces', []))
+            _ob = len(orphans.get('bgp', []))
+            _ov = len(orphans.get('vlans', []))
+            _ovrf = len(orphans.get('vrfs', []))
+            _oo = len(orphans.get('ospf', []))
+            print(f"  [orphan-detect] {ip}: iface={_oi} bgp={_ob} vlan={_ov} vrf={_ovrf} ospf={_oo} (ta_total={orphans.get('ta_total',0)})", flush=True)
         if orphans and orphans.get('ok'):
             orphan_cmds = _orphans_to_cmds(orphans)
+            if not orphan_cmds:
+                print(f"  [orphan-detect] {ip}: 0 orphan cmds generated — nothing to clean", flush=True)
+            else:
+                print(f"  [orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
                 _orphan_committed = False
                 if len(orphan_cmds) > CLEANUP_BATCH_SIZE:
@@ -1339,6 +1354,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             break
                     # lines stays as the actual config only (no prepend)
                 else:
+                    print(f"  [orphan-prepend] {ip}: {len(orphan_cmds)} cmd(s) prepended to main push", flush=True)
                     lines = orphan_cmds + lines
                     _orphan_committed = True  # committed with the main push below
                 # Only report orphans_cleaned when all batches actually committed
