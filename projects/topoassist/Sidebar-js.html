@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.64 | 2026-05-09 17:54:10 -->
+<!-- TopoAssist v260509.65 | 2026-05-09 18:26:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.64";  // keep in sync with Code.gs
+const APP_VERSION = "260509.65";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16947,10 +16947,11 @@ function _emptyOrphans() {
 }
 
 // Overrides commit button → "Clean up & Push" and intercepts cancel/× to resolve(false).
+// Runs orphan cleanup via /pushconfig (JS-driven, same path as Cleanup UI) before resolving true.
 // Shows per-section breakdown + 300s auto-cancel countdown.
-// Returns Promise<boolean>: true = proceed, false = cancelled.
+// Returns Promise<boolean>: true = proceed (cleanup done), false = cancelled.
 // pushDeviceConfig handles button restore and modal close on false result.
-function _showOrphanConsentInModal(orphans, detectionErrors) {
+function _showOrphanConsentInModal(orphans, detectionErrors, ip) {
   return new Promise(function(resolve) {
     const bodyEl    = document.getElementById('pushConfirmBody');
     const titleEl   = document.getElementById('pushConfirmTitle');
@@ -17061,20 +17062,60 @@ function _showOrphanConsentInModal(orphans, detectionErrors) {
       }
     }, 1000);
 
+    const _spinnerHtml = (msg) =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;` +
+      `font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted,#94a3b8);">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+      `stroke-width="2" stroke-linecap="round" style="animation:spin 1s linear infinite;flex-shrink:0;">` +
+      `<path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>` +
+      `<span style="font-style:italic;">${escapeHtml(msg)}</span></div>`;
+
     if (commitBtn) {
       commitBtn.style.display = 'inline-block';
       commitBtn.disabled = false;
       commitBtn.textContent = 'Clean up & Push';
-      commitBtn.onclick = function() {
-        if (titleEl) titleEl.textContent = titleEl.textContent.replace(': Cleanup Required', ': Push');
-        if (bodyEl) bodyEl.innerHTML =
-          `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;` +
-          `font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted,#94a3b8);">` +
-          `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
-          `stroke-width="2" stroke-linecap="round" style="animation:spin 1s linear infinite;flex-shrink:0;">` +
-          `<path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>` +
-          `<span style="font-style:italic;">Cleaning up orphans &amp; computing diff…</span></div>`;
-        _onConsent(true);
+      commitBtn.onclick = async function() {
+        // Stop countdown — user has acted
+        if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
+        // Lock UI during cleanup
+        if (commitBtn) { commitBtn.disabled = true; commitBtn.textContent = 'Cleaning…'; }
+        if (cancelFtr) cancelFtr.disabled = true;
+        if (closeBtn)  closeBtn.disabled  = true;
+        if (titleEl) titleEl.textContent = titleEl.textContent.replace(': Cleanup Required', ': Cleaning Orphans');
+
+        // Skip fetch if nothing to clean (errors-only case)
+        if (!cmds.length) {
+          if (titleEl) titleEl.textContent = titleEl.textContent.replace(': Cleaning Orphans', ': Push');
+          if (bodyEl) bodyEl.innerHTML = _spinnerHtml('Computing diff…');
+          _onConsent(true);
+          return;
+        }
+
+        if (bodyEl) bodyEl.innerHTML = _spinnerHtml(`Cleaning ${cmds.length} orphan command(s)…`);
+        try {
+          const resp = await fetch(BRIDGE_URL + '/pushconfig', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              ip, config: cmds.join('\n') + '\n',
+              dry_run: false, all_ifaces: false, allDeviceNames: [],
+              push_timeout: _bridgeCleanupTimeout,
+            }),
+          });
+          const data = await resp.json();
+          if (!resp.ok || !data.ok) throw new Error(data.error || 'Cleanup failed');
+          if (titleEl) titleEl.textContent = titleEl.textContent.replace(': Cleaning Orphans', ': Push');
+          if (bodyEl) bodyEl.innerHTML = _spinnerHtml('Cleanup complete — computing diff…');
+          _onConsent(true);
+        } catch (err) {
+          if (titleEl) titleEl.textContent = titleEl.textContent.replace(': Cleaning Orphans', ': Cleanup Required');
+          if (bodyEl) bodyEl.innerHTML =
+            `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#dc2626;padding:8px 0;">` +
+            `Cleanup failed: ${escapeHtml(String(err.message).slice(0, 200))}</div>`;
+          if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Retry'; }
+          if (cancelFtr) cancelFtr.disabled = false;
+          if (closeBtn)  closeBtn.disabled  = false;
+        }
       };
     }
     if (closeBtn)  closeBtn.onclick  = function() { _onConsent(false); };
@@ -17082,11 +17123,11 @@ function _showOrphanConsentInModal(orphans, detectionErrors) {
   });
 }
 
-// Calls /pushconfig/detect_orphans; if orphans found, shows consent inside push confirm modal.
+// Calls /pushconfig/detect_orphans; if orphans found, shows consent modal and runs cleanup via /pushconfig.
 // Returns {proceed: bool, orphans: object|null}.
-// proceed=true + orphans=object → user consented; pass orphans_precomputed to Phase 1 to skip re-detection.
-// proceed=true + orphans=null  → no orphans found (or detection failed — non-blocking).
-// proceed=false               → user cancelled.
+// proceed=true  → cleanup already ran in modal; orphans=_emptyOrphans() so Phase 1 skips _batch_orphan_cmds.
+// proceed=true  → no orphans found; orphans=_emptyOrphans() (detection already ran, nothing to clean).
+// proceed=false → user cancelled or cleanup failed; orphans=null.
 async function _detectOrphansAndConsent(ip, config, allDevNames) {
   try {
     const resp = await fetch(BRIDGE_URL + '/pushconfig/detect_orphans', {
@@ -17106,8 +17147,9 @@ async function _detectOrphansAndConsent(ip, config, allDevNames) {
                              (pending.bgp||[]).length + (pending.vrfs||[]).length +
                              (pending.ospf||[]).length) : 0;
     if (!total && !Object.keys(detectionErrors).length) return { proceed: true, orphans: _noOrphans };
-    const proceed = await _showOrphanConsentInModal(pending || _emptyOrphans(), detectionErrors);
-    return { proceed, orphans: proceed ? (pending || _noOrphans) : null };
+    const proceed = await _showOrphanConsentInModal(pending || _emptyOrphans(), detectionErrors, ip);
+    // Cleanup ran inside the modal — pass empty orphans so Phase 1 skips _batch_orphan_cmds.
+    return { proceed, orphans: proceed ? _emptyOrphans() : null };
   } catch (_) {
     return { proceed: true, orphans: null }; // network error — don't block push
   }
