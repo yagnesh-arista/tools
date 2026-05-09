@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.45 | 2026-05-09 12:44:32 -->
+<!-- TopoAssist v260509.46 | 2026-05-09 13:39:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.45";  // keep in sync with Code.gs
+const APP_VERSION = "260509.46";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14857,6 +14857,18 @@ async function pushAllConfigs() {
   btn.textContent = 'Push Targets';
   _setGenToolbarActive(false, _genSignalState);
   _resetStopPushBtn();
+
+  // Status bar summary — push results are also in the Generate panel but the user
+  // may have scrolled away during a long push; this notification persists in the bar.
+  if (_pushAllStopped) {
+    setStatus(`Push stopped — ${okCount} of ${completed} pushed successfully.`, okCount > 0 ? 'status-warn' : 'status-info');
+  } else if (okCount === total) {
+    setStatus(`Push complete — ${okCount}/${total} successful.`, 'status-ok');
+  } else if (okCount > 0) {
+    setStatus(`Push partial — ${okCount}/${total} successful. Check push results for details.`, 'status-warn');
+  } else {
+    setStatus(`Push failed — 0/${total} successful. Check push results for details.`, 'status-error');
+  }
 }
 
 // Compare LLDP data against globalLinks. Only checks Et↔Et links on Arista devices.
