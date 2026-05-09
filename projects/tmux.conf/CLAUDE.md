@@ -10,6 +10,8 @@
 
 **`automatic-rename off` is required for manual window names to persist.** `allow-rename off` only blocks programs from renaming via escape sequences — it does NOT prevent tmux's own auto-rename. With `automatic-rename on`, any pane command change reverts the window name. Both settings must be `off`.
 
+**`escape-time` must be `20` (not 0).** With `escape-time 0`, the Delete key (`\e[3~`) is split: `\e` is treated as standalone ESC (cancels command-prompt), then `[3~` leaks into the pane. 20ms lets tmux assemble the full sequence. The old Claude CLI space-rendering bug was caused by `xterm-256color` (now fixed via `tmux-256color`) — not by escape-time — so 20ms is safe.
+
 **`default-terminal` is `tmux-256color`** (not `xterm-256color`). `xterm-256color` caused space characters typed in Claude CLI to not render until the next keystroke. `tmux-256color` is the correct native TERM for tmux. True color still works via `terminal-overrides ',*:Tc'`.
 
 **`copy-mode -H` and `copy-mode -M` are NOT supported in tmux 3.2a.** They print usage errors when called inside an `if-F` branch chain. DoubleClick/TripleClick use inline `copy-mode \; send-keys -X select-word/line` — no external script.

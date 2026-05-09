@@ -1,7 +1,7 @@
-<!-- TopoAssist v260509.28 | 2026-05-09 10:33:50 -->
+<!-- TopoAssist v260509.29 | 2026-05-09 10:35:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260509.28";  // keep in sync with Code.gs
+const APP_VERSION = "260509.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5091,19 +5091,15 @@ function _updateGwExample() {
   set('gw-ex6-calc',    `Wide /48–/63:  1·${oct2s}=<b style="${bStyle}">${'1'+oct2s}</b>, oct3=${oct3} — VLANs ≥100 preferred`);
   set('gw-ex6-sw-calc', `Super-wide /32–/47:  1·${oct3s}=<b style="${bStyle}">${'1'+oct3s}</b> (oct2=${oct2} dropped) — VLANs 1–99 preferred`);
 
-  // Collision caution: VLANs sharing same oct3 share super-wide IP; oct3=0 overlaps IXIA 10.0.x.x/16
+  // Super-wide caution: collision (dynamic) + IXIA reserved range (always) + preferred (always)
   const c4El = document.getElementById('gw-ex4-caution');
   const c6El = document.getElementById('gw-ex6-caution');
-  const swPref = `<br><span style="color:#94a3b8;font-style:italic">💡 VLANs 1–99 preferred — oct3 = VLAN itself (e.g. VLAN 34 → 134.0.0.x)</span>`;
-  if (oct3 === 0) {
-    const ixia4 = `⚠ oct3=0 (VLAN is a multiple of 100) → prefix 10.0.0.x — overlaps IXIA reserved range 10.0.x.x/16`;
-    const ixia6 = `⚠ oct3=0 (VLAN is a multiple of 100) → prefix 10:0:0::x — overlaps IXIA reserved range 10:0::/16`;
-    if (c4El) c4El.innerHTML = ixia4 + swPref;
-    if (c6El) c6El.innerHTML = ixia6 + swPref;
-  } else {
-    if (c4El) c4El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134.0.0.${l4n}${m4sw} — VLANs sharing same last-2-digits share one GW IP` + swPref;
-    if (c6El) c6El.innerHTML = `⚠ e.g. VLAN 34 &amp; 134 → both oct3=34 → 134:0:0::${l6n}${m6sw} — VLANs sharing same last-2-digits share one GW IP` + swPref;
-  }
+  const exVlan = oct2 * 100 + oct3;   // 1520 when oct2=15, oct3=20
+  const swIxia4 = `<br><span style="color:#ef4444;font-style:italic">⚠ VLANs divisible by 100 (100, 200…) → oct3=0 → prefix 10.0.0.x — overlaps IXIA reserved 10.0.x.x/16</span>`;
+  const swIxia6 = `<br><span style="color:#ef4444;font-style:italic">⚠ VLANs divisible by 100 (100, 200…) → oct3=0 → prefix 10:0:0::x — overlaps IXIA reserved 10:0::/16</span>`;
+  const swPref  = `<br><span style="color:#94a3b8;font-style:italic">💡 VLANs 1–99 preferred — oct3 = VLAN itself (VLAN ${oct3} → 1${oct3s}.0.0.x)</span>`;
+  if (c4El) c4El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}.0.0.${l4n}${m4sw} — VLANs sharing last-2-digits share one GW IP` + swIxia4 + swPref;
+  if (c6El) c6El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}:0:0::${l6n}${m6sw} — VLANs sharing last-2-digits share one GW IP` + swIxia6 + swPref;
 
   // ── Populate all three tier sections ──
   set('gw-ex4-std-mphy1',  s4mphy(3));  set('gw-ex4-wide-mphy1',  w4mphy(3));  set('gw-ex4-sw-mphy1',  sw4mphy(3));
@@ -11095,7 +11091,8 @@ def _orphans_to_cmds(orphans):
 
     SVI orphans (VlanN)   → no interface VlanX-Y  (range — collapses thousands of SVIs)
     Sub-interface orphans → no interface X          (individual — no EOS range for sub-int)
-    Physical / PO orphans → default interface X     (individual)
+    PO orphans            → no interface X          (individual — 'default' only resets, PO persists)
+    Physical orphans      → default interface X     (individual)
     BGP orphans           → router bgp ASN / no neighbor X / !
     VLAN orphans          → no vlan X-Y             (range)
     VRF orphans           → no vrf instance X
@@ -11111,6 +11108,8 @@ def _orphans_to_cmds(orphans):
         if m:
             svi_vids.append(int(m.group(1)))
         elif "." in name:
+            other_ifaces.append(("no", name))
+        elif re.match(r"^[Pp]ort-[Cc]hannel\\d+$", name) or re.match(r"^[Pp]o\\d+$", name):
             other_ifaces.append(("no", name))
         else:
             other_ifaces.append(("default", name))
