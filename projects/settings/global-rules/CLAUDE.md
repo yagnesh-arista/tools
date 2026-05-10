@@ -51,7 +51,10 @@ Never go deep on a secondary hypothesis until the primary is ruled out with a co
 ## 7d. Skills & Slash Commands — Session Restart Required
 After creating, renaming, or moving any file in `~/.claude/commands/` or any project `.claude/commands/`, always tell the user: "Restart the Claude Code session for the new command to become available." Never assume a newly created skill is usable in the current session.
 
-## 7e. UI Changes — Visual Verification
+## 7f. UI Layout — Describe Before Editing
+For any UI layout change (divider placement, badge position, icon sizing, spacing), describe the exact visual outcome before touching any file: which element, where it sits relative to its siblings, what direction/orientation (horizontal vs vertical, full-height vs partial). Wait for confirmation before editing. If spatial intent is ambiguous, ask ONE clarifying question — never guess.
+
+## 7g. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
 ## 8. New Project Structure (required for every new project)
