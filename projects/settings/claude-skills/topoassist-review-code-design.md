@@ -1023,6 +1023,168 @@ in `Sidebar-js.html`. Both must be identical (ignoring surrounding JS string quo
 
 ---
 
+## Check 38 — XSS / innerHTML Safety (OWASP A03)
+
+`innerHTML` with unescaped external data is the primary XSS vector in this app. External data
+sources include: device names (from Google Sheet), LLDP neighbor names (from EOS), config text
+(from devices), and any user-supplied field values that are reflected back into the DOM.
+
+**Safe patterns:**
+- Static HTML strings with no external data interpolated → ✓ OK
+- `textContent = value` / `innerText = value` → always safe (no HTML parsing)
+- Template literal with `_esc(value)` / `_htmlEscape(value)` / `.replace(/</g,'&lt;')` → ✓ OK
+
+**Unsafe patterns:**
+- `` el.innerHTML = `<span>${deviceName}</span>` `` → device names come from the sheet (user-controlled)
+- `` el.innerHTML = `...${neighborName}...` `` → LLDP neighbor names come from the network
+- `` el.innerHTML = `...${cfgLine}...` `` → config text can contain `<`, `>`, `"`, `&`
+
+```bash
+# Find innerHTML assignments that interpolate variables (not pure static HTML)
+grep -n "innerHTML\s*=\s*['\`]" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep '\${' | grep -v "//.*innerHTML" | head -40
+
+# Also check JS-constructed innerHTML via string concatenation
+grep -n "innerHTML\s*=" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "innerHTML\s*=\s*['\`][^'\"]*['\`]" | head -20
+```
+
+For each result, determine the data source of each interpolated `${}`:
+- **Sheet data** (device names, hostnames, roles, labels, IPs from `allDevicesData`) → must be escaped
+- **Network data** (LLDP neighbor IDs, interface names, config lines from EOS responses) → must be escaped
+- **App-internal constants** (SVG strings, CSS class names, hardcoded enums) → safe, no escaping needed
+- **User-typed input** (text fields, search boxes) → must be escaped if reflected to innerHTML
+
+**Verify `_esc()` or equivalent exists and is used:**
+```bash
+# Check for an HTML-escape helper
+grep -n "function _esc\|function _htmlEsc\|htmlEscape\|escapeHtml" \
+  ~/claude/projects/topoassist/Sidebar-js.html | head -5
+```
+
+✗ FAIL if device names, LLDP neighbor names, or config text from external sources are interpolated
+  into `innerHTML` without HTML escaping — cite file and line
+✗ FAIL if no HTML-escape helper (`_esc` / `_htmlEscape`) exists and external data appears in innerHTML
+⚠ WARN for any innerHTML assignment where the data source is ambiguous — flag for manual review
+✓ PASS for innerHTML assignments using only SVG strings, CSS class names, or hardcoded app constants
+
+---
+
+## Check 39 — console.log / debugger Residue
+
+`console.log`, `console.error`, `console.warn`, `console.debug`, and `debugger` statements
+must not appear in production code paths. They expose internal state in the browser console and
+have a measurable performance cost on hot paths (rendering loops, event handlers).
+
+**Allowed exceptions:**
+- `console.error` inside `window.onerror` and `window.addEventListener('unhandledrejection', ...)` — these are intentional error reporters
+- Comments mentioning console (e.g. `// was: console.log(...)`) — fine
+
+```bash
+# Find all console.* and debugger statements (exclude comments)
+grep -n "console\.log\|console\.error\|console\.warn\|console\.debug\|debugger" \
+  ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "^\s*//" \
+  | grep -v "window\.onerror\|unhandledrejection" | head -40
+
+# Also check Code.gs
+grep -n "console\.log\|console\.error\|debugger" \
+  ~/claude/projects/topoassist/Code.gs \
+  | grep -v "^\s*//" | head -20
+```
+
+For each result added **this session** (use `git diff HEAD~1`):
+✗ FAIL if a `console.log` or `debugger` was added this session in a production code path
+
+For pre-existing results:
+⚠ WARN for each one — note the line and suggest removal or promotion to `setStatus()`
+
+**Python-side**: `print()` in `device_bridge.py` is intentional server-side logging to stdout — do NOT flag.
+
+---
+
+## Check 40 — JSON.parse Safety
+
+`JSON.parse()` throws a `SyntaxError` on malformed input. In this app, JSON is parsed from:
+- `localStorage` (which can be corrupted by browser extensions or manual edits)
+- `devStatusMap` / EOS API responses (which can be truncated on timeout)
+- `cb.dataset.*` attributes (which can be malformed if DOM is manipulated)
+
+Every bare `JSON.parse(x)` outside a `try/catch` is an unhandled exception risk.
+
+```bash
+# Find JSON.parse calls not preceded by 'try' on the same or previous line
+grep -n "JSON\.parse(" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "^\s*//" | head -30
+```
+
+For each result, check the surrounding context (3 lines up):
+- Is there a `try {` block enclosing this call? → ✓ PASS
+- Is there a `|| {}` or `|| []` fallback AFTER `JSON.parse(...)`, but no try-catch? → ⚠ WARN (fallback doesn't catch SyntaxError — it only catches null/undefined from `localStorage.getItem`)
+- Bare `JSON.parse(x)` with no try-catch and no safe fallback → ✗ FAIL
+
+**Safe pattern:**
+```javascript
+let parsed = {};
+try { parsed = JSON.parse(raw); } catch (_) { /* malformed — use default */ }
+```
+
+**Unsafe pattern (WARN, not FAIL — common pattern in the codebase):**
+```javascript
+JSON.parse(localStorage.getItem('key') || '{}')
+// localStorage.getItem returns null → '{}' is safe fallback
+// BUT if key exists but is malformed JSON, this still throws
+```
+
+For code **added this session**:
+✗ FAIL if a new `JSON.parse()` call has no surrounding try-catch and the data source is external
+  (localStorage, server response, dataset attribute) — cite file and line
+
+For pre-existing bare `JSON.parse(localStorage.getItem(...) || '{}')` calls:
+⚠ WARN only — note the pattern is partially safe (null → fallback) but not fully safe
+  (corrupted value still throws). Flag for future hardening.
+
+---
+
+## Check 41 — Accessibility: Icon-Only Button Labels (WCAG 2.1 SC 1.1.1 / 4.1.2)
+
+Every button that has no visible text label — icon-only buttons (SVG-only, no text child) —
+must have an accessible name via `aria-label` or `title`. Without this, screen readers announce
+"button" with no context, and keyboard users cannot determine the button's purpose.
+
+**Required:** at minimum a `title="..."` attribute on every icon-only button. Preferred: `aria-label="..."` (more reliable than `title` for screen reader announcement).
+
+Icon-only buttons in TopoAssist:
+- Toolbar icon buttons (`.icon-btn`) — already have `title=` ✓
+- Modal close buttons (`.btn-modal-close`) — must have `title="Close"`
+- Modal minimize buttons (`.btn-modal-minimize`) — must have `title="Minimize"` (injected by `_injectMinimizeButtons`)
+- Copy buttons, refresh buttons, expand/collapse buttons in panels
+
+```bash
+# Check btn-modal-close has title="Close"
+grep -n 'btn-modal-close' ~/claude/projects/topoassist/Sidebar.html \
+  | grep -v 'title=' | head -10
+
+# Check _injectMinimizeButtons adds title to the minimize button
+grep -A15 "_injectMinimizeButtons" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep "title\|aria-label" | head -5
+
+# Find icon-only buttons (buttons containing SVG but no text node)
+grep -n 'class="icon-btn\|btn-icon-sm\|btn-copy\|btn-refresh' ~/claude/projects/topoassist/Sidebar.html \
+  | grep -v 'title=\|aria-label=' | head -20
+```
+
+For buttons added **this session**:
+✗ FAIL if a new icon-only button (SVG-only, no visible text) has no `title` or `aria-label` attribute
+
+For pre-existing icon-only buttons:
+⚠ WARN if missing `title` — suggest adding in the same edit pass when touching the surrounding HTML
+
+**Note:** `title` is sufficient for this app (GAS dialog, mouse-driven UI). `aria-label` is preferred
+but not required unless the button is in a screen-reader-critical workflow.
+
+---
+
 ## Output Format
 
 ```
