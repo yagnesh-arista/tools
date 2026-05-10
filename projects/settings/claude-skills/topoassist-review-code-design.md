@@ -962,6 +962,41 @@ the pre-computed `bridgePortSubType` map — never re-derived from `devStatusMap
 
 ---
 
+## Check 37 — Handler Name ↔ UI Label Consistency
+
+Every `onclick`, `onchange`, `oninput`, and `onkeydown` handler added **this session** must
+have a name that a reader can map to the UI action without opening the function body.
+
+**How to verify:**
+```bash
+# Find all event handlers added this session
+git diff HEAD~1 -- Sidebar.html Sidebar-js.html | grep -E 'onclick=|onchange=|oninput=|onkeydown=' | grep '^+' | head -40
+```
+
+For each result, compare the **UI label** (button text, modal title, section header, input
+label) with the **function name**:
+
+| UI label | ✓ Good name | ✗ Bad name |
+|---|---|---|
+| "Clean Selected" button | `runCleanSelected()` | `_doClean()`, `execSel()` |
+| "Device Bridge" modal open | `openBridgeModal()` | `_bOpen()`, `showB()` |
+| "CRC/FCS threshold" input | `onBridgeL1ThresholdChange()` | `_threshChange()` |
+| "Save & Close" button | `saveAndClose()` | `_sc()`, `doSave()` |
+
+**Rules:**
+- [ ] Function name must contain the **noun** (what thing) and the **verb** (what action): `open/close/run/save/toggle` + `BridgeModal/CleanSelected/L1Threshold`
+- [ ] Generic verbs alone (`run()`, `save()`, `open()`) are a ✗ FAIL — must have a qualifier
+- [ ] Abbreviations are only acceptable when the abbreviated form IS the UI label (e.g. `onBgpChange` for a "BGP" input)
+- [ ] Private helpers (`_buildX`, `_renderX`, `_parseX`) are exempt — they are not event handlers
+- [ ] Pre-existing functions are ⚠ WARN only; anything added this session is ✗ FAIL
+
+**Why this check exists:** When function names don't reflect UI labels, a developer reading
+an `onclick` in HTML has no idea what feature it touches without jumping to the JS. This is
+especially costly in TopoAssist where Sidebar.html and Sidebar-js.html are separate files —
+the HTML→JS mapping must be self-documenting at the call site.
+
+---
+
 ## Check 36 — device_bridge.py ↔ Embedded Template Sync
 
 `downloadBridgeScript()` in Sidebar-js.html embeds a full copy of `device_bridge.py` as a
