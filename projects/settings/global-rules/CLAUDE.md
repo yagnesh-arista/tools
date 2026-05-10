@@ -321,14 +321,25 @@ Memory belongs in Tier 2 only when it is contextual, historical, or project-spec
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
 
-## 32. Multi-File Rename / Refactor — Always Produce a Summary Table
-After any rename or refactor that touches more than one file, produce a completion summary table before committing:
+## 32. Multi-File Rename / Refactor — Search First, Summary After
+
+### Before editing: grep ALL references
+Before touching any file, grep the entire codebase for every form of the old name (camelCase, snake_case, kebab-case, string literal, HTML id/attribute, CSS selector). Present the complete hit list to the user before making any edit:
+
+```bash
+grep -rn "oldName\|old_name\|old-name" ~/claude/projects/<project>/
+```
+
+Never start editing until the full reference map is known — missed references are the primary source of post-rename follow-up fixes.
+
+### After editing: produce a completion summary table
+After all changes are applied, produce a summary table before committing:
 
 | Old Name | New Name | File | Line | Status |
 |---|---|---|---|---|
 | `old_func` | `new_func` | `Sidebar-js.html` | 412 | ✓ done |
 
-This verifies completeness and gives the user a single place to spot anything missed. Never skip this for schema-level renames (column names, function names, element IDs).
+Then run a final grep for the old name to confirm zero remaining references. Never skip either step for schema-level renames (column names, function names, element IDs, CSS selectors).
 
 ## 33. Task List for Multi-Task Sessions
 When a session has 3 or more distinct tasks, create a `TaskCreate` list at the start before beginning any work. This serves two purposes: (1) the task list survives context compaction and budget-ceiling interruptions — the next session can resume from concrete items rather than reconstructing state from a summary; (2) it forces scope clarity upfront before committing to an ordering.
