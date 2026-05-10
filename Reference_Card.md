@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (Rule 37 added: test-first bug fix)
+Last updated: 2026-05-10 (Rule 32 expanded: search-first rename; /preflight skill added)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
