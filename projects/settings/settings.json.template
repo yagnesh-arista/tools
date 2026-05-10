@@ -77,6 +77,11 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/topoassist-deploy-tracker.sh"
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$f\" | grep -qE '\\.(html|gs)$'; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"UI/GAS EDIT REMINDER ($f): Before marking done — (1) trace rendering path data→DOM→CSS, confirm change is visible; (2) all readable text must be user-selectable (no user-select:none on content); (3) new modal body needs overflow-y:auto+flex:1+min-height:0; (4) no Unicode icons, SVG only; (5) GAS changes: verify after clasp push + sidebar reload.\\\"}}\"; fi 2>/dev/null || true",
+            "statusMessage": "Checking UI/GAS edit completeness..."
           }
         ]
       },
