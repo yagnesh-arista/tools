@@ -444,3 +444,21 @@ All sub-sections in the same group must share the same `width` value — this is
 - **Nested sub-label width must be the same across all sub-rows** — if SERVICE is `width:80px`, VGW and MAC must also be `width:80px`.
 - **Wrap label text + icon button in one span** — the span is the fixed-width cell; separating them breaks the column.
 - **Full-width rows (e.g. MAC input) use `width:100%; flex-wrap:wrap`** — they wrap to a new line inside the flex container, inheriting the container padding/gap.
+
+## UI Changes — Verify Visual Result Before Reporting Done
+
+When fixing UI issues, always verify the fix is visually correct by checking the
+rendered output or describing exactly what changed and where. Do not assume a code-level
+fix is sufficient without confirming the visible result matches the user's expectation.
+
+**For UI layout changes** (dividers, spacing, positioning, element placement): confirm
+the exact placement and orientation with the user **before implementing**. Describe what
+you plan to do in one sentence and wait for confirmation. Example: "I'll add a full-height
+vertical divider after the T icon, before the cable section, matching the existing divider
+style." Do NOT implement and then correct — layout intent is not inferable from code alone.
+
+**For badge/count/status displays**: before implementing, clarify:
+- Zero values: should they be **shown** (display "0") or **hidden** (display:none)?
+- Count freshness: **live-computed** on every state change, or **cached** from last known?
+- Capping: is there a maximum display value (e.g. "99+")?
+These are the most common sources of misunderstanding for status indicators.
