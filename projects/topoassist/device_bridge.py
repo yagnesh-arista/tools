@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260509.64 | 2026-05-09 17:53:49
+# topoassist v260510.21 | 2026-05-10 15:49:28
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260510.1"
+VERSION           = "260510.3"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -858,11 +858,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[orphan-pre-detect] {_do_ip}: error — {_doe}", flush=True)
                 self._json(200, {"ok": True, "orphans_pending": None})
         elif self.path == "/pushconfig/finalize":
-            # Phase 2 of two-phase push: commit or abort an already-open named session.
-            # ipMap values are {ip, session_name} — no config re-push needed.
-            # Orphan cleanup runs in Phase 1 (_push_config) before the session is opened,
-            # so no additional cleanup is needed here.
-            action  = body.get("action", "abort")
+            # Phase 2 of two-phase push: batch-clean orphans (on commit), then commit/abort.
+            # config + all_device_names present → run orphan cleanup before committing.
+            # Absent (abort path) → skip cleanup, just abort the session.
+            action           = body.get("action", "abort")
+            config_text      = body.get("config") or ""
+            all_device_names = body.get("all_device_names") or []
             results = {}
             for dev, entry in ip_map.items():
                 ip           = (entry.get("ip") or "").strip()
@@ -870,8 +871,42 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 if not ip or not session_name:
                     results[dev] = {"ok": False, "error": "Missing ip or session_name"}
                     continue
+                orphans_cleaned = None
+                if action == "commit" and config_text and all_device_names:
+                    try:
+                        _orph = self._detect_orphans(ip, config_text=config_text,
+                                                      all_device_names=all_device_names)
+                        if _orph and _orph.get('ok'):
+                            _orph_cmds = _orphans_to_cmds(_orph)
+                            if _orph_cmds:
+                                _vlog(f"[orphan-finalize] {ip}: {len(_orph_cmds)} cmd(s) — cleaning before commit", flush=True)
+                                _batches   = _batch_orphan_cmds(_orph_cmds, CLEANUP_BATCH_SIZE)
+                                _committed = True
+                                for _bn, _batch in enumerate(_batches, 1):
+                                    try:
+                                        self._push_config(ip, '\n'.join(_batch),
+                                                          dry_run=False, all_ifaces=False,
+                                                          all_device_names=None,
+                                                          push_timeout=CLEANUP_PUSH_TIMEOUT)
+                                    except Exception as _be:
+                                        _vlog(f"[orphan-finalize] {ip}: batch {_bn} failed — {_be}", flush=True)
+                                        _committed = False
+                                        break
+                                if _committed:
+                                    orphans_cleaned = {
+                                        "interfaces": _orph.get("interfaces", []),
+                                        "bgp":        _orph.get("bgp",        []),
+                                        "vlans":      _orph.get("vlans",      []),
+                                        "vrfs":       _orph.get("vrfs",       []),
+                                        "ospf":       _orph.get("ospf",       []),
+                                    }
+                    except Exception as _oe:
+                        _vlog(f"[orphan-finalize] {ip}: detection error — {_oe}", flush=True)
                 try:
-                    results[dev] = self._finalize_session(ip, session_name, action)
+                    fin_result = self._finalize_session(ip, session_name, action)
+                    if orphans_cleaned:
+                        fin_result["orphans_cleaned"] = orphans_cleaned
+                    results[dev] = fin_result
                 except subprocess.TimeoutExpired:
                     results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except Exception as e:
@@ -1396,38 +1431,47 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
-                # Always run orphan cleanup in its own separate configure session(s) before
-                # the main push — even small range-collapsed sets (e.g. 4 cmds) represent
-                # thousands of EOS deletions and block the session for longer than PUSH_TIMEOUT
-                # when mixed with the main config. For open_only (single-device two-phase push),
-                # cleanup runs here in Phase 1 so orphan SVIs are gone before the new config is
-                # staged — required when new GW addresses overlap with existing orphan SVI IPs.
-                # User consent is obtained via a pre-push dialog in the client before Phase 1.
-                _orphan_committed = False
-                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                _orphan_committed = True  # set True now; cleared on first failure
-                for _bn, _batch in enumerate(_ob_batches, 1):
-                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                    try:
-                        self._push_config(ip, '\n'.join(_batch),
-                                          dry_run=False, all_ifaces=False,
-                                          all_device_names=None,
-                                          push_timeout=CLEANUP_PUSH_TIMEOUT)
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                    except Exception as _be:
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
-                        _orphan_committed = False
-                        break
-                # Only report orphans_cleaned when all batches actually committed
-                if _orphan_committed:
-                    _asn_extra["orphans_cleaned"] = {
+                if open_only:
+                    # open_only (two-phase push): detection only — cleanup deferred to
+                    # Phase 2 (finalize) after user confirms in the push confirm modal.
+                    _asn_extra["orphans_pending"] = {
                         "interfaces": orphans.get("interfaces", []),
-                        "bgp":        orphans.get("bgp", []),
-                        "vlans":      orphans.get("vlans", []),
-                        "vrfs":       orphans.get("vrfs", []),
-                        "ospf":       orphans.get("ospf", []),
+                        "bgp":        orphans.get("bgp",        []),
+                        "vlans":      orphans.get("vlans",      []),
+                        "vrfs":       orphans.get("vrfs",       []),
+                        "ospf":       orphans.get("ospf",       []),
                     }
+                else:
+                    # Full/bulk push: run cleanup now in its own separate configure
+                    # session(s) before the main push — range-collapsed sets (e.g.
+                    # "no interface Vlan1-3999") represent thousands of EOS deletions
+                    # and block the session for longer than PUSH_TIMEOUT when mixed
+                    # with the main config.
+                    _orphan_committed = False
+                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _orphan_committed = True  # set True now; cleared on first failure
+                    for _bn, _batch in enumerate(_ob_batches, 1):
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                        try:
+                            self._push_config(ip, '\n'.join(_batch),
+                                              dry_run=False, all_ifaces=False,
+                                              all_device_names=None,
+                                              push_timeout=CLEANUP_PUSH_TIMEOUT)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                        except Exception as _be:
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
+                            _orphan_committed = False
+                            break
+                    # Only report orphans_cleaned when all batches actually committed
+                    if _orphan_committed:
+                        _asn_extra["orphans_cleaned"] = {
+                            "interfaces": orphans.get("interfaces", []),
+                            "bgp":        orphans.get("bgp", []),
+                            "vlans":      orphans.get("vlans", []),
+                            "vrfs":       orphans.get("vrfs", []),
+                            "ospf":       orphans.get("ospf", []),
+                        }
 
         # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
         # change the AS number in-place — old block must be removed first.
