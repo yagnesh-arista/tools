@@ -68,6 +68,10 @@
           },
           {
             "type": "command",
+            "command": "bash ~/.claude/hooks/topoassist-constraint-check.sh"
+          },
+          {
+            "type": "command",
             "command": "bash ~/.claude/hooks/topoassist-userguide-check.sh"
           },
           {
