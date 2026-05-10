@@ -1,4 +1,4 @@
-<!-- TopoAssist v260510.15 | 2026-05-10 14:25:48 -->
+<!-- TopoAssist v260510.16 | 2026-05-10 15:00:42 -->
 <!DOCTYPE html>
 <html>
 
@@ -846,7 +846,7 @@ clasp login --no-localhost</pre>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span></td>
-        <td><b>Config Center</b> (CONFIG) — four-panel hub: <b>Generate</b> (generate all configs; <b>Copy All</b> or <b>Copy Base+Ifs</b> to clipboard), <b>Template</b> (define a base NTP/AAA/management config prepended to every device), <b>Cleanup</b> (remove stale <code>__TA</code> orphans), <b>Push</b> (batch-push all devices). See <a href="#config-generation">Configuration Generation §6</a>.</td>
+        <td><b>Config Center</b> (CONFIG) — four-panel hub: <b>Generate</b> (generate all configs; <b>Copy All</b> or <b>Copy Base+Ifs</b> to clipboard), <b>Template</b> (define a base NTP/AAA/management config prepended to every device), <b>Cleanup</b> (remove stale <code>__TA</code> orphans), <b>Deploy</b> (batch-push all devices). See <a href="#config-generation">Configuration Generation §6</a>.</td>
       </tr>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span></td>
@@ -945,6 +945,10 @@ clasp login --no-localhost</pre>
       <tr>
         <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span> <span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg></span></td>
         <td><b>Node Size −/+</b> — shrink or grow all holistic-view nodes. Useful for fitting large topologies on screen.</td>
+      </tr>
+      <tr>
+        <td><span class="icon-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span></td>
+        <td><b>Group List Toggle</b> — collapses or expands the group rect list panel within TOPO EDIT. Click to hide the list (arrow points up) or show it (arrow points down). The collapsed state is saved in localStorage.</td>
       </tr>
     </table>
 
@@ -1768,9 +1772,9 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li>If nothing changed, an <b>Already in Sync</b> modal appears and auto-closes after 5 s.</li>
     </ol>
 
-    <p style="font-size:13px;"><b>Push All (Push Targets)</b> — via Config Center → Push panel:</p>
+    <p style="font-size:13px;"><b>Push All (Push Targets)</b> — via Config Center → Deploy panel:</p>
     <ol style="font-size:13px;">
-      <li>Confirm the bridge is running (green dot in Device Bridge modal), then open <b>Config Center</b> (toolbar grid icon) and click the <b>Push</b> nav item.</li>
+      <li>Confirm the bridge is running (green dot in Device Bridge modal), then open <b>Config Center</b> (toolbar grid icon) and click the <b>Deploy</b> nav item.</li>
       <li>Click <b>Push Targets</b>. No prior config generation needed — configs are fetched automatically per device (cache hit = instant, cache miss = fetched from the sheet).</li>
       <li>Up to 3 devices are pushed concurrently. Each row shows live status: <code>fetching config…</code> → <code>pushing…</code> → <code>verifying…</code> → result.</li>
       <li>Results: <span style="color:#10b981;font-weight:600;">Push successful, no config diff</span> (green) = committed and verified clean. Amber = committed but residual diff or verify check failed. Red = push failed.</li>
