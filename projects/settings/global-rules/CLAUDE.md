@@ -341,6 +341,9 @@ After all changes are applied, produce a summary table before committing:
 
 Then run a final grep for the old name to confirm zero remaining references. Never skip either step for schema-level renames (column names, function names, element IDs, CSS selectors).
 
+### Applying edits: parallelize by independence (Rule 34)
+After producing the reference map, group hits by independence — files that share no runtime dependency at edit time (e.g. CSS vs. Python tests vs. separate HTML pages). Apply each independent group in a parallel `Agent` subagent (Rule 34). Collect results before committing. This keeps the main context window clear of repetitive edit diffs and cuts wall-clock time on large renames.
+
 ## 33. Task List for Multi-Task Sessions
 When a session has 3 or more distinct tasks, create a `TaskCreate` list at the start before beginning any work. This serves two purposes: (1) the task list survives context compaction and budget-ceiling interruptions — the next session can resume from concrete items rather than reconstructing state from a summary; (2) it forces scope clarity upfront before committing to an ordering.
 
