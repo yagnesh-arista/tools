@@ -321,14 +321,25 @@ Memory belongs in Tier 2 only when it is contextual, historical, or project-spec
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
 
-## 32. Multi-File Rename / Refactor — Always Produce a Summary Table
-After any rename or refactor that touches more than one file, produce a completion summary table before committing:
+## 32. Multi-File Rename / Refactor — Search First, Summary After
+
+### Before editing: grep ALL references
+Before touching any file, grep the entire codebase for every form of the old name (camelCase, snake_case, kebab-case, string literal, HTML id/attribute, CSS selector). Present the complete hit list to the user before making any edit:
+
+```bash
+grep -rn "oldName\|old_name\|old-name" ~/claude/projects/<project>/
+```
+
+Never start editing until the full reference map is known — missed references are the primary source of post-rename follow-up fixes.
+
+### After editing: produce a completion summary table
+After all changes are applied, produce a summary table before committing:
 
 | Old Name | New Name | File | Line | Status |
 |---|---|---|---|---|
 | `old_func` | `new_func` | `Sidebar-js.html` | 412 | ✓ done |
 
-This verifies completeness and gives the user a single place to spot anything missed. Never skip this for schema-level renames (column names, function names, element IDs).
+Then run a final grep for the old name to confirm zero remaining references. Never skip either step for schema-level renames (column names, function names, element IDs, CSS selectors).
 
 ## 33. Task List for Multi-Task Sessions
 When a session has 3 or more distinct tasks, create a `TaskCreate` list at the start before beginning any work. This serves two purposes: (1) the task list survives context compaction and budget-ceiling interruptions — the next session can resume from concrete items rather than reconstructing state from a summary; (2) it forces scope clarity upfront before committing to an ordering.
@@ -368,6 +379,16 @@ After implementing any UI change, explicitly state the expected visual outcome b
 - If the result can't be rendered locally, enumerate the visible states and flag the ones that can't be verified
 
 **Never assume a code change produces the correct visual result without confirmation.** Mismatches in placement, visibility at edge states (empty, zero, disabled), and sizing are common and often require 2–3 correction rounds when left unverified. Always close the loop before moving on.
+
+## 37. Debugging — Test-First Bug Fix
+For any bug in a file that has a test suite (device_bridge.py, Code.gs, Sidebar-js.html closures):
+1. Write a failing test that reproduces the exact bug FIRST
+2. Fix the production code until the test passes
+3. Run the full suite to check for regressions
+
+**Never fix a bug in a tested file without a corresponding new test case.** The test is proof that the bug existed and proof that the fix works — without it, the same bug can silently regress.
+
+**Exception**: trivial one-liner typos (wrong string literal, off-by-one in a constant) where the fix is self-evident and a test would add no diagnostic value. In all other cases, test first.
 
 ## 16. Claude Code Project Anatomy — Full Rule Mapping
 Every Claude Code project is composed of these layers. The table below maps every rule to its layer, file, and purpose.
@@ -412,8 +433,9 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 7f | UI layout — describe before editing + badge/count clarification | `CLAUDE.md` | `CLAUDE.md` |
 | 7g | UI changes — visual verification before reporting done | `CLAUDE.md` | `CLAUDE.md` |
 | 7h | Shell scripts in skills — no embedded bash with variables | `CLAUDE.md` | `CLAUDE.md` |
-| 32 | Multi-file rename — always produce summary table | `CLAUDE.md` | `CLAUDE.md` |
+| 32 | Multi-file rename — search all refs first, summary table after | `CLAUDE.md` | `CLAUDE.md` |
 | 33 | Task list for multi-task sessions (3+) | `CLAUDE.md` | `CLAUDE.md` |
 | 34 | Parallel agents for independent file groups | `CLAUDE.md` | `CLAUDE.md` |
+| 37 | Debugging — test-first bug fix for tested files | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.

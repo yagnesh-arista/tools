@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (Rules 33+34 added; topoassist-bugfix-loop.sh + topoassist-deploy-safe.sh scripts created)
+Last updated: 2026-05-10 (Rule 37 added: test-first bug fix)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -50,6 +50,7 @@ Last updated: 2026-05-10 (Rules 33+34 added; topoassist-bugfix-loop.sh + topoass
 | 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
 | 33 | Task list for multi-task sessions — 3+ tasks → create TaskCreate list first; survives budget limits + context compaction; mark each completed as done; add tasks inline for mid-session additions | `CLAUDE.md` | `CLAUDE.md` |
 | 34 | Parallel agents for independent file groups — spawn parallel Agent subagents for independent files/subsystems; send all calls in one message; don't parallelize when one file's change drives another or total scope < 3 files | `CLAUDE.md` | `CLAUDE.md` |
+| 37 | Debugging — test-first bug fix — write failing test FIRST, then fix until it passes, then full suite; never fix a bug in a tested file without a new test case; exception: trivial one-liner typos | `CLAUDE.md` | `CLAUDE.md` |
 
 ---
 
