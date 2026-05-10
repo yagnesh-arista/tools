@@ -352,6 +352,13 @@ When a refactor, review, or fix touches clearly independent files or subsystems,
 
 Always send parallel subagents in a single message (multiple Agent tool calls in one turn).
 
+## 35. UI Fix Verification
+After implementing any UI change, explicitly state the expected visual outcome before marking the task done:
+- Describe what the user will see (element placement, visibility, zero-state behavior, exact text)
+- If the result can't be rendered locally, enumerate the visible states and flag the ones that can't be verified
+
+**Never assume a code change produces the correct visual result without confirmation.** Mismatches in placement, visibility at edge states (empty, zero, disabled), and sizing are common and often require 2–3 correction rounds when left unverified. Always close the loop before moving on.
+
 ## 16. Claude Code Project Anatomy — Full Rule Mapping
 Every Claude Code project is composed of these layers. The table below maps every rule to its layer, file, and purpose.
 
