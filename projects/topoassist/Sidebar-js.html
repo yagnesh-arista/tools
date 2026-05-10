@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.11 | 2026-05-10 14:13:57 -->
+<!-- TopoAssist v260510.12 | 2026-05-10 14:14:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.11";  // keep in sync with Code.gs
+const APP_VERSION = "260510.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10667,7 +10667,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260509.35"
+VERSION    = "260510.1"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11101,6 +11101,7 @@ def _contiguous_ranges(nums):
     return ranges
 
 
+# DUPLICATED in Sidebar-js.html as _orphansToCmds. Last synced: 2026-05-09
 def _orphans_to_cmds(orphans):
     """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
 
@@ -16982,7 +16983,7 @@ function _showOrphanConsentInModal(orphans, detectionErrors, ip) {
     ).join('');
 
     // EOS commands that will execute (range-collapsed, e.g. "no interface Vlan1-3999")
-    const cmds = _orphansToCmdLines(orphans);
+    const cmds = _orphansToCmds(orphans);
     const cmdsHtml = cmds.length
       ? `<div style="margin-bottom:8px;">` +
         `<div style="font-size:10px;color:#64748b;margin-bottom:3px;` +

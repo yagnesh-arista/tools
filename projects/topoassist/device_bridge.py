@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260509.35"
+VERSION           = "260510.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -574,6 +574,7 @@ def _contiguous_ranges(nums):
     return ranges
 
 
+# DUPLICATED in Sidebar-js.html as _orphansToCmds. Last synced: 2026-05-09
 def _orphans_to_cmds(orphans):
     """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
 

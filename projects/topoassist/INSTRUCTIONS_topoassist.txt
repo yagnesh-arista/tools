@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-10 (refactor: pushAllConfigs _allArista now uses _getTopologyAristaIds() — third inline duplicate eliminated; all three flows (Cleanup UI, single-device push, bulk push) now share one SSOT for the topology Arista device list. FILES: Sidebar-js.html)
+  Last updated: 2026-05-09 (rename: JS _orphansToCmdLines → _orphansToCmds to match Python _orphans_to_cmds naming; added // DUPLICATED sync comments to JS function and both Python copies (device_bridge.py + embedded template). FILES: Sidebar-js.html, device_bridge.py)
+  Previous: 2026-05-10 (refactor: pushAllConfigs _allArista now uses _getTopologyAristaIds() — third inline duplicate eliminated; all three flows (Cleanup UI, single-device push, bulk push) now share one SSOT for the topology Arista device list. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (refactor: rename configPushModal → pushConfirmModal for consistency with child element IDs (pushConfirmBody, pushConfirmTitle, btnPushConfirmClose); update CLAUDE.md bypass-open rule to require _autoMinimizeOpenModal() in addition to modal-minimized strip. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html, CLAUDE.md)
   Previous: 2026-05-10 (cleanup: remove dead-code fallback from allDeviceNames in _doRunCleanup — runCleanup() guards on currentData.nodes so fallback was unreachable. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (fix: configModal not closing — two bugs: (1) orphan consent countdown timer used wrong ID 'pushConfirmModal' (should be 'configPushModal') so minimize-pause never worked; (2) _showPushConfirmModal() now calls _autoMinimizeOpenModal() first so configModal is minimized before configPushModal appears — single Esc closes configPushModal correctly. FILES: Sidebar-js.html)
