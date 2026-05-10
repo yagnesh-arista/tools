@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260510.19 | 2026-05-10
+# settings v260510.24 | 2026-05-10 15:29:22
 # Commit guard — runs as PreToolUse hook on git commit.
 # Scans staged diff for secrets and debug code (all projects).
 # For topoassist commits: also checks VERSION sync, APP_VERSION sync, Unicode icons, configCache invariant.
@@ -39,6 +39,22 @@ if [ "${ta_staged:-0}" -gt 0 ]; then
     fi
   fi
 
+  # Check APP_VERSION sync: Code.gs (canonical) vs Sidebar-js.html
+  if [ -f "$TA/Code.gs" ] && [ -f "$TA/Sidebar-js.html" ]; then
+    gs_appver=$(grep 'const APP_VERSION' "$TA/Code.gs" | head -1 | grep -oP '"[^"]+"')
+    js_appver=$(grep 'const APP_VERSION' "$TA/Sidebar-js.html" | head -1 | grep -oP '"[^"]+"')
+    if [ -n "$gs_appver" ] && [ -n "$js_appver" ] && [ "$gs_appver" != "$js_appver" ]; then
+      issues="$issues [TA-APP-VERSION-MISMATCH:Code.gs=$gs_appver,Sidebar-js.html=$js_appver]"
+    fi
+  fi
+
+  # Check for Unicode icon characters in staged HTML/GS additions (SVG-only rule)
+  staged_html_gs=$(git diff --cached --name-only 2>/dev/null | grep -E '\.(html|gs)$')
+  if [ -n "$staged_html_gs" ]; then
+    unicode_icons=$(git diff --cached -- $staged_html_gs 2>/dev/null | grep -P '^\+' | grep -cP '[\x{25B6}\x{2715}\x{2699}\x{25BC}\x{25B2}\x{2212}\x{002B}\x{2714}\x{26A0}\x{2139}\x{2764}\x{2605}\x{23F5}\x{23F9}\x{270F}\x{1F4CB}\x{1F4C4}\x{1F527}\x{1F4A1}]' 2>/dev/null || echo 0)
+    [ "${unicode_icons:-0}" -gt 0 ] && issues="$issues [TA-UNICODE-ICONS:${unicode_icons}-use-SVG-instead]"
+  fi
+
   # Check configCache invariant: no .fullConfig writes
   staged_js=$(git diff --cached --name-only 2>/dev/null | grep 'Sidebar-js.html')
   if [ -n "$staged_js" ]; then
@@ -49,7 +65,7 @@ fi
 
 warns=""
 if [ "${ta_staged:-0}" -gt 0 ]; then
-  warns=" | TopoAssist: VERSION sync ✓, configCache invariant ✓"
+  warns=" | TopoAssist: VERSION sync ✓, APP_VERSION sync ✓, Unicode icons ✓, configCache invariant ✓"
 fi
 
 if [ -n "$issues" ]; then
