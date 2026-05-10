@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-06 (Checks 33+34 added: alert() in error/async paths must use setStatus(); allDevicesData/allNodesData null guards required in async callbacks and render-time event handlers) -->
+<!-- rules-synced: 2026-05-09 (Checks 38-41 added: XSS/innerHTML safety; console.log residue; JSON.parse try-catch; accessibility aria-label on icon-only buttons) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
