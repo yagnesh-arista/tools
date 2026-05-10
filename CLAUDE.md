@@ -328,6 +328,13 @@ For any layout change involving element placement, divider position, badge visib
 
 This applies even when the change seems small — repeated misunderstandings on divider placement, badge logic, and count freshness show that apparent clarity is not actual clarity.
 
+**For badge / count / status displays** — before implementing, always clarify with the user:
+- **Zero values**: should a "0" badge be **shown** (display "0") or **hidden** (display:none)?
+- **Count freshness**: **live-computed** on every state change, or **cached** from the last known value?
+- **Capping**: is there a maximum display value (e.g. "99+")? What triggers the cap?
+
+Never assume answers to these three questions — they are the most common source of badge misunderstandings and correction rounds.
+
 ## 31. Bash Variables in Skills — Never Use Markdown Code Blocks
 When editing shell scripts or skill files that use bash positional arguments (`$1`, `$2`, etc.) or variable expansions, **always write directly to files** — never through markdown code block intermediate steps. Markdown processing strips bare `$1`/`$2`. For complex bash logic in skills, extract to a standalone `.sh` file in `.claude/hooks/` rather than inlining in markdown skill files.
 
