@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-10 (cleanup: remove dead-code fallback from allDeviceNames in _doRunCleanup — runCleanup() guards on currentData.nodes so fallback was unreachable. FILES: Sidebar-js.html)
+  Last updated: 2026-05-10 (refactor: rename configPushModal → pushConfirmModal for consistency with child element IDs (pushConfirmBody, pushConfirmTitle, btnPushConfirmClose); update CLAUDE.md bypass-open rule to require _autoMinimizeOpenModal() in addition to modal-minimized strip. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html, CLAUDE.md)
+  Previous: 2026-05-10 (cleanup: remove dead-code fallback from allDeviceNames in _doRunCleanup — runCleanup() guards on currentData.nodes so fallback was unreachable. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (fix: configModal not closing — two bugs: (1) orphan consent countdown timer used wrong ID 'pushConfirmModal' (should be 'configPushModal') so minimize-pause never worked; (2) _showPushConfirmModal() now calls _autoMinimizeOpenModal() first so configModal is minimized before configPushModal appears — single Esc closes configPushModal correctly. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (fix: Cleanup UI allDeviceNames used selected-only devices — BGP orphan check falsely flagged valid neighbors pointing to unselected-but-present topology devices; now uses full allArista set from currentData.nodes. FILES: Sidebar-js.html)
   Previous: 2026-05-09 (fix: consent modal "Clean up & Push" fetch was sending flat {ip,config} body — server reads ipMap only → empty results dict → data.ok undefined → "Cleanup failed". Fixed to send {ipMap:{[ip]:{ip,config}},push_timeout} matching _doCleanDevItems pattern; result read as results[ip]; auth_expired handled. FILES: Sidebar-js.html)
