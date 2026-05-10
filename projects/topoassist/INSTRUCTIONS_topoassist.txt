@@ -3623,7 +3623,7 @@ B. SIDEBAR MODALS — modal-std (standard floating overlay, Sidebar.html)
    networkStackModal            Network Stack                     modal-std
    autoConfigModal             Auto Config                       modal-std
    deviceBridgeModal           Device Bridge                     modal-std
-   configPushModal              Config Push                       modal-std
+   pushConfirmModal             Config Push                       modal-std
    exportCablingModal           Export Cabling                    modal-std (tab layout: Export tab=#cablingControlsPanel, Topology List/Device List tabs=#cablingViewRight; _cablingShowTab(tab) is unified switch)
    cablingControlsPanel         (static)                          cabling-panel-controls (Export tab body: bridge filter, topology section, device section, AI Validate)
    cablingViewRight             (find bar + textarea)             cabling-panel-view (shown on Topology List/Device List tabs; find bar + Copy + Download; _cablingShowTab drives visibility)
