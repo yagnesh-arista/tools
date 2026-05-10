@@ -54,6 +54,13 @@ After creating, renaming, or moving any file in `~/.claude/commands/` or any pro
 ## 7f. UI Layout — Describe Before Editing
 For any UI layout change (divider placement, badge position, icon sizing, spacing), describe the exact visual outcome before touching any file: which element, where it sits relative to its siblings, what direction/orientation (horizontal vs vertical, full-height vs partial). Wait for confirmation before editing. If spatial intent is ambiguous, ask ONE clarifying question — never guess.
 
+**For badge / count / status displays** — before implementing, always clarify:
+- **Zero values**: shown (display "0") or hidden (display:none)?
+- **Count freshness**: live-computed on every state change, or cached from last known?
+- **Capping**: maximum display value (e.g. "99+")? What triggers it?
+
+Never assume these three — they are the most common source of badge correction rounds.
+
 ## 7g. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
