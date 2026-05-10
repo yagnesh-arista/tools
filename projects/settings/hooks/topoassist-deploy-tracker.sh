@@ -9,6 +9,9 @@ f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
 # Only fire for topoassist files
 echo "$f" | grep -q '/projects/topoassist/' || exit 0
 
+# Batch mode: skip per-edit clasp push during bulk renames/refactors (set SKIP_DEPLOY=1)
+[ "${SKIP_DEPLOY:-0}" = "1" ] && exit 0
+
 TOPODIR=/home/yagnesh/claude/projects/topoassist
 GAS_FILES=(Code.gs Sidebar.html Sidebar-js.html Sidebar-css.html SheetAssistPanel.html UserGuide.html Test-gs.gs)
 LOCAL_FILES=(device_bridge.py)
