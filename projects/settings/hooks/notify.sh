@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260510.1 | 2026-05-10
+# settings v260510.1 | 2026-05-10 14:00:42
 # notify.sh
 # Notification hook: route Claude Code notifications to the system.
 # tmux display-message removed — it pollutes the tmux message line (same area
