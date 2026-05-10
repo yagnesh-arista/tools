@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.27 | 2026-05-10 16:08:55 -->
+<!-- TopoAssist v260510.28 | 2026-05-10 16:11:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.27";  // keep in sync with Code.gs
+const APP_VERSION = "260510.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14346,7 +14346,8 @@ async function commitPushConfig() {
             const _v3EosWarns = _eosWarnings(vRes);
             const warnNote = _v3EosWarns ? ` · ${_v3EosWarns.length} note${_v3EosWarns.length !== 1 ? 's' : ''}` : '';
             _ptSet('pt3', '#10b981', `verified — in sync${warnNote}`);
-            if (titleEl) titleEl.textContent = 'Push Successful';
+            if (titleEl) titleEl.textContent = (label || deviceName) + ': Push Successful';
+            if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
               `<span style="color:#10b981;font-weight:600;">Committed — in sync</span>`);
             if (_v3EosWarns) {
