@@ -48,7 +48,10 @@ Before investigating any failure, rank causes by likelihood and check the simple
 3. Platform limitation — before implementing a complex workaround
 Never go deep on a secondary hypothesis until the primary is ruled out with a concrete diagnostic check.
 
-## 7c. UI Changes — Visual Verification
+## 7d. Skills & Slash Commands — Session Restart Required
+After creating, renaming, or moving any file in `~/.claude/commands/` or any project `.claude/commands/`, always tell the user: "Restart the Claude Code session for the new command to become available." Never assume a newly created skill is usable in the current session.
+
+## 7e. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
 ## 8. New Project Structure (required for every new project)
