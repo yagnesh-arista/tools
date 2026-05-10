@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-07 (memory review: added Rule 24 row; removed deleted topoassist-check-constraints command; added topoassist-client-test-check.sh + topoassist-ui-inventory-check.sh to hooks table)
+Last updated: 2026-05-10 (Rules 33+34 added; topoassist-bugfix-loop.sh + topoassist-deploy-safe.sh scripts created)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
