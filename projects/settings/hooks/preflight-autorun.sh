@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260510.1 | 2026-05-10
+# settings v260510.50 | 2026-05-10 15:45:15
 # UserPromptSubmit hook — fires once per session on first user message.
 # Runs lightweight preflight checks and injects a systemMessage summary.
 # Stop hook removes the marker so the next session gets a fresh run.
