@@ -369,6 +369,16 @@ After implementing any UI change, explicitly state the expected visual outcome b
 
 **Never assume a code change produces the correct visual result without confirmation.** Mismatches in placement, visibility at edge states (empty, zero, disabled), and sizing are common and often require 2–3 correction rounds when left unverified. Always close the loop before moving on.
 
+## 37. Debugging — Test-First Bug Fix
+For any bug in a file that has a test suite (device_bridge.py, Code.gs, Sidebar-js.html closures):
+1. Write a failing test that reproduces the exact bug FIRST
+2. Fix the production code until the test passes
+3. Run the full suite to check for regressions
+
+**Never fix a bug in a tested file without a corresponding new test case.** The test is proof that the bug existed and proof that the fix works — without it, the same bug can silently regress.
+
+**Exception**: trivial one-liner typos (wrong string literal, off-by-one in a constant) where the fix is self-evident and a test would add no diagnostic value. In all other cases, test first.
+
 ## 16. Claude Code Project Anatomy — Full Rule Mapping
 Every Claude Code project is composed of these layers. The table below maps every rule to its layer, file, and purpose.
 
