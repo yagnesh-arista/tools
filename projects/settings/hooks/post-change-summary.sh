@@ -304,7 +304,8 @@ else
 fi
 
 # ── Build summary ─────────────────────────────────────────────────────────────
-SUMMARY="[CHANGE SUMMARY] commit hash: ${COMMIT_HASH} — ${COMMIT_MSG}
+SUMMARY="[CHANGE SUMMARY] commit: ${COMMIT_HASH}
+Why:   ${COMMIT_MSG}
 Files:${file_lines}
 Git:   ${git_status}
 Clasp: ${clasp_status}"
