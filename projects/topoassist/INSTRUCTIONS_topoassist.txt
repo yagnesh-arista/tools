@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-10 (docs: UserGuide full structural audit — Config Center Deploy nav label (was "Push"), Push All section updated to "Deploy" nav item; Holistic-View Floating Controls table now includes Group List Toggle button. FILES: UserGuide.html)
+  Last updated: 2026-05-10 (fix: .col-tag font-size 9px → 10px — enforces 10px minimum floor. FILES: Sidebar-css.html)
+  Previous: 2026-05-10 (docs: UserGuide full structural audit — Config Center Deploy nav label (was "Push"), Push All section updated to "Deploy" nav item; Holistic-View Floating Controls table now includes Group List Toggle button. FILES: UserGuide.html)
   Previous: 2026-05-10 (rename: 9 Config Center element IDs shed stale generateAll*/genAll* prefix from old two-column layout: generateAllLeft→genResultsBody, generateAllRight→pushResultsBody, genAllPushWarn→pushWarnBanner, btnRunGenerateAll→btnGenerateConfigs, btnGenAllCleanup→btnCleanupTargets, genallDeviceFilter→cfgCenterDevFilter, genAllDeviceList→cfgCenterDevList, genAllSelCount→cfgCenterSelCount, genAllRoleFilters→cfgCenterRoleFilters. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-10 (rename: cfgModalPushInterface→_pushCurrentDeviceInterface, cfgModalPushAll→_pushCurrentDeviceAll, _setCfgModalPushBtns→_setPushBtnVisibility — names were scoped to cfgModal but functions are called from both configModal and Config Center View panel. FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-09 (rename: JS _orphansToCmdLines → _orphansToCmds to match Python _orphans_to_cmds naming; added // DUPLICATED sync comments to JS function and both Python copies (device_bridge.py + embedded template). FILES: Sidebar-js.html, device_bridge.py)
