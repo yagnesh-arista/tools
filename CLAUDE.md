@@ -330,6 +330,28 @@ After any rename or refactor that touches more than one file, produce a completi
 
 This verifies completeness and gives the user a single place to spot anything missed. Never skip this for schema-level renames (column names, function names, element IDs).
 
+## 33. Task List for Multi-Task Sessions
+When a session has 3 or more distinct tasks, create a `TaskCreate` list at the start before beginning any work. This serves two purposes: (1) the task list survives context compaction and budget-ceiling interruptions — the next session can resume from concrete items rather than reconstructing state from a summary; (2) it forces scope clarity upfront before committing to an ordering.
+
+**Rule**: at session start with 3+ tasks → create all tasks first, then work through them in dependency order, marking each `completed` as done. If the session hits budget mid-run, the surviving task list is the handoff.
+
+**Exception**: if the user gives a single compound request mid-session ("also fix X"), add a new task inline — don't wait to batch.
+
+## 34. Parallel Agents for Independent File Groups
+When a refactor, review, or fix touches clearly independent files or subsystems, spawn parallel `Agent` subagents rather than doing the work serially. This keeps the main context window lean and cuts wall-clock time.
+
+**When to parallelize:**
+- Multi-file rename where files share no runtime dependency (e.g. CSS + Python tests)
+- Review passes over separate subsystems (e.g. Code.gs logic vs. Sidebar-js.html UI)
+- Fetch/research tasks where results don't depend on each other
+
+**When NOT to parallelize:**
+- One file's change determines what to write in another (sequential dependency)
+- The combined context of both is needed to make the right decision
+- Total scope is small enough that subagent overhead exceeds the benefit (< 3 files, < 2 min)
+
+Always send parallel subagents in a single message (multiple Agent tool calls in one turn).
+
 ## 16. Claude Code Project Anatomy — Full Rule Mapping
 Every Claude Code project is composed of these layers. The table below maps every rule to its layer, file, and purpose.
 
@@ -374,5 +396,7 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 7g | UI changes — visual verification before reporting done | `CLAUDE.md` | `CLAUDE.md` |
 | 7h | Shell scripts in skills — no embedded bash with variables | `CLAUDE.md` | `CLAUDE.md` |
 | 32 | Multi-file rename — always produce summary table | `CLAUDE.md` | `CLAUDE.md` |
+| 33 | Task list for multi-task sessions (3+) | `CLAUDE.md` | `CLAUDE.md` |
+| 34 | Parallel agents for independent file groups | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.
