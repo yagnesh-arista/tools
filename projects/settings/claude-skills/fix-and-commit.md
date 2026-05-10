@@ -1,4 +1,40 @@
 Fix all failures from the most recent /review-global (or /review-topoassist) run, then commit.
+Also handles test-failure mode: run the test suite, fix root causes, loop until green, then commit.
+
+---
+
+## Mode Detection
+
+**If the user says "fix failing tests", "tests are failing", or similar → enter Test-Failure Loop (below).**
+Otherwise → proceed to Step 1 (review-driven fix).
+
+---
+
+## Test-Failure Loop (autonomous — no questions)
+
+Run this loop until the full suite is green:
+
+### Round start
+1. Run the appropriate test suite for the project:
+   - Python (`device_bridge.py`): `cd ~/claude/projects/topoassist && python -m pytest tests/ -v 2>&1 | tail -40`
+   - GAS server-side (`Code.gs`): report which tests fail based on last known run or ask user to paste output
+   - JS client-side (`test-js.js`): report based on last known run or ask user to paste output
+2. Collect all failures. If zero failures → skip to Commit.
+
+### For each failing test
+1. Read the failing test to understand the **expected behavior** (not just the assertion).
+2. Read the relevant production code in `Code.gs`, `Sidebar-js.html`, or `device_bridge.py`.
+3. Identify the **root cause** — do NOT just make the assertion pass; fix the actual bug.
+4. Apply the minimal fix. Do not refactor surrounding code.
+5. If fixing one test could affect others, note the risk before editing.
+
+### After all fixes in this round
+- Re-run the full suite. If new failures appear, fix those too.
+- Loop until the suite is fully green.
+- Do not ask questions — make best-judgment calls and document any assumptions.
+
+### Then → Commit (Step 4 below)
+Write a commit message that lists each bug fixed and its root cause — one line per fix.
 
 ---
 

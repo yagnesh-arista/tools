@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.18 | 2026-05-10 15:14:20 -->
+<!-- TopoAssist v260510.21 | 2026-05-10 15:50:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.18";  // keep in sync with Code.gs
+const APP_VERSION = "260510.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10667,7 +10667,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260510.1"
+VERSION    = "260510.3"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11323,15 +11323,48 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[orphan-pre-detect] {_do_ip}: error -- {_doe}", flush=True)
                 self._json(200, {"ok": True, "orphans_pending": None, "detection_errors": {}})
         elif self.path == "/pushconfig/finalize":
-            action  = body.get("action", "abort")
+            # Phase 2: batch-clean orphans (on commit), then commit/abort.
+            action           = body.get("action", "abort")
+            config_text      = body.get("config") or ""
+            all_device_names = body.get("all_device_names") or []
             results = {}
             for dev, entry in ip_map.items():
                 ip           = (entry.get("ip") or "").strip()
                 session_name = (entry.get("session_name") or "").strip()
                 if not ip or not session_name:
                     results[dev] = {"ok": False, "error": "Missing ip or session_name"}; continue
+                orphans_cleaned = None
+                if action == "commit" and config_text and all_device_names:
+                    try:
+                        _orph = self._detect_orphans(ip, config_text=config_text,
+                                                      all_device_names=all_device_names)
+                        if _orph and _orph.get('ok'):
+                            _orph_cmds = _orphans_to_cmds(_orph)
+                            if _orph_cmds:
+                                _batches   = _batch_orphan_cmds(_orph_cmds, CLEANUP_BATCH_SIZE)
+                                _committed = True
+                                for _bn, _batch in enumerate(_batches, 1):
+                                    try:
+                                        self._push_config(ip, "\\n".join(_batch),
+                                                          dry_run=False, all_ifaces=False,
+                                                          all_device_names=None,
+                                                          push_timeout=CLEANUP_PUSH_TIMEOUT)
+                                    except Exception as _be:
+                                        _committed = False; break
+                                if _committed:
+                                    orphans_cleaned = {
+                                        "interfaces": _orph.get("interfaces", []),
+                                        "bgp":        _orph.get("bgp",        []),
+                                        "vlans":      _orph.get("vlans",      []),
+                                        "vrfs":       _orph.get("vrfs",       []),
+                                        "ospf":       _orph.get("ospf",       []),
+                                    }
+                    except Exception: pass
                 try:
-                    results[dev] = self._finalize_session(ip, session_name, action)
+                    fin_result = self._finalize_session(ip, session_name, action)
+                    if orphans_cleaned:
+                        fin_result["orphans_cleaned"] = orphans_cleaned
+                    results[dev] = fin_result
                 except subprocess.TimeoutExpired:
                     results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
                 except Exception as e:
@@ -11596,34 +11629,43 @@ class BridgeHandler(BaseHTTPRequestHandler):
             else:
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
-                # Always run cleanup before the main push session — for open_only (single-device
-                # two-phase push) cleanup runs in Phase 1 so orphan SVIs are gone before the new
-                # config is staged (prevents overlap errors with super-wide GW addresses).
-                # User consent is obtained via a pre-push dialog in the client before Phase 1.
-                _orphan_committed = False
-                _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
-                _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                _orphan_committed = True
-                for _bn, _batch in enumerate(_ob_batches, 1):
-                    _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
-                    try:
-                        self._push_config(ip, "\\n".join(_batch),
-                                          dry_run=False, all_ifaces=False,
-                                          all_device_names=None,
-                                          push_timeout=CLEANUP_PUSH_TIMEOUT)
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
-                    except Exception as _be:
-                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
-                        _orphan_committed = False
-                        break
-                if _orphan_committed:
-                    _asn_extra["orphans_cleaned"] = {
+                if open_only:
+                    # open_only (two-phase push): detection only -- cleanup deferred to
+                    # Phase 2 (finalize) after user confirms in the push confirm modal.
+                    _asn_extra["orphans_pending"] = {
                         "interfaces": orphans.get("interfaces", []),
-                        "bgp":        orphans.get("bgp", []),
-                        "vlans":      orphans.get("vlans", []),
-                        "vrfs":       orphans.get("vrfs", []),
-                        "ospf":       orphans.get("ospf", []),
+                        "bgp":        orphans.get("bgp",        []),
+                        "vlans":      orphans.get("vlans",      []),
+                        "vrfs":       orphans.get("vrfs",       []),
+                        "ospf":       orphans.get("ospf",       []),
                     }
+                else:
+                    # Full/bulk push: run cleanup now in its own separate configure
+                    # session(s) before the main push.
+                    _orphan_committed = False
+                    _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
+                    _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
+                    _orphan_committed = True
+                    for _bn, _batch in enumerate(_ob_batches, 1):
+                        _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
+                        try:
+                            self._push_config(ip, "\\n".join(_batch),
+                                              dry_run=False, all_ifaces=False,
+                                              all_device_names=None,
+                                              push_timeout=CLEANUP_PUSH_TIMEOUT)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
+                        except Exception as _be:
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                            _orphan_committed = False
+                            break
+                    if _orphan_committed:
+                        _asn_extra["orphans_cleaned"] = {
+                            "interfaces": orphans.get("interfaces", []),
+                            "bgp":        orphans.get("bgp", []),
+                            "vlans":      orphans.get("vlans", []),
+                            "vrfs":       orphans.get("vrfs", []),
+                            "ospf":       orphans.get("ospf", []),
+                        }
 
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
