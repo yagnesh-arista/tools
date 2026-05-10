@@ -113,6 +113,7 @@ Session end (Stop)
 | `/project:topoassist-deploy-inst-gas-clasp` | Instructions: re-authenticate `clasp` for headless/SSH sessions |
 | `/project:topoassist-deploy-demo-template` | Push current code to demo/template sheet (intentional releases only) |
 | `/project:topoassist-test-device_bridge` | Run `pytest tests/` for device_bridge.py pure functions |
+| `/project:topoassist-ui-inventory` | Print Section 26 UI element inventory from INSTRUCTIONS_topoassist.txt |
 | `/project:eos-tricks` | Search EOS_CLI_Tricks.md — with arg: grep filtered; without arg: fzf fuzzy search |
 
 ---
@@ -207,7 +208,7 @@ All concurrent-write risks are flock-protected:
 
 | Layer | File | Covers |
 |---|---|---|
-| Always loaded | `~/claude/CLAUDE.md` | All 19 global rules |
+| Always loaded | `~/claude/CLAUDE.md` | Rules 1–25 (see table above) |
 | UI rules | `~/.claude/rules/ui.md` | Font, symmetry, canvas, icons, user-select |
 | Quality rules | `~/.claude/rules/quality.md` | Progress timer, code quality, refactoring |
 | GAS rules | `~/.claude/rules/gas.md` | GAS loading guard pattern (Rule 20) |
