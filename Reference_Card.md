@@ -19,7 +19,8 @@ Last updated: 2026-05-07 (memory review: added Rule 24 row; removed deleted topo
 | 7 | Modal default background — white (`#ffffff`) by default; dark mode overrides via `--bg-modal` var | `rules/` | `rules/ui.md` |
 | 7a | All icons must be SVG — never Unicode | `rules/` | `rules/ui.md` |
 | 7b | Debugging — root cause order: check auth/credentials before PATH, data loading before display logic, platform limits before workarounds; rule out primary cause before investigating secondary | `CLAUDE.md` | `CLAUDE.md` |
-| 7c | UI changes — visual verification: after any UI change, name the exact element/panel/state where the user can verify it; never just confirm code was updated | `CLAUDE.md` | `CLAUDE.md` |
+| 7d | Skills & slash commands — session restart required after creating/renaming any command file; never assume newly created skill is usable in current session | `CLAUDE.md` | `CLAUDE.md` |
+| 7e | UI changes — visual verification: after any UI change, name the exact element/panel/state where the user can verify it; never just confirm code was updated | `CLAUDE.md` | `CLAUDE.md` |
 | 7c | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
 | 7c | Input text state taxonomy — Label, Placeholder, Value, Focus, Error, Disabled, Read-only, Prefix/Suffix each has explicit CSS; `::placeholder` never inherits; dim-container inputs need both value (`font-style:italic; font-weight:400`) and `::placeholder` rules | `rules/` | `rules/ui.md` |
 | 7d | Font scale extended — 10/11/12px for controls; 13px sub-section headers; 14px modal/panel titles. Five levels only, no arbitrary sizes. | `rules/` | `rules/ui.md` |
