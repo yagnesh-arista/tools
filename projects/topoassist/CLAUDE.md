@@ -13,6 +13,17 @@ Use Winnow for: EOS feature/config questions, protocol behavior, known bugs, IXI
 - **Never run `clasp login` from two terminals simultaneously** — concurrent logins corrupt the refresh token and require full re-authentication.
 - If push fails unexpectedly, check auth before debugging PATH or environment.
 
+## Key Files — Always Check All When Renaming or Refactoring
+Any rename of a variable, function, column name, or element ID must be grep'd across ALL of these before committing:
+- `Code.gs` — backend logic, config generation, sheet ops
+- `Sidebar-js.html` — frontend UI, all JS closures and DOM refs
+- `Test-gs.gs` — server-side GAS unit tests
+- `test-js.js` — client-side JS unit tests
+- `INSTRUCTIONS_topoassist.txt` — design doc (function refs, column names, invariants)
+- `topoassist-review-code-design.md` — constraint checklist (check names, param counts)
+
+Missing any one of these in a rename is the most common source of follow-up correction rounds.
+
 ## Critical Design Constraints
 These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist.txt.
 
