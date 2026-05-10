@@ -8,6 +8,11 @@ When working on this project, always consult Winnow MCP tools before guessing or
 
 Use Winnow for: EOS feature/config questions, protocol behavior, known bugs, IXIA integration details, CloudVision APIs, AIDs/TOIs related to tested features.
 
+## Deployment — Clasp Auth Rules
+- Always run `clasp login --status` before `clasp push` — confirm auth is valid first (expired credentials fail silently as a PATH error).
+- **Never run `clasp login` from two terminals simultaneously** — concurrent logins corrupt the refresh token and require full re-authentication.
+- If push fails unexpectedly, check auth before debugging PATH or environment.
+
 ## Critical Design Constraints
 These are always enforced. Full details in Section 24 of INSTRUCTIONS_topoassist.txt.
 
