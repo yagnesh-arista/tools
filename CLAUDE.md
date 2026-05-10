@@ -64,6 +64,8 @@ Never assume these three — they are the most common source of badge correction
 ## 7g. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
+**Screenshot validation**: if a screenshot or browser preview tool is available, capture the rendered output and validate it before reporting done — do not rely on code-level inspection alone. If no rendering tool is available, enumerate every visible state the change affects (zero state, populated state, error state, edge case) and explicitly flag which ones could not be verified locally.
+
 ## 7h. Shell Scripts in Skill Files — No Embedded Bash With Variables
 Never embed complex bash in `.md` skill files when it contains positional args (`$1`, `$2`) or shell variables — markdown rendering can strip them silently. Extract to a standalone `.sh` file and reference it from the skill instead. After any edit to a bash-containing `.md` file, verify variable expansion is intact.
 

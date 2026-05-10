@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (Rules 37 added; Rule 32 expanded: parallelize by independence)
+Last updated: 2026-05-10 (Rules 37 added; Rules 32+7g expanded)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -21,7 +21,7 @@ Last updated: 2026-05-10 (Rules 37 added; Rule 32 expanded: parallelize by indep
 | 7b | Debugging — root cause order: check auth/credentials before PATH, data loading before display logic, platform limits before workarounds; rule out primary cause before investigating secondary | `CLAUDE.md` | `CLAUDE.md` |
 | 7d | Skills & slash commands — session restart required after creating/renaming any command file; never assume newly created skill is usable in current session | `CLAUDE.md` | `CLAUDE.md` |
 | 7f | UI layout — describe before editing: state exact position/orientation of any layout change and wait for confirmation; never guess spatial intent | `CLAUDE.md` | `CLAUDE.md` |
-| 7g | UI changes — visual verification: after any UI change, name the exact element/panel/state where the user can verify it; never just confirm code was updated | `CLAUDE.md` | `CLAUDE.md` |
+| 7g | UI changes — visual verification: name exact element/panel/state; if screenshot tool available, capture before reporting done; if not, enumerate all affected states and flag which couldn't be verified | `CLAUDE.md` | `CLAUDE.md` |
 | 7h | Shell scripts in skill files — never embed bash with `$1`/`$2` vars in `.md` files; extract to `.sh` instead; markdown strips variables silently | `CLAUDE.md` | `CLAUDE.md` |
 | 7c | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
 | 7c | Input text state taxonomy — Label, Placeholder, Value, Focus, Error, Disabled, Read-only, Prefix/Suffix each has explicit CSS; `::placeholder` never inherits; dim-container inputs need both value (`font-style:italic; font-weight:400`) and `::placeholder` rules | `rules/` | `rules/ui.md` |
