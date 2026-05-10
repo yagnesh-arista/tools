@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (Rule 32 expanded: search-first rename; /preflight skill added)
+Last updated: 2026-05-10 (Rules 37 added; Rule 32 expanded: parallelize by independence)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -48,6 +48,7 @@ Last updated: 2026-05-10 (Rule 32 expanded: search-first rename; /preflight skil
 | 24 | Modal scroll + floating panel minimize — every `.modal-std` body needs `overflow-y: auto; flex: 1; min-height: 0`; floating panels minimize via JS height-pinning; `.modal-std` minimize uses `display:none` + dock chip via `_updateModalDock()`; overlay hidden on minimize + restored on un-minimize via `data-had-overlay`; `_onModalClose()` strips stale dock chip on close | `rules/` | `rules/ui.md` |
 | 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
 | 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
+| 32 | Multi-file rename — grep ALL refs first (present full hit list before editing); group by independence and parallelize edits via Rule 34; after all edits: summary table + final grep for zero remaining old-name refs | `CLAUDE.md` | `CLAUDE.md` |
 | 33 | Task list for multi-task sessions — 3+ tasks → create TaskCreate list first; survives budget limits + context compaction; mark each completed as done; add tasks inline for mid-session additions | `CLAUDE.md` | `CLAUDE.md` |
 | 34 | Parallel agents for independent file groups — spawn parallel Agent subagents for independent files/subsystems; send all calls in one message; don't parallelize when one file's change drives another or total scope < 3 files | `CLAUDE.md` | `CLAUDE.md` |
 | 37 | Debugging — test-first bug fix — write failing test FIRST, then fix until it passes, then full suite; never fix a bug in a tested file without a new test case; exception: trivial one-liner typos | `CLAUDE.md` | `CLAUDE.md` |
@@ -99,6 +100,7 @@ Session end (Stop)
 
 | When | Command |
 |---|---|
+| Session start | `/preflight` — git state, clasp auth, last session focus, pending tasks |
 | New project | `/new-project` — 7-question gate, `git init` runs first |
 | Before committing | `/review-global` — structured pre-commit review |
 | Fix review failures + commit | `/fix-and-commit` — fix all ✗ FAIL items, then commit |
@@ -138,7 +140,7 @@ Session end (Stop)
 | Any Write/Edit (any project) | INSTRUCTIONS reminder | Prompt to update INSTRUCTIONS_<project>.txt |
 | Edit `~/.claude/**` or `~/claude/CLAUDE.md` | `settings-backup.sh` | Auto-syncs to `settings/` + commits + pushes |
 | Edit any `~/claude/projects/*/.claude/commands/*.md` | `project-commands-sync.sh` | Copies command file to `~/.claude/commands/` |
-| Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written |
+| Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written. Set `SKIP_DEPLOY=1` to skip during bulk renames |
 | Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in `Test-gs.gs`; lists gaps |
 | Edit `topoassist/Sidebar-js.html` | `topoassist-client-test-check.sh` | Checks test-js.js for coverage gaps in client-side JS closures |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
