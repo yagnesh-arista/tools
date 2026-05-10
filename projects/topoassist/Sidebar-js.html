@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.8 | 2026-05-10 14:02:19 -->
+<!-- TopoAssist v260510.9 | 2026-05-10 14:02:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.8";  // keep in sync with Code.gs
+const APP_VERSION = "260510.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13986,9 +13986,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   // Pre-push orphan consent: detect stale __TA config on device before Phase 1.
   // Skipped for port-filter pushes (single-interface; no whole-device orphan risk).
   // Runs while the push confirm modal is in loading state — consent overlay appears on top.
-  const _allDevNames = currentData && currentData.nodes
-    ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id)
-    : [];
+  const _allDevNames = _getTopologyAristaIds();
   let _orphansPrecomputed = null;
   if (!portFilter) {
     const { proceed, orphans } = await _detectOrphansAndConsent(ip, config, _allDevNames);
