@@ -143,6 +143,7 @@ Session end (Stop)
 | Edit `topoassist/*.gs` or `*.html` | `topoassist-deploy-tracker.sh` | `clasp push` (flock-protected); CLASP_MARKER written. Set `SKIP_DEPLOY=1` to skip during bulk renames |
 | Edit `topoassist/Code.gs` | `topoassist-gas-test-check.sh` | Detects new/changed functions with no test case in `Test-gs.gs`; lists gaps |
 | Edit `topoassist/Sidebar-js.html` | `topoassist-client-test-check.sh` | Checks test-js.js for coverage gaps in client-side JS closures |
+| Edit any `topoassist/` `.gs` or `.html` | `topoassist-constraint-check.sh` | Reminds to run `/topoassist-review-code-design` if logic, signatures, or column names changed |
 | Edit any `topoassist/` source | `topoassist-userguide-check.sh` | Reminds to update UserGuide.html if user-facing behavior changed |
 | Edit any `topoassist/Sidebar.html` or `Code.gs` | `topoassist-ui-inventory-check.sh` | Reminds to update INSTRUCTIONS Section 26 (UI Element Inventory) |
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
