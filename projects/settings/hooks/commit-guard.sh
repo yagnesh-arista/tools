@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settings v260510.1 | 2026-05-10 | git commit: 55dfa74
+# settings v260510.18 | 2026-05-10 15:26:36
 # Commit guard — runs as PreToolUse hook on git commit.
 # Scans staged diff for secrets and debug code (all projects).
 # For topoassist commits: also checks VERSION sync and configCache invariant.
