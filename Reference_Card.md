@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (Rules 37 added; Rules 32+7g expanded)
+Last updated: 2026-05-10 (memory review: deduplicate rule numbers 7c/7d/7f → 7e/7i/7j/7k; add /bugfix to global commands)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -24,10 +24,10 @@ Last updated: 2026-05-10 (Rules 37 added; Rules 32+7g expanded)
 | 7g | UI changes — visual verification: name exact element/panel/state; if screenshot tool available, capture before reporting done; if not, enumerate all affected states and flag which couldn't be verified | `CLAUDE.md` | `CLAUDE.md` |
 | 7h | Shell scripts in skill files — never embed bash with `$1`/`$2` vars in `.md` files; extract to `.sh` instead; markdown strips variables silently | `CLAUDE.md` | `CLAUDE.md` |
 | 7c | Info/help text boxes — `info-box info-box--dim`: left-accent border only, italic text, muted color (`#94a3b8`); add `info-box--keep-colors` for color legends; never dim warning banners | `rules/` | `rules/ui.md` |
-| 7c | Input text state taxonomy — Label, Placeholder, Value, Focus, Error, Disabled, Read-only, Prefix/Suffix each has explicit CSS; `::placeholder` never inherits; dim-container inputs need both value (`font-style:italic; font-weight:400`) and `::placeholder` rules | `rules/` | `rules/ui.md` |
-| 7d | Font scale extended — 10/11/12px for controls; 13px sub-section headers; 14px modal/panel titles. Five levels only, no arbitrary sizes. | `rules/` | `rules/ui.md` |
-| 7e | `<textarea>` states — same taxonomy as `<input>`; all states explicit; always set `resize: vertical` or `resize: none` | `rules/` | `rules/ui.md` |
-| 7f | Inline `<code>` — JetBrains Mono 11px, `var(--bg-body)` bg, light border, `border-radius: 3px`, `user-select: text`; never leave `<code>` without explicit `font-family` | `rules/` | `rules/ui.md` |
+| 7e | Input text state taxonomy — Label, Placeholder, Value, Focus, Error, Disabled, Read-only, Prefix/Suffix each has explicit CSS; `::placeholder` never inherits; dim-container inputs need both value (`font-style:italic; font-weight:400`) and `::placeholder` rules | `rules/` | `rules/ui.md` |
+| 7i | Font scale extended — 10/11/12px for controls; 13px sub-section headers; 14px modal/panel titles. Five levels only, no arbitrary sizes. | `rules/` | `rules/ui.md` |
+| 7j | `<textarea>` states — same taxonomy as `<input>`; all states explicit; always set `resize: vertical` or `resize: none` | `rules/` | `rules/ui.md` |
+| 7k | Inline `<code>` — JetBrains Mono 11px, `var(--bg-body)` bg, light border, `border-radius: 3px`, `user-select: text`; never leave `<code>` without explicit `font-family` | `rules/` | `rules/ui.md` |
 | 8 | New project structure — 7-question gate, `git init` mandatory, no files until all confirmed | `CLAUDE.md` + `commands/` + `hooks/` | `CLAUDE.md`, `commands/new-project.md` |
 | 9 | User feedback for long actions — status before, live elapsed timer, confirm on complete | `rules/` | `rules/quality.md` |
 | 10 | Code quality — no over/under-engineering, match existing conventions | `rules/` | `rules/quality.md` |
@@ -107,6 +107,7 @@ Session end (Stop)
 | Memory review + cleanup | `/review-memory` — two-phase sweep: all memory (R/S/D/M) + TopoAssist INSTRUCTIONS/code/hooks |
 | Query EOS device | `/eos-check` — eAPI/SSH runner for EOS commands; user provides hostname |
 | Query IXIA chassis | `/ixia-check` — IxNetwork BGP/topology/route state; user provides hostname |
+| Fix a bug | `/bugfix` — structured debug workflow: diagnose → confirm root cause → plan → test → fix → commit |
 | New machine | `bash ~/claude/projects/settings/setup.sh` |
 
 ### TopoAssist

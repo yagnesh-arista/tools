@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.24 | 2026-05-10 15:59:47 -->
+<!-- TopoAssist v260510.25 | 2026-05-10 16:04:58 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.24";  // keep in sync with Code.gs
+const APP_VERSION = "260510.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10537,6 +10537,7 @@ let _rightDev  = null; // device name for the right link strip (used by Copy, Vi
 let _leftPort  = null; // interface name for left strip (null = device-level push, no port filter)
 let _rightPort = null; // interface name for right strip (null = device-level push, no port filter)
 let _pendingPush        = null; // {deviceName, ip, config, btnId, origText, label} — awaiting confirm modal
+let _previewingPush     = null; // {btnId, origText} — set during Phase-1 fetch before _pendingPush is populated
 let _commitInFlight     = false; // true while Phase 2 commit fetch is in flight
 let _lastIdShiftResult  = null; // cached result of last checkDeviceIdShift() — {shifted, isFirstRun}
 let _configViewContext  = null; // {deviceName, portFilter} — tracks what the config modal is showing
@@ -13999,11 +14000,13 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
 
   const label = portFilter ? `${deviceName} : ${portFilter}` : deviceName;
   if (btn) { btn.disabled = true; btn.textContent = 'Previewing…'; }
+  _previewingPush = { btnId, origText };
   _showPushConfirmModal(label, null);  // show modal immediately with loading state
 
   // Phase 1: fetch full device config (uses cache when available)
   const { config: fullConfig, error } = await _fetchConfigForPush(deviceName);
   if (!fullConfig) {
+    _previewingPush = null;
     if (btn) { btn.disabled = false; btn.textContent = origText; }
     _updatePushPreviewError(error || 'could not fetch config for ' + deviceName);
     return;
