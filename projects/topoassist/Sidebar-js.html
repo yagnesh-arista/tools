@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.14 | 2026-05-10 14:25:29 -->
+<!-- TopoAssist v260510.15 | 2026-05-10 14:30:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.14";  // keep in sync with Code.gs
+const APP_VERSION = "260510.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13264,7 +13264,7 @@ function _resetStopCleanupBtn() {
 
 function runCleanup() {
   if (!currentData || !currentData.nodes) return;
-  const btn      = document.getElementById('btnGenAllCleanup');
+  const btn      = document.getElementById('btnCleanupTargets');
   const reconBody = document.getElementById('reconResultsBody');
   if (!btn || !reconBody) return;
 
@@ -14654,7 +14654,7 @@ async function pushAllConfigs() {
     return;
   }
   const btn  = document.getElementById('btnPushAllConfigs');
-  const body = document.getElementById('generateAllRight');
+  const body = document.getElementById('pushResultsBody');
   _switchGenTab('push');
 
   const _allArista = _getTopologyAristaIds();
@@ -17760,7 +17760,7 @@ function _resetStopPushBtn() {
 }
 
 function _populateGenAllDeviceList() {
-  const container = document.getElementById('genAllDeviceList');
+  const container = document.getElementById('cfgCenterDevList');
   if (!container) return;
   const devices = (currentData && currentData.nodes || [])
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
@@ -17783,9 +17783,9 @@ function _populateGenAllDeviceList() {
 }
 
 function _buildRoleFilters() {
-  const rf = document.getElementById('genAllRoleFilters');
+  const rf = document.getElementById('cfgCenterRoleFilters');
   if (!rf) return;
-  const container = document.getElementById('genAllDeviceList');
+  const container = document.getElementById('cfgCenterDevList');
   const roles = new Set();
   if (container) {
     container.querySelectorAll('.genall-dev-pill[data-role]').forEach(pill => {
@@ -17802,7 +17802,7 @@ function _buildRoleFilters() {
 }
 
 function _selectByRole(role, shiftKey) {
-  const container = document.getElementById('genAllDeviceList');
+  const container = document.getElementById('cfgCenterDevList');
   if (!container) return;
   const pills = container.querySelectorAll('.genall-dev-pill');
   if (shiftKey) {
@@ -17823,11 +17823,11 @@ function _toggleGenAllPill(btn) {
 }
 
 function _updateGenAllSelCount() {
-  const container = document.getElementById('genAllDeviceList');
+  const container = document.getElementById('cfgCenterDevList');
   if (!container) return;
   const total   = container.querySelectorAll('.genall-dev-pill').length;
   const checked = container.querySelectorAll('.genall-dev-pill.selected').length;
-  const el = document.getElementById('genAllSelCount');
+  const el = document.getElementById('cfgCenterSelCount');
   if (!el) return;
   if (checked === total) {
     el.textContent = `All ${total} selected`;
@@ -17837,7 +17837,7 @@ function _updateGenAllSelCount() {
 }
 
 function _genAllSelectAll(state) {
-  const container = document.getElementById('genAllDeviceList');
+  const container = document.getElementById('cfgCenterDevList');
   if (!container) return;
   container.querySelectorAll('.genall-dev-pill').forEach(pill => {
     pill.classList.toggle('selected', state);
@@ -17890,7 +17890,7 @@ function openGenerateAllModal(panel) {
   _resetStopGenerateBtn();
   _resetStopPushBtn();
   _renderGenerateDeviceList();
-  const btn = document.getElementById('btnRunGenerateAll');
+  const btn = document.getElementById('btnGenerateConfigs');
   if (btn) btn.disabled = false;
   const stopBtn = document.getElementById('btnStopGenerate');
   if (window._generateAllConfigs && window._generateAllConfigs.length) {
@@ -17904,7 +17904,7 @@ function openGenerateAllModal(panel) {
 
 function closeGenerateAllModal() {
   if (_pushAllActive) {
-    const warn = document.getElementById('genAllPushWarn');
+    const warn = document.getElementById('pushWarnBanner');
     if (warn) {
       warn.style.display = 'block';
       setTimeout(() => { warn.style.display = 'none'; }, 3500);
@@ -17928,7 +17928,7 @@ function runGenerateAll() {
   try { localStorage.removeItem('ta_gen_cache'); } catch(e) {}
 
   _generateAllAborted = false;
-  const btn     = document.getElementById('btnRunGenerateAll');
+  const btn     = document.getElementById('btnGenerateConfigs');
   const stopBtn = document.getElementById('btnStopGenerate');
 
   btn.disabled = true;
@@ -17946,11 +17946,11 @@ function runGenerateAll() {
     _resetStopGenerateBtn();
     btn.disabled = false;
     btn.innerText = 'Generate Configs';
-    document.getElementById('generateAllLeft').innerHTML =
+    document.getElementById('genResultsBody').innerHTML =
       '<div style="color:var(--text-muted);padding:20px 0;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">Generation stopped.</div>';
   };
 
-  document.getElementById('generateAllLeft').innerHTML =
+  document.getElementById('genResultsBody').innerHTML =
     '<div style="text-align:center;padding:30px 0;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
     + '<div style="font-size:20px;margin-bottom:10px;">⏳</div>'
     + '<div>Generating configs… this may take 30–60 seconds for large topologies.</div></div>';
@@ -17963,7 +17963,7 @@ function runGenerateAll() {
         _resetStopGenerateBtn();
         btn.disabled = false;
         btn.innerText = 'Generate Configs';
-        document.getElementById('generateAllLeft').innerHTML =
+        document.getElementById('genResultsBody').innerHTML =
           '<div style="color:var(--error-text,#ef4444);padding:20px;font-family:\'JetBrains Mono\',monospace;font-size:12px;"><b>Error:</b> ' + result.error + '</div>';
         return;
       }
@@ -17977,7 +17977,7 @@ function runGenerateAll() {
       _resetStopGenerateBtn();
       btn.disabled = false;
       btn.innerText = 'Retry';
-      document.getElementById('generateAllLeft').innerHTML =
+      document.getElementById('genResultsBody').innerHTML =
         '<div style="color:var(--error-text,#ef4444);padding:20px;font-family:\'JetBrains Mono\',monospace;font-size:12px;"><b>Error:</b> ' + err.message + '</div>';
     })
     .getAllDeviceConfigs();
@@ -17990,7 +17990,7 @@ function _renderGenerateResults(configs, meta) {
   window._generateAllConfigs = configs;
   if (meta) window._generateAllMeta = meta;
   try { localStorage.setItem('ta_gen_cache', JSON.stringify({configs: configs, meta: window._generateAllMeta})); } catch(e) {}
-  const btn = document.getElementById('btnRunGenerateAll');
+  const btn = document.getElementById('btnGenerateConfigs');
   if (btn) btn.disabled = false;
   _renderGenerateDeviceList();
   const stopBtn = document.getElementById('btnStopGenerate');
@@ -18125,7 +18125,7 @@ function _copyGenRow(devName, btn) {
 }
 
 function _renderGenerateDeviceList() {
-  const left = document.getElementById('generateAllLeft');
+  const left = document.getElementById('genResultsBody');
   if (!left) return;
   const devices = (currentData && currentData.nodes || [])
     .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
@@ -18160,7 +18160,7 @@ function _renderGenerateDeviceList() {
       + ' or <b>Generate Configs</b> to build all.</div>';
   }
 
-  const genBtn = document.getElementById('btnRunGenerateAll');
+  const genBtn = document.getElementById('btnGenerateConfigs');
   if (genBtn && !genBtn.disabled) {
     genBtn.innerText = allCached ? 'Regenerate Configs' : 'Generate Configs';
   }
@@ -18200,7 +18200,7 @@ function _renderGenerateDeviceList() {
 }
 
 function _refreshGenerateRow(devName) {
-  const left = document.getElementById('generateAllLeft');
+  const left = document.getElementById('genResultsBody');
   if (!left) return;
   const panel = document.getElementById('cfgPanel-generate');
   if (!panel || !panel.classList.contains('active')) return;
