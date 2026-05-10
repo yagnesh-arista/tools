@@ -127,7 +127,11 @@ if [ -z "$cmd" ]; then
     exec 8>&-   # release clasp lock
   fi
 
+  # Extract project areas from changed paths (e.g. "topoassist", "settings")
+  focus_projects=$(echo "$uncommitted" | sed 's|.*projects/||' | cut -d'/' -f1 | sort -u | grep -v '^$' | paste -sd', ' - 2>/dev/null)
+
   SUMMARY="[AUTO-COMMITTED] session changes committed + pushed
+Why:   ${commit_msg}
 Files:${file_lines}
 Git:   ${git_note}
 Clasp: ${clasp_note}"
@@ -135,6 +139,22 @@ Clasp: ${clasp_note}"
   LOG="$HOME/claude/.change-log"
   echo "$SUMMARY" > "$LOG"
   echo "$SUMMARY" >&2
+
+  # Write session focus memory so the next session resumes with context
+  FOCUS_FILE="$HOME/.claude/projects/-home-yagnesh-claude/memory/project_active_focus.md"
+  session_date=$(date '+%Y-%m-%d %H:%M')
+  cat > "$FOCUS_FILE" <<FOCUS_EOF
+---
+name: Active Session Focus
+description: Files and project area last worked on — for fast session resumption
+type: project
+---
+
+Last session: ${session_date}
+Projects:     ${focus_projects:-unknown}
+Files:${file_lines}
+FOCUS_EOF
+
   jq -n --arg ctx "$SUMMARY" '{"systemMessage":$ctx}'
   exit 0
 fi
