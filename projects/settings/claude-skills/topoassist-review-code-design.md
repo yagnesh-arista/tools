@@ -1222,6 +1222,11 @@ TOPOASSIST CODE REVIEW
 34 — allDevicesData null guards        ✓ / ✗ / ⚠
 35 — Bridge sub-type SSoT             ✓ / ✗ / ⚠
 36 — device_bridge template sync      ✓ / ✗ / ⚠
+37 — Handler name ↔ UI label          ✓ / ✗ / ⚠
+38 — XSS / innerHTML safety           ✓ / ✗ / ⚠
+39 — console.log / debugger residue   ✓ / ✗ / ⚠
+40 — JSON.parse safety                ✓ / ✗ / ⚠
+41 — Accessibility: icon-button label ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
