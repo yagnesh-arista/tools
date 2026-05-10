@@ -160,6 +160,16 @@ Session end (Stop)
 | Any `mcp__winnow__*` call | `winnow-auth-check.sh` | Detects Winnow auth failures, attempts auto-login |
 | Claude Code notification | `notify.sh` | Routes notification to system (`notify-send` or tmux status) |
 
+### Headless Scripts (run manually or from cron)
+
+| Script | Purpose |
+|---|---|
+| `~/.claude/scripts/topoassist-review-headless.sh` | Non-interactive compliance review → log file in `review-logs/`; `--quick` flag for constraints only |
+| `~/.claude/scripts/topoassist-bugfix-loop.sh` | Autonomous test-fix loop: runs pytest, feeds failures to `claude -p`, repeats until clean or `--max N` |
+| `~/.claude/scripts/topoassist-deploy-safe.sh` | Pre-flight (auth + VERSION + APP_VERSION + configCache + INSTRUCTIONS + icons) then `clasp push`; `--check` to skip push |
+
+---
+
 ### Requires Manual Action
 
 | Project | Manual step | Hook reminder? |
