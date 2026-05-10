@@ -12,6 +12,8 @@
 
 **`status-keys emacs` is required alongside `mode-keys vi`.** `mode-keys vi` controls copy-mode bindings but bleeds into the command-prompt table. Without an explicit `set -g status-keys emacs`, the command-prompt uses vi bindings — Delete does nothing, and other keys misbehave in rename/session prompts. These two settings must always coexist.
 
+**`bind -T command 'C-?' backspace` is required for the Delete key in command-prompt.** macOS Delete key sends `\177` (DEL = `C-?`), not `\e[3~` (DC). `status-keys emacs` binds `C-h` to backspace but NOT `C-?` — without this explicit binding, `\177` appears as literal text in rename/session prompts. `DC delete-char` is a separate binding for Fn+Delete (forward-delete).
+
 **`escape-time` must be `20` (not 0).** With `escape-time 0`, the Delete key (`\e[3~`) is split: `\e` is treated as standalone ESC (cancels command-prompt), then `[3~` leaks into the pane. 20ms lets tmux assemble the full sequence. The old Claude CLI space-rendering bug was caused by `xterm-256color` (now fixed via `tmux-256color`) — not by escape-time — so 20ms is safe.
 
 **`default-terminal` is `tmux-256color`** (not `xterm-256color`). `xterm-256color` caused space characters typed in Claude CLI to not render until the next keystroke. `tmux-256color` is the correct native TERM for tmux. True color still works via `terminal-overrides ',*:Tc'`.
