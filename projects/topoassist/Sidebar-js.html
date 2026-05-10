@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.2 | 2026-05-10 12:02:41 -->
+<!-- TopoAssist v260510.3 | 2026-05-10 13:57:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.2";  // keep in sync with Code.gs
+const APP_VERSION = "260510.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13280,13 +13280,10 @@ function runCleanup() {
 async function _doRunCleanup(btn, reconBody, devices) {
   const mgmtIps        = _getLldpMgmtIps();
   const portsPerDev    = _buildExpectedPortsPerDevice();
-  // allDeviceNames must be the FULL Arista device list — not just the selected devices.
-  // BGP orphan detection checks whether a neighbor's description references a device that
-  // exists in the topology; using only selected devices as the known-set would falsely flag
-  // valid BGP neighbors pointing to unselected-but-present devices as orphans.
-  const allDeviceNames = currentData && currentData.nodes
-    ? currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista').map(n => n.id)
-    : devices.map(n => n.id);
+  // Full topology list — not just selected devices — so BGP known-devs covers all valid peers.
+  const allDeviceNames = currentData.nodes
+    .filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista')
+    .map(n => n.id);
 
   const stopBtn = document.getElementById('btnStopCleanup');
   _cleanupAbort = new AbortController();
