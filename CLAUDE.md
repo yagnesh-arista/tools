@@ -54,6 +54,13 @@ After creating, renaming, or moving any file in `~/.claude/commands/` or any pro
 ## 7f. UI Layout — Describe Before Editing
 For any UI layout change (divider placement, badge position, icon sizing, spacing), describe the exact visual outcome before touching any file: which element, where it sits relative to its siblings, what direction/orientation (horizontal vs vertical, full-height vs partial). Wait for confirmation before editing. If spatial intent is ambiguous, ask ONE clarifying question — never guess.
 
+**For badge / count / status displays** — before implementing, always clarify:
+- **Zero values**: shown (display "0") or hidden (display:none)?
+- **Count freshness**: live-computed on every state change, or cached from last known?
+- **Capping**: maximum display value (e.g. "99+")? What triggers it?
+
+Never assume these three — they are the most common source of badge correction rounds.
+
 ## 7g. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
@@ -314,33 +321,6 @@ Memory belongs in Tier 2 only when it is contextual, historical, or project-spec
 - Before starting any task that touches more than 2–3 files, requires a design decision, or has multiple valid approaches: surface ambiguities and ask before proceeding.
 - For small, clear tasks, proceed directly.
 
-## 27. UI Fix Verification — Confirm Visible Before Reporting Done
-After fixing any UI issue, trace the full rendering path (data source → DOM assignment → CSS visibility) before reporting the task complete. A syntactically correct change that is invisible to the user is not done.
-- Open the relevant file and verify the element is rendered and not hidden by CSS, a missing condition, a wrong selector, or a stale cache.
-- For GAS sidebars: confirm the change appears after a fresh `clasp push` and sidebar reload — not just in local HTML.
-- If you cannot verify directly (no browser access), state that explicitly rather than claiming success.
-
-## 28. Skills / Commands — Always Warn About Restart Requirement
-After creating or renaming any skill or command file (`.claude/commands/*.md`, `.claude/skills/**`), always tell the user: **a session restart is required for Claude Code to discover the new skill**. Do not assume the new command is usable in the current session.
-
-## 29. Debugging — Check Credentials Before Environment
-When diagnosing a CLI or tool failure, always check authentication and credential status early — **before** spending time on PATH, environment variables, or version issues. Expired tokens, missing auth files, and quota exhaustion are the most common silent failure modes. Pattern: auth first → tool installed → PATH → config.
-
-## 30. UI Layout — Describe Plan Before Implementing
-For any layout change involving element placement, divider position, badge visibility, panel sizing, or spacing: **describe the exact intended change in plain terms before writing any code.** Use the form: "I will place X after Y, full-height, between Z and W." Wait for explicit confirmation before editing files.
-
-This applies even when the change seems small — repeated misunderstandings on divider placement, badge logic, and count freshness show that apparent clarity is not actual clarity.
-
-**For badge / count / status displays** — before implementing, always clarify with the user:
-- **Zero values**: should a "0" badge be **shown** (display "0") or **hidden** (display:none)?
-- **Count freshness**: **live-computed** on every state change, or **cached** from the last known value?
-- **Capping**: is there a maximum display value (e.g. "99+")? What triggers the cap?
-
-Never assume answers to these three questions — they are the most common source of badge misunderstandings and correction rounds.
-
-## 31. Bash Variables in Skills — Never Use Markdown Code Blocks
-When editing shell scripts or skill files that use bash positional arguments (`$1`, `$2`, etc.) or variable expansions, **always write directly to files** — never through markdown code block intermediate steps. Markdown processing strips bare `$1`/`$2`. For complex bash logic in skills, extract to a standalone `.sh` file in `.claude/hooks/` rather than inlining in markdown skill files.
-
 ## 32. Multi-File Rename / Refactor — Always Produce a Summary Table
 After any rename or refactor that touches more than one file, produce a completion summary table before committing:
 
@@ -388,11 +368,11 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 17 | Git workflow — every project must be a git repo | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync to settings backup | `hooks/` | `settings.json` (PostToolUse hook) |
 | 23 | Memory tiering — Tier 2 never duplicates Tier 1 | `CLAUDE.md` | `CLAUDE.md` |
-| 27 | UI fix verification — confirm visible before reporting done | `CLAUDE.md` | `CLAUDE.md` |
-| 28 | Skills/commands — warn about restart requirement | `CLAUDE.md` | `CLAUDE.md` |
-| 29 | Debugging — credentials/auth before PATH debugging | `CLAUDE.md` | `CLAUDE.md` |
-| 30 | UI layout — describe plan before implementing | `CLAUDE.md` | `CLAUDE.md` |
-| 31 | Bash variables in skills — no markdown code blocks | `CLAUDE.md` | `CLAUDE.md` |
+| 7b | Debugging — root cause order (auth/credentials first) | `CLAUDE.md` | `CLAUDE.md` |
+| 7d | Skills/commands — session restart required after create/rename | `CLAUDE.md` | `CLAUDE.md` |
+| 7f | UI layout — describe before editing + badge/count clarification | `CLAUDE.md` | `CLAUDE.md` |
+| 7g | UI changes — visual verification before reporting done | `CLAUDE.md` | `CLAUDE.md` |
+| 7h | Shell scripts in skills — no embedded bash with variables | `CLAUDE.md` | `CLAUDE.md` |
 | 32 | Multi-file rename — always produce summary table | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.
