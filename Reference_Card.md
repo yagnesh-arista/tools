@@ -48,6 +48,8 @@ Last updated: 2026-05-10 (Rules 33+34 added; topoassist-bugfix-loop.sh + topoass
 | 24 | Modal scroll + floating panel minimize — every `.modal-std` body needs `overflow-y: auto; flex: 1; min-height: 0`; floating panels minimize via JS height-pinning; `.modal-std` minimize uses `display:none` + dock chip via `_updateModalDock()`; overlay hidden on minimize + restored on un-minimize via `data-had-overlay`; `_onModalClose()` strips stale dock chip on close | `rules/` | `rules/ui.md` |
 | 25 | Minimize button position — `.btn-modal-minimize` auto-injected by `_injectMinimizeButtons()` at `initApp()`; `insertBefore(btn, closeBtn)` ensures `[−][×]` order; `margin-left: auto` keeps pair flush-right; never hand-write in HTML | `rules/` | `rules/ui.md` |
 | 26 | Label-column alignment (tabular alignment) — multi-row option groups must use a fixed-width label column (`min-width: Xpx; flex-shrink: 0`) + `flex:1` on each option so columns align vertically across rows; nested sub-labels share the same fixed width; always wrap label text + icon button together in one span (the fixed-width cell) | `rules/` | `rules/ui.md` |
+| 33 | Task list for multi-task sessions — 3+ tasks → create TaskCreate list first; survives budget limits + context compaction; mark each completed as done; add tasks inline for mid-session additions | `CLAUDE.md` | `CLAUDE.md` |
+| 34 | Parallel agents for independent file groups — spawn parallel Agent subagents for independent files/subsystems; send all calls in one message; don't parallelize when one file's change drives another or total scope < 3 files | `CLAUDE.md` | `CLAUDE.md` |
 
 ---
 
