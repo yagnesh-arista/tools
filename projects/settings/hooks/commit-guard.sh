@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# settings v260510.18 | 2026-05-10 15:26:36
+# settings v260510.19 | 2026-05-10
 # Commit guard — runs as PreToolUse hook on git commit.
 # Scans staged diff for secrets and debug code (all projects).
-# For topoassist commits: also checks VERSION sync and configCache invariant.
+# For topoassist commits: also checks VERSION sync, APP_VERSION sync, Unicode icons, configCache invariant.
 
 input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // ""')
