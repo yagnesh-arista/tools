@@ -57,6 +57,9 @@ For any UI layout change (divider placement, badge position, icon sizing, spacin
 ## 7g. UI Changes — Visual Verification
 After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
 
+## 7h. Shell Scripts in Skill Files — No Embedded Bash With Variables
+Never embed complex bash in `.md` skill files when it contains positional args (`$1`, `$2`) or shell variables — markdown rendering can strip them silently. Extract to a standalone `.sh` file and reference it from the skill instead. After any edit to a bash-containing `.md` file, verify variable expansion is intact.
+
 ## 8. New Project Structure (required for every new project)
 
 **STOP — do not create any files until the user has answered all of these:**
