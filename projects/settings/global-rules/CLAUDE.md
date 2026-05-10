@@ -352,6 +352,16 @@ When a refactor, review, or fix touches clearly independent files or subsystems,
 
 Always send parallel subagents in a single message (multiple Agent tool calls in one turn).
 
+## 36. Infrastructure Debugging — Credentials Before PATH
+When any CLI tool fails (command not found, permission denied, unexpected exit, auth error): check credentials and auth status FIRST — before investigating PATH, environment variables, or shell config.
+
+**Order of investigation:**
+1. Is the tool authenticated? (`clasp status`, `gcloud auth list`, token expiry, etc.)
+2. Is the binary present? (`which <tool>`, `command -v`)
+3. Only then: PATH, shell env, version mismatches
+
+**Why this order matters:** PATH issues are visible immediately (`command not found`); auth failures often masquerade as generic errors. Spending time on PATH when credentials are expired wastes entire sessions.
+
 ## 35. UI Fix Verification
 After implementing any UI change, explicitly state the expected visual outcome before marking the task done:
 - Describe what the user will see (element placement, visibility, zero-state behavior, exact text)
