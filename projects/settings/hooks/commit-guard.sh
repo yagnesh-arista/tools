@@ -51,7 +51,7 @@ if [ "${ta_staged:-0}" -gt 0 ]; then
   # Check for Unicode icon characters in staged HTML/GS additions (SVG-only rule)
   staged_html_gs=$(git diff --cached --name-only 2>/dev/null | grep -E '\.(html|gs)$')
   if [ -n "$staged_html_gs" ]; then
-    unicode_icons=$(git diff --cached -- $staged_html_gs 2>/dev/null | grep -P '^\+' | grep -cP '[\x{25B6}\x{2715}\x{2699}\x{25BC}\x{25B2}\x{2212}\x{002B}\x{2714}\x{26A0}\x{2139}\x{2764}\x{2605}\x{23F5}\x{23F9}\x{270F}\x{1F4CB}\x{1F4C4}\x{1F527}\x{1F4A1}]' 2>/dev/null || echo 0)
+    unicode_icons=$(git diff --cached -- $staged_html_gs 2>/dev/null | grep -P '^\+' | grep -cP '[\x{25B6}\x{2715}\x{2699}\x{25BC}\x{25B2}\x{2714}\x{26A0}\x{2139}\x{2764}\x{2605}\x{23F5}\x{23F9}\x{270F}\x{1F4CB}\x{1F4C4}\x{1F527}\x{1F4A1}]' 2>/dev/null || echo 0)
     [ "${unicode_icons:-0}" -gt 0 ] && issues="$issues [TA-UNICODE-ICONS:${unicode_icons}-use-SVG-instead]"
   fi
 
