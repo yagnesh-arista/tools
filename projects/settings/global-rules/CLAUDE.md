@@ -41,6 +41,9 @@ All modals must use a white background (`#ffffff`) by default. Dark mode overrid
 ## 7a. All Icons Must Be SVG (Never Unicode)
 Use inline SVG for every icon. Unicode characters (▶, ✕, ⚙, etc.) blur at non-integer zoom levels, misalign with text baselines, and render inconsistently across platforms.
 
+## 7b. UI Changes — Visual Verification
+After any UI change, describe exactly where to look to verify it: which element, which panel, what state triggers it. Never just say "the code was updated." If a badge, indicator, or warning was added, name the exact container it appears in and what condition makes it visible.
+
 ## 8. New Project Structure (required for every new project)
 
 **STOP — do not create any files until the user has answered all of these:**
