@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# settings v260510.45 | 2026-05-10 15:41:37
 # Fires after editing any TopoAssist .gs or .html source file — reminds to run constraint checks
 input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
