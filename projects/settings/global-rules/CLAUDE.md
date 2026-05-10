@@ -396,5 +396,7 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 7g | UI changes — visual verification before reporting done | `CLAUDE.md` | `CLAUDE.md` |
 | 7h | Shell scripts in skills — no embedded bash with variables | `CLAUDE.md` | `CLAUDE.md` |
 | 32 | Multi-file rename — always produce summary table | `CLAUDE.md` | `CLAUDE.md` |
+| 33 | Task list for multi-task sessions (3+) | `CLAUDE.md` | `CLAUDE.md` |
+| 34 | Parallel agents for independent file groups | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.
