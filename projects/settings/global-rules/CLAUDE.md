@@ -368,11 +368,11 @@ Every Claude Code project is composed of these layers. The table below maps ever
 | 17 | Git workflow — every project must be a git repo | `CLAUDE.md` + `hooks/` | `CLAUDE.md`, `settings.json` |
 | 18 | Global config auto-sync to settings backup | `hooks/` | `settings.json` (PostToolUse hook) |
 | 23 | Memory tiering — Tier 2 never duplicates Tier 1 | `CLAUDE.md` | `CLAUDE.md` |
-| 27 | UI fix verification — confirm visible before reporting done | `CLAUDE.md` | `CLAUDE.md` |
-| 28 | Skills/commands — warn about restart requirement | `CLAUDE.md` | `CLAUDE.md` |
-| 29 | Debugging — credentials/auth before PATH debugging | `CLAUDE.md` | `CLAUDE.md` |
-| 30 | UI layout — describe plan before implementing | `CLAUDE.md` | `CLAUDE.md` |
-| 31 | Bash variables in skills — no markdown code blocks | `CLAUDE.md` | `CLAUDE.md` |
+| 7b | Debugging — root cause order (auth/credentials first) | `CLAUDE.md` | `CLAUDE.md` |
+| 7d | Skills/commands — session restart required after create/rename | `CLAUDE.md` | `CLAUDE.md` |
+| 7f | UI layout — describe before editing + badge/count clarification | `CLAUDE.md` | `CLAUDE.md` |
+| 7g | UI changes — visual verification before reporting done | `CLAUDE.md` | `CLAUDE.md` |
+| 7h | Shell scripts in skills — no embedded bash with variables | `CLAUDE.md` | `CLAUDE.md` |
 | 32 | Multi-file rename — always produce summary table | `CLAUDE.md` | `CLAUDE.md` |
 
 When setting up a new project, use this table to decide which layers to configure and which rule files to create.
