@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.22 | 2026-05-11 13:56:40 -->
+<!-- TopoAssist v260511.23 | 2026-05-11 14:03:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.22";  // keep in sync with Code.gs
+const APP_VERSION = "260511.23";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -526,6 +526,7 @@ function initApp() {
     renderIpTypeList();
     renderIntModeList();
     renderSviList();
+    _renderBridgeLldpLegend();
 
     hideGlobalLoading();
 
@@ -10659,7 +10660,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.11"
+VERSION    = "260511.12"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11556,7 +11557,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         session = f"topoassist_aliases_{int(time.time())}"
         cmds = ["configure session " + session] + TA_ALIASES_CMDS + ["commit"]
         try:
-            _eapi(ip, cmds)
+            if _cfg['transport'] == "ssh":
+                self._ssh_stdin(ip, *cmds, force_tty=True)
+            else:
+                self._eapi_push(ip, *cmds)
             if VERBOSE:
                 _vlog(f"[aliases] {ip}: TA aliases committed via {session}")
         except Exception as e:
@@ -12950,6 +12954,32 @@ function _bridgePortTitle(status, portId) {
 
 // has-l1 suffix for a link row (either endpoint above threshold).
 function _linkL1Cls(u, v) { return (bridgePortL1Errors[u] || bridgePortL1Errors[v]) ? ' has-l1' : ''; }
+
+// Render the Port — LLDP sidebar legend via the same SSoT helpers as live dot rendering.
+// Any change to _bridgePortDotClass or _bridgePortTitle propagates automatically.
+function _renderBridgeLldpLegend() {
+  const row = document.getElementById('lldpLegendRow');
+  if (!row) return;
+  const MOCK = '__lgnd__';
+  const items = [
+    { status: 'match' },
+    { status: 'mismatch' },
+    { status: 'missing', sub: 'other', label: 'Missing' },
+    { status: 'missing', sub: 'down',  label: 'Down' },
+    { status: 'missing', sub: 'shut',  label: 'Shut' },
+  ];
+  let html = items.map(item => {
+    if (item.sub) bridgePortSubType[MOCK] = item.sub;
+    const pid   = item.sub ? MOCK : null;
+    const cls   = _bridgePortDotClass(item.status, pid);
+    const title = _bridgePortTitle(item.status, pid);
+    const label = item.label || (item.status[0].toUpperCase() + item.status.slice(1));
+    if (item.sub) delete bridgePortSubType[MOCK];
+    return `<div class="l-item"><span class="bridge-port-dot ${cls}" title="${title}"></span>${label}</div>`;
+  }).join('');
+  html += `<div class="l-item"><span class="bridge-port-dot has-l1" title="L1 errors (CRC/FCS)"></span>+L1</div>`;
+  row.innerHTML = html;
+}
 
 // Apply bridgePortStatus to topology card port rows.
 // Called after runBridgeCheck() and after render() (to survive topology redraws).

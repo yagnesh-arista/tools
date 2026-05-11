@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.22 | 2026-05-11 13:54:10
+# topoassist v260511.23 | 2026-05-11 14:02:15
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.11"
+VERSION           = "260511.12"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1338,7 +1338,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         session = f"topoassist_aliases_{int(time.time())}"
         cmds = ["configure session " + session] + TA_ALIASES_CMDS + ["commit"]
         try:
-            _eapi(ip, cmds)
+            if _cfg['transport'] == "ssh":
+                self._ssh_stdin(ip, *cmds, force_tty=True)
+            else:
+                self._eapi_push(ip, *cmds)
             if VERBOSE:
                 _vlog(f"[aliases] {ip}: TA aliases committed via {session}")
         except Exception as e:
