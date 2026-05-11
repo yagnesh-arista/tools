@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.16 | 2026-05-11 13:11:31
+# topoassist v260511.22 | 2026-05-11 13:54:10
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.6"
+VERSION           = "260511.11"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -157,6 +157,35 @@ CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure sessio
 # and can take 10+ min for large topologies — default is 3× PUSH_TIMEOUT, min 900s.
 CLEANUP_PUSH_TIMEOUT  = int(_arg("-c") or os.environ.get("BRIDGE_CLEANUP_TIMEOUT",
                                                           str(max(PUSH_TIMEOUT * 3, 900))))
+
+# Parameterized EOS aliases for idempotent interface cleanup.
+# Called at global configure session level before each interface block:
+#   ta-clean-et Et1/1  →  clears stale VLAN/LAG config on physical Ethernet ports
+#   ta-clean-po Port-Channel10  →  clears stale VLAN config on Port-Channel interfaces
+#   ta-clean-vl Vlan45  →  clears stale IP/IPv6 addresses on GW SVIs
+# Pre-committed by _ensure_ta_aliases() before the main push so they are in
+# running-config when the main configure session references them.
+TA_ALIASES_CMDS = [
+    "alias ta-clean-et",
+    "1 interface %1",
+    "2 default switchport trunk allowed vlan",
+    "3 no switchport trunk native vlan",
+    "4 default switchport access vlan",
+    "5 no channel-group",
+    "alias ta-clean-po",
+    "1 interface %1",
+    "2 default switchport trunk allowed vlan",
+    "3 no switchport trunk native vlan",
+    "4 default switchport access vlan",
+    "alias ta-clean-vl",
+    "1 interface %1",
+    "2 default ip address",
+    "3 default ip address virtual",
+    "4 default ip virtual-router address",
+    "5 default ipv6 address",
+    "6 default ipv6 address virtual",
+    "7 default ipv6 virtual-router address",
+]
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
@@ -1293,6 +1322,28 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
 
+    # ── TA alias pre-commit ───────────────────────────────────────────────────
+    def _ensure_ta_aliases(self, ip):
+        """Pre-commit the three TA cleanup aliases into running-config.
+
+        Aliases defined WITHIN a configure session are not available in that
+        same session (transactional buffer semantics). By committing them in a
+        dedicated session first, they are in running-config and available to
+        the main push session that calls ta-clean-et/po/vl.
+
+        Idempotent: re-committing an identical alias definition is a no-op on EOS.
+        """
+        if _cfg['transport'] not in ("ssh", "eapi"):
+            return
+        session = f"topoassist_aliases_{int(time.time())}"
+        cmds = ["configure session " + session] + TA_ALIASES_CMDS + ["commit"]
+        try:
+            _eapi(ip, cmds)
+            if VERBOSE:
+                _vlog(f"[aliases] {ip}: TA aliases committed via {session}")
+        except Exception as e:
+            _vlog(f"[aliases] {ip}: alias pre-commit failed ({e}) — push will continue without aliases")
+
     # ── Stale session cleanup ─────────────────────────────────────────────────
     def _abort_stale_sessions(self, ip):
         """Abort all pending topoassist_* configure sessions on the device.
@@ -1366,6 +1417,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _ct = threading.Thread(target=_safe_abort, daemon=True)
         _ct.start()
         _ct.join(timeout=TIMEOUT)
+
+        # Pre-commit TA cleanup aliases so they are in running-config before the
+        # main session references them. Skipped on dry_run (verify path only).
+        if not dry_run:
+            self._ensure_ta_aliases(ip)
 
         # Run orphan detection and BGP-ASN-change detection concurrently when doing a
         # full push (all_ifaces=True) — both are independent EOS read queries.

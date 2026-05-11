@@ -1,10 +1,10 @@
-// TopoAssist v260511.18 | 2026-05-11 13:13:26
+// TopoAssist v260511.22 | 2026-05-11 13:52:22
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260511.18";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260511.22";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4611,17 +4611,13 @@ function getDeviceConfig(deviceName) {
                   ? ` ipv6 address virtual ${vx1Pv6Px}::${cfg2.gw_v6_last}${cfg2.gw_v6_mask}`
                   : ` ipv6 address ${vx1Pv6Px}::${vx1PhySuffixV6}${cfg2.gw_v6_mask}\n ipv6 virtual-router address ${vx1Pv6Px}::${cfg2.gw_v6_last}`)
               : null;
+            // ta-clean-vl at global level before interface (alias handles IP cleanup).
             sviLines.push([
               "!",
+              `ta-clean-vl Vlan${v}`,
               `interface Vlan${v}`,
               effectiveVrf ? ` vrf ${effectiveVrf}` : null,
               ` description ${desc} __TA`,
-              ` default ip address`,
-              ` default ip address virtual`,
-              ` default ip virtual-router address`,
-              ` default ipv6 address`,
-              ` default ipv6 address virtual`,
-              ` default ipv6 virtual-router address`,
               gwCmdV4,
               gwCmdV6,
             ].filter(Boolean).join("\n"));
@@ -4946,7 +4942,11 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
   const hasPo = (poVal !== "");
   const mode = String(d.sp_mode_ || "").toLowerCase();
 
-  let cfg = "interface " + portName + "\n";
+  // For Ethernet interfaces: ta-clean-et called at global configure session level
+  // before the interface block (alias enters the interface, clears stale config, returns).
+  let cfg = (portName.startsWith("Et") && !isSubInt)
+    ? "ta-clean-et " + portName + "\ninterface " + portName + "\n"
+    : "interface " + portName + "\n";
 
   // ==========================================
   // 1. PHYSICAL INTERFACE CONFIG
@@ -5009,7 +5009,8 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
         return `!\ninterface ${poVal}\n !! ERROR: INVALID CONFIGURATION !!\n !! MLAG member '${portName}' cannot use L3 mode '${mode}'.\n !! Action: Change mode to L2 (switchport).\n!\n`;
       }
 
-      cfg += "!\ninterface " + poVal + "\n";
+      const _poNum = poVal.replace(/\D/g, '');
+      cfg += "!\nta-clean-po Port-Channel" + _poNum + "\ninterface " + poVal + "\n";
 
       // --- DESCRIPTION LOGIC (PORT-CHANNEL) ---
       // Rule 1: Manual Override (Implicit for POs too)
@@ -5086,12 +5087,11 @@ function generateAttributesBlock(d) {
   // Robustly identify Peer Link (Check both Item and Group)
   const isPeerLink = d.isPeerLink === true || (d.poGroup && d.poGroup.isPeerLink === true);
 
-  // 1. Base Layer 2/3 State & Reset VLANs
+  // 1. Base Layer 2/3 State
+  // VLAN cleanup (trunk allowed, native, access) handled by ta-clean-et/ta-clean-po
+  // aliases called at global configure session level before each interface block.
   if (sp_mode.startsWith("l2")) {
     block += " switchport\n";
-    block += " default switchport trunk allowed vlan\n";
-    block += " no switchport trunk native vlan\n";
-    block += " default switchport access vlan\n";
   } else if (sp_mode.startsWith("l3")) {
     block += " no switchport\n";
   }
@@ -5172,7 +5172,9 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   // Helper to build the IP config lines.
   // resolvedVrf: per-VLAN VRF override (string or null). When provided, replaces d.vrf_.
   // Omit (undefined) to fall back to d.vrf_ (legacy single-VRF behaviour).
-  const getIpBlock = (v, resolvedVrf) => {
+  // _isSvi: true when called from the SVI loop (alias handled externally via ta-clean-vl);
+  // false (default) for sub-interfaces and l3-routed callers (keep inline cleanup).
+  const getIpBlock = (v, resolvedVrf, _isSvi = false) => {
     let val = parseInt(v);
     if (isNaN(val)) return "";
 
@@ -5256,12 +5258,16 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         // Non-LEAF (SPINE/HARNESS/etc): plain routed IP — no virtual or virtual-router address
         const gwDesc = vrf4Desc ? `GW_${vrf4Desc}_${val}` : `GW_${val}`;
         lines.push(` description -> ${gwDesc} __TA`);
-        lines.push(` default ip address`);
-        lines.push(` default ip address virtual`);
-        lines.push(` default ip virtual-router address`);
-        lines.push(` default ipv6 address`);
-        lines.push(` default ipv6 address virtual`);
-        lines.push(` default ipv6 virtual-router address`);
+        // Inline cleanup only for non-SVI contexts (sub-int, l3-routed).
+        // SVI callers use ta-clean-vl alias called at global level before the interface block.
+        if (!_isSvi) {
+          lines.push(` default ip address`);
+          lines.push(` default ip address virtual`);
+          lines.push(` default ip virtual-router address`);
+          lines.push(` default ipv6 address`);
+          lines.push(` default ipv6 address virtual`);
+          lines.push(` default ipv6 virtual-router address`);
+        }
         if (gwHasIpv4) lines.push(` ip address ${ipv4Px}.${gwLastV4}${cfg.gw_v4_mask}`);
         if (gwHasIpv6) { lines.push(` no ipv6 address`); lines.push(` ipv6 address ${ipv6Px}::${gwLastV6}${cfg.gw_v6_mask}`); }
       } else {
@@ -5272,12 +5278,14 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         const gwDesc = vrf4Desc ? `GW_${vrf4Desc}_${val}` : `GW_${val}`;
         lines.push(` description -> ${gwDesc} __TA`);
       }
-      lines.push(` default ip address`);
-      lines.push(` default ip address virtual`);
-      lines.push(` default ip virtual-router address`);
-      lines.push(` default ipv6 address`);
-      lines.push(` default ipv6 address virtual`);
-      lines.push(` default ipv6 virtual-router address`);
+      if (!_isSvi) {
+        lines.push(` default ip address`);
+        lines.push(` default ip address virtual`);
+        lines.push(` default ip virtual-router address`);
+        lines.push(` default ipv6 address`);
+        lines.push(` default ipv6 address virtual`);
+        lines.push(` default ipv6 virtual-router address`);
+      }
 
       if (d.isMlag) {
         if (useAnycastGW) {
@@ -5348,7 +5356,12 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
           _sviDesc = ` description __TA\n`;
         }
       }
-      block += "!\ninterface Vlan" + v + "\n" + _sviDesc + getIpBlock(v, _resolvedVrf) + "\n";
+      if (_sviIsGw) {
+        // GW SVIs: ta-clean-vl at global level before interface (alias handles IP cleanup).
+        block += "!\nta-clean-vl Vlan" + v + "\ninterface Vlan" + v + "\n" + getIpBlock(v, _resolvedVrf, true) + "\n";
+      } else {
+        block += "!\ninterface Vlan" + v + "\n" + _sviDesc + getIpBlock(v, _resolvedVrf) + "\n";
+      }
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
@@ -5770,6 +5783,28 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
       (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
+  // TA cleanup aliases — parameterized with interface %1; called at global configure
+  // session level before each interface block. Pre-committed by _ensure_ta_aliases()
+  // in device_bridge.py so they are in running-config before the main session runs.
+  mandatory.push("alias ta-clean-et");
+  mandatory.push("1 interface %1");
+  mandatory.push("2 default switchport trunk allowed vlan");
+  mandatory.push("3 no switchport trunk native vlan");
+  mandatory.push("4 default switchport access vlan");
+  mandatory.push("5 no channel-group");
+  mandatory.push("alias ta-clean-po");
+  mandatory.push("1 interface %1");
+  mandatory.push("2 default switchport trunk allowed vlan");
+  mandatory.push("3 no switchport trunk native vlan");
+  mandatory.push("4 default switchport access vlan");
+  mandatory.push("alias ta-clean-vl");
+  mandatory.push("1 interface %1");
+  mandatory.push("2 default ip address");
+  mandatory.push("3 default ip address virtual");
+  mandatory.push("4 default ip virtual-router address");
+  mandatory.push("5 default ipv6 address");
+  mandatory.push("6 default ipv6 address virtual");
+  mandatory.push("7 default ipv6 virtual-router address");
   mandatory.push("!");
   return mandatory.join("\n");
 }

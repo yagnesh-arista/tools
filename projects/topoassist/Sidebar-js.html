@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.18 | 2026-05-11 13:13:44 -->
+<!-- TopoAssist v260511.22 | 2026-05-11 13:56:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.18";  // keep in sync with Code.gs
+const APP_VERSION = "260511.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10659,7 +10659,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.6"
+VERSION    = "260511.11"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -10669,6 +10669,28 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
 CLEANUP_BATCH_SIZE    = 300
 CLEANUP_PUSH_TIMEOUT  = int(_arg("-c") or os.environ.get("BRIDGE_CLEANUP_TIMEOUT",
                                                           str(max(PUSH_TIMEOUT * 3, 900))))
+
+TA_ALIASES_CMDS = [
+    "alias ta-clean-et",
+    "1 interface %1",
+    "2 default switchport trunk allowed vlan",
+    "3 no switchport trunk native vlan",
+    "4 default switchport access vlan",
+    "5 no channel-group",
+    "alias ta-clean-po",
+    "1 interface %1",
+    "2 default switchport trunk allowed vlan",
+    "3 no switchport trunk native vlan",
+    "4 default switchport access vlan",
+    "alias ta-clean-vl",
+    "1 interface %1",
+    "2 default ip address",
+    "3 default ip address virtual",
+    "4 default ip virtual-router address",
+    "5 default ipv6 address",
+    "6 default ipv6 address virtual",
+    "7 default ipv6 virtual-router address",
+]
 
 _cfg = {
     "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "eapi"),
@@ -11528,6 +11550,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
 
+    def _ensure_ta_aliases(self, ip):
+        if _cfg['transport'] not in ("ssh", "eapi"):
+            return
+        session = f"topoassist_aliases_{int(time.time())}"
+        cmds = ["configure session " + session] + TA_ALIASES_CMDS + ["commit"]
+        try:
+            _eapi(ip, cmds)
+            if VERBOSE:
+                _vlog(f"[aliases] {ip}: TA aliases committed via {session}")
+        except Exception as e:
+            _vlog(f"[aliases] {ip}: alias pre-commit failed ({e}) — push will continue without aliases")
+
     def _abort_stale_sessions(self, ip):
         if _cfg['transport'] not in ("ssh", "eapi"):
             return []
@@ -11560,6 +11594,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._abort_stale_sessions(ip)
         except Exception:
             pass
+        if not dry_run:
+            self._ensure_ta_aliases(ip)
         # _detect_orphans already parallelises its 5 inner checks; running _find_bgp_asn_change
         # concurrently with it eliminates the extra sequential round-trip that was visible
         # in the log as a separate 'include router bgp' query after the orphan queries.
