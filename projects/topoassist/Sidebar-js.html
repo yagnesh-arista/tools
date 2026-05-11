@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.5 | 2026-05-11 12:14:17 -->
+<!-- TopoAssist v260511.6 | 2026-05-11 12:23:42 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.5";  // keep in sync with Code.gs
+const APP_VERSION = "260511.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3640,16 +3640,19 @@ function setSplitBtnState(splitId, labelText, bg, actionsDisabled) {
 }
 
 // --- SPLIT BUTTON LABEL HELPERS ---
-// Single source of truth for the [sheetId] dev[:port]:Config label format.
-function _buildSplitBase(sheetId, dev, port) {
-  return `[${sheetId}] ${port ? `${dev}:${port}:Config` : `${dev}:Config`}`;
+// Pure label builder — single source of truth for every split-btn label string.
+// state: 'ready' | 'fetching' | 'non-eos'
+function _buildSplitLabel(sheetId, dev, port, state, ageOrTime) {
+  const base = `[${sheetId}] ${port ? `${dev}:${port}:Config` : `${dev}:Config`}`;
+  if (state === 'non-eos')  return `${base} — Non-EOS`;
+  if (state === 'fetching') return `${base} [${ageOrTime}] - Fetching`;
+  return `${base} [${ageOrTime}]`;
 }
-// Builds the label AND calls setSplitBtnState. state: 'ready'|'fetching'|'non-eos'.
+// Sets label text + visual state (color, disabled). Delegates format to _buildSplitLabel.
 function _setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime) {
-  const base = _buildSplitBase(sheetId, dev, port);
-  if (state === 'non-eos')  return setSplitBtnState(splitId, `${base} — Non-EOS`, "#64748b", true);
-  if (state === 'fetching') return setSplitBtnState(splitId, `${base} [${ageOrTime}] - Fetching`, "#f59e0b", true);
-  setSplitBtnState(splitId, `${base} [${ageOrTime}]`, "#10b981", false);
+  const bg       = state === 'ready' ? "#10b981" : state === 'fetching' ? "#f59e0b" : "#64748b";
+  const disabled = state !== 'ready';
+  setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), bg, disabled);
 }
 
 // --- GLOBAL COPY HANDLER ---
@@ -18186,7 +18189,7 @@ function refreshConfigAges() {
     if (dev && dev.fetchEpoch && isGreen(wrapper)) {
       const label = wrapper.querySelector('.split-label');
       const sheetId = dev.sheetIndex || '-';
-      if (label) label.innerText = _buildSplitBase(sheetId, selectedDeviceId, null) + ` [${formatAgeLabel(dev.fetchEpoch)}]`;
+      if (label) label.innerText = _buildSplitLabel(sheetId, selectedDeviceId, null, 'ready', formatAgeLabel(dev.fetchEpoch));
     }
   }
 
@@ -18201,7 +18204,7 @@ function refreshConfigAges() {
       if (!isGreen(wrapper)) return;
       const label = wrapper.querySelector('.split-label');
       const sheetId = dev.sheetIndex || '-';
-      if (label) label.innerText = _buildSplitBase(sheetId, devName, portName) + ` [${formatAgeLabel(dev.fetchEpoch)}]`;
+      if (label) label.innerText = _buildSplitLabel(sheetId, devName, portName, 'ready', formatAgeLabel(dev.fetchEpoch));
     });
   }
 }
