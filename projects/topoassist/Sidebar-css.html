@@ -1,4 +1,4 @@
-<!-- TopoAssist v260511.28 | 2026-05-11 14:41:18 -->
+<!-- TopoAssist v260511.30 | 2026-05-11 15:12:27 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -3095,6 +3095,7 @@
   .bridge-port-dot.bridge-port-mismatch     { background: #eab308; box-shadow: 0 0 3px rgba(234,179,8,0.5); }
   .bridge-port-dot.bridge-port-missing      { background: #ef4444; box-shadow: 0 0 3px rgba(239,68,68,0.5); }
   .bridge-port-dot.bridge-port-down         { background: #f59e0b; box-shadow: 0 0 3px rgba(245,158,11,0.5); }
+  .bridge-port-dot.bridge-port-errdis       { background: #dc2626; box-shadow: 0 0 3px rgba(220,38,38,0.5); }
   .bridge-port-dot.bridge-port-shut         { background: #94a3b8; }
   .bridge-port-dot.bridge-port-missing-quiet { background: #94a3b8; }
   .bridge-port-dot.has-l1                   { outline: 2px solid #eab308; outline-offset: 1px; }
@@ -6164,12 +6165,14 @@
   .bridge-row-part { background: #fffbeb; cursor: pointer; }
   .bridge-row-unk  { background: var(--bg-secondary); cursor: pointer; }
   .bridge-row-skip { opacity: 0.45; }
-  .bridge-row-shut { background: #f8fafc; cursor: pointer; }
-  .bridge-row-ok:hover   { background: #bbf7d0; }
-  .bridge-row-fail:hover { background: #fecaca; }
-  .bridge-row-part:hover { background: #fde68a; }
-  .bridge-row-unk:hover  { background: var(--bg-hover, #e2e8f0); }
-  .bridge-row-shut:hover { background: #f1f5f9; }
+  .bridge-row-errdis { background: #fff1f2; cursor: pointer; }
+  .bridge-row-shut   { background: #f8fafc; cursor: pointer; }
+  .bridge-row-ok:hover     { background: #bbf7d0; }
+  .bridge-row-fail:hover   { background: #fecaca; }
+  .bridge-row-errdis:hover { background: #fecaca; }
+  .bridge-row-part:hover   { background: #fde68a; }
+  .bridge-row-unk:hover    { background: var(--bg-hover, #e2e8f0); }
+  .bridge-row-shut:hover   { background: #f1f5f9; }
   .bridge-row-shut .bridge-row-cable { color: var(--text-muted); font-weight: 400; }
   .bridge-row-l1       { background: #fffbeb; cursor: pointer; }
   .bridge-row-l1:hover { background: #fde68a; }

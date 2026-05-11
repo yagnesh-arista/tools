@@ -1,4 +1,4 @@
-<!-- TopoAssist v260511.28 | 2026-05-11 14:35:43 -->
+<!-- TopoAssist v260511.30 | 2026-05-11 15:13:03 -->
 <!DOCTYPE html>
 <html>
 
@@ -1773,20 +1773,26 @@
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMissing"></span>
       </div>
       <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagDown" onchange="toggleAuditCheck('bridgeAuditFlagDown',this.checked)"><span>Interface down (link not connected)</span></label>
-        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagDown"></span>
-      </div>
-      <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagShut" onchange="toggleAuditCheck('bridgeAuditFlagShut',this.checked)"><span>Interface shut (admin disabled)</span></label>
-        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagShut"></span>
-      </div>
-      <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagInternalVlan"></span>
       </div>
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagL1Errors" onchange="toggleAuditCheck('bridgeAuditFlagL1Errors',this.checked)"><span>L1 errors (CRC / FCS)</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagL1Errors"></span>
+      </div>
+
+      <div class="audit-cat-hdr">Bridge — Int State</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagDown" onchange="toggleAuditCheck('bridgeAuditFlagDown',this.checked)"><span>No link (notconnect)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagDown"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagErrDis" onchange="toggleAuditCheck('bridgeAuditFlagErrDis',this.checked)"><span>Err-Dis (errdisabled)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagErrDis"></span>
+      </div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagShut" onchange="toggleAuditCheck('bridgeAuditFlagShut',this.checked)"><span>Disabled (admin shut)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagShut"></span>
       </div>
 
       <div class="audit-section-hdr design">Design Issues — static topology checks</div>
