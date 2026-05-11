@@ -1,4 +1,4 @@
-<!-- TopoAssist v260511.30 | 2026-05-11 15:13:03 -->
+<!-- TopoAssist v260511.31 | 2026-05-11 15:24:35 -->
 <!DOCTYPE html>
 <html>
 
@@ -1769,10 +1769,6 @@
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMismatch"></span>
       </div>
       <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Missing LLDP neighbor</span></label>
-        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMissing"></span>
-      </div>
-      <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagInternalVlan" onchange="toggleAuditCheck('bridgeAuditFlagInternalVlan',this.checked)"><span>Internal VLAN used in topology</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagInternalVlan"></span>
       </div>
@@ -1782,6 +1778,10 @@
       </div>
 
       <div class="audit-cat-hdr">Bridge — Int State</div>
+      <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Up (no LLDP neighbor)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMissing"></span>
+      </div>
       <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagDown" onchange="toggleAuditCheck('bridgeAuditFlagDown',this.checked)"><span>No link (notconnect)</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagDown"></span>

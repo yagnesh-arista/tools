@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.30 | 2026-05-11 15:14:50 -->
+<!-- TopoAssist v260511.31 | 2026-05-11 15:25:22 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.30";  // keep in sync with Code.gs
+const APP_VERSION = "260511.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12979,9 +12979,10 @@ function _renderBridgeLldpLegend() {
   const items = [
     { status: 'match' },
     { status: 'mismatch' },
-    { status: 'missing', sub: 'other', label: 'Missing' },
-    { status: 'missing', sub: 'down',  label: 'Down' },
-    { status: 'missing', sub: 'shut',  label: 'Shut' },
+    { status: 'missing', sub: 'other',  label: 'Missing' },
+    { status: 'missing', sub: 'errdis', label: 'Err-Dis' },
+    { status: 'missing', sub: 'down',   label: 'Down' },
+    { status: 'missing', sub: 'shut',   label: 'Shut' },
   ];
   let html = items.map(item => {
     if (item.sub) bridgePortSubType[MOCK] = item.sub;
@@ -13001,8 +13002,9 @@ function _renderBridgeLldpLegend() {
 function _bridgeEffectiveClass(status, portId) {
   if (status === 'missing') {
     const sub = (portId && bridgePortSubType[portId]) || 'other';
-    if (sub === 'shut') return bridgeAuditFlagShut ? 'missing' : 'missing-quiet';
-    if (sub === 'down') return bridgeAuditFlagDown ? 'missing' : 'missing-quiet';
+    if (sub === 'errdis') return bridgeAuditFlagErrDis ? 'missing' : 'missing-quiet';
+    if (sub === 'shut')   return bridgeAuditFlagShut   ? 'missing' : 'missing-quiet';
+    if (sub === 'down')   return bridgeAuditFlagDown   ? 'missing' : 'missing-quiet';
     return bridgeAuditFlagMissing ? 'missing' : 'missing-quiet';
   }
   return status;
