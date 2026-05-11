@@ -195,6 +195,21 @@ The `[−]` is injected by `_injectMinimizeButtons()` via its `appendChild` fall
 
 **GAS container footer must be a single row — no stacking.** GAS dialog height is fixed via `google.script.host.setHeight()`. The body fills remaining height via `flex: 1`. If the footer wraps to multiple lines, the bottom row is silently clipped — GAS does not scroll containers. Rule: the `modal-actions` footer of any container must fit in one horizontal row. If there are too many controls, promote low-priority ones (checkboxes, toggles) to a `schema-settings-bar` row above the body. After any footer change, reopen the dialog and visually confirm the bottom row is fully visible.
 
+## SSoT for Repeated Label / String Builders
+
+When the same format string appears in 3+ call sites, extract it to a pure function before writing any DOM-mutating wrapper:
+
+1. `_buildXLabel(params)` — pure, returns string only, zero DOM side-effects
+2. `_setXLabel(id, params)` — calls `_buildXLabel` + applies DOM state (color, disabled, innerText)
+3. Callers needing **string only** (e.g. age-refresh tickers) call `_buildXLabel` directly — never re-apply color/disabled as a side-effect
+4. Callers needing **string + state** call `_setXLabel`
+
+**Detection rule:** if a helper already exists (`updateDirtyButton`, `setSplitBtnState`) and a new function duplicates its body instead of calling it — that is a gap. Always grep for existing helpers before writing new DOM mutation logic.
+
+**Canonical examples:**
+- `_buildSplitLabel` / `_setSplitBtnLabel` — split-btn label format (all 3 states + colors in one place)
+- `updateDirtyButton("#id", isDirty)` — dirty-state button (amber/green + " *" label); `DeviceManagerSaveButton` and `SheetColumnManagerSaveButton` must call this, never inline it
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes

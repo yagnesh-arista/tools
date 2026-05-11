@@ -1,10 +1,10 @@
-// TopoAssist v260511.6 | 2026-05-11 12:23:21
+// TopoAssist v260511.7 | 2026-05-11 12:32:28
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260511.6";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260511.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4988,6 +4988,7 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
     }
 
     // Physical Member Config
+    cfg += " ta-clean-et\n";
     if (hasPo) {
       const poNum = poVal.replace(/\D/g, '');
       cfg += " channel-group " + poNum + " mode active\n";
@@ -5089,9 +5090,6 @@ function generateAttributesBlock(d) {
   // 1. Base Layer 2/3 State & Reset VLANs
   if (sp_mode.startsWith("l2")) {
     block += " switchport\n";
-    block += " default switchport trunk allowed vlan\n";
-    block += " no switchport trunk native vlan\n";
-    block += " default switchport access vlan\n";
   } else if (sp_mode.startsWith("l3")) {
     block += " no switchport\n";
   }
@@ -5762,6 +5760,9 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
       (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
+  mandatory.push("alias ta-clean-et default switchport trunk allowed vlan ; no switchport trunk native vlan ; default switchport access vlan ; no channel-group");
+  mandatory.push("alias ta-clean-po default switchport trunk allowed vlan ; no switchport trunk native vlan ; default switchport access vlan");
+  mandatory.push("alias ta-clean-vl default ip address ; default ip address virtual ; default ip virtual-router address ; default ipv6 address ; default ipv6 address virtual ; default ipv6 virtual-router address");
   mandatory.push("!");
   return mandatory.join("\n");
 }
