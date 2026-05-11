@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.3 | 2026-05-11 10:54:35 -->
+<!-- TopoAssist v260511.4 | 2026-05-11 11:55:56 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.3";  // keep in sync with Code.gs
+const APP_VERSION = "260511.4";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -18188,7 +18188,7 @@ function refreshConfigAges() {
       if (!isGreen(wrapper)) return;
       const label = wrapper.querySelector('.split-label');
       const sheetId = dev.sheetIndex || '-';
-      if (label) label.innerText = `[${sheetId}] ${devName}:Config:${portName} [${formatAgeLabel(dev.fetchEpoch)}]`;
+      if (label) label.innerText = `[${sheetId}] ${devName}:${portName}:Config [${formatAgeLabel(dev.fetchEpoch)}]`;
     });
   }
 }
