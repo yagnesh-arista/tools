@@ -1264,6 +1264,7 @@ TOPOASSIST CODE REVIEW
 39 — console.log / debugger residue   ✓ / ✗ / ⚠
 40 — JSON.parse safety                ✓ / ✗ / ⚠
 41 — Accessibility: icon-button label ✓ / ✗ / ⚠
+42 — SSoT label/string builders       ✓ / ✗ / ⚠
 
 ─────────────────────────────────────
 Status: BLOCKED — N failures must be resolved before proceeding.
