@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.16 | 2026-05-11 13:12:58 -->
+<!-- TopoAssist v260511.18 | 2026-05-11 13:13:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.16";  // keep in sync with Code.gs
+const APP_VERSION = "260511.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -11552,20 +11552,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
-    def _ensure_ta_aliases(self, ip):
-        if _cfg['transport'] not in ("ssh", "eapi"):
-            return
-        alias_session = f"topoassist_aliases_{int(time.time())}"
-        cmds = [f"configure session {alias_session}"] + TA_ALIASES + ["commit"]
-        try:
-            if _cfg['transport'] == "eapi":
-                self._eapi_push(ip, *cmds)
-            else:
-                self._ssh_stdin(ip, *cmds, force_tty=True)
-            _vlog(f"[aliases] {ip}: TA cleanup aliases committed ({len(TA_ALIASES)})", flush=True)
-        except Exception as e:
-            _vlog(f"[aliases] {ip}: alias pre-commit failed -- {e} (continuing)", flush=True)
-
     def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None, orphans_precomputed=None):
         lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
@@ -11675,8 +11661,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
-        if not dry_run:
-            self._ensure_ta_aliases(ip)
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
         _log_action = "dry-run" if dry_run else "open" if open_only else "commit"
