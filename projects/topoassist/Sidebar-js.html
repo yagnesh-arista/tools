@@ -14004,7 +14004,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   if (!fullConfig) {
     _previewingPush = null;
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    _updatePushPreviewError(label, error || 'could not fetch config for ' + deviceName);
+    _updatePushPreviewError(label, deviceName, error || 'could not fetch config for ' + deviceName);
     return;
   }
 
@@ -14021,7 +14021,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (!ifBlock) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      _updatePushPreviewError(label, `Interface ${portFilter} not found in ${deviceName} config`);
+      _updatePushPreviewError(label, deviceName, `Interface ${portFilter} not found in ${deviceName} config`);
       return;
     }
     config = ifBlock;
@@ -14045,7 +14045,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (data.auth_expired) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _handleBridgeAuthExpired(data.message);
-      _updatePushPreviewError(label, 'Auth session expired \u2014 ' + (data.message || 'run: arista-ssh login'));
+      _updatePushPreviewError(label, deviceName, 'Auth session expired \u2014 ' + (data.message || 'run: arista-ssh login'));
       return;
     }
     const res  = data[deviceName] || {};
@@ -14068,7 +14068,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (!res.ok) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      _updatePushPreviewError(label, res.error || 'something went wrong');
+      _updatePushPreviewError(label, deviceName, res.error || 'something went wrong');
       return;
     }
     // EOS command rejections — commands silently failed inside the session.
@@ -14085,7 +14085,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
           body: JSON.stringify({ ipMap: { [deviceName]: { ip, session_name: res.session_name } }, action: 'abort' }),
         }).catch(() => {});
       }
-      _updatePushPreviewError(label, 'EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_p1EosErrs));
+      _updatePushPreviewError(label, deviceName, 'EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_p1EosErrs));
       return;
     }
     // Empty diff = already in sync — abort the open session silently, show modal briefly
@@ -14131,7 +14131,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   } catch (err) {
     _previewingPush = null;
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    _updatePushPreviewError(label, `${err.message} — is device_bridge.py running?`);
+    _updatePushPreviewError(label, deviceName, `${err.message} — is device_bridge.py running?`);
   }
 }
 
@@ -14299,7 +14299,7 @@ async function commitPushConfig() {
       _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${escapeHtml(errMsg)}</div>` +
         `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;padding:2px 0 0;">` +
         `If Bridge → Cleanup shows stale items, run Cleanup first — removal commands (default interface, no vlan) are slow on EOS and may have caused this.</div>`);
-      if (titleEl) titleEl.textContent = (label || deviceName) + ': Push Timed Out';
+      if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Push Timed Out');
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
       if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -14343,7 +14343,7 @@ async function commitPushConfig() {
             const _v3EosWarns = _eosWarnings(vRes);
             const warnNote = _v3EosWarns ? ` · ${_v3EosWarns.length} note${_v3EosWarns.length !== 1 ? 's' : ''}` : '';
             _ptSet('pt3', '#10b981', `verified — in sync${warnNote}`);
-            if (titleEl) titleEl.textContent = (label || deviceName) + ': Push Successful';
+            if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Push Successful');
             const _xBtn = document.getElementById('btnPushConfirmClose');
             if (_xBtn) _xBtn.onclick = closePushConfirmModal;
             _setPushStatus(`<b>${label || deviceName}</b>${retryNote} — ` +
@@ -14361,7 +14361,7 @@ async function commitPushConfig() {
           } else if (rem === 0 && _v3EosErrs) {
             // Empty diff but EOS rejected commands — false "in sync", device not fully updated
             _ptSet('pt3', '#f87171', 'EOS rejection on verify');
-            if (titleEl) titleEl.textContent = (label || deviceName) + ': EOS Rejection on Verify';
+            if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'EOS Rejection on Verify');
             _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#dc2626;padding:4px 0;">` +
               `<b>EOS rejected commands during verify:</b><br>` + _formatEosErrorsHtml(_v3EosErrs) + `</div>`);
             if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
@@ -14372,7 +14372,7 @@ async function commitPushConfig() {
             // Partial — show remaining diff in pt_detail
             const dlines = (vRes.diff || '').split('\n');
             _ptSet('pt3', '#f59e0b', `${rem} line${rem !== 1 ? 's' : ''} still differ`);
-            if (titleEl) titleEl.textContent = (label || deviceName) + ': Partial Commit';
+            if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Partial Commit');
             let dhtml = `<pre style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;` +
               `padding:8px;overflow-x:auto;max-height:220px;white-space:pre;margin:0;">`;
             dhtml += dlines.map(l => {
@@ -14405,7 +14405,7 @@ async function commitPushConfig() {
         } else {
           const vErrSafe = escapeHtml(vRes.error || 'something went wrong');
           _ptSet('pt3', '#f87171', 'verify failed');
-          if (titleEl) titleEl.textContent = (label || deviceName) + ': Verify Failed';
+          if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Verify Failed');
           _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
           if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
           _setPushStatus(`<b>${label || deviceName}</b> — ` +
@@ -14415,7 +14415,7 @@ async function commitPushConfig() {
       } catch (verifyErr) {
         const vErrSafe = escapeHtml(verifyErr.message);
         _ptSet('pt3', '#f87171', 'verify error');
-        if (titleEl) titleEl.textContent = (label || deviceName) + ': Verify Failed';
+        if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Verify Failed');
         _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${vErrSafe}</div>`);
         if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
         _setPushStatus(`<b>${label || deviceName}</b> — ` +
@@ -14431,7 +14431,7 @@ async function commitPushConfig() {
       _ptDetail(`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}</div>` +
         (_isTimeout ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;padding:2px 0 0;">` +
         `If Bridge → Cleanup shows stale items, run Cleanup first — removal commands (default interface, no vlan) are slow on EOS and may have caused this.</div>` : ''));
-      if (titleEl) titleEl.textContent = (label || deviceName) + ': Push Failed';
+      if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Push Failed');
       if (commitBtn) commitBtn.style.display = 'none';
       if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
       if (btn) { btn.disabled = false; btn.textContent = origText; }
@@ -14445,7 +14445,7 @@ async function commitPushConfig() {
     _ptDetail(
       `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;">${errSafe}<br>` +
       `<span style="opacity:0.7;">Is device_bridge.py running?</span></div>`);
-    if (titleEl) titleEl.textContent = (label || deviceName) + ': Push Error';
+    if (titleEl) titleEl.textContent = _buildPushTitle(label, deviceName, 'Push Error');
     if (commitBtn) commitBtn.style.display = 'none';
     if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; cancelFtr.onclick = closePushConfirmModal; }
     const btn = document.getElementById(btnId);
@@ -16891,7 +16891,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _handleBridgeAuthExpired(data.message);
-      _updatePushPreviewError(label, 'Auth session expired \u2014 ' + (data.message || 'run: arista-ssh login'));
+      _updatePushPreviewError(label, deviceName, 'Auth session expired \u2014 ' + (data.message || 'run: arista-ssh login'));
       return;
     }
     const res  = data[deviceName] || {};
@@ -16907,7 +16907,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       const errMsg = res.error || 'something went wrong';
       setStatus(`${label}: ${errMsg}`, "status-error");
-      _updatePushPreviewError(label, errMsg);
+      _updatePushPreviewError(label, deviceName, errMsg);
       return;
     }
     // EOS command rejections with empty diff — false "already in sync"
@@ -16916,7 +16916,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
     if (_ptEosErrs && (!res.diff || !res.diff.trim())) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      _updatePushPreviewError(label, 'EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_ptEosErrs));
+      _updatePushPreviewError(label, deviceName, 'EOS rejected commands — device NOT updated:\n' + _formatEosErrors(_ptEosErrs));
       return;
     }
     // Empty diff = already in sync — update modal for in-sync state
@@ -16946,16 +16946,21 @@ async function _pushConfigText(deviceName, config, label, btnId) {
       return;
     }
     setStatus(`Push error: ${err.message} — is device_bridge.py running?`, "status-error");
-    _updatePushPreviewError(label, `${err.message} — is device_bridge.py running?`);
+    _updatePushPreviewError(label, deviceName, `${err.message} — is device_bridge.py running?`);
   }
 }
 
-function _updatePushPreviewError(label, msg) {
+function _buildPushTitle(label, deviceName, state) {
+  const prefix = label || deviceName || '';
+  return prefix ? prefix + ': ' + state : state;
+}
+
+function _updatePushPreviewError(label, deviceName, msg) {
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
-  if (titleEl)   titleEl.textContent = (label ? label + ': ' : '') + 'Preview Failed';
+  if (titleEl)   titleEl.textContent = _buildPushTitle(label, deviceName, 'Preview Failed');
   if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;white-space:pre-wrap;">${escapeHtml(msg)}</div>`;
   if (commitBtn) commitBtn.style.display = 'none';
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }
