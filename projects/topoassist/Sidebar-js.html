@@ -1,4 +1,4 @@
-<!-- TopoAssist v260511.28 | 2026-05-11 14:39:08 -->
+<!-- TopoAssist v260511.28 | 2026-05-11 14:41:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
 const APP_VERSION = "260511.28";  // keep in sync with Code.gs
@@ -12981,9 +12981,7 @@ function _renderBridgeLldpLegend() {
     if (item.sub) delete bridgePortSubType[MOCK];
     return `<div class="l-item"><span class="bridge-port-dot ${cls}" title="${title}"></span>${label}</div>`;
   }).join('');
-  bridgePortL1Errors[MOCK] = { fcs: 1 };
-  html += `<div class="l-item"><span class="bridge-port-dot ${_bridgePortDotClass('match', MOCK)}" title="L1 errors (CRC/FCS)"></span>+L1</div>`;
-  delete bridgePortL1Errors[MOCK];
+  html += `<div class="l-item"><span class="bridge-port-dot has-l1" title="L1 errors (CRC/FCS)"></span>L1 Error</div>`;
   row.innerHTML = html;
 }
 
