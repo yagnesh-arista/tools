@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.35 | 2026-05-11 15:50:43 -->
+<!-- TopoAssist v260511.36 | 2026-05-11 15:55:28 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.35";  // keep in sync with Code.gs
+const APP_VERSION = "260511.36";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3133,10 +3133,13 @@ function runValidation(logIssues) {
       }
     }
   });
-  if (_lastBridgeOrphans && _lastBridgeOrphans.length && bridgeAuditFlagMismatch) {
-    _lastBridgeOrphans.forEach(o => {
-      _auditIssues.push({ msg: `[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, cls: 'status-error', src: 'live' });
-    });
+  if (_lastBridgeOrphans && _lastBridgeOrphans.length) {
+    auditCheckHadIssue.bridgeAuditFlagOrphan = _lastBridgeOrphans.length;
+    if (bridgeAuditFlagOrphan) {
+      _lastBridgeOrphans.forEach(o => {
+        _auditIssues.push({ msg: `[Audit - Live] New LLDP neighbor: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, cls: 'status-error', src: 'live' });
+      });
+    }
   }
   // L1 errors — read from bridgePortL1Errors SSoT (link-level dedup: each link counted once)
   const _l1Seen = new Set();
@@ -10486,6 +10489,7 @@ let bridgePortSubType = {};  // "dev:Et1" → 'errdis'|'shut'|'down'|'other' —
 // Audit flags — var (not let) so window[name] dynamic access works in _getAuditFlag/_setAuditFlag.
 // Single registry: add new flags here only. _getAuditFlag/_setAuditFlag need no changes.
 // Default ON  → parse as !== 'false'   Default OFF → parse as === 'true'
+var bridgeAuditFlagOrphan       = localStorage.getItem('bridgeAuditFlagOrphan')       !== 'false'; // default ON — new LLDP neighbor not in topology
 var bridgeAuditFlagMismatch     = localStorage.getItem('bridgeAuditFlagMismatch')     !== 'false'; // default ON
 var bridgeAuditFlagMissing      = localStorage.getItem('bridgeAuditFlagMissing')      !== 'false'; // default ON
 var bridgeAuditFlagDown         = localStorage.getItem('bridgeAuditFlagDown')         === 'true';  // default OFF — down links are common in lab setups (unplugged, powered off)
@@ -12434,7 +12438,7 @@ function toggleBridgeDevSection() {
 // =========================================================
 
 const _ALL_AUDIT_FLAGS = [
-  'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagDown', 'bridgeAuditFlagShut', 'bridgeAuditFlagErrDis', 'bridgeAuditFlagInternalVlan', 'bridgeAuditFlagL1Errors',
+  'bridgeAuditFlagOrphan', 'bridgeAuditFlagMismatch', 'bridgeAuditFlagMissing', 'bridgeAuditFlagDown', 'bridgeAuditFlagShut', 'bridgeAuditFlagErrDis', 'bridgeAuditFlagInternalVlan', 'bridgeAuditFlagL1Errors',
   'auditFlagPoMismatch', 'auditFlagPoAsymmetry', 'auditFlagMissingPo', 'auditFlagStalePo',
   'auditFlagUnsupportedInt', 'auditFlagDuplicateInt', 'auditFlagMlagL3',
   'auditFlagVlanMismatch', 'auditFlagNativeNonTrunk', 'auditFlagSviVlanMismatch',
@@ -12526,7 +12530,7 @@ function toggleAuditCheck(name, val) {
     applyLldpIndicators();
     if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
   }
-  if (name === 'bridgeAuditFlagL1Errors') {
+  if (name === 'bridgeAuditFlagOrphan' || name === 'bridgeAuditFlagL1Errors') {
     if (_lastBridgeResults) _renderLldpResults(_lastBridgeResults, _lastBridgeOrphans);
   }
   if (isValidationMode) runValidation();
@@ -15315,9 +15319,9 @@ function _logBridgeIssuesToStatusLog(results, orphans, dsData) {
       }
     });
   }
-  if (orphans && orphans.length && bridgeAuditFlagMismatch) {
+  if (orphans && orphans.length && bridgeAuditFlagOrphan) {
     orphans.forEach(o => {
-      setStatus(`[Audit - Live] Extra cable: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
+      setStatus(`[Audit - Live] New LLDP neighbor: ${o.localDev}:${o.localIf} \u2194 ${o.remDev}:${o.remIf}`, 'status-error');
     });
   }
   // L1 errors — reads from bridgePortL1Errors SSoT (no ad-hoc re-derivation from dsData)

@@ -1,4 +1,4 @@
-<!-- TopoAssist v260511.35 | 2026-05-11 15:50:21 -->
+<!-- TopoAssist v260511.36 | 2026-05-11 15:55:53 -->
 <!DOCTYPE html>
 <html>
 
@@ -1765,11 +1765,15 @@
       <div class="audit-section-hdr live">Live Issues — requires Device Bridge</div>
       <div class="audit-cat-hdr">Bridge — LLDP</div>
       <div class="audit-chk-row">
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagOrphan" onchange="toggleAuditCheck('bridgeAuditFlagOrphan',this.checked)"><span>LLDP New neighbor (For new cable, add)</span></label>
+        <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagOrphan"></span>
+      </div>
+      <div class="audit-chk-row">
         <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMismatch" onchange="toggleAuditCheck('bridgeAuditFlagMismatch',this.checked)"><span>LLDP neighbor mismatch</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMismatch"></span>
       </div>
       <div class="audit-chk-row">
-        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>Up (no LLDP neighbor)</span></label>
+        <label class="audit-chk-label"><input type="checkbox" id="auditChk_bridgeAuditFlagMissing" onchange="toggleAuditCheck('bridgeAuditFlagMissing',this.checked)"><span>INT Up - no LLDP neighbor</span></label>
         <span class="audit-issue-ind" id="auditDot_bridgeAuditFlagMissing"></span>
       </div>
 
