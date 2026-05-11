@@ -1186,6 +1186,42 @@ but not required unless the button is in a screen-reader-critical workflow.
 
 ---
 
+## Check 42 — SSoT Label / String Builders
+
+When the same format string is constructed in 3+ call sites, it must be extracted to a
+pure builder function. The pattern has two levels:
+
+1. `_buildXLabel(params)` — pure, returns string only, zero DOM side-effects
+2. `_setXLabel(id, params)` — delegates to `_buildXLabel`, adds DOM mutations (color, disabled)
+
+Callers needing **string only** (e.g. periodic tickers, age refreshers) call `_buildXLabel` directly.
+Callers needing **string + state** call `_setXLabel`.
+
+**Canonical helpers — never duplicate their bodies inline:**
+- `_buildSplitLabel(sheetId, dev, port, state, ageOrTime)` → string for all 3 split-btn states
+- `_setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime)` → calls `_buildSplitLabel` + `setSplitBtnState`
+- `updateDirtyButton(selector, isDirty)` → amber/green + " *" label; use for ALL dirty-state save buttons
+
+```bash
+# Confirm _buildSplitLabel is the only place that formats split-btn labels
+grep -n "]:.*Config\b" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "_buildSplitLabel\|function\|//" | head -10
+
+# Confirm DeviceManagerSaveButton / SheetColumnManagerSaveButton use updateDirtyButton
+grep -A3 "DeviceManagerSaveButton\|SheetColumnManagerSaveButton" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep -v "^--$" | head -20
+
+# Confirm no inline " *" label logic outside updateDirtyButton
+grep -n 'label + " \*"\|innerText.*\*"' ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "updateDirtyButton\|function updateDirty" | head -10
+```
+
+✗ FAIL if a format string appearing in 3+ places is not behind a pure builder function
+✗ FAIL if `DeviceManagerSaveButton` or `SheetColumnManagerSaveButton` contain inline dirty-state logic instead of calling `updateDirtyButton`
+✗ FAIL if any call site builds a split-btn label string without going through `_buildSplitLabel`
+
+---
+
 ## Output Format
 
 ```
