@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.31 | 2026-05-11 15:25:22 -->
+<!-- TopoAssist v260511.32 | 2026-05-11 15:33:50 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.31";  // keep in sync with Code.gs
+const APP_VERSION = "260511.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -13038,7 +13038,12 @@ function _populateBridgePortSubTypes(dsData) {
       const peerDev    = peerPortId ? peerPortId.slice(0, peerPortId.lastIndexOf(':')) : null;
       const peerIsUnavailable = peerDev && (!dsData[peerDev] || !dsData[peerDev].ok);
       const peerIsNonArista   = peerDev && (allDevicesData[peerDev] || {}).type === 'non-arista';
-      bridgePortSubType[portId] = (peerIsUnavailable || peerIsNonArista) ? 'shut' : 'down';
+      const peerPortName = peerPortId ? peerPortId.slice(peerPortId.lastIndexOf(':') + 1) : null;
+      const peerDs = peerDev ? dsData[peerDev] : null;
+      const peerIfLs = (peerPortName && peerDs && peerDs.ok && peerDs.interfaces)
+        ? ((peerDs.interfaces[_expandIfaceName(peerPortName)] || {}).linkStatus || '') : '';
+      const peerIsDisabled = peerIfLs === 'disabled';
+      bridgePortSubType[portId] = (peerIsUnavailable || peerIsNonArista || peerIsDisabled) ? 'shut' : 'down';
     } else {
       bridgePortSubType[portId] = 'other';
     }
