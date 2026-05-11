@@ -67,6 +67,21 @@ obviously need to change, hacks that work now but will break under predictable c
 missing abstractions that make the code hard to reason about.
 - ✗ FAIL if found — explain what should be abstracted and why
 
+### C2a. SSoT — Second-Use Extraction
+The second time something appears in the changed files is the trigger to extract it. Scan for:
+- **Magic values** (colors `"#f59e0b"`, timeouts `15000`, string literals `"Non-EOS"`) appearing 2×+ → named constant
+- **Format templates** (label strings, URL patterns, log prefixes built the same way) appearing 2×+ → pure builder function
+- **Logic blocks** (>3 lines of identical or near-identical flow) appearing 2×+ → named helper
+
+When a format/string is used in both a pure-string context AND a DOM-mutating context, apply the **pure builder pattern**:
+1. `_buildXLabel(params)` — returns string only, zero side-effects
+2. `_setXState(id, params)` — calls `_buildXLabel` + applies DOM changes
+
+Side-effect-free callers (age tickers, formatters) must call `_buildXLabel` directly — never the DOM wrapper.
+
+- ✗ FAIL if a magic value, format template, or logic block appears 2×+ with no extraction
+- ⚠ WARN if a single-line expression appears 2×+ but the name would be longer and intent is obvious
+
 ### C3. Elegance & Best Practices
 - Does new code match the conventions and patterns already in the codebase?
 - Are names clear and consistent?
