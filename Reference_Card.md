@@ -1,5 +1,5 @@
 # Claude Code Reference Card
-Last updated: 2026-05-10 (memory review: deduplicate rule numbers 7c/7d/7f → 7e/7i/7j/7k; add /bugfix to global commands)
+Last updated: 2026-05-11 (Rule 11b added: SSoT — extract at second use; Check C2a added to review-global)
 
 > Update this file whenever a rule, workflow, or automation changes.
 > Hook reminder fires automatically on every global config edit.
@@ -33,6 +33,7 @@ Last updated: 2026-05-10 (memory review: deduplicate rule numbers 7c/7d/7f → 7
 | 10 | Code quality — no over/under-engineering, match existing conventions | `rules/` | `rules/quality.md` |
 | 11 | Refactoring — surface opportunities, don't act without being asked | `rules/` | `rules/quality.md` |
 | 11a | Reuse and enhance — before writing a new function, find an existing one; extend with optional `opts`; replace all old call sites; never leave parallel implementations alive | `rules/` | `rules/quality.md` |
+| 11b | SSoT — extract at the **second** use: magic values → named constant; format templates → pure `_buildX(params)` builder; logic blocks >3 lines → helper. Pure builder pattern: `_buildXLabel` (string only) + `_setXState` (calls builder + DOM); side-effect-free callers use builder directly | `rules/` | `rules/quality.md` |
 | 12 | Security — validate at every system boundary, block on hardcoded secrets | `rules/` | `rules/security.md` |
 | 13 | Tests — real paths, independent, no internal mocks, happy path + edge cases | `rules/` | `rules/testing.md` |
 | 14 | Review — scope/hygiene, bugs, design quality (over/under-engineering), test quality, refactoring opportunities; `/review-global` before every commit | `hooks/` + `commands/` | `hooks/commit-guard.sh`, `commands/review-global.md` |

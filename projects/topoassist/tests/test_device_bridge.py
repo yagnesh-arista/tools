@@ -1,4 +1,4 @@
-# topoassist v260509.34 | 2026-05-09 11:23:44
+# topoassist v260511.12 | 2026-05-11 12:51:26
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -635,6 +635,7 @@ def _make_push_handler():
     """Bare BridgeHandler with no real __init__ — all network methods mocked."""
     h = object.__new__(db.BridgeHandler)
     h._abort_stale_sessions = mock.Mock()
+    h._ensure_ta_aliases = mock.Mock()
     h._find_bgp_asn_change = mock.Mock(return_value=([], None))
     h._diagnose_eapi_errors = mock.Mock(side_effect=lambda ip, lines, errs: errs)
     db._cfg['transport'] = 'eapi'

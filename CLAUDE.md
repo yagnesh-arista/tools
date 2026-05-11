@@ -124,6 +124,18 @@ Before writing a new function, search for one that already does the same job.
 - Make new parameters optional so existing callers are unchanged.
 - After enhancing, replace all old call sites with the unified function. Never leave parallel implementations alive.
 
+## 11b. SSoT — Extract at the Second Use
+The **second** time something appears in code is the trigger to extract it — not the third.
+- **Magic value** (color, timeout, string literal) used 2×+ → named constant
+- **Format template** (label, URL, log prefix built the same way) used 2×+ → pure builder function `_buildX(params)`
+- **Logic block** (>3 lines, same flow) used 2×+ → named helper function
+
+**Pure builder pattern** when the same string feeds both a pure-string context and a DOM-mutating one:
+1. `_buildXLabel(params)` — returns string, zero side-effects; used by formatters, tickers
+2. `_setXState(id, params)` — calls `_buildXLabel` + applies DOM mutations (color, disabled)
+
+Side-effect-free callers must use `_buildXLabel` directly — never the DOM wrapper (avoids unintended flash animations, color resets). Single-line expressions that are obvious and shorter than any name they'd get are exempt.
+
 ## 12. Security
 - At every system boundary (user input, external APIs, env vars): check for injection, unvalidated input, and credential exposure.
 - Flag any hardcoded secrets, tokens, or credentials as a blocker.
