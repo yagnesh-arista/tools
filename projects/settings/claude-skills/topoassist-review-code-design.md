@@ -373,6 +373,7 @@ grep -B2 -A5 'btn-danger-mono.*margin-right:auto' ~/claude/projects/topoassist/S
 ✗ FAIL if a Delete button is not isolated left with `margin-right: auto` (i.e. inline with Cancel/Save)
 ✗ FAIL if the primary action button is not the rightmost in its footer
 ⚠ WARN if a view-only modal has a `.modal-actions` footer with only a Close/status element
+✗ FAIL if a two-choice confirmation modal (Cancel · Primary Action) hides the footer Cancel during idle state — both choices must be visible when idle; only hide Cancel during in-progress state (e.g. `_commitInFlight`)
 
 ---
 
