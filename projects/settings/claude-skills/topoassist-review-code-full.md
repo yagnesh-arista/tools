@@ -354,6 +354,7 @@ Mode   : [Git / Local]
 9 — Modal Button Standard ✓ / ✗ / ⚠
 29 — Naming & docs        ✓ / ✗ / ⚠
 30 — Change indicators    ✓ / ✗ / ⚠
+42 — SSoT label builders  ✓ / ✗ / ⚠
 
 ── Part 2: Global ──────────────────────
 A — Scope & Hygiene       ✓ / ✗ / ⚠
