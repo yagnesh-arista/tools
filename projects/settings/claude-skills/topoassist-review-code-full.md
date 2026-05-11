@@ -134,6 +134,35 @@ after any code change was made this session.
 
 ---
 
+## Check 42 — SSoT Label / String Builders
+
+Scan for any format string, magic value, or logic block appearing 2+ times without a shared helper.
+
+**Canonical TopoAssist helpers — bodies must never be inlined:**
+- `_buildSplitLabel(sheetId, dev, port, state, ageOrTime)` — sole builder for all split-btn label strings
+- `_setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime)` — sole caller of `setSplitBtnState` for split-btn labels
+- `updateDirtyButton(selector, isDirty)` — sole dirty-state button handler (amber/green + " *")
+
+```bash
+# No raw split-btn label format outside _buildSplitLabel
+grep -n "]:.*Config\b" ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "_buildSplitLabel\|function\|//" | head -10
+
+# DeviceManagerSaveButton / SheetColumnManagerSaveButton must use updateDirtyButton
+grep -A3 "DeviceManagerSaveButton\(\|SheetColumnManagerSaveButton\(" \
+  ~/claude/projects/topoassist/Sidebar-js.html | grep -v "^--$" | head -10
+
+# No inline " *" dirty label outside updateDirtyButton
+grep -n 'label + " \*"\|innerText.*\*"' ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "updateDirtyButton\|function updateDirty" | head -10
+```
+
+✗ FAIL if any split-btn label is built outside `_buildSplitLabel`
+✗ FAIL if `DeviceManagerSaveButton` or `SheetColumnManagerSaveButton` inline dirty-state logic
+✗ FAIL if a format template / magic value appears 2×+ with no extraction
+
+---
+
 ## Check 9 — Modal Button Standard (CLAUDE.md Rule 21)
 
 Scan every `<div id="*Modal"` in Sidebar.html and every modal created in Sidebar-js.html.
