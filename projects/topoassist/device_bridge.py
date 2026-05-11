@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.24 | 2026-05-11 14:17:15
+# topoassist v260511.28 | 2026-05-11 14:35:13
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.16"
+VERSION           = "260511.19"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -719,30 +719,33 @@ def _batch_orphan_cmds(cmds, batch_size):
 
 
 def _expand_ta_cleanup(lines):
-    """Expand ta-clean-* marker lines into a pre-push cleanup session command list.
+    """Inline ta-clean-* marker expansions into each interface block.
 
-    ta-clean-* markers ('ta-clean-et Et1/1', 'ta-clean-po Port-Channel10',
-    'ta-clean-vl Vlan45') are emitted by Code.gs as interface-cleanup sentinels.
-    EOS eAPI does not resolve user-defined aliases, so markers are expanded here
-    to direct EOS configure commands and pushed in a separate cleanup session
-    before the main config session.
+    Markers ('ta-clean-et Et1/1', 'ta-clean-po Port-Channel10', 'ta-clean-vl
+    Vlan45') are emitted by Code.gs immediately before the matching 'interface X'
+    line. Each marker is stripped and its cleanup commands are injected as the
+    first sub-commands of the following interface block — keeping cleanup and new
+    config in ONE configure session for atomicity.
 
-    Returns (cleanup_cmds, filtered_lines):
-      cleanup_cmds   — flat EOS command list for a cleanup configure session
-                       (no 'configure session X' or 'commit' wrappers)
-      filtered_lines — config lines with ta-clean-* markers stripped out
+    Returns the rewritten line list (no tuple — caller uses it directly as lines).
     """
-    cleanup_cmds = []
-    filtered = []
+    result = []
+    pending = None
     for line in lines:
         stripped = line.strip()
         parts = stripped.split(None, 1)
         if len(parts) == 2 and parts[0] in TA_ALIAS_EXPANSIONS:
-            cleanup_cmds.append(f"interface {parts[1]}")
-            cleanup_cmds.extend(TA_ALIAS_EXPANSIONS[parts[0]])
+            pending = TA_ALIAS_EXPANSIONS[parts[0]]
+        elif pending is not None and stripped.startswith("interface "):
+            result.append(line)
+            for cmd in pending:
+                result.append(" " + cmd)
+            pending = None
         else:
-            filtered.append(line)
-    return cleanup_cmds, filtered
+            if pending is not None:
+                pending = None  # marker not followed by interface — discard silently
+            result.append(line)
+    return result
 
 
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
@@ -1348,25 +1351,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return out_text, err_text
 
     # ── TA alias pre-commit ───────────────────────────────────────────────────
-    def _push_ta_cleanup(self, ip, cleanup_cmds):
-        """Push ta-clean-* expanded commands in a dedicated pre-push cleanup session.
-
-        cleanup_cmds is the list returned by _expand_ta_cleanup() — flat EOS commands
-        without the session wrapper. Failures are logged but never block the main push.
-        """
-        if not cleanup_cmds or _cfg['transport'] not in ("ssh", "eapi"):
-            return
-        session = f"topoassist_cleanup_{int(time.time())}"
-        cmds = [f"configure session {session}"] + cleanup_cmds + ["commit"]
-        try:
-            if _cfg['transport'] == "ssh":
-                self._ssh_stdin(ip, *cmds, force_tty=True)
-            else:
-                self._eapi_push(ip, *cmds)
-            if VERBOSE:
-                _vlog(f"[cleanup] {ip}: pre-push cleanup committed via {session} ({len(cleanup_cmds)} cmd(s))")
-        except Exception as e:
-            _vlog(f"[cleanup] {ip}: cleanup session failed ({e}) — push will continue")
 
     # ── Stale session cleanup ─────────────────────────────────────────────────
     def _abort_stale_sessions(self, ip):
@@ -1431,9 +1415,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
-        # Extract ta-clean-* markers from config and expand to pre-push cleanup commands.
-        # Markers are stripped from the main session; cleanup runs in a dedicated session first.
-        cleanup_cmds, lines = _expand_ta_cleanup(lines)
+        # Inline ta-clean-* markers: each expands to cleanup sub-commands injected
+        # at the top of the matching interface block — same session as the new config.
+        lines = _expand_ta_cleanup(lines)
 
         # Pre-cleanup stale sessions before every push type (real, open_only, dry_run verify).
         # Dry_run sessions are aborted immediately but prior crashed sessions can still linger.
@@ -1445,11 +1429,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _ct = threading.Thread(target=_safe_abort, daemon=True)
         _ct.start()
         _ct.join(timeout=TIMEOUT)
-
-        # Push interface cleanup commands in a dedicated session before the main push.
-        # Skipped on dry_run (verify path only) and when no markers were found.
-        if cleanup_cmds and not dry_run:
-            self._push_ta_cleanup(ip, cleanup_cmds)
 
         # Run orphan detection and BGP-ASN-change detection concurrently when doing a
         # full push (all_ifaces=True) — both are independent EOS read queries.

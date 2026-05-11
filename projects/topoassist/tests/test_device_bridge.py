@@ -1,4 +1,4 @@
-# topoassist v260511.25 | 2026-05-11 14:20:20
+# topoassist v260511.28 | 2026-05-11 14:39:55
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -635,9 +635,8 @@ def _make_push_handler():
     """Bare BridgeHandler with no real __init__ — all network methods mocked."""
     h = object.__new__(db.BridgeHandler)
     h._abort_stale_sessions = mock.Mock()
-    h._push_ta_cleanup = mock.Mock()
     h._find_bgp_asn_change = mock.Mock(return_value=([], None))
-    h._diagnose_eapi_errors = mock.Mock(side_effect=lambda ip, lines, errs: errs)
+    h._diagnose_eapi_errors = mock.Mock(side_effect=lambda _ip, _lines, errs: errs)
     db._cfg['transport'] = 'eapi'
     return h
 
@@ -1077,42 +1076,39 @@ class TestBatchOrphanCmds:
 class TestExpandTaCleanup:
 
     def test_empty_input(self):
-        cmds, lines = db._expand_ta_cleanup([])
-        assert cmds == [] and lines == []
+        assert db._expand_ta_cleanup([]) == []
 
     def test_no_markers_passthrough(self):
         src = ["interface Et1/1", " description Test __TA", " switchport"]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert cmds == []
-        assert filtered == src
+        assert db._expand_ta_cleanup(src) == src
 
-    def test_et_marker_expands_and_strips(self):
+    def test_et_marker_inlined_before_subcommands(self):
         src = ["ta-clean-et Et1/1", "interface Et1/1", " description X __TA"]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert cmds == [
+        result = db._expand_ta_cleanup(src)
+        assert result == [
             "interface Et1/1",
-            "default switchport trunk allowed vlan",
-            "no switchport trunk native vlan",
-            "default switchport access vlan",
-            "no channel-group",
+            " default switchport trunk allowed vlan",
+            " no switchport trunk native vlan",
+            " default switchport access vlan",
+            " no channel-group",
+            " description X __TA",
         ]
-        assert filtered == ["interface Et1/1", " description X __TA"]
 
     def test_po_marker_has_no_channel_group(self):
-        src = ["ta-clean-po Port-Channel10", "interface Port-Channel10"]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert "no channel-group" not in cmds
-        assert "default switchport trunk allowed vlan" in cmds
-        assert filtered == ["interface Port-Channel10"]
+        src = ["ta-clean-po Port-Channel10", "interface Port-Channel10", " switchport"]
+        result = db._expand_ta_cleanup(src)
+        assert " no channel-group" not in result
+        assert " default switchport trunk allowed vlan" in result
+        assert "interface Port-Channel10" in result
 
     def test_vl_marker_expands_all_six_ip_cmds(self):
-        src = ["ta-clean-vl Vlan45", "interface Vlan45"]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert cmds[0] == "interface Vlan45"
-        assert "default ip address" in cmds
-        assert "default ip address virtual" in cmds
-        assert "default ipv6 address virtual" in cmds
-        assert filtered == ["interface Vlan45"]
+        src = ["ta-clean-vl Vlan45", "interface Vlan45", " ip address virtual 10.1.45.1/24"]
+        result = db._expand_ta_cleanup(src)
+        assert result[0] == "interface Vlan45"
+        assert " default ip address" in result
+        assert " default ip address virtual" in result
+        assert " default ipv6 address virtual" in result
+        assert " ip address virtual 10.1.45.1/24" in result
 
     def test_multiple_markers_all_expanded(self):
         src = [
@@ -1120,18 +1116,28 @@ class TestExpandTaCleanup:
             "ta-clean-po Port-Channel10", "interface Port-Channel10", " description B __TA",
             "ta-clean-vl Vlan45", "interface Vlan45", " description C __TA",
         ]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert cmds.count("interface Et1/1") == 1
-        assert cmds.count("interface Port-Channel10") == 1
-        assert cmds.count("interface Vlan45") == 1
-        assert filtered == [
-            "interface Et1/1", " description A __TA",
-            "interface Port-Channel10", " description B __TA",
-            "interface Vlan45", " description C __TA",
-        ]
+        result = db._expand_ta_cleanup(src)
+        # marker lines stripped
+        assert "ta-clean-et Et1/1" not in result
+        assert "ta-clean-po Port-Channel10" not in result
+        assert "ta-clean-vl Vlan45" not in result
+        # interface lines present exactly once each
+        assert result.count("interface Et1/1") == 1
+        assert result.count("interface Port-Channel10") == 1
+        assert result.count("interface Vlan45") == 1
+        # original sub-commands still present
+        assert " description A __TA" in result
+        assert " description B __TA" in result
+        assert " description C __TA" in result
+        # cleanup commands injected after each interface line
+        et_idx = result.index("interface Et1/1")
+        assert result[et_idx + 1] == " default switchport trunk allowed vlan"
+        po_idx = result.index("interface Port-Channel10")
+        assert result[po_idx + 1] == " default switchport trunk allowed vlan"
+        vl_idx = result.index("interface Vlan45")
+        assert result[vl_idx + 1] == " default ip address"
 
     def test_unknown_marker_passes_through(self):
         src = ["ta-clean-unknown Et99", "interface Et99"]
-        cmds, filtered = db._expand_ta_cleanup(src)
-        assert cmds == []
-        assert "ta-clean-unknown Et99" in filtered
+        result = db._expand_ta_cleanup(src)
+        assert result == ["ta-clean-unknown Et99", "interface Et99"]

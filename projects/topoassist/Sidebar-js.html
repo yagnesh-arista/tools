@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.27 | 2026-05-11 14:22:45 -->
+<!-- TopoAssist v260511.28 | 2026-05-11 14:39:08 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.27";  // keep in sync with Code.gs
+const APP_VERSION = "260511.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10660,7 +10660,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.16"
+VERSION    = "260511.19"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -11222,17 +11222,23 @@ def _batch_orphan_cmds(cmds, batch_size):
 
 
 def _expand_ta_cleanup(lines):
-    cleanup_cmds = []
-    filtered = []
+    result = []
+    pending = None
     for line in lines:
         stripped = line.strip()
         parts = stripped.split(None, 1)
         if len(parts) == 2 and parts[0] in TA_ALIAS_EXPANSIONS:
-            cleanup_cmds.append(f"interface {parts[1]}")
-            cleanup_cmds.extend(TA_ALIAS_EXPANSIONS[parts[0]])
+            pending = TA_ALIAS_EXPANSIONS[parts[0]]
+        elif pending is not None and stripped.startswith("interface "):
+            result.append(line)
+            for cmd in pending:
+                result.append(" " + cmd)
+            pending = None
         else:
-            filtered.append(line)
-    return cleanup_cmds, filtered
+            if pending is not None:
+                pending = None
+            result.append(line)
+    return result
 
 
 # -- Bridge HTTP handler --------------------------------------------------------
@@ -11565,21 +11571,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
 
-    def _push_ta_cleanup(self, ip, cleanup_cmds):
-        if not cleanup_cmds or _cfg['transport'] not in ("ssh", "eapi"):
-            return
-        session = f"topoassist_cleanup_{int(time.time())}"
-        cmds = [f"configure session {session}"] + cleanup_cmds + ["commit"]
-        try:
-            if _cfg['transport'] == "ssh":
-                self._ssh_stdin(ip, *cmds, force_tty=True)
-            else:
-                self._eapi_push(ip, *cmds)
-            if VERBOSE:
-                _vlog(f"[cleanup] {ip}: pre-push cleanup committed via {session} ({len(cleanup_cmds)} cmd(s))")
-        except Exception as e:
-            _vlog(f"[cleanup] {ip}: cleanup session failed ({e}) — push will continue")
-
     def _abort_stale_sessions(self, ip):
         if _cfg['transport'] not in ("ssh", "eapi"):
             return []
@@ -11608,13 +11599,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         lines = [l for l in config_text.strip().split("\\n") if l.strip()]
         if not lines:
             raise RuntimeError("Config is empty -- nothing to push")
-        cleanup_cmds, lines = _expand_ta_cleanup(lines)
+        lines = _expand_ta_cleanup(lines)
         try:
             self._abort_stale_sessions(ip)
         except Exception:
             pass
-        if cleanup_cmds and not dry_run:
-            self._push_ta_cleanup(ip, cleanup_cmds)
         # _detect_orphans already parallelises its 5 inner checks; running _find_bgp_asn_change
         # concurrently with it eliminates the extra sequential round-trip that was visible
         # in the log as a separate 'include router bgp' query after the orphan queries.
