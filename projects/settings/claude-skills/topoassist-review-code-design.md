@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-09 (Checks 38-41 added: XSS/innerHTML safety; console.log residue; JSON.parse try-catch; accessibility aria-label on icon-only buttons) -->
+<!-- rules-synced: 2026-05-11 (Check 42 added: SSoT label/string builders — _buildSplitLabel, _setSplitBtnLabel, updateDirtyButton must not be duplicated inline) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
