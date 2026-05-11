@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.4 | 2026-05-11 11:55:56 -->
+<!-- TopoAssist v260511.5 | 2026-05-11 12:14:17 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.4";  // keep in sync with Code.gs
+const APP_VERSION = "260511.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3639,6 +3639,19 @@ function setSplitBtnState(splitId, labelText, bg, actionsDisabled) {
   }
 }
 
+// --- SPLIT BUTTON LABEL HELPERS ---
+// Single source of truth for the [sheetId] dev[:port]:Config label format.
+function _buildSplitBase(sheetId, dev, port) {
+  return `[${sheetId}] ${port ? `${dev}:${port}:Config` : `${dev}:Config`}`;
+}
+// Builds the label AND calls setSplitBtnState. state: 'ready'|'fetching'|'non-eos'.
+function _setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime) {
+  const base = _buildSplitBase(sheetId, dev, port);
+  if (state === 'non-eos')  return setSplitBtnState(splitId, `${base} — Non-EOS`, "#64748b", true);
+  if (state === 'fetching') return setSplitBtnState(splitId, `${base} [${ageOrTime}] - Fetching`, "#f59e0b", true);
+  setSplitBtnState(splitId, `${base} [${ageOrTime}]`, "#10b981", false);
+}
+
 // --- GLOBAL COPY HANDLER ---
 function handleCopy(text, btnId) {
   if (!text) { setStatus("No configuration to copy.", "status-warn"); return; }
@@ -6836,14 +6849,14 @@ function selectDevice(deviceId) {
 
   if (devData && devData.type === 'non-arista') {
     currentDeviceConfig = "";
-    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config — Non-EOS`, "#64748b", true);
+    _setSplitBtnLabel("splitDevice", devId, deviceId, null, 'non-eos');
   } else if (!configCache[deviceId]) {
     currentDeviceConfig = "";
-    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config [${time}] - Fetching`, "#f59e0b", true);
+    _setSplitBtnLabel("splitDevice", devId, deviceId, null, 'fetching', time);
     fetchFullConfig(deviceId);
   } else {
     currentDeviceConfig = formatConfigText(configCache[deviceId].data);
-    setSplitBtnState("splitDevice", `[${devId}] ${deviceId}:Config [${devData?.fetchEpoch ? formatAgeLabel(devData.fetchEpoch) : 'Cached'}]`, "#10b981", false);
+    _setSplitBtnLabel("splitDevice", devId, deviceId, null, 'ready', devData?.fetchEpoch ? formatAgeLabel(devData.fetchEpoch) : 'Cached');
     triggerButtonFlash("btnDevice");
   }
 
@@ -6941,25 +6954,25 @@ function selectLine(id) {
 
     if (allDevicesData[dev1] && allDevicesData[dev1].type === 'non-arista') {
       currentLeftConfig = "";
-      setSplitBtnState("splitLeft", `[${sheetId1}] ${dev1}:${port1}:Config — Non-EOS`, "#64748b", true);
+      _setSplitBtnLabel("splitLeft", sheetId1, dev1, port1, 'non-eos');
     } else if (isCfg1Ready) {
       currentLeftConfig = allNodesData[u]?.details?.config;
-      setSplitBtnState("splitLeft", `[${sheetId1}] ${dev1}:${port1}:Config [${allDevicesData[dev1]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev1].fetchEpoch) : 'Cached'}]`, "#10b981", false);
+      _setSplitBtnLabel("splitLeft", sheetId1, dev1, port1, 'ready', allDevicesData[dev1]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev1].fetchEpoch) : 'Cached');
       triggerButtonFlash("btnLeft");
     } else {
-      setSplitBtnState("splitLeft", `[${sheetId1}] ${dev1}:${port1}:Config [${time}] - Fetching`, "#f59e0b", true);
+      _setSplitBtnLabel("splitLeft", sheetId1, dev1, port1, 'fetching', time);
       fetchFullConfig(dev1);
     }
 
     if (allDevicesData[dev2] && allDevicesData[dev2].type === 'non-arista') {
       currentRightConfig = "";
-      setSplitBtnState("splitRight", `[${sheetId2}] ${dev2}:${port2}:Config — Non-EOS`, "#64748b", true);
+      _setSplitBtnLabel("splitRight", sheetId2, dev2, port2, 'non-eos');
     } else if (isCfg2Ready) {
       currentRightConfig = allNodesData[v]?.details?.config;
-      setSplitBtnState("splitRight", `[${sheetId2}] ${dev2}:${port2}:Config [${allDevicesData[dev2]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev2].fetchEpoch) : 'Cached'}]`, "#10b981", false);
+      _setSplitBtnLabel("splitRight", sheetId2, dev2, port2, 'ready', allDevicesData[dev2]?.fetchEpoch ? formatAgeLabel(allDevicesData[dev2].fetchEpoch) : 'Cached');
       triggerButtonFlash("btnRight");
     } else {
-      setSplitBtnState("splitRight", `[${sheetId2}] ${dev2}:${port2}:Config [${time}] - Fetching`, "#f59e0b", true);
+      _setSplitBtnLabel("splitRight", sheetId2, dev2, port2, 'fetching', time);
       fetchFullConfig(dev2);
     }
 
@@ -7027,7 +7040,7 @@ function selectPortOrLink(portId) {
 
       document.querySelectorAll('.split-btn').forEach(el => el.style.display = "none");
       document.getElementById("splitLeft").style.display = "flex";
-      setSplitBtnState("splitLeft", `[${sheetId}] ${devName}:${portName || "?"}:Config [${ageLabel}]`, "#10b981", false);
+      _setSplitBtnLabel("splitLeft", sheetId, devName, portName || "?", 'ready', ageLabel);
       triggerButtonFlash("btnLeft");
     }
     requestAnimationFrame(redrawLinks);
@@ -7103,7 +7116,7 @@ function processDeviceConfig(deviceName, configData) {
     // CASE 1: CURRENTLY SELECTED DEVICE — always update, no background guard
     if (_isEosDev && selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
       currentDeviceConfig = fullCfg;
-      setSplitBtnState("splitDevice", `[${sheetId}] ${deviceName}:Config [${ageLabel}]`, "#10b981", false);
+      _setSplitBtnLabel("splitDevice", sheetId, deviceName, null, 'ready', ageLabel);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnDevice");
     }
 
@@ -7115,14 +7128,14 @@ function processDeviceConfig(deviceName, configData) {
         && splitLeftEl && splitLeftEl.style.display !== "none") {
       const portL = _leftPort || "";
       currentLeftConfig = allNodesData[deviceName + ":" + portL]?.details?.config;
-      setSplitBtnState("splitLeft", `[${sheetId}] ${deviceName}:${portL}:Config [${ageLabel}]`, "#10b981", false);
+      _setSplitBtnLabel("splitLeft", sheetId, deviceName, portL, 'ready', ageLabel);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnLeft");
     }
     if (_isEosDev && _rightDev && _rightDev.toLowerCase() === deviceName.toLowerCase()
         && splitRightEl && splitRightEl.style.display !== "none") {
       const portR = _rightPort || "";
       currentRightConfig = allNodesData[deviceName + ":" + portR]?.details?.config;
-      setSplitBtnState("splitRight", `[${sheetId}] ${deviceName}:${portR}:Config [${ageLabel}]`, "#10b981", false);
+      _setSplitBtnLabel("splitRight", sheetId, deviceName, portR, 'ready', ageLabel);
       if (!wasAlreadyLoaded) triggerButtonFlash("btnRight");
     }
   }
@@ -18173,7 +18186,7 @@ function refreshConfigAges() {
     if (dev && dev.fetchEpoch && isGreen(wrapper)) {
       const label = wrapper.querySelector('.split-label');
       const sheetId = dev.sheetIndex || '-';
-      if (label) label.innerText = `[${sheetId}] ${selectedDeviceId}:Config [${formatAgeLabel(dev.fetchEpoch)}]`;
+      if (label) label.innerText = _buildSplitBase(sheetId, selectedDeviceId, null) + ` [${formatAgeLabel(dev.fetchEpoch)}]`;
     }
   }
 
@@ -18188,7 +18201,7 @@ function refreshConfigAges() {
       if (!isGreen(wrapper)) return;
       const label = wrapper.querySelector('.split-label');
       const sheetId = dev.sheetIndex || '-';
-      if (label) label.innerText = `[${sheetId}] ${devName}:${portName}:Config [${formatAgeLabel(dev.fetchEpoch)}]`;
+      if (label) label.innerText = _buildSplitBase(sheetId, devName, portName) + ` [${formatAgeLabel(dev.fetchEpoch)}]`;
     });
   }
 }

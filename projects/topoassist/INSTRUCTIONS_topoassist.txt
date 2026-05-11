@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-11 (display: split-btn label order changed from dev:Config:port to dev:port:Config — all 10 call sites updated including refreshConfigAges() age-label refresh. FILES: Sidebar-js.html)
+  Last updated: 2026-05-11 (refactor: _buildSplitBase(sheetId,dev,port) + _setSplitBtnLabel(splitId,sheetId,dev,port,state,ageOrTime) added as single source of truth for split-btn label format; all 13 call sites (setSplitBtnState + refreshConfigAges innerText) migrated. FILES: Sidebar-js.html)
   Previous: 2026-05-11 (fix: clear _commitInFlight + delete _pendingPush.sessionName on Phase 2 success — × during Phase 3 no longer shows "commit in progress" dialog or fires spurious abort. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (fix: push button label — after Phase-1 diff resolves button now shows "Pending…" instead of stale "Previewing…"; restores to origText on commit/cancel/timeout. FILES: Sidebar-js.html)
   Previous: 2026-05-10 (fix: push button stuck "Previewing…" when cancel clicked during Phase-1 fetch — root cause: _pendingPush not set until after fetch resolves, so cancelPushConfig() saw null and closed the modal without restoring button; in-flight return path also returned without restoring. Fix: _previewingPush={btnId,origText} set before fetch in pushDeviceConfig + _pushConfigText; cancelPushConfig uses it when _pendingPush===null; all existing early-return paths in both functions clear _previewingPush when restoring button. FILES: Sidebar-js.html)
