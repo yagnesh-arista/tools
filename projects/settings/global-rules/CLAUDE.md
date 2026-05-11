@@ -214,6 +214,7 @@ Footer layout by modal type:
 - **View-only** (help, audit, read-only viewers): no footer — header × only
 - **Edit/confirm**: `.modal-actions right-align` — Delete left (`.btn-danger-mono`, `margin-right:auto`, hidden) · Cancel · Save
 - **Action-only**: `.modal-actions right-align` — action buttons only, no close button needed
+- **Two-choice confirmation** (push confirm, etc.): footer has Cancel · Primary Action — both choices must be visible when idle; × and footer Cancel call the same handler. During in-progress state, hide footer Cancel — × remains as sole active abort path with a `_commitInFlight` confirm guard. Never use × as the only dismiss for a binary decision.
 - Never duplicate close/cancel across both header AND footer
 
 Button ordering (left → right): `[Delete isolated-left]` ··· `[Cancel] [Primary Action]`

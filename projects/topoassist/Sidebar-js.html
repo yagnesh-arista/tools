@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.8 | 2026-05-11 12:33:04 -->
+<!-- TopoAssist v260511.9 | 2026-05-11 12:34:19 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.8";  // keep in sync with Code.gs
+const APP_VERSION = "260511.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14219,15 +14219,13 @@ async function commitPushConfig() {
   if (!_pendingPush) return;
   const { deviceName, ip, config, btnId, origText, label, sessionName, allDeviceNames } = _pendingPush;
   const commitBtn = document.getElementById('btnCommitPush');
-  const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
 
-  // Disable commit + both cancel buttons; × stays enabled (will confirm if clicked mid-commit)
+  // Disable commit + cancel; × stays enabled (will confirm if clicked mid-commit)
   _commitInFlight = true;
   if (commitBtn) { commitBtn.disabled = true; commitBtn.textContent = 'Committing…'; }
-  if (cancelHdr) cancelHdr.style.display = 'none';
   if (cancelFtr) cancelFtr.style.display = 'none';
 
   const _ptRowHtml = (label, id, initColor, initText) =>
@@ -14663,11 +14661,9 @@ function closePushConfirmModal() {
   if (m) m.style.display = 'none';
   const titleEl   = document.getElementById('pushConfirmTitle');
   const commitBtn = document.getElementById('btnCommitPush');
-  const cancelHdr = document.getElementById('btnCancelPushHdr');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   if (titleEl)   titleEl.textContent     = 'Config Push';
   if (commitBtn) { commitBtn.disabled = false; commitBtn.textContent = 'Commit'; commitBtn.style.display = 'inline-block'; }
-  if (cancelHdr) { cancelHdr.style.display = ''; cancelHdr.textContent = 'Cancel'; }
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; cancelFtr.onclick = cancelPushConfig; }
   const _xBtn = document.getElementById('btnPushConfirmClose');
   if (_xBtn) _xBtn.onclick = cancelPushConfig;
