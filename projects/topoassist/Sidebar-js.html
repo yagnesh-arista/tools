@@ -14142,12 +14142,11 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   if (modal) { modal.classList.remove('modal-minimized'); delete modal.dataset.preMinDisplay; }
   const body     = document.getElementById('pushConfirmBody');
   const titleEl  = document.getElementById('pushConfirmTitle');
-  const _devLabel = _fmtDev(deviceName);
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
   // ── Loading state: show modal immediately before diff is fetched ─────────────
   if (diff === null) {
-    if (titleEl)    titleEl.textContent     = _devLabel + ': Push';
+    if (titleEl)    titleEl.textContent     = _buildPushTitle(deviceName, deviceName, 'Push');
     if (commitBtn)  { commitBtn.style.display = 'none'; }
     if (cancelFtr)  { cancelFtr.style.display = ''; cancelFtr.textContent = 'Cancel'; }
     body.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted,#94a3b8);">` +
@@ -14158,7 +14157,7 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     return;
   }
   const noCommit = readOnly || alreadyInSync;
-  if (titleEl)    titleEl.textContent     = alreadyInSync ? _devLabel + ': In Sync' : (readOnly ? _devLabel + ': Verify' : _devLabel + ': Push');
+  if (titleEl)    titleEl.textContent     = alreadyInSync ? _buildPushTitle(deviceName, deviceName, 'In Sync') : (readOnly ? _buildPushTitle(deviceName, deviceName, 'Verify') : _buildPushTitle(deviceName, deviceName, 'Push'));
   if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (alreadyInSync) {
@@ -16951,7 +16950,7 @@ async function _pushConfigText(deviceName, config, label, btnId) {
 }
 
 function _buildPushTitle(label, deviceName, state) {
-  const prefix = label || deviceName || '';
+  const prefix = _fmtDev(label || deviceName || '');
   return prefix ? prefix + ': ' + state : state;
 }
 
