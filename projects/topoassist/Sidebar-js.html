@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.32 | 2026-05-11 15:33:50 -->
+<!-- TopoAssist v260511.33 | 2026-05-11 15:48:27 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.32";  // keep in sync with Code.gs
+const APP_VERSION = "260511.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -217,6 +217,7 @@ const APP_VERSION = "260511.32";  // keep in sync with Code.gs
   let currentDeviceConfig = "";
   let savedSelectionId = null;
   let selectedDeviceId = null;
+  let _selectedPortId   = null; // tracks disconnected-port selection (selectedLineId/selectedDeviceId stay null)
   let deviceSearchTerms = {};
   let resizeObserver = null;
   let debounceTimer;
@@ -6790,9 +6791,9 @@ function getPeerId(portId) {
 }
 
 function _deselectAll() {
-  if (!selectedLineId && !selectedDeviceId) return;
+  if (!selectedLineId && !selectedDeviceId && !_selectedPortId) return;
   if (selectedLineId && linkMap[selectedLineId]) restoreLinkStyle(linkMap[selectedLineId]);
-  selectedLineId = null; savedSelectionId = null; selectedDeviceId = null;
+  selectedLineId = null; savedSelectionId = null; selectedDeviceId = null; _selectedPortId = null;
   document.querySelectorAll(".node.selected").forEach(n => n.classList.remove("selected"));
   document.querySelectorAll('.split-btn').forEach(el => el.style.display = "none");
   const cg = document.getElementById("copyGroup"); if (cg) cg.style.display = "none";
@@ -7005,7 +7006,7 @@ function selectPortOrLink(portId) {
   } else {
     // Disconnected / Single Port Logic
     if (selectedLineId && linkMap[selectedLineId]) { let old = linkMap[selectedLineId]; restoreLinkStyle(old); }
-    selectedLineId = null; savedSelectionId = null; selectedDeviceId = null;
+    selectedLineId = null; savedSelectionId = null; selectedDeviceId = null; _selectedPortId = portId;
 
     document.querySelectorAll(".node.selected").forEach(n => n.classList.remove("selected"));
     document.getElementById("selectionStatus").innerText = "Selected Link: " + portId + " (Disconnected)";
