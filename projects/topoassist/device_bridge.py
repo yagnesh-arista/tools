@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.15 | 2026-05-11 13:11:11
+# topoassist v260511.16 | 2026-05-11 13:11:31
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.5"
+VERSION           = "260511.6"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1479,12 +1479,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         # and the client can warn the user before they confirm the push.
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
-
-        # Pre-commit TA cleanup aliases so they are active in the main session.
-        # Skipped on dry_run — aliases are already committed on real devices,
-        # and dry_run is verification-only (no persistent state changes).
-        if not dry_run:
-            self._ensure_ta_aliases(ip)
 
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
