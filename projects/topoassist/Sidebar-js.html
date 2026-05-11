@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.36 | 2026-05-11 15:55:28 -->
+<!-- TopoAssist v260511.37 | 2026-05-11 16:05:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.36";  // keep in sync with Code.gs
+const APP_VERSION = "260511.37";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10675,10 +10675,10 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.19"
+VERSION    = "260511.20"
 PORT       = 8765
 _b         = _arg("-b")
-JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "")
 TIMEOUT    = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
                                                   str(max(TIMEOUT * 4, 300))))
@@ -12371,7 +12371,7 @@ function _applyBridgeSettings() {
     ssh_user:   _v('bridgeSshUser')  || 'admin',
     ssh_pass:   _v('bridgeSshPass'),
     ssh_port:   parseInt(_v('bridgeSshPort')  || '22'),
-    jump_host:  useJump ? (_v('bridgeJumpHost') || 'bus-home') : '',
+    jump_host:  useJump ? _v('bridgeJumpHost') : '',
     jump_user:  useJump ? _v('bridgeJumpUser') : '',
     eapi_user:  _v('bridgeEapiUser') || 'admin',
     eapi_pass:  _v('bridgeEapiPass'),
@@ -12409,7 +12409,7 @@ function _loadBridgeTransportPrefs() {
   const jumpHost = get('jump_host', '');
   const chkJump  = document.getElementById('chkJumpHost');
   if (chkJump) chkJump.checked = !!jumpHost;
-  set('bridgeJumpHost', jumpHost || 'bus-home');
+  set('bridgeJumpHost', jumpHost);
   set('bridgeJumpUser', get('jump_user', ''));
   const jf = document.getElementById('bridgeJumpFields');
   if (jf) jf.style.display = jumpHost ? '' : 'none';

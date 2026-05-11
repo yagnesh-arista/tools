@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.28 | 2026-05-11 14:35:13
+# topoassist v260511.37 | 2026-05-11 16:04:52
 """
 TopoAssist Device Bridge
 ========================
@@ -137,11 +137,11 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.19"
+VERSION           = "260511.20"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
-JUMP_HOST = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
+JUMP_HOST = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "")
 TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
 # PUSH_TIMEOUT: separate ceiling for large configure-session pushes.
 # TIMEOUT (-t) is for read queries (show, lldp, etc.) and should stay small.
