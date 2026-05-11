@@ -1,10 +1,10 @@
-// TopoAssist v260511.23 | 2026-05-11 14:02:32
+// TopoAssist v260511.24 | 2026-05-11 14:17:34
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260511.23";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260511.24";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5783,28 +5783,6 @@ function generateGlobalBlock(isEvpnDevice, netSettings, mlagIsActive, isLeaf) {
       (netSettings.gw_ipv4 || netSettings.gw_ipv6)) {
     mandatory.push(`ip virtual-router mac-address ${netSettings.varp_mac || '001c.7300.0099'}`);
   }
-  // TA cleanup aliases — parameterized with interface %1; called at global configure
-  // session level before each interface block. Pre-committed by _ensure_ta_aliases()
-  // in device_bridge.py so they are in running-config before the main session runs.
-  mandatory.push("alias ta-clean-et");
-  mandatory.push("1 interface %1");
-  mandatory.push("2 default switchport trunk allowed vlan");
-  mandatory.push("3 no switchport trunk native vlan");
-  mandatory.push("4 default switchport access vlan");
-  mandatory.push("5 no channel-group");
-  mandatory.push("alias ta-clean-po");
-  mandatory.push("1 interface %1");
-  mandatory.push("2 default switchport trunk allowed vlan");
-  mandatory.push("3 no switchport trunk native vlan");
-  mandatory.push("4 default switchport access vlan");
-  mandatory.push("alias ta-clean-vl");
-  mandatory.push("1 interface %1");
-  mandatory.push("2 default ip address");
-  mandatory.push("3 default ip address virtual");
-  mandatory.push("4 default ip virtual-router address");
-  mandatory.push("5 default ipv6 address");
-  mandatory.push("6 default ipv6 address virtual");
-  mandatory.push("7 default ipv6 virtual-router address");
   mandatory.push("!");
   return mandatory.join("\n");
 }

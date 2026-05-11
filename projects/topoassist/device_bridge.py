@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.23 | 2026-05-11 14:02:15
+# topoassist v260511.24 | 2026-05-11 14:17:15
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.12"
+VERSION           = "260511.16"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -158,34 +158,32 @@ CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure sessio
 CLEANUP_PUSH_TIMEOUT  = int(_arg("-c") or os.environ.get("BRIDGE_CLEANUP_TIMEOUT",
                                                           str(max(PUSH_TIMEOUT * 3, 900))))
 
-# Parameterized EOS aliases for idempotent interface cleanup.
-# Called at global configure session level before each interface block:
-#   ta-clean-et Et1/1  →  clears stale VLAN/LAG config on physical Ethernet ports
-#   ta-clean-po Port-Channel10  →  clears stale VLAN config on Port-Channel interfaces
-#   ta-clean-vl Vlan45  →  clears stale IP/IPv6 addresses on GW SVIs
-# Pre-committed by _ensure_ta_aliases() before the main push so they are in
-# running-config when the main configure session references them.
-TA_ALIASES_CMDS = [
-    "alias ta-clean-et",
-    "1 interface %1",
-    "2 default switchport trunk allowed vlan",
-    "3 no switchport trunk native vlan",
-    "4 default switchport access vlan",
-    "5 no channel-group",
-    "alias ta-clean-po",
-    "1 interface %1",
-    "2 default switchport trunk allowed vlan",
-    "3 no switchport trunk native vlan",
-    "4 default switchport access vlan",
-    "alias ta-clean-vl",
-    "1 interface %1",
-    "2 default ip address",
-    "3 default ip address virtual",
-    "4 default ip virtual-router address",
-    "5 default ipv6 address",
-    "6 default ipv6 address virtual",
-    "7 default ipv6 virtual-router address",
-]
+# ta-clean-* marker expansion — commands to run inside each interface in the
+# pre-push cleanup session. Markers in the generated config ('ta-clean-et Et1/1'
+# etc.) are intercepted by _expand_ta_cleanup() and replaced with direct EOS
+# configure commands. EOS eAPI does not resolve user-defined aliases, so the
+# alias approach fails; expanding in Python and pushing as a separate session works.
+TA_ALIAS_EXPANSIONS = {
+    "ta-clean-et": [
+        "default switchport trunk allowed vlan",
+        "no switchport trunk native vlan",
+        "default switchport access vlan",
+        "no channel-group",
+    ],
+    "ta-clean-po": [
+        "default switchport trunk allowed vlan",
+        "no switchport trunk native vlan",
+        "default switchport access vlan",
+    ],
+    "ta-clean-vl": [
+        "default ip address",
+        "default ip address virtual",
+        "default ip virtual-router address",
+        "default ipv6 address",
+        "default ipv6 address virtual",
+        "default ipv6 virtual-router address",
+    ],
+}
 
 # _cfg: active transport settings — initialized from CLI/env, overridable at runtime
 # via POST /settings so the sidebar can switch transport without restarting the bridge.
@@ -718,6 +716,33 @@ def _batch_orphan_cmds(cmds, batch_size):
     if batch:
         batches.append(batch)
     return batches
+
+
+def _expand_ta_cleanup(lines):
+    """Expand ta-clean-* marker lines into a pre-push cleanup session command list.
+
+    ta-clean-* markers ('ta-clean-et Et1/1', 'ta-clean-po Port-Channel10',
+    'ta-clean-vl Vlan45') are emitted by Code.gs as interface-cleanup sentinels.
+    EOS eAPI does not resolve user-defined aliases, so markers are expanded here
+    to direct EOS configure commands and pushed in a separate cleanup session
+    before the main config session.
+
+    Returns (cleanup_cmds, filtered_lines):
+      cleanup_cmds   — flat EOS command list for a cleanup configure session
+                       (no 'configure session X' or 'commit' wrappers)
+      filtered_lines — config lines with ta-clean-* markers stripped out
+    """
+    cleanup_cmds = []
+    filtered = []
+    for line in lines:
+        stripped = line.strip()
+        parts = stripped.split(None, 1)
+        if len(parts) == 2 and parts[0] in TA_ALIAS_EXPANSIONS:
+            cleanup_cmds.append(f"interface {parts[1]}")
+            cleanup_cmds.extend(TA_ALIAS_EXPANSIONS[parts[0]])
+        else:
+            filtered.append(line)
+    return cleanup_cmds, filtered
 
 
 # ── Bridge HTTP handler ────────────────────────────────────────────────────────
@@ -1323,29 +1348,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
         return out_text, err_text
 
     # ── TA alias pre-commit ───────────────────────────────────────────────────
-    def _ensure_ta_aliases(self, ip):
-        """Pre-commit the three TA cleanup aliases into running-config.
+    def _push_ta_cleanup(self, ip, cleanup_cmds):
+        """Push ta-clean-* expanded commands in a dedicated pre-push cleanup session.
 
-        Aliases defined WITHIN a configure session are not available in that
-        same session (transactional buffer semantics). By committing them in a
-        dedicated session first, they are in running-config and available to
-        the main push session that calls ta-clean-et/po/vl.
-
-        Idempotent: re-committing an identical alias definition is a no-op on EOS.
+        cleanup_cmds is the list returned by _expand_ta_cleanup() — flat EOS commands
+        without the session wrapper. Failures are logged but never block the main push.
         """
-        if _cfg['transport'] not in ("ssh", "eapi"):
+        if not cleanup_cmds or _cfg['transport'] not in ("ssh", "eapi"):
             return
-        session = f"topoassist_aliases_{int(time.time())}"
-        cmds = ["configure session " + session] + TA_ALIASES_CMDS + ["commit"]
+        session = f"topoassist_cleanup_{int(time.time())}"
+        cmds = [f"configure session {session}"] + cleanup_cmds + ["commit"]
         try:
             if _cfg['transport'] == "ssh":
                 self._ssh_stdin(ip, *cmds, force_tty=True)
             else:
                 self._eapi_push(ip, *cmds)
             if VERBOSE:
-                _vlog(f"[aliases] {ip}: TA aliases committed via {session}")
+                _vlog(f"[cleanup] {ip}: pre-push cleanup committed via {session} ({len(cleanup_cmds)} cmd(s))")
         except Exception as e:
-            _vlog(f"[aliases] {ip}: alias pre-commit failed ({e}) — push will continue without aliases")
+            _vlog(f"[cleanup] {ip}: cleanup session failed ({e}) — push will continue")
 
     # ── Stale session cleanup ─────────────────────────────────────────────────
     def _abort_stale_sessions(self, ip):
@@ -1410,6 +1431,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         if not lines:
             raise RuntimeError("Config is empty — nothing to push")
 
+        # Extract ta-clean-* markers from config and expand to pre-push cleanup commands.
+        # Markers are stripped from the main session; cleanup runs in a dedicated session first.
+        cleanup_cmds, lines = _expand_ta_cleanup(lines)
+
         # Pre-cleanup stale sessions before every push type (real, open_only, dry_run verify).
         # Dry_run sessions are aborted immediately but prior crashed sessions can still linger.
         def _safe_abort():
@@ -1421,10 +1446,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
         _ct.start()
         _ct.join(timeout=TIMEOUT)
 
-        # Pre-commit TA cleanup aliases so they are in running-config before the
-        # main session references them. Skipped on dry_run (verify path only).
-        if not dry_run:
-            self._ensure_ta_aliases(ip)
+        # Push interface cleanup commands in a dedicated session before the main push.
+        # Skipped on dry_run (verify path only) and when no markers were found.
+        if cleanup_cmds and not dry_run:
+            self._push_ta_cleanup(ip, cleanup_cmds)
 
         # Run orphan detection and BGP-ASN-change detection concurrently when doing a
         # full push (all_ifaces=True) — both are independent EOS read queries.
