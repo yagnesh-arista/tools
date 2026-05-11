@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.14 | 2026-05-11 12:55:03 -->
+<!-- TopoAssist v260511.15 | 2026-05-11 13:10:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.14";  // keep in sync with Code.gs
+const APP_VERSION = "260511.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8940,12 +8940,7 @@ function render(data) {
         const _bridgeSt = bridgePortStatus[domId];
         if (_bridgeSt) {
           const _bridgeDotCls = _bridgePortDotClass(_bridgeSt, domId);
-          const _bridgeL1Cls  = bridgePortL1Errors[domId] ? ' has-l1' : '';
-          const _bridgeTitle  = _bridgeSt === 'match' ? 'LLDP match' : _bridgeSt === 'mismatch' ? 'LLDP mismatch'
-            : (bridgePortSubType[domId] === 'down' ? 'No LLDP neighbor — link down'
-            : bridgePortSubType[domId] === 'shut' ? 'No LLDP neighbor — admin shut'
-            : 'No LLDP neighbor');
-          colBridge.innerHTML = `<span class="bridge-port-dot ${_bridgeDotCls}${_bridgeL1Cls}" title="${_bridgeTitle}"></span>`;
+          colBridge.innerHTML = `<span class="bridge-port-dot ${_bridgeDotCls}" title="${_bridgePortTitle(_bridgeSt, domId)}"></span>`;
         }
         row.appendChild(colBridge);
 
@@ -10664,7 +10659,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.3"
+VERSION    = "260511.5"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "bus-home")
@@ -12915,21 +12910,31 @@ function _normLldpIface(name) {
     .replace(/^Vxlan(\d.*)/i,       'Vx$1');
 }
 
-// Dot class for bridge-port-dot — shows actual state, no audit flag gating.
-// Used by applyLldpIndicators() and devcard initial build.
-// missing+down → amber (aligns with op-down); missing+shut → gray (aligns with op-disabled);
-// missing+other → red; if down takes precedence over L1 (caller adds has-l1 separately).
+// Dot class for bridge-port-dot — full class string including has-l1 suffix.
+// missing+down → amber; missing+shut → gray; missing+other → red.
 function _bridgePortDotClass(status, portId) {
-  if (!status || status === 'match') return 'bridge-port-match';
-  if (status === 'mismatch') return 'bridge-port-mismatch';
-  if (status === 'missing') {
+  let cls;
+  if (!status || status === 'match') cls = 'bridge-port-match';
+  else if (status === 'mismatch') cls = 'bridge-port-mismatch';
+  else if (status === 'missing') {
     const sub = (portId && bridgePortSubType[portId]) || 'other';
-    if (sub === 'shut') return 'bridge-port-shut';
-    if (sub === 'down') return 'bridge-port-down';
-    return 'bridge-port-missing';
-  }
-  return '';
+    cls = sub === 'shut' ? 'bridge-port-shut' : sub === 'down' ? 'bridge-port-down' : 'bridge-port-missing';
+  } else { cls = ''; }
+  return cls + (portId && bridgePortL1Errors[portId] ? ' has-l1' : '');
 }
+
+// Title tooltip for a bridge-port-dot span.
+function _bridgePortTitle(status, portId) {
+  if (!status || status === 'match') return 'LLDP match';
+  if (status === 'mismatch') return 'LLDP mismatch';
+  const sub = (portId && bridgePortSubType[portId]) || 'other';
+  if (sub === 'down') return 'No LLDP neighbor — link down';
+  if (sub === 'shut') return 'No LLDP neighbor — admin shut';
+  return 'No LLDP neighbor';
+}
+
+// has-l1 suffix for a link row (either endpoint above threshold).
+function _linkL1Cls(u, v) { return (bridgePortL1Errors[u] || bridgePortL1Errors[v]) ? ' has-l1' : ''; }
 
 // Apply bridgePortStatus to topology card port rows.
 // Called after runBridgeCheck() and after render() (to survive topology redraws).
@@ -13017,12 +13022,7 @@ function applyLldpIndicators() {
     const col = rowEl.querySelector('.col-bridge');
     if (!col) return;
     const dotCls = _bridgePortDotClass(status, portId);
-    const l1Cls  = bridgePortL1Errors[portId] ? ' has-l1' : '';
-    const title  = status === 'match' ? 'LLDP match' : status === 'mismatch' ? 'LLDP mismatch'
-      : (bridgePortSubType[portId] === 'down' ? 'No LLDP neighbor — link down'
-      : bridgePortSubType[portId] === 'shut' ? 'No LLDP neighbor — admin shut'
-      : 'No LLDP neighbor');
-    col.innerHTML = `<span class="bridge-port-dot ${dotCls}${l1Cls}" title="${title}"></span>`;
+    col.innerHTML = `<span class="bridge-port-dot ${dotCls}" title="${_bridgePortTitle(status, portId)}"></span>`;
   });
 }
 
@@ -14025,7 +14025,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   if (!fullConfig) {
     _previewingPush = null;
     if (btn) { btn.disabled = false; btn.textContent = origText; }
-    _updatePushPreviewError(error || 'could not fetch config for ' + deviceName);
+    _updatePushPreviewError(label, error || 'could not fetch config for ' + deviceName);
     return;
   }
 
@@ -14042,7 +14042,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     if (!ifBlock) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
-      _updatePushPreviewError(`Interface ${portFilter} not found in ${deviceName} config`);
+      _updatePushPreviewError(label, `Interface ${portFilter} not found in ${deviceName} config`);
       return;
     }
     config = ifBlock;
@@ -15346,17 +15346,15 @@ function _renderLldpResults(results, orphans) {
   if (noNbrDownR.length) {
     issueParts.push(subHtml('Interface down (notconnect)', noNbrDownR.length,
       noNbrDownR.map(r => {
-        const l1    = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
-        const l1Cls = (bridgePortL1Errors[r.u] || bridgePortL1Errors[r.v]) ? ' has-l1' : '';
-        return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link', 'bridge-port-down' + l1Cls);
+        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
+        return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link', 'bridge-port-down' + _linkL1Cls(r.u, r.v));
       }).join('')));
   }
   if (noNbrShutR.length) {
     issueParts.push(subHtml('Interface shut', noNbrShutR.length,
       noNbrShutR.map(r => {
-        const l1    = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
-        const l1Cls = (bridgePortL1Errors[r.u] || bridgePortL1Errors[r.v]) ? ' has-l1' : '';
-        return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link', 'bridge-port-shut' + l1Cls);
+        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
+        return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link', 'bridge-port-shut' + _linkL1Cls(r.u, r.v));
       }).join('')));
   }
   if (noNbrR.length) {
@@ -16973,12 +16971,12 @@ async function _pushConfigText(deviceName, config, label, btnId) {
   }
 }
 
-function _updatePushPreviewError(msg) {
+function _updatePushPreviewError(label, msg) {
   const titleEl   = document.getElementById('pushConfirmTitle');
   const bodyEl    = document.getElementById('pushConfirmBody');
   const commitBtn = document.getElementById('btnCommitPush');
   const cancelFtr = document.getElementById('btnCancelPushFtr');
-  if (titleEl)   titleEl.textContent = 'Push Preview Failed';
+  if (titleEl)   titleEl.textContent = (label ? label + ': ' : '') + 'Preview Failed';
   if (bodyEl)    bodyEl.innerHTML    = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;padding:4px 0;white-space:pre-wrap;">${escapeHtml(msg)}</div>`;
   if (commitBtn) commitBtn.style.display = 'none';
   if (cancelFtr) { cancelFtr.style.display = ''; cancelFtr.textContent = 'Close'; }

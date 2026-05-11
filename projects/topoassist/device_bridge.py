@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.12 | 2026-05-11 12:47:46
+# topoassist v260511.15 | 2026-05-11 13:11:11
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.3"
+VERSION           = "260511.5"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -152,14 +152,6 @@ PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
 PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
 PUSH_RETRY_DELAY  = 4   # seconds between retries
 CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure session
-# TA cleanup aliases — committed as a pre-step before the main configure session
-# so they are active (resolvable) within that session.  EOS aliases defined inside
-# a configure session are NOT available within the same session; only after commit.
-TA_ALIASES = [
-    "alias ta-clean-et default switchport trunk allowed vlan ; no switchport trunk native vlan ; default switchport access vlan ; no channel-group",
-    "alias ta-clean-po default switchport trunk allowed vlan ; no switchport trunk native vlan ; default switchport access vlan",
-    "alias ta-clean-vl default ip address ; default ip address virtual ; default ip virtual-router address ; default ipv6 address ; default ipv6 address virtual ; default ipv6 virtual-router address",
-]
 # CLEANUP_PUSH_TIMEOUT: ceiling for each orphan-cleanup batch session.
 # Range-collapsed deletions (e.g. 'no interface Vlan1-3999') commit atomically in EOS
 # and can take 10+ min for large topologies — default is 3× PUSH_TIMEOUT, min 900s.
@@ -1332,31 +1324,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
         else:
             self._eapi_push(ip, *abort_cmds)
         return stale
-
-    # ── TA alias pre-commit ───────────────────────────────────────────────────
-    def _ensure_ta_aliases(self, ip):
-        """Commit TA cleanup aliases to the device in a dedicated configure session.
-
-        EOS aliases defined inside a configure session are NOT active within that
-        same session — only after commit.  By pre-committing here (before the main
-        configure session is built), 'ta-clean-et / ta-clean-po / ta-clean-vl'
-        resolve correctly when called from interface blocks in the main session.
-
-        Best-effort: failures are logged but never block the push.  The main session
-        also re-defines the aliases in 000_BASE (idempotent), so a failure here only
-        means alias calls will fail on a truly fresh device (first push only)."""
-        if _cfg['transport'] not in ("ssh", "eapi"):
-            return
-        alias_session = f"topoassist_aliases_{int(time.time())}"
-        cmds = [f"configure session {alias_session}"] + TA_ALIASES + ["commit"]
-        try:
-            if _cfg['transport'] == "eapi":
-                self._eapi_push(ip, *cmds)
-            else:
-                self._ssh_stdin(ip, *cmds, force_tty=True)
-            _vlog(f"[aliases] {ip}: TA cleanup aliases committed ({len(TA_ALIASES)})", flush=True)
-        except Exception as e:
-            _vlog(f"[aliases] {ip}: alias pre-commit failed — {e} (continuing)", flush=True)
 
     # ── Config push via configure session ────────────────────────────────────
     def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None, orphans_precomputed=None):
