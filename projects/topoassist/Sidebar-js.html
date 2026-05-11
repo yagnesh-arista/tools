@@ -1,7 +1,7 @@
-<!-- TopoAssist v260510.32 | 2026-05-10 16:22:04 -->
+<!-- TopoAssist v260511.1 | 2026-05-11 10:52:53 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260510.32";  // keep in sync with Code.gs
+const APP_VERSION = "260511.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14314,7 +14314,12 @@ async function commitPushConfig() {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _setPushStatus(`<b>${label || deviceName}</b> — <span style="color:#f87171;font-weight:600;">${errMsg}</span>`);
     } else if (res.ok) {
-      // Phase 2 success → start Phase 3
+      // Phase 2 success → session committed, nothing to abort.
+      // Clear _commitInFlight now so × during Phase 3 skips the "commit in progress" dialog.
+      // Clear sessionName so cancelPushConfig won't fire a spurious abort to the committed session.
+      _commitInFlight = false;
+      if (_pendingPush) delete _pendingPush.sessionName;
+      // Phase 3 verify — start Phase 3
       // On first-ever push, save the baseline ID snapshot so future shifts are detectable.
       if (!_lastIdShiftResult || _lastIdShiftResult.isFirstRun) {
         google.script.run.withSuccessHandler(function() {
