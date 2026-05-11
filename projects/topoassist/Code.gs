@@ -1,10 +1,10 @@
-// TopoAssist v260511.7 | 2026-05-11 12:32:28
+// TopoAssist v260511.8 | 2026-05-11 12:32:56
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260511.7";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260511.8";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5062,6 +5062,7 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
       // REMOVED: Duplicate 'switchport trunk group' logic.
       // It is now exclusively handled below by generateAttributesBlock(d)
 
+      cfg += " ta-clean-po\n";
       cfg += generateAttributesBlock(d);
       cfg += generateComplexL3Block(poVal, d, ipPrefs, netSettings, vx1VlanSet);
     }

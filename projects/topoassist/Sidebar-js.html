@@ -1,7 +1,7 @@
-<!-- TopoAssist v260511.7 | 2026-05-11 12:32:24 -->
+<!-- TopoAssist v260511.8 | 2026-05-11 12:33:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260511.7";  // keep in sync with Code.gs
+const APP_VERSION = "260511.8";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14160,7 +14160,6 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
   const noCommit = readOnly || alreadyInSync;
   if (titleEl)    titleEl.textContent     = alreadyInSync ? _devLabel + ': In Sync' : (readOnly ? _devLabel + ': Verify' : _devLabel + ': Push');
   if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
-  if (cancelHdr)  cancelHdr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (alreadyInSync) {
     body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
