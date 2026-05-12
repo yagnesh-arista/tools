@@ -1,4 +1,4 @@
-<!-- TopoAssist v260512.6 | 2026-05-12 12:51:17 -->
+<!-- TopoAssist v260512.7 | 2026-05-12 14:09:19 -->
 <!DOCTYPE html>
 <html>
 
@@ -1797,7 +1797,31 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     <p style="font-size:13px;">The config sent to the device is built in two layers:</p>
 
     <p style="font-size:13px;"><b>Layer 1 — Generated config (View Config)</b><br>
-    The full EOS config is generated from the sheet and is exactly what <b>View Config</b> shows. This is the single source of truth — <code>device_bridge.py</code> does not transform or rewrite it in any way. Vxlan cleanup commands (<code>default vxlan vlan 1-4094 vni</code>, <code>default vxlan flood vtep</code>) are already embedded in the generated config so that stale additive sub-commands are cleared before new mappings are pushed — they are visible in View Config and appear in the dry-run diff.</p>
+    The full EOS config is generated from the sheet and is exactly what <b>View Config</b> shows. This is the single source of truth — <code>device_bridge.py</code> does not transform or rewrite it in any way.</p>
+    <p style="font-size:13px;">Every push is idempotent: before each interface block, the generated config injects a set of <code>default</code> / <code>no</code> reset sub-commands that run first inside the EOS interface context, clearing any previously pushed settings that are absent from the new config. These are visible in View Config in their expanded form and appear in the dry-run diff:</p>
+    <table style="font-size:12px;width:100%;border-collapse:collapse;margin:4px 0 10px;">
+      <thead>
+        <tr style="background:var(--bg-body);">
+          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-light);white-space:nowrap;">Interface type</th>
+          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-light);">Reset sub-commands (injected first, inside the interface block)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:4px 8px;border-bottom:1px solid var(--border-light);white-space:nowrap;"><code>Et</code> (Ethernet)</td>
+          <td style="padding:4px 8px;border-bottom:1px solid var(--border-light);"><code>default switchport trunk allowed vlan</code> · <code>no switchport trunk native vlan</code> · <code>default switchport access vlan</code> · <code>no channel-group</code> · <code>no ipv6 address</code></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px;border-bottom:1px solid var(--border-light);white-space:nowrap;"><code>Po</code> (Port-Channel)</td>
+          <td style="padding:4px 8px;border-bottom:1px solid var(--border-light);"><code>default switchport trunk allowed vlan</code> · <code>no switchport trunk native vlan</code> · <code>default switchport access vlan</code> · <code>no ipv6 address</code></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px;"><code>Vlan</code> (SVI)</td>
+          <td style="padding:4px 8px;"><code>default ip address</code> · <code>default ip address virtual</code> · <code>default ip virtual-router address</code> · <code>default ipv6 address</code> · <code>default ipv6 address virtual</code> · <code>default ipv6 virtual-router address</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;">Vxlan cleanup commands (<code>default vxlan vlan 1-4094 vni</code>, <code>default vxlan flood vtep</code>) are embedded at the start of the <code>interface Vxlan1</code> block for the same reason — stale additive sub-commands are cleared before new mappings are applied.</p>
 
     <p style="font-size:13px;"><b>Layer 2 — Push-time additions (device-state-dependent)</b><br>
     Two sets of cleanup commands are prepended by <code>device_bridge.py</code> at push time because they require knowing the device's current running state — they cannot be pre-computed from the sheet alone:</p>
