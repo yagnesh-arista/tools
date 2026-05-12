@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260511.20"
+VERSION           = "260512.1"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -169,11 +169,13 @@ TA_ALIAS_EXPANSIONS = {
         "no switchport trunk native vlan",
         "default switchport access vlan",
         "no channel-group",
+        "no ipv6 address",
     ],
     "ta-clean-po": [
         "default switchport trunk allowed vlan",
         "no switchport trunk native vlan",
         "default switchport access vlan",
+        "no ipv6 address",
     ],
     "ta-clean-vl": [
         "default ip address",

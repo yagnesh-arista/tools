@@ -1,7 +1,7 @@
-<!-- TopoAssist v260512.3 | 2026-05-12 10:32:47 -->
+<!-- TopoAssist v260512.5 | 2026-05-12 11:52:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260512.3";  // keep in sync with Code.gs
+const APP_VERSION = "260512.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10675,7 +10675,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260511.20"
+VERSION    = "260512.1"
 PORT       = 8765
 _b         = _arg("-b")
 JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "")
@@ -10692,11 +10692,13 @@ TA_ALIAS_EXPANSIONS = {
         "no switchport trunk native vlan",
         "default switchport access vlan",
         "no channel-group",
+        "no ipv6 address",
     ],
     "ta-clean-po": [
         "default switchport trunk allowed vlan",
         "no switchport trunk native vlan",
         "default switchport access vlan",
+        "no ipv6 address",
     ],
     "ta-clean-vl": [
         "default ip address",
@@ -16726,20 +16728,39 @@ function loadFromSession() {
 
 /* --- EOS CONFIG SYNTAX HIGHLIGHTER --- */
 
-// Returns a human-readable annotation for ta-clean-* idempotency markers, or null.
-function _annotateTaClean(line) {
-  const m = line.match(/^(ta-clean-et|ta-clean-po|ta-clean-vl)\s+(\S+)/);
-  if (!m) return null;
-  const desc = m[1] === 'ta-clean-et' ? 'clear stale VLAN & channel-group config'
-             : m[1] === 'ta-clean-po' ? 'clear stale VLAN config'
-             :                          'clear stale IP addresses';
-  return `! [TopoAssist] ${m[2]}: ${desc} before push`;
+const _TA_CLEAN_MAP = {
+  'ta-clean-et': ['default switchport trunk allowed vlan','no switchport trunk native vlan','default switchport access vlan','no channel-group','no ipv6 address'],
+  'ta-clean-po': ['default switchport trunk allowed vlan','no switchport trunk native vlan','default switchport access vlan','no ipv6 address'],
+  'ta-clean-vl': ['default ip address','default ip address virtual','default ip virtual-router address','default ipv6 address','default ipv6 address virtual','default ipv6 virtual-router address'],
+};
+
+// JS mirror of Python _expand_ta_cleanup — display path only (text sent to device_bridge unchanged).
+// Strips ta-clean-* marker lines and injects their expansion as the first sub-commands of the
+// immediately following interface block, making the config paste-ready EOS.
+function _expandTaCleanDisplay(text) {
+  const lines = text.split('\n');
+  const out = [];
+  let pending = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const marker = trimmed.split(/\s+/, 1)[0];
+    if (_TA_CLEAN_MAP[marker] && trimmed.includes(' ')) {
+      pending = _TA_CLEAN_MAP[marker];
+    } else if (pending && /^interface\s/i.test(trimmed)) {
+      out.push(line);
+      for (const cmd of pending) out.push(' ' + cmd);
+      pending = null;
+    } else {
+      pending = null;
+      out.push(line);
+    }
+  }
+  return out.join('\n');
 }
 
 function _cfgLineClass(line) {
   if (/^\s*!!/.test(line))                              return 'cfg-error';
   if (/^\s*!/.test(line))                               return 'cfg-comment';
-  if (/^ta-clean-(et|po|vl)\s/i.test(line))            return 'cfg-ta-clean';
   if (/^\s*(?:no|default)\s/i.test(line))               return 'cfg-cleanup';
   if (/^interface\s/i.test(line))                       return 'cfg-interface';
   if (/^router\s+(bgp|ospf|isis)\b/i.test(line))        return 'cfg-router';
@@ -16755,9 +16776,8 @@ function _cfgLineClass(line) {
 
 function highlightEosConfig(text) {
   if (!text) return "";
-  return text.split('\n').map(line => {
-    const annotated = _annotateTaClean(line);
-    const esc = escapeHtml(annotated || line);
+  return _expandTaCleanDisplay(text).split('\n').map(line => {
+    const esc = escapeHtml(line);
     const cls = _cfgLineClass(line);
     return cls ? `<span class="${cls}">${esc}</span>` : esc;
   }).join('\n');
@@ -16835,8 +16855,7 @@ function _renderWithLineNums(lineObjs, highlightLine) {
   const w = String(maxNum).length;
   return lineObjs.map(({text, lineNum}) => {
     const numStr = String(lineNum).padStart(w);
-    const displayText = _annotateTaClean(text) || text;
-    const esc = escapeHtml(displayText);
+    const esc = escapeHtml(text);
     const cls = _cfgLineClass(text);
     const code = cls ? `<span class="${cls}">${esc}</span>` : esc;
     if (highlightLine && lineNum === highlightLine)
@@ -16858,7 +16877,8 @@ function clearConfigSearch() {
 function showConfigModal(deviceName, configText, opts) {
   if (!configText) return;
 
-  currentRawConfig = configText;
+  // Expand ta-clean-* markers to paste-ready EOS commands for display and clipboard
+  currentRawConfig = _expandTaCleanDisplay(configText);
 
   const modal = document.getElementById("configModal");
   const overlay = document.getElementById("editOverlay");
@@ -16876,7 +16896,7 @@ function showConfigModal(deviceName, configText, opts) {
   matchBadge.classList.add("hidden");
 
   // Show Full Config initially (with line numbers for error correlation)
-  body.innerHTML = _renderWithLineNums(configText.split('\n').map((text, i) => ({text, lineNum: i + 1})));
+  body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
 
   // Display Modal — skip auto-minimize when called from inside another modal (e.g. Config Center)
   if (!opts || !opts.noAutoMinimize) _autoMinimizeOpenModal();
@@ -18057,7 +18077,7 @@ function _viewGeneratedConfigByName(name) {
 function _openCfgPanelView(name) {
   var text = _getConfigTextForDevice(name);
   if (!text) return;
-  currentRawConfig = text;
+  currentRawConfig = _expandTaCleanDisplay(text);
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
   if (title) title.innerHTML =
@@ -18067,7 +18087,7 @@ function _openCfgPanelView(name) {
   var genSub = document.getElementById('cfgNavGenSub');
   if (genSub) genSub.textContent = '↳ ' + _fmtDev(name);
   var body = document.getElementById('cfgViewBody');
-  if (body) body.innerHTML = _renderWithLineNums(text.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
+  if (body) body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
   var clr = document.getElementById('cfgViewSearchClear');
   var badge = document.getElementById('cfgViewMatchCount');
   var inp = document.getElementById('cfgViewSearch');

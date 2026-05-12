@@ -1,4 +1,4 @@
-# topoassist v260511.28 | 2026-05-11 14:39:55
+# topoassist v260512.5 | 2026-05-12 11:48:30
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -1091,6 +1091,7 @@ class TestExpandTaCleanup:
             " no switchport trunk native vlan",
             " default switchport access vlan",
             " no channel-group",
+            " no ipv6 address",
             " description X __TA",
         ]
 
@@ -1099,6 +1100,7 @@ class TestExpandTaCleanup:
         result = db._expand_ta_cleanup(src)
         assert " no channel-group" not in result
         assert " default switchport trunk allowed vlan" in result
+        assert " no ipv6 address" in result
         assert "interface Port-Channel10" in result
 
     def test_vl_marker_expands_all_six_ip_cmds(self):
