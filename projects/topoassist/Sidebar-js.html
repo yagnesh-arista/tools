@@ -1,7 +1,7 @@
-<!-- TopoAssist v260512.2 | 2026-05-12 10:28:37 -->
+<!-- TopoAssist v260512.3 | 2026-05-12 10:32:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260512.2";  // keep in sync with Code.gs
+const APP_VERSION = "260512.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -15418,14 +15418,16 @@ function _renderLldpResults(results, orphans) {
     return `<div class="br-sec"${hidden ? ' style="display:none"' : ''}><div class="br-sec-hdr" onclick="_toggleBrSec('${key}')"><span class="br-chev${col ? ' collapsed' : ''}" id="brChev_${key}">${svgChev}</span><span class="br-sec-title">${title}</span><span class="br-sec-badge ${badgeCls}">${badgeText}</span></div><div class="br-sec-body${col ? ' collapsed' : ''}" id="brSecBody_${key}">${bodyHtml}</div></div>`;
   }
 
-  // ── Issues section body — order: New LLDP link / Mismatch / L1 Quality / errdis / down / shut / no-nbr
+  // ── Issues section body — order matches audit modal: LLDP group / Int State group
+  // LLDP: New LLDP neighbor / LLDP Mismatch / INT Up - no LLDP neighbor
+  // Int State: L1 errors / No link / Err-Dis / Disabled
   const issueParts = [];
   if (orphanCount) {
     const rows = orphans.map((o, i) =>
       `<label class="bridge-disc-row"><input type="checkbox" class="bridge-disc-check" id="disc_${i}" data-pair="${encodeURIComponent(JSON.stringify(o))}"><span class="bridge-port-dot bridge-port-mismatch"></span><span class="bridge-disc-cable">${o.localDev}:${o.localIf} ↔ ${o.remDev}:${o.remIf}</span></label>`
     ).join('');
     issueParts.push(
-      subHtml('New LLDP link', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
+      subHtml('New LLDP neighbor', orphanCount, `<div id="bridgeDiscoveredList" class="bridge-disc-list">${rows}</div>`) +
       `<div class="bridge-disc-actions"><button id="btnAddDiscovered" class="btn-mono" onclick="addSelectedDiscovered()">Add Selected</button></div>`
     );
   }
@@ -15433,8 +15435,12 @@ function _renderLldpResults(results, orphans) {
     issueParts.push(subHtml('LLDP Mismatch', mismatchR.length,
       mismatchR.map(r => rowHtml(r, svgX, 'bridge-row-fail', r.msg, 'LLDP mismatch — click to select link', 'bridge-port-mismatch')).join('')));
   }
+  if (noNbrR.length) {
+    issueParts.push(subHtml('INT Up - no LLDP neighbor', noNbrR.length,
+      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — interface is up but no peer seen', 'bridge-port-missing')).join('')));
+  }
   if (l1ErrR.length) {
-    issueParts.push(subHtml('L1 Quality (FCS/Symbol/Align)', l1ErrR.length,
+    issueParts.push(subHtml('L1 errors (CRC / FCS)', l1ErrR.length,
       l1ErrR.map(({ r, uErr, vErr }) => {
         const detail  = _l1ErrDetail(r.u, uErr, r.v, vErr);
         const sub = bridgePortSubType[r.u] || bridgePortSubType[r.v] || 'other';
@@ -15442,30 +15448,26 @@ function _renderLldpResults(results, orphans) {
         return rowHtml(r, svgWarn, 'bridge-row-l1', detail, 'L1 errors detected — click to select link', baseCls + ' has-l1');
       }).join('')));
   }
-  if (noNbrErrDisR.length) {
-    issueParts.push(subHtml('Interface errdisabled', noNbrErrDisR.length,
-      noNbrErrDisR.map(r => {
-        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
-        return rowHtml(r, svgErrDis, 'bridge-row-errdis', l1 || r.msg, 'Errdisabled — protocol shutdown — click to select link', 'bridge-port-errdis' + _linkL1Cls(r.u, r.v));
-      }).join('')));
-  }
   if (noNbrDownR.length) {
-    issueParts.push(subHtml('Interface down (notconnect)', noNbrDownR.length,
+    issueParts.push(subHtml('No link (notconnect)', noNbrDownR.length,
       noNbrDownR.map(r => {
         const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
         return rowHtml(r, svgDown, 'bridge-row-part', r.msg + (l1 ? ' | ' + l1 : ''), 'Link is physically down — click to select link', 'bridge-port-down' + _linkL1Cls(r.u, r.v));
       }).join('')));
   }
+  if (noNbrErrDisR.length) {
+    issueParts.push(subHtml('Err-Dis (errdisabled)', noNbrErrDisR.length,
+      noNbrErrDisR.map(r => {
+        const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
+        return rowHtml(r, svgErrDis, 'bridge-row-errdis', l1 || r.msg, 'Errdisabled — protocol shutdown — click to select link', 'bridge-port-errdis' + _linkL1Cls(r.u, r.v));
+      }).join('')));
+  }
   if (noNbrShutR.length) {
-    issueParts.push(subHtml('Interface shut', noNbrShutR.length,
+    issueParts.push(subHtml('Disabled (admin shut)', noNbrShutR.length,
       noNbrShutR.map(r => {
         const l1 = _l1ErrDetail(r.u, bridgePortL1Errors[r.u], r.v, bridgePortL1Errors[r.v]);
         return rowHtml(r, svgShut, 'bridge-row-shut', l1, 'Admin shutdown — click to select link', 'bridge-port-shut' + _linkL1Cls(r.u, r.v));
       }).join('')));
-  }
-  if (noNbrR.length) {
-    issueParts.push(subHtml('No LLDP neighbour (up)', noNbrR.length,
-      noNbrR.map(r => rowHtml(r, svgNoNbr, 'bridge-row-fail', r.msg, 'No LLDP neighbor — interface is up but no peer seen', 'bridge-port-missing')).join('')));
   }
   const issueBody   = issueParts.join('') || `<div class="br-empty-msg">No issues found</div>`;
   const issueBadge  = issueCount > 0 ? ['br-sec-badge-red', String(issueCount)] : ['br-sec-badge-green', 'Clean'];
