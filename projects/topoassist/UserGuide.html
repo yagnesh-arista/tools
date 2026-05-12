@@ -1,4 +1,4 @@
-<!-- TopoAssist v260512.5 | 2026-05-12 11:49:16 -->
+<!-- TopoAssist v260512.6 | 2026-05-12 12:51:17 -->
 <!DOCTYPE html>
 <html>
 
@@ -1522,7 +1522,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2 id="audit-engine">🛡️ Audit Engine</h2>
-    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 35 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. The icon changes color to show audit state at a glance: <b style="color:#94a3b8;">dimmed</b> when audit is disabled, <b style="color:#22c55e;">green</b> when enabled with no issues found, and <b style="color:#ef4444;">red</b> when enabled with issues present. A badge shows the error count when issues are found.</p>
+    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 38 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. The icon changes color to show audit state at a glance: <b style="color:#94a3b8;">dimmed</b> when audit is disabled, <b style="color:#22c55e;">green</b> when enabled with no issues found, and <b style="color:#ef4444;">red</b> when enabled with issues present. A badge shows the error count when issues are found.</p>
     <ul>
       <li><b>Unsupported Interface</b> — <code>int_</code> value does not start with <code>Et</code> (Ethernet) or <code>Vx</code> (VTEP). All Arista physical ports use the <code>Et</code> prefix regardless of speed; <code>Vx1</code> is the only valid VTEP entry. Other types (<code>Po</code>, <code>Lo</code>, <code>Ma</code>, etc.) do not belong in <code>int_</code>.</li>
       <li><b>Po Mismatch</b> — both sides of a cable have <code>po_</code> set but to different Port-Channel numbers. Both ports are flagged.</li>
@@ -1583,12 +1583,14 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <tr><td>MLAG device not declared</td><td>An interface references an MLAG configuration but the device is not declared as MLAG in Device Manager.</td></tr>
       <tr><td rowspan="2"><b>Snake / IXIA</b></td><td>Snake loopback port not p2p</td><td>A snake loopback interface's <code>ip_type_</code> is not <code>p2p</code> — required for correct snake test IP assignment.</td></tr>
       <tr><td>IXIA EP port not p2p</td><td>An IXIA endpoint interface's <code>ip_type_</code> is not <code>p2p</code> — required for IXIA traffic IP assignment.</td></tr>
-      <tr><td rowspan="6"><b>Bridge / LLDP</b></td><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
-      <tr><td>Missing LLDP neighbor</td><td>No LLDP neighbor was seen on a port that the topology expects to be connected.</td></tr>
-      <tr><td>Interface down</td><td>A cabled port shows <code>notconnect</code> in <code>show interfaces status</code> — the link is not up. Disabled by default; down ports are common in lab setups with unplugged or powered-off devices.</td></tr>
-      <tr><td>Interface shut</td><td>A cabled port is admin-disabled (<code>disabled</code> in <code>show interfaces status</code>). Disabled by default; shut ports are intentional in many lab setups.</td></tr>
-      <tr><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation.</td></tr>
-      <tr><td>L1 errors (CRC / FCS)</td><td>Interface error counters (FCS, CRC, symbol, align errors) exceed the configured threshold. Enabled by default — indicates physical layer issues. The threshold is configurable in the Audit Checks modal (default: 1 error).</td></tr>
+      <tr><td rowspan="3"><b>Bridge / LLDP</b></td><td>LLDP New neighbor</td><td>LLDP data reveals a neighbor that is not in the topology — a cable exists but has no matching entry in the sheet. Default on; use to flag extra cabling that needs a sheet row.</td></tr>
+      <tr><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
+      <tr><td>INT Up - no LLDP neighbor</td><td>No LLDP neighbor was seen on a port whose link is up — the topology expects a connected peer but none was discovered. Default on.</td></tr>
+      <tr><td rowspan="4"><b>Bridge / Int State</b></td><td>L1 errors (CRC / FCS)</td><td>Interface error counters (FCS, CRC, symbol, align errors) exceed the configured threshold. Default on — indicates physical layer issues. The threshold is configurable in the Audit Checks modal (default: 1 error).</td></tr>
+      <tr><td>No link (notconnect)</td><td>A cabled port shows <code>notconnect</code> in <code>show interfaces status</code> — the link is not up. Default <b>off</b>; down ports are common in lab setups with unplugged or powered-off devices.</td></tr>
+      <tr><td>Err-Dis (errdisabled)</td><td>A cabled port is in errdisabled state. Default <b>off</b>; errdisabled ports are common during initial bring-up.</td></tr>
+      <tr><td>Disabled (admin shut)</td><td>A cabled port is admin-disabled (<code>disabled</code> in <code>show interfaces status</code>). Default <b>off</b>; shut ports are intentional in many lab setups.</td></tr>
+      <tr><td rowspan="1"><b>Bridge / Other</b></td><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation.</td></tr>
     </table>
     <p style="font-size:13px;">Each check row has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled and has issues, <b>gray</b> = disabled or audit has not been run yet. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle all checks at once.</p>
 
@@ -1749,7 +1751,13 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     </div>
 
     <h3>Bridge / LLDP Audit Checks</h3>
-    <p style="font-size:13px;">The three Bridge/LLDP audit checks (LLDP neighbor mismatch, missing LLDP neighbor, internal VLAN in topology) are managed in the <b>Audit Checks</b> modal — single-click the Audit icon in the toolbar to open it. All checks default to <b>on</b>. Toggling <b>Missing LLDP neighbor</b> off leaves missing-port dots gray instead of red without suppressing them from the device card entirely.</p>
+    <p style="font-size:13px;">Eight live Bridge audit checks are managed in the <b>Audit Checks</b> modal — single-click the Audit icon in the toolbar to open it. They are split into three categories:</p>
+    <ul style="font-size:12px;">
+      <li><b>Bridge — LLDP</b>: <b>LLDP New neighbor</b> (cable not in sheet; default <b>on</b>), <b>LLDP neighbor mismatch</b> (wrong peer; default <b>on</b>), <b>INT Up - no LLDP neighbor</b> (link up, no peer discovered; default <b>on</b>).</li>
+      <li><b>Bridge — Int State</b>: <b>L1 errors / CRC / FCS</b> (default <b>on</b>; threshold configurable), <b>No link / notconnect</b> (default <b>off</b>), <b>Err-Dis / errdisabled</b> (default <b>off</b>), <b>Disabled / admin shut</b> (default <b>off</b>). The three down/errdis/shut checks are off by default because these states are intentional in many lab setups.</li>
+      <li><b>Bridge — Other</b>: <b>Internal VLAN in topology</b> (default <b>on</b>).</li>
+    </ul>
+    <p style="font-size:13px;">Toggling <b>INT Up - no LLDP neighbor</b> off leaves missing-port dots gray instead of red — the dots remain visible on the device card but no audit error is raised.</p>
 
     <h3>Config Push</h3>
     <p style="font-size:13px;">Config Push sends the generated EOS configuration directly to lab devices via SSH — no manual copy-paste required. It uses an EOS <b>configure session</b> for a safe, atomic commit and runs a post-push verification diff to confirm the device is in the desired state.</p>
