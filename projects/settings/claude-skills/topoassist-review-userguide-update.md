@@ -171,6 +171,27 @@ Check that the "Layer 2 — Push-time additions" section of the Device Bridge do
 
 ✗ FAIL if the Layer 2 section only mentions interface orphans, omitting BGP/VLAN/VRF/OSPF.
 
+### 2c-iv — Layer 1 per-interface idempotency reset commands
+
+The Config Push "Layer 1 — Generated config" section must document the exact `default`/`no` sub-commands injected at the start of each interface block by the `ta-clean-et`, `ta-clean-po`, and `ta-clean-vl` marker expansion.
+
+```bash
+# Get the canonical command list from device_bridge.py
+grep -A 30 "^TA_ALIAS_EXPANSIONS" ~/claude/projects/topoassist/device_bridge.py | head -30
+```
+
+Check that UserGuide's Layer 1 section covers all three interface types with accurate commands:
+
+- [ ] **`Et` (Ethernet)** — `default switchport trunk allowed vlan` · `no switchport trunk native vlan` · `default switchport access vlan` · `no channel-group` · `no ipv6 address`
+- [ ] **`Po` (Port-Channel)** — same as `Et` minus `no channel-group`
+- [ ] **`Vlan` (SVI)** — `default ip address` · `default ip address virtual` · `default ip virtual-router address` · `default ipv6 address` · `default ipv6 address virtual` · `default ipv6 virtual-router address`
+
+Also verify that the UserGuide commands match the **current** `TA_ALIAS_EXPANSIONS` in `device_bridge.py` exactly — the command list can change when new cleanup needs are identified.
+
+✗ FAIL if per-interface reset sub-commands are not documented in the Layer 1 section.
+✗ FAIL if any documented command does not match the current `TA_ALIAS_EXPANSIONS` definition.
+✗ FAIL if the Vxlan cleanup sub-commands (`default vxlan vlan 1-4094 vni`, `default vxlan flood vtep`) are absent from the Layer 1 description.
+
 ### 2d — Audit Engine section
 
 ```bash
