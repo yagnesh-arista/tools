@@ -10568,7 +10568,7 @@ function downloadBridgeScript() {
 TopoAssist Device Bridge
 ========================
 Local HTTP server that bridges the TopoAssist sidebar to lab devices.
-Runs on http://localhost:8765 -- no SSL cert needed (localhost is exempt from
+Runs on http://localhost:8765 — no SSL cert needed (localhost is exempt from
 browser mixed-content policy when called from HTTPS pages).
 
 Usage:
@@ -10578,67 +10578,58 @@ Keep this terminal open while using Device Bridge in the sidebar.
 Ctrl+C to stop.
 
 Transport options (set _cfg['transport'] below):
-  eapi  -- Arista eAPI JSON-RPC over HTTPS (default; stdlib only)
-  ssh   -- SSH via jump host or direct (stdlib only)
-  rest  -- RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
-  gnmi  -- gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
+  eapi  — Arista eAPI JSON-RPC over HTTPS (default; stdlib only)
+  ssh   — SSH via jump host or direct (stdlib only)
+  rest  — RESTCONF over HTTPS, OpenConfig YANG (stdlib only; EOS 4.22+)
+  gnmi  — gRPC/gNMI, OpenConfig YANG (requires: pip install pygnmi; EOS 4.22+)
 
 Endpoints:
-  GET  /health      -> {"status":"ok","version":"<VERSION>","port":8765}
-  POST /lldp        -> {ipMap} -> per-device LLDP neighbors
-  POST /devstatus   -> {ipMap} -> per-device EOS version, platform, interface op-status
-  POST /pushconfig  -> {ipMap: {dev:{ip,config}}} -> per-device push result + session diff
+  GET  /health      → {"status":"ok","version":"<VERSION>","port":8765}
+  POST /lldp        → {ipMap} → per-device LLDP neighbors
+  POST /devstatus   → {ipMap} → per-device EOS version, platform, interface op-status
+  POST /pushconfig  → {ipMap: {dev:{ip,config}}} → per-device push result + session diff
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import subprocess, json, threading, sys, urllib.request, ssl, base64, time, os, re, shutil
 import atexit, stat as _stat, tempfile
 
+# sshpass is not available on all platforms (e.g. macOS without Homebrew).
+# Detect once at startup; fall through to SSH_ASKPASS shim, then key-based.
 _SSHPASS_BIN = shutil.which("sshpass")
 
+# SSH_ASKPASS shim — empty-password auth without sshpass.
+# Creates a temp shell script that echoes nothing (= empty password) and
+# registers it as SSH_ASKPASS so SSH calls it instead of prompting.
+# Works on any platform with standard /bin/sh and OpenSSH 8.4+
+# (pre-8.4 needs DISPLAY set, which we include as a fallback).
 _ASKPASS_SCRIPT = None
-_SSH_ENV        = None
+_SSH_ENV        = None   # subprocess env for SSH_ASKPASS mode; None = inherit
 if not _SSHPASS_BIN:
     try:
         _f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.sh', delete=False, prefix='ta_askpass_')
-        _f.write('#!/bin/sh\\necho\\n')
+        _f.write('#!/bin/sh\\necho\\n')   # echo empty line = empty password
         _f.flush(); _f.close()
         os.chmod(_f.name, _stat.S_IRWXU)
         _ASKPASS_SCRIPT = _f.name
         _SSH_ENV = {**os.environ,
                     "SSH_ASKPASS":         _ASKPASS_SCRIPT,
-                    "SSH_ASKPASS_REQUIRE": "force",
-                    "DISPLAY":             os.environ.get("DISPLAY") or ":0"}
+                    "SSH_ASKPASS_REQUIRE": "force",                # OpenSSH 8.4+
+                    "DISPLAY":             os.environ.get("DISPLAY") or ":0"}  # pre-8.4 fallback
         atexit.register(os.unlink, _ASKPASS_SCRIPT)
     except Exception:
-        pass
-
-def _arg(flag):
-    try:
-        i = sys.argv.index(flag)
-        return sys.argv[i + 1]
-    except (ValueError, IndexError):
-        return None
-
-def _check_ssh_agent():
-    if not shutil.which("arista-ssh"):
-        return {"ok": False, "msg": "arista-ssh not found — install arista-ssh or use sshpass"}
-    try:
-        r = subprocess.run(["arista-ssh", "check-auth"],
-                           capture_output=True, text=True, timeout=5)
-        if r.returncode == 0:
-            return {"ok": True}
-        return {"ok": False, "msg": "arista-ssh session expired — run: arista-ssh login"}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "msg": "arista-ssh check-auth timed out — run: arista-ssh login"}
+        pass   # fall back to BatchMode=yes key-based auth
 
 def _ssh_base(force_tty=False):
-    """
+    """Return the base SSH command list.
+    sshpass (Linux): supplies empty password via wrapper binary.
+    SSH_ASKPASS shim (macOS/no sshpass): SSH_ASKPASS env supplies empty password.
+    Fallback: key-based auth via BatchMode=yes.
+
     force_tty=True: use -tt (force PTY) so EOS assigns a named VTY instead of
     showing 'UnknownTty' in 'show users' and syslog. Used by _ssh_stdin for
-    configure-session pushes. Show/JSON commands use the default -T (no PTY).
-    """
+    configure-session pushes. _ssh_cmds (show | json path) always uses -T."""
     tty      = "-tt" if force_tty else "-T"
     ssh_pass = _cfg.get("ssh_pass", "")
     ssh_port = int(_cfg.get("ssh_port", 22))
@@ -10665,27 +10656,77 @@ def _ssh_base(force_tty=False):
             "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=8"]
 
+# Strip ANSI escape sequences from PTY output so diff parsing is not confused
+# by terminal control codes EOS may emit when a pseudo-terminal is allocated.
 _ANSI_RE = re.compile(r'\\x1b(?:\\[[0-9;]*[A-Za-z]|[^[])')
 
+def _check_ssh_agent():
+    """Check arista-ssh credentials via 'arista-ssh check-auth'.
+    Only called when using key-based SSH auth (sshpass is absent).
+
+    arista-ssh check-auth exit codes:
+      0 — authenticated → ok
+      non-zero — session expired or not logged in
+
+    Returns {"ok": True} or {"ok": False, "msg": "<reason>"}.
+    """
+    if not shutil.which("arista-ssh"):
+        return {"ok": False, "msg": "arista-ssh not found — install arista-ssh or set BRIDGE_SSH_USER / use sshpass"}
+    try:
+        r = subprocess.run(["arista-ssh", "check-auth"],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            return {"ok": True}
+        return {"ok": False, "msg": "arista-ssh session expired — run: arista-ssh login"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "msg": "arista-ssh check-auth timed out — run: arista-ssh login"}
+
+# Dynamic SSH auth observation — updated by _ssh_cmds on exit-255 detection.
+# arista-ssh-agent certificates can expire while still appearing in ssh-add -l
+# (the cert is listed but EOS rejects it → SSH exits 255 before any command runs).
+# Dict is mutated in-place — GIL-safe for simple key assignments, no lock needed.
 _ssh_auth = {"ok": True, "msg": "", "failures": 0}
-_SSH_AUTH_THRESHOLD = 3
+_SSH_AUTH_THRESHOLD = 3  # consecutive exit-255 without a success → flag as auth issue
+
+def _arg(flag):
+    """Return the value after flag in sys.argv, or None if flag absent or has no value."""
+    try:
+        i = sys.argv.index(flag)
+        return sys.argv[i + 1]
+    except (ValueError, IndexError):
+        return None
 
 VERBOSE = "-v" in sys.argv
 
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION    = "260512.1"
-PORT       = 8765
-_b         = _arg("-b")
-JUMP_HOST  = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "")
-TIMEOUT    = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
+VERSION           = "260512.1"
+PORT              = 8765
+# CLI flags (-b/-t/-p) take priority; env vars are the fallback.
+_b        = _arg("-b")
+JUMP_HOST = _b if _b is not None else os.environ.get("BRIDGE_JUMP_HOST", "")
+TIMEOUT   = int(_arg("-t") or os.environ.get("BRIDGE_TIMEOUT", "15"))
+# PUSH_TIMEOUT: separate ceiling for large configure-session pushes.
+# TIMEOUT (-t) is for read queries (show, lldp, etc.) and should stay small.
+# Large configs (10k+ commands) can exceed TIMEOUT — set this independently.
+# Default: max(TIMEOUT*4, 300) so it auto-scales with -t but never below 5 min.
 PUSH_TIMEOUT = int(_arg("-p") or os.environ.get("BRIDGE_PUSH_TIMEOUT",
-                                                  str(max(TIMEOUT * 4, 300))))
-CLEANUP_BATCH_SIZE    = 300
+                                                 str(max(TIMEOUT * 4, 300))))
+PUSH_RETRIES      = 2   # retries on connection refused / SSH failure (device warm-restart)
+PUSH_RETRY_DELAY  = 4   # seconds between retries
+CLEANUP_BATCH_SIZE    = 300   # max orphan-cleanup commands per configure session
+# CLEANUP_PUSH_TIMEOUT: ceiling for each orphan-cleanup batch session.
+# Range-collapsed deletions (e.g. 'no interface Vlan1-3999') commit atomically in EOS
+# and can take 10+ min for large topologies — default is 3× PUSH_TIMEOUT, min 900s.
 CLEANUP_PUSH_TIMEOUT  = int(_arg("-c") or os.environ.get("BRIDGE_CLEANUP_TIMEOUT",
                                                           str(max(PUSH_TIMEOUT * 3, 900))))
 
+# ta-clean-* marker expansion — commands to run inside each interface in the
+# pre-push cleanup session. Markers in the generated config ('ta-clean-et Et1/1'
+# etc.) are intercepted by _expand_ta_cleanup() and replaced with direct EOS
+# configure commands. EOS eAPI does not resolve user-defined aliases, so the
+# alias approach fails; expanding in Python and pushing as a separate session works.
 TA_ALIAS_EXPANSIONS = {
     "ta-clean-et": [
         "default switchport trunk allowed vlan",
@@ -10710,6 +10751,8 @@ TA_ALIAS_EXPANSIONS = {
     ],
 }
 
+# _cfg: active transport settings — initialized from CLI/env, overridable at runtime
+# via POST /settings so the sidebar can switch transport without restarting the bridge.
 _cfg = {
     "transport":  _arg("-m")  or os.environ.get("BRIDGE_METHOD",    "eapi"),
     "ssh_user":   _arg("-u")  or os.environ.get("BRIDGE_SSH_USER",  "admin"),
@@ -10732,28 +10775,30 @@ def _jump_args():
     via  = f'{user}@{host}' if user else host
     return ['-J', via]
 
-# -- RESTCONF config (_cfg['transport'] = "rest") -----------------------------------------
+# ── RESTCONF config (_cfg['transport'] = "rest") ─────────────────────────────────────────
+# OpenConfig YANG over HTTPS; EOS 4.22+; enable with: management api restconf
 REST_USER = "admin"
 REST_PASS = ""
 REST_PORT = 443
 
-# -- gNMI config (_cfg['transport'] = "gnmi") ---------------------------------------------
+# ── gNMI config (_cfg['transport'] = "gnmi") ─────────────────────────────────────────────
+# gRPC/gNMI; enable with: management api gnmi; requires: pip install pygnmi
 GNMI_USER = "admin"
 GNMI_PASS = ""
 GNMI_PORT = 6030
 
-# -- Concurrency cap for bulk SSH operations ------------------------------------
+# ── Concurrency cap for bulk SSH operations ────────────────────────────────────
 MAX_WORKERS = 10   # max concurrent SSH sessions for /lldp, /devstatus, /pushconfig
 
-# -- Optional gNMI import ------------------------------------------------------
+# ── Optional gNMI import ───────────────────────────────────────────────────────
 try:
     from pygnmi.client import gNMIclient
     HAS_GNMI = True
 except ImportError:
     HAS_GNMI = False
 
-# -- Transport status printer --------------------------------------------------
 def _print_transport_status():
+    """Print current transport settings — called at startup and on /settings change."""
     t = _cfg['transport']
     print(f"  Transport : {t.upper()}", flush=True)
     if t == "ssh":
@@ -10775,15 +10820,16 @@ def _print_transport_status():
         print(f"  gNMI user : {GNMI_USER}  port: {GNMI_PORT}{_gnmi_note}", flush=True)
 
 
-# -- Shared SSL context (eAPI + REST) ------------------------------------------
+# ── Shared SSL context (eAPI + REST — self-signed certs OK) ───────────────────
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode    = ssl.CERT_NONE
 
 
-# -- OpenConfig -> EOS format normalizers (used by rest + gnmi) ----------------
+# ── OpenConfig → EOS format normalizers (used by rest + gnmi) ─────────────────
 
 def _oc_lldp_to_eos(raw):
+    """Convert openconfig-lldp GET response to EOS lldpNeighbors dict."""
     neighbors = {}
     root = raw.get("openconfig-lldp:lldp", raw)
     for iface in root.get("interfaces", {}).get("interface", []):
@@ -10794,38 +10840,60 @@ def _oc_lldp_to_eos(raw):
         state = nbrs[0].get("state", {})
         neighbors[name] = {"bridgeNeighborInfo": [{
             "systemName": state.get("system-name", ""),
-            "neighborInterfaceInfo": {"interfaceId_v2": state.get("port-id", "")},
+            "neighborInterfaceInfo": {
+                "interfaceId_v2": state.get("port-id", ""),
+            },
         }]}
     return neighbors
 
+
 def _normalize_lldp_neighbors(raw_lldp_neighbors):
+    """Rename EOS native key 'lldpNeighborInfo' → 'bridgeNeighborInfo'.
+
+    EOS JSON (show lldp neighbors detail | json) uses 'lldpNeighborInfo' per
+    interface.  The client _compareBridgeData reads 'bridgeNeighborInfo' — the
+    single canonical key used across all transports (ssh/eapi/rest/gnmi).
+    Interfaces that already lack 'lldpNeighborInfo' are passed through as-is.
+    """
     return {
         iface: {"bridgeNeighborInfo": info["lldpNeighborInfo"]}
         if "lldpNeighborInfo" in info else info
         for iface, info in raw_lldp_neighbors.items()
     }
 
+
 def _oc_version(raw):
+    """Extract software version string from openconfig-platform GET response."""
     for comp in raw.get("openconfig-platform:components", raw).get("component", []):
         ver = comp.get("state", {}).get("software-version", "")
         if ver:
             return ver.split(" (")[0].strip()
     return ""
 
+
 def _oc_platform(raw):
+    """Extract platform/model name from openconfig-platform GET response."""
     for comp in raw.get("openconfig-platform:components", raw).get("component", []):
-        if "CHASSIS" in comp.get("state", {}).get("type", ""):
+        t = comp.get("state", {}).get("type", "")
+        if "CHASSIS" in t:
             return comp["state"].get("description", "").lstrip("DCS-")
     return ""
 
+
 def _oc_iface_status(raw):
-    oc_map = {"UP": "connected", "DOWN": "notconnect", "LOWER_LAYER_DOWN": "notconnect"}
-    return {
-        iface.get("name", ""): {"linkStatus": oc_map.get(iface.get("state", {}).get("oper-status", ""), "notconnect")}
-        for iface in raw.get("openconfig-interfaces:interfaces", raw).get("interface", [])
-    }
+    """Convert openconfig-interfaces GET response to EOS interfaceStatuses dict."""
+    oc_to_eos = {"UP": "connected", "DOWN": "notconnect",
+                 "LOWER_LAYER_DOWN": "notconnect", "DORMANT": "notconnect"}
+    result = {}
+    for iface in raw.get("openconfig-interfaces:interfaces", raw).get("interface", []):
+        name  = iface.get("name", "")
+        oper  = iface.get("state", {}).get("oper-status", "")
+        result[name] = {"linkStatus": oc_to_eos.get(oper, "notconnect")}
+    return result
+
 
 def _gnmi_val(response):
+    """Extract the value dict from a pygnmi get() response."""
     try:
         return response["notification"][0]["update"][0]["val"]
     except (KeyError, IndexError, TypeError):
@@ -10894,71 +10962,119 @@ def _build_devstatus_ssh(ver, ifs, ivlans, errs=None):
 
 def _extract_session_diff(output):
     """Extract 'show session-config diffs' text from raw SSH stdout.
-    EOS diff format:
+
+    EOS unified-diff format (no @@ hunk headers):
       --- system:/running-config
       +++ session:/topoassist-session-config
       interface Ethernet1/1
       +   description foo
-    No @@ hunk headers. Echoed commit/abort appears as 'Prompt#commit' -- stop there.
-    For open_only pushes (no final cmd) a bare EOS prompt ending with '#' signals EOF."""
-    lines   = output.split("\\n")
+
+    Capture starts at the first diff header line ('--- ' or '+++ ').
+    Capture stops when EOS echoes the next command (always contains '#commit'
+    or '#abort' because the prompt includes the mode, e.g.
+    'Arista(config-s-topoas)#commit').
+
+    Robustness notes:
+      - Accepts either '--- ' or '+++ ' as the start trigger in case EOS
+        emits '+++ ' before '--- ' on some versions.
+      - Ignores any trailing whitespace on each line.
+      - Returns '' for an empty diff (no changes staged).
+      - For open_only pushes we don't send a final 'exit' command, so EOS
+        outputs a bare prompt ("Hostname#") at EOF — detected by s.endswith('#')."""
+    lines   = output.split('\\n')
     diff    = []
     started = False
     for line in lines:
         s = line.rstrip()
         if not started:
-            if s.startswith("--- ") or s.startswith("+++ "):
+            # Accept both orderings of the unified-diff header
+            if s.startswith('--- ') or s.startswith('+++ '):
                 started = True
                 diff.append(s)
         else:
-            if "#commit" in s or "#abort" in s or "#exit" in s or s.endswith("#"):
+            # EOS echoes the final command as "Prompt#commit", "Prompt#abort",
+            # or "Prompt#exit" — '#' is part of the prompt, safe vs diff content.
+            # For open_only (no final cmd) a bare EOS prompt ending with '#'
+            # signals end of diff output.
+            if '#commit' in s or '#abort' in s or '#exit' in s or s.endswith('#'):
                 break
             diff.append(s)
-    return "\\n".join(diff).strip()
+    return '\\n'.join(diff).strip()
+
+
+# EOS block-entering commands — entering these sub-modes changes the PTY prompt context.
+# Used to inject context lines into eos_errors so '!' separators can be inserted between blocks.
+_BLOCK_CMD_RE = re.compile(
+    r'^(?:interface|router\\s+(?:bgp|ospf|isis)|vlan\\s+\\d|address-family)\\s',
+    re.IGNORECASE,
+)
 
 
 def _extract_eos_errors(text):
     """Collect EOS % error/warning lines from session output (SSH or joined eAPI text).
 
     Two stop conditions bound the scan to the config-command phase only:
-      1. Diff header ('--- ' or '+++ ') -- reached show session-config diffs output.
-      2. Bare exec-mode prompt ('HOSTNAME#') -- 'end' was processed, config phase over.
-         Condition: line ends with '#' and contains no '(config'.
+      1. Diff header ('--- ' or '+++ ') — reached the show session-config diffs output.
+      2. Bare exec-mode prompt ('HOSTNAME#') — 'end' was processed and the session
+         sub-mode has been exited.  In PTY mode (_ssh_stdin force_tty=True) EOS
+         emits a standalone prompt line after 'end' before echoing the next command.
+         Condition: line ends with '#' and contains no '(config' (which would indicate
+         a configure-session context rather than exec mode).
 
     In PTY (SSH) mode EOS echoes each command as 'HOSTNAME(config-s-...)#<command>'.
     When a % error follows, the preceding echo is captured as command context so the
-    caller can show 'channel-group 4003 mode active -> % Invalid input' instead of
-    just '% Invalid input'. Context is only extracted from PTY prompt echoes (lines
-    containing both '#' and '(config') -- plain eAPI result lines are not treated as
+    caller can show 'channel-group 4003 mode active → % Invalid input' instead of just
+    '% Invalid input'.  Context is only extracted from PTY prompt echoes (lines
+    containing both '#' and '(config') — plain eAPI result lines are not treated as
     command echoes, so eAPI mode falls back to bare % lines with no context.
 
+    When a block command (interface, router bgp, vlan, address-family) succeeds but
+    sub-commands inside it fail, the block command itself is injected as a context line
+    before the first sub-command error.  This lets the caller insert '!' separators
+    between distinct config blocks even when the block-entry command produced no error.
+
     Returns (errors, warnings) — both lists of strings.
-    errors: '% error' lines (command rejected). warnings: '! text' lines (command accepted with note).
-    Both include preceding cmd context when available."""
+    errors: '% error' lines (command rejected), with block context and separators.
+    warnings: '! text' lines (command accepted with informational note, e.g. transceiver absent).
+    Both lists are empty if no matching lines are found."""
     errors = []
     warnings = []
-    prev_cmd = ""
-    for line in text.split("\\n"):
+    prev_cmd = ''
+    current_block = ''        # most recent block-entering command seen
+    last_block_in_errors = '' # last block whose context line was injected into errors
+    for line in text.split('\\n'):
         s = line.strip()
-        if s.startswith("--- ") or s.startswith("+++ "):
-            break
-        if s.endswith("#") and "(config" not in s:
-            break
-        if s.startswith("%"):
-            errors.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
-        elif s.startswith("!") and len(s) > 1 and not ("#" in s and "(config" in s):
-            warnings.append(f"{prev_cmd} \\u2192 {s}" if prev_cmd else s)
-        elif "#" in s and "(config" in s:
-            cmd = s.split("#", 1)[-1].strip()
+        if s.startswith('--- ') or s.startswith('+++ '):
+            break   # reached diff section
+        if s.endswith('#') and '(config' not in s:
+            break   # bare exec-mode prompt — 'end' was processed, config phase over
+        if s.startswith('%'):
+            # If we're inside a block that succeeded (e.g. 'interface Eth13' entered OK
+            # but 'speed 25g' failed), inject the block command as a context line so
+            # the caller can group errors by block with '!' separators.
+            if (current_block and current_block != last_block_in_errors
+                    and not _BLOCK_CMD_RE.match(prev_cmd)):
+                errors.append(current_block)
+                last_block_in_errors = current_block
+            errors.append(f'{prev_cmd} \\u2192 {s}' if prev_cmd else s)
+            # If the block command itself failed, mark it represented so sub-commands
+            # in the same block don't re-inject the context line.
+            if _BLOCK_CMD_RE.match(prev_cmd):
+                last_block_in_errors = current_block
+        elif s.startswith('!') and len(s) > 1 and not ('#' in s and '(config' in s):
+            # EOS informational note — command was accepted, just a caveat.
+            # Exclude PTY prompt-echo lines (!HOSTNAME(config-s-...)#cmd) — those are
+            # echoed commands, not warnings, and were being misclassified.
+            warnings.append(f'{prev_cmd} \\u2192 {s}' if prev_cmd else s)
+        elif '#' in s and '(config' in s:
+            # PTY prompt echo: 'HOSTNAME(config-s-...)#the command' → 'the command'
+            cmd = s.split('#', 1)[-1].strip()
             if cmd:
                 prev_cmd = cmd
+                if _BLOCK_CMD_RE.match(cmd):
+                    current_block = cmd
     return errors, warnings
 
-
-_BLOCK_CMD_RE = re.compile(
-    r'^(?:interface|router\\s+(?:bgp|ospf|isis)|vlan\\s+\\d|address-family)\\s',
-    re.IGNORECASE,
-)
 
 _EAPI_FAILED_CMD_RE = re.compile(r"CLI command \\d+ of \\d+ '([^']+)' failed", re.IGNORECASE)
 
@@ -10970,7 +11086,7 @@ def _annotate_eapi_errors(errors, lines):
     failed command name from each error, locates it in lines[], scans backwards
     for the nearest block-entering command (interface / router bgp / etc.), and
     injects that block command as a context line immediately before the error so
-    the UI can show 'interface Ethernet5 -> ip address ... failed' instead of just
+    the UI can show 'interface Ethernet5 → ip address ... failed' instead of just
     the raw error with no interface name.
     """
     result = []
@@ -10994,131 +11110,49 @@ def _annotate_eapi_errors(errors, lines):
     return result
 
 
-def _diagnose_eapi_errors(self, ip, lines, eos_errs):
-    """Open a throwaway SSH configure session to capture % reasons for eAPI errors.
+# ── Section-level cleaners for idempotent push ────────────────────────────────
 
-    eAPI 'CLI command N of M cmd failed: could not run command' suppresses the
-    specific % reason that EOS emits on a PTY (e.g. '% Virtual IP address is
-    already configured').  This function opens a topoassist_<epoch> configure
-    session via SSH, replays each failed command in its block context, captures
-    all % lines from the PTY output, then aborts -- nothing is ever committed.
-
-    % line extraction is index-based (not prompt-based): consecutive % lines
-    between non-% output lines form one group; groups are paired to failed
-    commands in order.  This avoids EOS prompt-format sensitivity.
-
-    Returns eos_errs with 'could not run command' replaced by the % reason(s).
-    If SSH is unavailable or no % lines found, returns eos_errs unchanged.
-    """
-    try:
-        # Collect deduplicated (block_cmd, failed_cmd) pairs in order
-        seen  = set()
-        pairs = []
-        for err in eos_errs:
-            m = _EAPI_FAILED_CMD_RE.search(err)
-            if not m:
-                continue
-            if 'could not run command' not in err.lower():
-                continue
-            failed_cmd = m.group(1).strip()
-            block_cmd  = ''
-            for i, line in enumerate(lines):
-                if line.strip() == failed_cmd:
-                    for j in range(i - 1, -1, -1):
-                        if _BLOCK_CMD_RE.match(lines[j].strip()):
-                            block_cmd = lines[j].strip()
-                            break
-                    break
-            key = (block_cmd, failed_cmd)
-            if key not in seen:
-                seen.add(key)
-                pairs.append(key)
-        if not pairs:
-            return eos_errs
-
-        # Build the diagnostic configure session.
-        # Use end + re-enter + abort (same pattern as real push) to ensure clean
-        # teardown from any sub-mode depth.  The session is always aborted.
-        session   = f"topoassist_{int(time.time())}"
-        diag_cmds = [f"configure session {session}"]
-        for block_cmd, failed_cmd in pairs:
-            if block_cmd:
-                diag_cmds.append(block_cmd)
-            diag_cmds.append(failed_cmd)
-        diag_cmds.extend(["end", f"configure session {session}", "abort"])
-
-        if VERBOSE:
-            _vlog(f"[diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
-        out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
-
-        # Collect consecutive % groups from PTY output -- index-aligned with pairs.
-        # Each group (one or more consecutive % lines) corresponds to one failed
-        # command.  Prompt format is irrelevant: non-% lines flush the current group.
-        groups  = []
-        current = []
-        for line in out.splitlines():
-            s = line.strip()
-            if s.startswith('%'):
-                current.append(s)
-            elif current:
-                groups.append("\\n".join(current))
-                current = []
-        if current:
-            groups.append("\\n".join(current))
-        if not groups:
-            return eos_errs
-
-        # Map (block_cmd, failed_cmd) -> reason by position
-        reasons = {key: groups[i] for i, key in enumerate(pairs) if i < len(groups)}
-        if not reasons:
-            return eos_errs
-
-        # Replace 'could not run command' with the specific % reason(s)
-        result = list(eos_errs)
-        for i, err in enumerate(result):
-            m = _EAPI_FAILED_CMD_RE.search(err)
-            if not m:
-                continue
-            failed_cmd = m.group(1).strip()
-            block_cmd  = ''
-            for li, line in enumerate(lines):
-                if line.strip() == failed_cmd:
-                    for j in range(li - 1, -1, -1):
-                        if _BLOCK_CMD_RE.match(lines[j].strip()):
-                            block_cmd = lines[j].strip()
-                            break
-                    break
-            reason = reasons.get((block_cmd, failed_cmd))
-            if reason:
-                indented = reason.replace('\\n', '\\n  ')
-                result[i] = re.sub(
-                    r':\\s*could not run command\\s*$',
-                    ':\\n  ' + indented,
-                    err, flags=re.IGNORECASE,
-                )
-        return result
-    except Exception:
-        return eos_errs   # SSH unavailable or timed out -- keep original errors
+# Interfaces excluded from __TA orphan cleanup — system/VTEP/MLAG-control, not per-link
+_TA_ORPHAN_SKIP_RE = re.compile(
+    r'^(?:Loopback|Management|Vxlan)\\d|^Vlan409[34]$', re.IGNORECASE
+)
 
 
-_TA_ORPHAN_SKIP_RE = re.compile(r'^(?:Loopback|Management|Vxlan)\d|^Vlan409[34]$', re.IGNORECASE)
-
-
-# -- SSH stderr cleaner ---------------------------------------------------------
+# ── SSH stderr cleaner ────────────────────────────────────────────────────────
+# Strip known-noisy SSH informational lines from stderr before surfacing errors.
+# With -T + LogLevel=ERROR these shouldn't appear; this is a safety net so that
+# if they do appear (e.g. older SSH, jump-host quirks), the real error is first.
 _SSH_NOISE_RE = re.compile(
-    r"^\s*(pseudo-terminal will not be allocated"
-    r"|warning: permanently added"
-    r"|debug[123]:)",
+    r'^\\s*(pseudo-terminal will not be allocated'
+    r'|warning: permanently added'
+    r'|debug[123]:'
+    r')',
     re.IGNORECASE)
 
 def _clean_ssh_err(err_text):
+    """Return err_text with SSH noise lines removed. Strips leading/trailing whitespace."""
     lines = [l for l in err_text.splitlines() if not _SSH_NOISE_RE.match(l)]
-    cleaned = "\\n".join(lines).strip()
-    return cleaned or err_text.strip()
+    cleaned = '\\n'.join(lines).strip()
+    return cleaned or err_text.strip()   # fall back to raw if everything was noise
+
+
+def _norm_iface(name):
+    """Normalize EOS interface names to abbreviated lowercase form for comparison.
+
+    EOS JSON returns long form (Ethernet25/1, Port-Channel10) while the
+    topology stores abbreviated form (Et25/1, Po10).  Sub-interfaces
+    (Ethernet25/1.100) are handled by the same prefix substitution.
+    """
+    n = re.sub(r'^Ethernet', 'Et', name, flags=re.IGNORECASE)
+    n = re.sub(r'^Port-Channel', 'Po', n, flags=re.IGNORECASE)
+    return n.lower()
 
 
 def _contiguous_ranges(nums):
-    """Convert a sorted list of ints to [(start, end), ...] contiguous range tuples."""
+    """Convert a sorted list of ints to [(start, end), ...] contiguous range tuples.
+
+    [100, 101, 102, 200, 201] → [(100,102), (200,201)]
+    """
     if not nums:
         return []
     ranges = []
@@ -11137,95 +11171,107 @@ def _contiguous_ranges(nums):
 def _orphans_to_cmds(orphans):
     """Convert _detect_orphans() result to flat EOS CLI cleanup commands.
 
-    SVI orphans (VlanN)   → no interface VlanX-Y  (range — collapses thousands of SVIs)
-    Sub-interface orphans → no interface X          (individual — no EOS range for sub-int)
-    PO orphans            → no interface X          (individual — 'default' only resets, PO persists)
-    Physical orphans      → default interface X     (individual)
-    BGP orphans           → router bgp ASN / no neighbor X / !
-    VLAN orphans          → no vlan X-Y             (range)
-    VRF orphans           → no vrf instance X
-    OSPF orphans          → router ospf_kw / default passive-interface X / !
+    SVI orphans (VlanN)      → no interface VlanX-Y  (range — collapses thousands of SVIs)
+    Sub-interface orphans    → no interface X          (individual — no EOS range for sub-int)
+    PO orphans               → no interface X          (individual — 'default' only resets, PO persists)
+    Physical orphans         → default interface X     (individual)
+    BGP orphans              → router bgp ASN / no neighbor X / !
+    VLAN orphans             → no vlan X-Y             (range)
+    VRF orphans              → no vrf instance X
+    OSPF orphans             → router ospf_kw / default passive-interface X / !
     """
     cmds = []
-    svi_vids     = []
-    other_ifaces = []
+    svi_vids    = []   # (vid_int,) for VlanN interfaces → range syntax
+    other_ifaces = []  # (cmd_type, name) for sub-int / physical / PO → individual
 
-    for o in orphans.get("interfaces", []):
-        name = o["name"]
-        m = re.match(r"^[Vv]lan(\\d+)$", name)
+    for o in orphans.get('interfaces', []):
+        name = o['name']
+        m = re.match(r'^[Vv]lan(\\d+)$', name)
         if m:
             svi_vids.append(int(m.group(1)))
-        elif "." in name:
-            other_ifaces.append(("no", name))
-        elif re.match(r"^[Pp]ort-[Cc]hannel\\d+$", name) or re.match(r"^[Pp]o\\d+$", name):
-            other_ifaces.append(("no", name))
+        elif '.' in name:
+            other_ifaces.append(('no', name))
+        elif re.match(r'^[Pp]ort-[Cc]hannel\\d+$', name) or re.match(r'^[Pp]o\\d+$', name):
+            other_ifaces.append(('no', name))   # delete Po — 'default' only resets, PO persists
         else:
-            other_ifaces.append(("default", name))
+            other_ifaces.append(('default', name))
 
     if svi_vids:
         svi_vids.sort()
         for start, end in _contiguous_ranges(svi_vids):
             if start == end:
-                cmds.append(f"no interface Vlan{start}")
+                cmds.append(f'no interface Vlan{start}')
             else:
-                cmds.append(f"no interface Vlan{start}-{end}")
+                cmds.append(f'no interface Vlan{start}-{end}')
 
     for cmd_type, name in other_ifaces:
         cmds.append(f'{"no" if cmd_type == "no" else "default"} interface {name}')
 
     bgp_by_asn = {}
-    for o in orphans.get("bgp", []):
-        asn = o.get("asn")
+    for o in orphans.get('bgp', []):
+        asn = o.get('asn')
         if asn:
-            bgp_by_asn.setdefault(asn, []).append(o["neighbor"])
+            bgp_by_asn.setdefault(asn, []).append(o['neighbor'])
     for asn, neighbors in bgp_by_asn.items():
-        cmds.append(f"router bgp {asn}")
+        cmds.append(f'router bgp {asn}')
         for n in neighbors:
-            cmds.append(f"   no neighbor {n}")
-        cmds.append("!")
+            cmds.append(f'   no neighbor {n}')
+        cmds.append('!')
 
-    vlan_vids = sorted(int(o["vid"]) for o in orphans.get("vlans", []))
+    vlan_vids = sorted(int(o['vid']) for o in orphans.get('vlans', []))
     for start, end in _contiguous_ranges(vlan_vids):
         if start == end:
-            cmds.append(f"no vlan {start}")
+            cmds.append(f'no vlan {start}')
         else:
-            cmds.append(f"no vlan {start}-{end}")
+            cmds.append(f'no vlan {start}-{end}')
 
-    for o in orphans.get("vrfs", []):
+    for o in orphans.get('vrfs', []):
         cmds.append(f'no vrf instance {o["name"]}')
 
     ospf_by_ctx = {}
-    for o in orphans.get("ospf", []):
-        ospf_by_ctx.setdefault(o["context"], []).append(o["iface"])
+    for o in orphans.get('ospf', []):
+        ospf_by_ctx.setdefault(o['context'], []).append(o['iface'])
     for ctx, ifaces in ospf_by_ctx.items():
         cmds.append(ctx)
         for iface in ifaces:
-            cmds.append(f"   default passive-interface {iface}")
-        cmds.append("!")
+            cmds.append(f'   default passive-interface {iface}')
+        cmds.append('!')
     return cmds
 
 
 def _batch_orphan_cmds(cmds, batch_size):
     """Split orphan command list into batches that never cut mid-block.
-    Blocks (BGP/OSPF) end with '!'; standalone commands are single non-indented lines.
+
+    EOS cleanup blocks (BGP, OSPF) are multi-line: 'router bgp N' / sub-cmds / '!'.
+    Slicing by raw line count can land a batch boundary inside a block, sending EOS
+    an incomplete context — the remaining sub-commands then arrive in the next batch
+    with no parent context and fail.
+
+    Strategy: segment the list first (one segment = one standalone cmd OR one complete
+    block ending with '!'), then fill batches by segment until batch_size is reached.
+    A segment boundary only occurs after a standalone line or after '!'.
     """
+    # Build segments: each segment is a list of lines forming one logical command/block
     segments = []
     current = []
     for line in cmds:
-        if line.strip() == "!":
+        if line.strip() == '!':
             current.append(line)
             segments.append(current)
             current = []
-        elif (not line.startswith(" ")
+        elif (not line.startswith(' ')           # non-indented → standalone or block opener
               and current
-              and not current[-1].startswith(" ")
-              and current[-1].strip() != "!"):
+              and not current[-1].startswith(' ')  # previous line also non-indented
+              and current[-1].strip() != '!'):      # previous line was not a block-end
+            # Two consecutive non-indented non-'!' lines → first is a standalone command
             segments.append(current)
             current = [line]
         else:
             current.append(line)
     if current:
         segments.append(current)
+
+    # Pack segments into batches of up to batch_size lines
     batches, batch = [], []
     for seg in segments:
         if batch and len(batch) + len(seg) > batch_size:
@@ -11239,6 +11285,16 @@ def _batch_orphan_cmds(cmds, batch_size):
 
 
 def _expand_ta_cleanup(lines):
+    """Inline ta-clean-* marker expansions into each interface block.
+
+    Markers ('ta-clean-et Et1/1', 'ta-clean-po Port-Channel10', 'ta-clean-vl
+    Vlan45') are emitted by Code.gs immediately before the matching 'interface X'
+    line. Each marker is stripped and its cleanup commands are injected as the
+    first sub-commands of the following interface block — keeping cleanup and new
+    config in ONE configure session for atomicity.
+
+    Returns the rewritten line list (no tuple — caller uses it directly as lines).
+    """
     result = []
     pending = None
     for line in lines:
@@ -11253,30 +11309,37 @@ def _expand_ta_cleanup(lines):
             pending = None
         else:
             if pending is not None:
-                pending = None
+                pending = None  # marker not followed by interface — discard silently
             result.append(line)
     return result
 
 
-# -- Bridge HTTP handler --------------------------------------------------------
+# ── Bridge HTTP handler ────────────────────────────────────────────────────────
 
 class BridgeHandler(BaseHTTPRequestHandler):
 
+    # ── CORS ──────────────────────────────────────────────────────────────────
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin",  "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 
     def do_OPTIONS(self):
-        self.send_response(204); self._cors(); self.end_headers()
+        self.send_response(204)
+        self._cors()
+        self.end_headers()
 
     def do_GET(self):
         if self.path == "/health":
             health = {"status": "ok", "version": VERSION,
                       "port": PORT, "method": _cfg['transport'], "timeout": TIMEOUT,
                       "push_timeout": PUSH_TIMEOUT, "cleanup_timeout": CLEANUP_PUSH_TIMEOUT}
+            # Only check arista-ssh credentials for pure key-based auth.
+            # Password-based modes (sshpass or SSH_ASKPASS shim) don't use
+            # arista-ssh certs, so the check is irrelevant.
             if _cfg['transport'] == "ssh":
                 if not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
+                    # Key-based auth: proactively check arista-ssh cert validity.
                     auth = _check_ssh_agent()
                     if auth["ok"]:
                         _ssh_auth["failures"] = 0
@@ -11285,20 +11348,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     else:
                         _ssh_auth["ok"]  = auth["ok"]
                         _ssh_auth["msg"] = auth["msg"]
+                # Always report current auth state so the sidebar can show/clear
+                # the auth warning banner regardless of the auth method in use.
                 health["auth"] = dict(_ssh_auth)
             self._json(200, health)
         else:
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path not in ("/lldp", "/devstatus", "/pushconfig", "/pushconfig/finalize",
-                              "/pushconfig/detect_orphans", "/reconcile", "/settings"):
-            self._json(404, {"error": "not found"}); return
+        if self.path not in ("/lldp", "/devstatus", "/pushconfig",
+                              "/pushconfig/finalize", "/pushconfig/detect_orphans",
+                              "/reconcile", "/settings"):
+            self._json(404, {"error": "not found"})
+            return
         try:
             length = int(self.headers.get("Content-Length", 0))
             body   = json.loads(self.rfile.read(length))
         except Exception:
-            self._json(400, {"error": "invalid JSON body"}); return
+            self._json(400, {"error": "invalid JSON body"})
+            return
         if self.path == "/settings":
             allowed = {"transport", "ssh_user", "ssh_pass", "ssh_port",
                        "jump_host", "jump_user",
@@ -11324,35 +11392,73 @@ class BridgeHandler(BaseHTTPRequestHandler):
         dry_run             = bool(body.get("dry_run", False))
         open_session        = bool(body.get("open_session", False))
         all_ifaces          = bool(body.get("all_ifaces", False))
-        all_device_names    = body.get("allDeviceNames")
+        all_device_names    = body.get("allDeviceNames")  # for BGP __TA neighbor cleanup
         # None = not provided (run detection); {} or {data} = provided (skip re-detection).
-        # Do NOT use "or None" here — empty dict {} is a valid "detection ran, nothing found" signal.
+        # Do NOT use \`or None\` here — empty dict {} is a valid "detection ran, found nothing" signal.
         orphans_precomputed = body.get("orphans_precomputed")
         # Caller may pass push_timeout (int seconds) to override PUSH_TIMEOUT for this request.
         # Cleanup UI passes CLEANUP_PUSH_TIMEOUT so range-collapsed cmds (e.g. no interface Vlan1-3999)
         # have enough headroom. Regular config pushes omit this → _push_config uses PUSH_TIMEOUT.
         _req_push_timeout   = body.get("push_timeout") or None
         # Auth pre-check: for key-based SSH, fail fast before spawning device threads.
-        # Saves 30-120s of per-device SSH timeouts when arista-ssh cert has expired.
+        # Saves 30–120s of per-device SSH timeouts when arista-ssh cert has expired.
         if _cfg['transport'] == "ssh" and not _SSHPASS_BIN and not _ASKPASS_SCRIPT:
             if not _ssh_auth["ok"]:
-                self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]}); return
+                self._json(200, {"auth_expired": True, "message": _ssh_auth["msg"]})
+                return
             auth = _check_ssh_agent()
             if not auth["ok"]:
                 _ssh_auth["ok"]       = False
                 _ssh_auth["msg"]      = auth["msg"]
                 _ssh_auth["failures"] = _SSH_AUTH_THRESHOLD
-                self._json(200, {"auth_expired": True, "message": auth["msg"]}); return
+                self._json(200, {"auth_expired": True, "message": auth["msg"]})
+                return
         if self.path == "/lldp":
             self._json(200, self._run_parallel(ip_map, self._check_lldp))
         elif self.path == "/devstatus":
             self._json(200, self._run_parallel(ip_map, self._check_devstatus))
+        elif self.path == "/reconcile":
+            # ipMap values are {ip, ports:[...], config_text} dicts
+            all_device_names = body.get("allDeviceNames")
+            results = {dev: None for dev in ip_map}
+            lock    = threading.Lock()
+            sem     = threading.Semaphore(MAX_WORKERS)
+            def run_cleanup(dev, entry):
+                ip             = (entry.get("ip") or "").strip()
+                expected_ports = entry.get("ports", [])
+                config_text    = entry.get("config_text") or None
+                if not ip:
+                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                    return
+                with sem:
+                    try:
+                        res = self._detect_orphans(ip, config_text=config_text,
+                                                   all_device_names=all_device_names,
+                                                   expected_ports=expected_ports)
+                        with lock: results[dev] = res
+                    except subprocess.TimeoutExpired:
+                        with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
+                    except Exception as e:
+                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+            threads = [threading.Thread(target=run_cleanup, args=(d, v), daemon=True)
+                       for d, v in ip_map.items()]
+            for t in threads: t.start()
+            for t in threads: t.join(timeout=TIMEOUT + 5)
+            with lock:
+                for dev in results:
+                    if results[dev] is None:
+                        results[dev] = {"ok": False, "error": "Cleanup timed out"}
+            self._json(200, results)
         elif self.path == "/pushconfig/detect_orphans":
+            # Pre-push orphan detection only — no push, no config changes.
+            # Client calls this before Phase 1 to show a consent dialog when orphans exist.
+            # Failures are best-effort: returns orphans_pending=null so push is never blocked.
             _do_ip   = (body.get("ip") or "").strip()
             _do_cfg  = body.get("config", "")
             _do_devs = body.get("allDeviceNames")
             if not _do_ip or not _do_cfg:
-                self._json(400, {"ok": False, "error": "Missing ip or config"}); return
+                self._json(400, {"ok": False, "error": "Missing ip or config"})
+                return
             try:
                 _do_orphans = self._detect_orphans(_do_ip, config_text=_do_cfg,
                                                    all_device_names=_do_devs)
@@ -11372,10 +11478,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     self._json(200, {"ok": True, "orphans_pending": None,
                                      "detection_errors": _do_errs})
             except Exception as _doe:
-                _vlog(f"[orphan-pre-detect] {_do_ip}: error -- {_doe}", flush=True)
-                self._json(200, {"ok": True, "orphans_pending": None, "detection_errors": {}})
+                _vlog(f"[orphan-pre-detect] {_do_ip}: error — {_doe}", flush=True)
+                self._json(200, {"ok": True, "orphans_pending": None})
         elif self.path == "/pushconfig/finalize":
-            # Phase 2: batch-clean orphans (on commit), then commit/abort.
+            # Phase 2 of two-phase push: batch-clean orphans (on commit), then commit/abort.
+            # config + all_device_names present → run orphan cleanup before committing.
+            # Absent (abort path) → skip cleanup, just abort the session.
             action           = body.get("action", "abort")
             config_text      = body.get("config") or ""
             all_device_names = body.get("all_device_names") or []
@@ -11384,7 +11492,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 ip           = (entry.get("ip") or "").strip()
                 session_name = (entry.get("session_name") or "").strip()
                 if not ip or not session_name:
-                    results[dev] = {"ok": False, "error": "Missing ip or session_name"}; continue
+                    results[dev] = {"ok": False, "error": "Missing ip or session_name"}
+                    continue
                 orphans_cleaned = None
                 if action == "commit" and config_text and all_device_names:
                     try:
@@ -11393,16 +11502,19 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         if _orph and _orph.get('ok'):
                             _orph_cmds = _orphans_to_cmds(_orph)
                             if _orph_cmds:
+                                _vlog(f"[orphan-finalize] {ip}: {len(_orph_cmds)} cmd(s) — cleaning before commit", flush=True)
                                 _batches   = _batch_orphan_cmds(_orph_cmds, CLEANUP_BATCH_SIZE)
                                 _committed = True
                                 for _bn, _batch in enumerate(_batches, 1):
                                     try:
-                                        self._push_config(ip, "\\n".join(_batch),
+                                        self._push_config(ip, '\\n'.join(_batch),
                                                           dry_run=False, all_ifaces=False,
                                                           all_device_names=None,
                                                           push_timeout=CLEANUP_PUSH_TIMEOUT)
                                     except Exception as _be:
-                                        _committed = False; break
+                                        _vlog(f"[orphan-finalize] {ip}: batch {_bn} failed — {_be}", flush=True)
+                                        _committed = False
+                                        break
                                 if _committed:
                                     orphans_cleaned = {
                                         "interfaces": _orph.get("interfaces", []),
@@ -11411,79 +11523,98 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                         "vrfs":       _orph.get("vrfs",       []),
                                         "ospf":       _orph.get("ospf",       []),
                                     }
-                    except Exception: pass
+                    except Exception as _oe:
+                        _vlog(f"[orphan-finalize] {ip}: detection error — {_oe}", flush=True)
                 try:
                     fin_result = self._finalize_session(ip, session_name, action)
                     if orphans_cleaned:
                         fin_result["orphans_cleaned"] = orphans_cleaned
                     results[dev] = fin_result
                 except subprocess.TimeoutExpired:
-                    results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
+                    results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except Exception as e:
                     results[dev] = {"ok": False, "error": str(e)[:200]}
             self._json(200, results)
-        elif self.path == "/reconcile":
-            all_device_names = body.get("allDeviceNames")
-            results = {dev: None for dev in ip_map}
-            lock    = threading.Lock()
-            sem     = threading.Semaphore(MAX_WORKERS)
-            def run_cleanup(dev, entry):
-                ip             = (entry.get("ip") or "").strip()
-                expected_ports = entry.get("ports", [])
-                config_text    = entry.get("config_text") or None
-                if not ip:
-                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}; return
-                with sem:
-                    try:
-                        res = self._detect_orphans(ip, config_text=config_text,
-                                                   all_device_names=all_device_names,
-                                                   expected_ports=expected_ports)
-                        with lock: results[dev] = res
-                    except subprocess.TimeoutExpired:
-                        with lock: results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
-                    except Exception as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-            threads = [threading.Thread(target=run_cleanup, args=(d, v), daemon=True)
-                       for d, v in ip_map.items()]
-            for t in threads: t.start()
-            for t in threads: t.join(timeout=TIMEOUT + 5)
-            with lock:
-                for dev in results:
-                    if results[dev] is None:
-                        results[dev] = {"ok": False, "error": "Cleanup timed out"}
-            self._json(200, results)
         else:
-            results = {}
+            # /pushconfig — ipMap values are {ip, config} dicts, not plain IPs
+            # Pre-initialize every device to None so the key always exists in the
+            # response even if the thread doesn't finish before join() returns.
+            results  = {dev: None for dev in ip_map}
+            _n_lines = {}  # dev → config line count, for timeout diagnostics
             lock    = threading.Lock()
             sem     = threading.Semaphore(MAX_WORKERS)
             def run_push(dev, entry):
                 ip     = (entry.get("ip") or "").strip()
                 config = entry.get("config", "")
-                n_lines = len(config.splitlines())
+                _n_lines[dev] = len(config.splitlines())
                 if not ip:
-                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}; return
+                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                    return
                 with sem:
-                    try:
-                        with lock: results[dev] = self._push_config(
-                            ip, config, dry_run=dry_run, open_only=open_session,
-                            all_ifaces=all_ifaces, all_device_names=all_device_names,
-                            push_timeout=_req_push_timeout,
-                            orphans_precomputed=orphans_precomputed)
-                    except subprocess.TimeoutExpired:
-                        with lock: results[dev] = {"ok": False, "error": f"Push timed out -- {n_lines} config lines, {PUSH_TIMEOUT}s limit exceeded -- verify config was applied manually"}
-                    except NotImplementedError as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)}
-                    except Exception as e:
-                        with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-            threads = [threading.Thread(target=run_push, args=(d, v), daemon=True) for d, v in ip_map.items()]
+                    for attempt in range(PUSH_RETRIES + 1):
+                        try:
+                            res = self._push_config(ip, config, dry_run=dry_run,
+                                                    open_only=open_session,
+                                                    all_ifaces=all_ifaces,
+                                                    all_device_names=all_device_names,
+                                                    push_timeout=_req_push_timeout,
+                                                    orphans_precomputed=orphans_precomputed)
+                            with lock: results[dev] = res
+                            break
+                        except subprocess.TimeoutExpired:
+                            _nl = _n_lines.get(dev, '?')
+                            if attempt < PUSH_RETRIES:
+                                if VERBOSE: _vlog(f"[push] {dev} ({ip}): timeout ({_nl} lines, {PUSH_TIMEOUT}s), retrying (attempt {attempt+1})")
+                                time.sleep(PUSH_RETRY_DELAY); continue
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): timeout after {PUSH_RETRIES+1} attempts ({_nl} lines)")
+                            with lock: results[dev] = {"ok": False, "error": f"Push timed out — {_nl} config lines, {PUSH_TIMEOUT}s limit exceeded — verify config was applied manually"}
+                            break
+                        except RuntimeError as e:
+                            if ("connection refused" in str(e).lower()
+                                    or "ssh failed" in str(e).lower()) and attempt < PUSH_RETRIES:
+                                if VERBOSE: _vlog(f"[push] {dev} ({ip}): {e}, retrying (attempt {attempt+1})")
+                                time.sleep(PUSH_RETRY_DELAY); continue
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): error — {e}")
+                            with lock: results[dev] = {"ok": False, "error": str(e)}
+                            break
+                        except NotImplementedError as e:
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): not implemented — {e}")
+                            with lock: results[dev] = {"ok": False, "error": str(e)}
+                            break
+                        except Exception as e:
+                            if VERBOSE: _vlog(f"[push] {dev} ({ip}): unexpected error — {e}")
+                            with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
+                            break
+            threads = [threading.Thread(target=run_push, args=(d, v), daemon=True)
+                       for d, v in ip_map.items()]
             for t in threads: t.start()
-            for t in threads: t.join(timeout=PUSH_TIMEOUT + 3)
+            # Budget: each _push_config attempt blocks for stale-session cleanup
+            # (_abort_stale_sessions thread join — up to TIMEOUT) THEN
+            # _ssh_stdin communicate (up to TIMEOUT), so per-attempt cost is 2*TIMEOUT.
+            # Using full TIMEOUT for cleanup: sluggish devices (e.g. after large push)
+            # need more than 5s to SSH in and abort stale sessions.
+            _abort_overhead = TIMEOUT
+            join_budget = (PUSH_TIMEOUT + _abort_overhead) * (PUSH_RETRIES + 1) + PUSH_RETRY_DELAY * PUSH_RETRIES + 5
+            for t in threads: t.join(timeout=join_budget)
+            # Any thread that didn't finish gets a descriptive timeout error instead
+            # of null, so the JS never falls through to the generic 'something went wrong'.
+            with lock:
+                for dev in results:
+                    if results[dev] is None:
+                        _nl = _n_lines.get(dev, '?')
+                        results[dev] = {
+                            "ok": False,
+                            "error": f"Push timed out — {_nl} config lines, {PUSH_TIMEOUT}s limit exceeded — verify config was applied manually",
+                        }
             self._json(200, results)
 
-    # -- Transports ------------------------------------------------------------
+    # ── Transport: SSH ────────────────────────────────────────────────────────
     def _ssh_cmds(self, ip, *cmds):
+        """Run EOS show commands via SSH — parallel connections when >1 command.
+        Returns list of parsed JSON dicts, one per command."""
         results = [None] * len(cmds)
-        errors  = [None] * len(cmds)
+        errors  = [None] * len(cmds)  # per-slot exception for re-raise
+
         def fetch(i, cmd):
             eos_cmd  = f'{cmd} | json'
             base = _ssh_base()
@@ -11495,7 +11626,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                               text=True, stderr=stderr_mode,
                                               env=_SSH_ENV)
                 results[i] = json.loads(out)
-                _ssh_auth["failures"] = 0
+                _ssh_auth["failures"] = 0       # successful SSH → clear auth-failure state
                 _ssh_auth["ok"]  = True
                 _ssh_auth["msg"] = ""
                 if VERBOSE: _vlog(f"[show] {ip}: {cmd} → ok", flush=True)
@@ -11507,6 +11638,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     err = (e.stderr or "").strip().splitlines()[-1] if e.stderr else ""
                     suffix = f"  [{err}]" if err else ""
                     _vlog(f"[show] {ip}: {cmd} → failed (exit {e.returncode}){suffix}", flush=True)
+                # exit 255 = SSH itself failed (auth/connection), not an EOS command error.
+                # arista-ssh-agent certs can expire while still appearing in ssh-add -l;
+                # the cert is listed but EOS rejects it → SSH exits 255 before any command.
                 if e.returncode == 255:
                     _ssh_auth["failures"] += 1
                     if _ssh_auth["failures"] >= _SSH_AUTH_THRESHOLD:
@@ -11516,67 +11650,261 @@ class BridgeHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 if VERBOSE: _vlog(f"[show] {ip}: {cmd} → error: {e}", flush=True)
                 errors[i] = e
+
+        # Run commands sequentially — one SSH connection at a time per device.
+        # Opening multiple simultaneous connections to the same device hits
+        # EOS ip ssh maximum-sessions and causes "Connection closed by UNKNOWN"
+        # (exit 255). Device-level parallelism from _run_parallel provides the
+        # speed; per-command parallelism within a device is not needed.
         for i, cmd in enumerate(cmds):
             fetch(i, cmd)
-        for exc in errors:
-            if exc is not None:
-                raise exc
-        return results
+        # Return partial results alongside a cmd→error dict instead of raising.
+        # Callers decide whether partial failures are acceptable (devstatus keeps
+        # partial data; lldp re-raises because partial LLDP is unusable).
+        cmd_errors = {cmds[i]: errors[i] for i in range(len(cmds)) if errors[i] is not None}
+        return results, cmd_errors
 
+    # ── Transport: eAPI ───────────────────────────────────────────────────────
     def _eapi_cmds(self, ip, *cmds):
+        """Run EOS show commands via eAPI JSON-RPC. Returns list of parsed JSON dicts.
+        All commands are sent in a single HTTPS request (more efficient than SSH)."""
         url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
-        payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"json"},"id":1}).encode()
-        creds   = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
-        req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
+        payload = json.dumps({
+            "jsonrpc": "2.0", "method": "runCmds",
+            "params":  {"version": 1, "cmds": list(cmds), "format": "json"},
+            "id":      1,
+        }).encode()
+        creds = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
+        req   = urllib.request.Request(url, data=payload, headers={
+            "Content-Type":  "application/json",
+            "Authorization": f"Basic {creds}",
+        })
         with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
         if "error" in resp:
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
-        return resp["result"]
+        return resp["result"]  # list, one entry per command
 
+    # ── Transport: RESTCONF ───────────────────────────────────────────────────
+    def _rest_get(self, ip, path):
+        """GET a RESTCONF path. Returns parsed dict (OpenConfig YANG JSON)."""
+        url   = f"https://{ip}:{REST_PORT}/restconf/data/{path}"
+        creds = base64.b64encode(f"{REST_USER}:{REST_PASS}".encode()).decode()
+        req   = urllib.request.Request(url, headers={
+            "Accept":        "application/yang-data+json",
+            "Authorization": f"Basic {creds}",
+        })
+        with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
+            return json.loads(r.read())
+
+    # ── Transport: eAPI (text format — for config push) ───────────────────────
     def _eapi_push(self, ip, *cmds, _tout_override=None):
+        """Run EOS commands via eAPI with format=text (for configure session).
+
+        stopOnError=False causes EOS to continue executing remaining commands
+        after a failure, embedding % error text in each command's output instead
+        of aborting and returning a single top-level error.  _extract_eos_errors
+        then finds ALL % lines across the full result set in one call.
+
+        Returns list of raw text output strings, one per command.
+        """
         url     = f"{_cfg['eapi_proto']}://{ip}:{_cfg['eapi_port']}/command-api"
-        payload = json.dumps({"jsonrpc":"2.0","method":"runCmds","params":{"version":1,"cmds":list(cmds),"format":"text","stopOnError":False},"id":1}).encode()
-        creds   = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
-        req     = urllib.request.Request(url, data=payload, headers={"Content-Type":"application/json","Authorization":f"Basic {creds}"})
-        _tout   = _tout_override if _tout_override is not None else (PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT)
+        payload = json.dumps({
+            "jsonrpc": "2.0", "method": "runCmds",
+            "params":  {"version": 1, "cmds": list(cmds), "format": "text",
+                        "stopOnError": False},
+            "id":      1,
+        }).encode()
+        creds = base64.b64encode(f"{_cfg['eapi_user']}:{_cfg['eapi_pass']}".encode()).decode()
+        req   = urllib.request.Request(url, data=payload, headers={
+            "Content-Type":  "application/json",
+            "Authorization": f"Basic {creds}",
+        })
+        _tout = _tout_override if _tout_override is not None else (PUSH_TIMEOUT if len(cmds) > 5 else TIMEOUT)
         with urllib.request.urlopen(req, timeout=_tout, context=_SSL_CTX) as r:
             resp = json.loads(r.read())
         if "error" in resp:
             raise RuntimeError(resp["error"].get("message", "eAPI error"))
-        return [r.get("output", "") if isinstance(r, dict) else str(r) for r in resp["result"]]
+        return [r.get("output", "") if isinstance(r, dict) else str(r)
+                for r in resp["result"]]
 
+    # ── Diagnostic SSH run for eAPI error enrichment ──────────────────────────
+    def _diagnose_eapi_errors(self, ip, lines, eos_errs):
+        """Open a throwaway SSH configure session to capture % reasons for eAPI errors.
+
+        eAPI 'CLI command N of M cmd failed: could not run command' suppresses the
+        specific % reason that EOS emits on a PTY (e.g. '% Virtual IP address is
+        already configured').  This function opens a topoassist_<epoch> configure
+        session via SSH, replays each failed command in its block context, captures
+        all % lines from the PTY output, then aborts — nothing is ever committed.
+
+        % line extraction is index-based (not prompt-based): consecutive % lines
+        between non-% output lines form one group; groups are paired to failed
+        commands in order.  This avoids EOS prompt-format sensitivity.
+
+        Returns eos_errs with 'could not run command' replaced by the % reason(s).
+        If SSH is unavailable or no % lines found, returns eos_errs unchanged.
+        """
+        try:
+            # Collect deduplicated (block_cmd, failed_cmd) pairs in order
+            seen  = set()
+            pairs = []
+            for err in eos_errs:
+                m = _EAPI_FAILED_CMD_RE.search(err)
+                if not m:
+                    continue
+                # Skip errors that already have a specific % reason from eAPI —
+                # only diagnose those where EOS gave no detail ('could not run command').
+                if 'could not run command' not in err.lower():
+                    continue
+                failed_cmd = m.group(1).strip()
+                block_cmd  = ''
+                for i, line in enumerate(lines):
+                    if line.strip() == failed_cmd:
+                        for j in range(i - 1, -1, -1):
+                            if _BLOCK_CMD_RE.match(lines[j].strip()):
+                                block_cmd = lines[j].strip()
+                                break
+                        break
+                key = (block_cmd, failed_cmd)
+                if key not in seen:
+                    seen.add(key)
+                    pairs.append(key)
+            if not pairs:
+                return eos_errs
+
+            # Build the diagnostic configure session.
+            # Use end + re-enter + abort (same pattern as real push) to ensure clean
+            # teardown from any sub-mode depth.  The session is always aborted.
+            session   = f"topoassist_{int(time.time())}"
+            diag_cmds = [f"configure session {session}"]
+            for block_cmd, failed_cmd in pairs:
+                if block_cmd:
+                    diag_cmds.append(block_cmd)
+                diag_cmds.append(failed_cmd)
+            diag_cmds.extend(["end", f"configure session {session}", "abort"])
+
+            if VERBOSE:
+                _vlog(f"[diag] {ip}: SSH diagnostic for {len(pairs)} error(s) — {session}", flush=True)
+            out, _ = self._ssh_stdin(ip, "terminal length 0", *diag_cmds, force_tty=True)
+
+            # Collect consecutive % groups from PTY output — index-aligned with pairs.
+            # Each group (one or more consecutive % lines) corresponds to one failed
+            # command.  Prompt format is irrelevant: non-% lines flush the current group.
+            groups  = []
+            current = []
+            for line in out.splitlines():
+                s = line.strip()
+                if s.startswith('%'):
+                    current.append(s)
+                elif current:
+                    groups.append('\\n'.join(current))
+                    current = []
+            if current:
+                groups.append('\\n'.join(current))
+            if not groups:
+                return eos_errs
+
+            # Map (block_cmd, failed_cmd) → reason by position
+            reasons = {key: groups[i] for i, key in enumerate(pairs) if i < len(groups)}
+            if not reasons:
+                return eos_errs
+
+            # Replace 'could not run command' with the specific % reason(s)
+            result = list(eos_errs)
+            for i, err in enumerate(result):
+                m = _EAPI_FAILED_CMD_RE.search(err)
+                if not m:
+                    continue
+                failed_cmd = m.group(1).strip()
+                block_cmd  = ''
+                for li, line in enumerate(lines):
+                    if line.strip() == failed_cmd:
+                        for j in range(li - 1, -1, -1):
+                            if _BLOCK_CMD_RE.match(lines[j].strip()):
+                                block_cmd = lines[j].strip()
+                                break
+                        break
+                reason = reasons.get((block_cmd, failed_cmd))
+                if reason:
+                    indented = reason.replace('\\n', '\\n  ')
+                    result[i] = re.sub(
+                        r':\\s*could not run command\\s*$',
+                        ':\\n  ' + indented,
+                        err, flags=re.IGNORECASE,
+                    )
+            return result
+        except Exception:
+            return eos_errs   # SSH unavailable or timed out — keep original errors
+
+    # ── Unified text-output command helper ────────────────────────────────────
     def _text_cmd(self, ip, cmd):
+        """Run a single show command and return its text output.
+
+        Dispatches by _cfg['transport'] so callers (BGP/VRF orphan detection, ASN check)
+        work identically in ssh and eapi mode without any per-caller branching.
+
+        SSH:  subprocess via jump host (or direct) — same path as _ssh_cmds
+              but without JSON parsing, for pipe commands (show X | section Y).
+        eAPI: reuses _eapi_push (format=text) and returns result[0].
+        """
         if VERBOSE:
             _vlog(f"[text-cmd/{_cfg['transport']}] {ip}: {cmd}", flush=True)
         if _cfg['transport'] == "eapi":
             result = self._eapi_push(ip, cmd)
             return result[0] if result else ""
+        # SSH path
         base     = _ssh_base()
         exec_cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}", cmd]
         return subprocess.check_output(exec_cmd, timeout=TIMEOUT, text=True,
                                        stderr=subprocess.DEVNULL, env=_SSH_ENV)
 
+    # ── Transport: gNMI ───────────────────────────────────────────────────────
+    def _gnmi_get(self, ip, *paths):
+        """GET one or more gNMI paths. Returns list of raw pygnmi response dicts."""
+        if not HAS_GNMI:
+            raise RuntimeError("gNMI requires: pip install pygnmi")
+        with gNMIclient(target=(ip, GNMI_PORT), username=GNMI_USER,
+                        password=GNMI_PASS, insecure=True) as gc:
+            return [gc.get(path=[p]) for p in paths]
+
+    # ── SSH stdin helper ──────────────────────────────────────────────────────
     def _ssh_stdin(self, ip, *cmds, force_tty=False):
+        """Send commands to device via SSH stdin pipe.
+        Returns (stdout_text, stderr_text) as decoded strings.
+        Raises subprocess.TimeoutExpired if the device doesn't respond within
+        the effective timeout — caller is responsible for catching and handling.
+        Read calls (≤5 cmds) use TIMEOUT; large configure-session pushes use
+        PUSH_TIMEOUT so big configs don't time out mid-session.
+
+        force_tty=True: allocates a PTY (-tt) so EOS assigns a named VTY instead
+        of showing 'UnknownTty' in 'show users' and syslog.  PTY mode does NOT
+        propagate stdin EOF to close the remote shell, so two explicit 'exit'
+        commands are appended automatically: the first exits any configure-session
+        context (leaving the session PENDING), the second closes the EOS exec
+        shell.  Extra exits at exec level are harmless."""
         cmds_list = list(cmds)
         if force_tty:
             cmds_list += ["exit", "exit"]
-        stdin_text = "\\n".join(cmds_list) + "\\n"
+        stdin_text = '\\n'.join(cmds_list) + '\\n'
+        # Label for verbose logging: skip "terminal length 0" prefix, use first real cmd
         _label = next((c for c in cmds if c != "terminal length 0"), cmds[0])
         if VERBOSE: _vlog(f"[stdin] {ip}: {_label} ({len(cmds)} cmd(s))", flush=True)
+        # Scale timeout for large pushes: read queries are small (≤5 cmds); configure
+        # sessions can be 10k+ commands and need PUSH_TIMEOUT.
         _timeout = PUSH_TIMEOUT if len(cmds_list) > 5 else TIMEOUT
         base = _ssh_base(force_tty=force_tty)
         cmd = [*base, *_jump_args(), f"{_cfg['ssh_user']}@{ip}"]
-        proc = subprocess.Popen(cmd,
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, env=_SSH_ENV)
-        try:
-            out, err = proc.communicate(stdin_text.encode(), timeout=_timeout)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.communicate()
-            if VERBOSE: _vlog(f"[stdin] {ip}: {_label} → timeout", flush=True)
-            raise
+        with subprocess.Popen(cmd,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, env=_SSH_ENV) as proc:
+            try:
+                out, err = proc.communicate(stdin_text.encode(), timeout=_timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.communicate()   # drain; __exit__ will close pipes + wait
+                if VERBOSE: _vlog(f"[stdin] {ip}: {_label} → timeout", flush=True)
+                raise           # let caller decide — push path retries, cleanup swallows
         out_text = _ANSI_RE.sub('', out.decode("utf-8", errors="replace"))
         err_text = err.decode("utf-8", errors="replace")
         if VERBOSE:
@@ -11588,21 +11916,31 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[stdin] {ip}: {_label} → ok ({len(out_text.splitlines())} lines)", flush=True)
         return out_text, err_text
 
+    # ── TA alias pre-commit ───────────────────────────────────────────────────
+
+    # ── Stale session cleanup ─────────────────────────────────────────────────
     def _abort_stale_sessions(self, ip):
+        """Abort all pending topoassist_* configure sessions on the device.
+        EOS allows max 5 pending sessions; leftover sessions from aborted pushes
+        fill this limit and block new ones. Returns list of aborted names."""
         if _cfg['transport'] not in ("ssh", "eapi"):
             return []
+        # Get current session list
         if _cfg['transport'] == "ssh":
             raw, _ = self._ssh_stdin(ip, "terminal length 0", "show configuration sessions",
                                      force_tty=True)
         else:
             raw = self._eapi_push(ip, "show configuration sessions")[0]
+        # Parse: name is first token, state second; match topoassist_* pending
         stale = []
         for line in raw.splitlines():
             parts = line.split()
-            if len(parts) >= 2 and parts[0].startswith("topoassist_") and "pending" in line.lower():
+            if (len(parts) >= 2 and parts[0].startswith("topoassist_")
+                    and "pending" in line.lower()):
                 stale.append(parts[0])
         if not stale:
             return []
+        # Abort each: enter session then abort (abort only works at session root)
         abort_cmds = []
         for name in stale:
             abort_cmds += [f"configure session {name}", "abort"]
@@ -11612,19 +11950,58 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._eapi_push(ip, *abort_cmds)
         return stale
 
+    # ── Config push via configure session ────────────────────────────────────
     def _push_config(self, ip, config_text, dry_run=False, open_only=False, all_ifaces=False, all_device_names=None, push_timeout=None, orphans_precomputed=None):
-        lines = [l for l in config_text.strip().split("\\n") if l.strip()]
+        """Push config_text to device using a uniquely-named EOS configure session.
+
+        Modes:
+          open_only=True  — push config, get diff, leave session PENDING on EOS
+                            (no commit/abort). Returns session_name so the caller
+                            can commit or abort later via _finalize_session().
+                            Use this for the two-phase confirm modal flow.
+          dry_run=True    — push config, get diff, abort session (verify path).
+          default         — push config, get diff, commit immediately.
+
+        all_ifaces=True — before building core_cmds, query the device for __TA-tagged
+                          interfaces not present in config_text and prepend cleanup
+                          commands (default interface / no interface) so orphans are
+                          removed in the same session. Best-effort — failures are
+                          silently ignored. Only meaningful for full-device pushes.
+
+        Session design:
+          - Pre-cleanup: abort any stale pending topoassist_* sessions first so we
+            never hit EOS's 5-session pending limit. Skipped on dry_run (session is
+            aborted immediately so it cannot become stale).
+          - Unique name (topoassist_<epoch>) so a committed session can never block
+            re-entry with 'Cannot enter session (already completed)'.
+          - 'end' exits to exec mode from any sub-mode; re-entering the session lands
+            at session root where show/commit/abort/exit all work.
+          - 'terminal length 0' (SSH) suppresses --More-- pagination."""
+        lines = [l for l in config_text.strip().split('\\n') if l.strip()]
         if not lines:
-            raise RuntimeError("Config is empty -- nothing to push")
+            raise RuntimeError("Config is empty — nothing to push")
+
+        # Inline ta-clean-* markers: each expands to cleanup sub-commands injected
+        # at the top of the matching interface block — same session as the new config.
         lines = _expand_ta_cleanup(lines)
-        try:
-            self._abort_stale_sessions(ip)
-        except Exception:
-            pass
+
+        # Pre-cleanup stale sessions before every push type (real, open_only, dry_run verify).
+        # Dry_run sessions are aborted immediately but prior crashed sessions can still linger.
+        def _safe_abort():
+            try:
+                self._abort_stale_sessions(ip)
+            except Exception as e:
+                if VERBOSE: _vlog(f"[cleanup] {ip}: stale-session cleanup failed — {e}")
+        _ct = threading.Thread(target=_safe_abort, daemon=True)
+        _ct.start()
+        _ct.join(timeout=TIMEOUT)
+
+        # Run orphan detection and BGP-ASN-change detection concurrently when doing a
+        # full push (all_ifaces=True) — both are independent EOS read queries.
         # _detect_orphans already parallelises its 5 inner checks; running _find_bgp_asn_change
         # concurrently with it eliminates the extra sequential round-trip that was visible
         # in the log as a separate 'include router bgp' query after the orphan queries.
-        # Best-effort for orphan detection -- failures must never block push.
+        # Best-effort for orphan detection — failures must never block push.
         asn_changed    = None
         bgp_asn_cmds   = []
         _asn_extra     = {}
@@ -11648,6 +12025,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _ta = threading.Thread(target=_run_asn_check, daemon=True)
             _ta.start()
             if orphans_precomputed is not None:
+                # Reuse orphan data from pre-push consent step — skip duplicate detection.
                 _orphan_result[0] = {'ok': True, **orphans_precomputed}
                 _vlog(f"[orphan-detect] {ip}: using pre-detected orphan data (skipped re-detection)", flush=True)
             else:
@@ -11683,7 +12061,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 _vlog(f"[orphan-detect] {ip}: {len(orphan_cmds)} orphan cmd(s) generated (range-collapsed)", flush=True)
             if orphan_cmds:
                 if open_only:
-                    # open_only (two-phase push): detection only -- cleanup deferred to
+                    # open_only (two-phase push): detection only — cleanup deferred to
                     # Phase 2 (finalize) after user confirms in the push confirm modal.
                     _asn_extra["orphans_pending"] = {
                         "interfaces": orphans.get("interfaces", []),
@@ -11694,23 +12072,27 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     }
                 else:
                     # Full/bulk push: run cleanup now in its own separate configure
-                    # session(s) before the main push.
+                    # session(s) before the main push — range-collapsed sets (e.g.
+                    # "no interface Vlan1-3999") represent thousands of EOS deletions
+                    # and block the session for longer than PUSH_TIMEOUT when mixed
+                    # with the main config.
                     _orphan_committed = False
                     _ob_batches = _batch_orphan_cmds(orphan_cmds, CLEANUP_BATCH_SIZE)
                     _vlog(f"[orphan-batch] {ip}: {len(orphan_cmds)} cmds → {len(_ob_batches)} batch(es) of ≤{CLEANUP_BATCH_SIZE}", flush=True)
-                    _orphan_committed = True
+                    _orphan_committed = True  # set True now; cleared on first failure
                     for _bn, _batch in enumerate(_ob_batches, 1):
                         _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} ({len(_batch)} cmds)…", flush=True)
                         try:
-                            self._push_config(ip, "\\n".join(_batch),
+                            self._push_config(ip, '\\n'.join(_batch),
                                               dry_run=False, all_ifaces=False,
                                               all_device_names=None,
                                               push_timeout=CLEANUP_PUSH_TIMEOUT)
                             _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} done", flush=True)
                         except Exception as _be:
-                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed -- {_be}", flush=True)
+                            _vlog(f"[orphan-batch] {ip}: batch {_bn}/{len(_ob_batches)} failed — {_be}", flush=True)
                             _orphan_committed = False
                             break
+                    # Only report orphans_cleaned when all batches actually committed
                     if _orphan_committed:
                         _asn_extra["orphans_cleaned"] = {
                             "interfaces": orphans.get("interfaces", []),
@@ -11720,16 +12102,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             "ospf":       orphans.get("ospf", []),
                         }
 
+        # Prepend 'no router bgp <old_asn>' when the ASN has changed. EOS cannot
+        # change the AS number in-place — old block must be removed first.
+        # Runs on all push modes (dry_run included) so the diff reflects the removal
+        # and the client can warn the user before they confirm the push.
         if bgp_asn_cmds:
             lines = bgp_asn_cmds + lines
+
         session   = f"topoassist_{int(time.time())}"
         final_cmd = "abort" if dry_run else "commit"
         _log_action = "dry-run" if dry_run else "open" if open_only else "commit"
         if asn_changed:
             _asn_extra["asn_changed"] = asn_changed
-        # open_only: omit the final command entirely — SSH stdin EOF closes naturally.
-        # EOS leaves the session PENDING. Sending 'exit' can close the SSH stream before
-        # 'show session-config diffs' output is fully flushed, resulting in an empty diff.
+
+        # 'end' exits from any sub-mode depth to exec mode (session stays pending).
+        # Re-entering puts us at session root so show/commit/abort all work correctly.
+        #
+        # open_only: omit commit/abort — EOS leaves the session PENDING.
+        # The PTY shell is still closed by the 2× 'exit' _ssh_stdin appends,
+        # but we stop at 'show session-config diffs' so the diff is fully
+        # flushed before the shell exits.
         if open_only:
             core_cmds = (
                 [f"configure session {session}"]
@@ -11742,26 +12134,41 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 + lines
                 + ["end", f"configure session {session}", "show session-config diffs", final_cmd]
             )
+
         _vlog(f"[push] {ip}: sending {len(lines)} line(s) to session {session} ({_log_action})", flush=True)
         if _cfg['transport'] == "eapi":
             _IDEMPOTENCY_CMDS = ('default ip address virtual', 'default ipv6 address virtual')
             _pre_idempotency_warns = []
             try:
                 results = list(self._eapi_push(ip, *core_cmds, _tout_override=push_timeout))
+                # Pre-scan: when EOS embeds per-command errors in text output (rather than
+                # a top-level error), pair each command with its output so the command name
+                # is available for idempotency matching — _extract_eos_errors would only see
+                # bare "% Invalid command" with no context in eAPI-format output.
                 for i, (cmd, out) in enumerate(zip(core_cmds, results)):
                     if (any(c in cmd.strip() for c in _IDEMPOTENCY_CMDS)
                             and '% ' in out and 'invalid command' in out.lower()):
-                        _pre_idempotency_warns.append(f"{cmd.strip()} \\u2192 {out.strip()}")
-                        results[i] = ''
+                        _pre_idempotency_warns.append(f"{cmd.strip()} → {out.strip()}")
+                        results[i] = ''  # suppress so _extract_eos_errors skips it
             except RuntimeError as e:
+                # eAPI returns a top-level JSON-RPC "error" for configure session
+                # failures — _eapi_push raises RuntimeError with the message text.
+                # "CLI command N of M 'cmd' failed" is in this path; enrich it.
                 raw_msg = str(e)
                 if _EAPI_FAILED_CMD_RE.search(raw_msg):
+                    # Split multi-error message (stopOnError:False may list all failures
+                    # in one top-level error string) into per-command entries so each
+                    # gets its own block-context header and SSH diagnostic enrichment.
                     parts = re.split(r'(?=CLI command \\d+ of \\d+)', raw_msg)
                     parts = [p.strip() for p in parts if p.strip()]
                     if not parts:
                         parts = [raw_msg]
                     eos_errs = _annotate_eapi_errors(parts, lines)
                     eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
+                    # GW SVI cleanup commands return 'invalid command' when the feature is
+                    # not configured — expected harmless no-op. Demote to warnings.
+                    # The "CLI command N of M 'cmd' failed" format includes the cmd name,
+                    # so the substring match is reliable here (unlike bare % lines above).
                     _real_errs, _cleanup_notes = [], []
                     for err in eos_errs:
                         if (any(cmd in err for cmd in _IDEMPOTENCY_CMDS)
@@ -11769,45 +12176,60 @@ class BridgeHandler(BaseHTTPRequestHandler):
                             _cleanup_notes.append(err)
                         else:
                             _real_errs.append(err)
+                    # _annotate_eapi_errors injects block-context lines (e.g. "interface Vlan100")
+                    # before errors. When all actual errors are idempotency cleanup notes,
+                    # these orphaned context lines remain in _real_errs but are not errors.
+                    # Strip them so the "all idempotency" check is accurate.
                     _real_errs = [
                         e for e in _real_errs
                         if not (_BLOCK_CMD_RE.match(e.strip()) and not _EAPI_FAILED_CMD_RE.search(e))
                     ]
                     if _cleanup_notes and not _real_errs:
+                        # All errors were idempotency cleanup — EOS committed the session
+                        # (stopOnError:False runs commit regardless). Diff is unavailable
+                        # because the error response doesn't carry the result array.
                         return {"ok": True, "diff": None,
                                 "eos_warnings": _cleanup_notes, **_asn_extra}
                     if _cleanup_notes:
                         _asn_extra["eos_warnings"] = _cleanup_notes
-                    return {"ok": False, "error": "\\n".join(_real_errs or eos_errs), **_asn_extra}
+                    return {"ok": False, "error": '\\n'.join(_real_errs or eos_errs), **_asn_extra}
                 raise
             except OSError as e:
+                # Socket/read timeout — eAPI dispatched all commands including 'commit'
+                # but the HTTP response didn't arrive within TIMEOUT. EOS may have
+                # committed the session anyway (management-plane hiccup, process restart).
+                # Verify by checking whether the named session is still present.
                 _msg = str(e).lower()
                 if not (isinstance(e, TimeoutError) or 'timed out' in _msg or 'time out' in _msg):
-                    raise
+                    raise  # not a timeout — propagate as-is
                 if not open_only and not dry_run:
                     time.sleep(2)
                     try:
                         _chk = self._eapi_push(ip, "show configuration sessions")[0]
                         if session not in _chk:
+                            # Session absent → EOS committed and cleaned it up.
                             return {"ok": True, "diff": "", "late_response": True, **_asn_extra}
                         raise RuntimeError(
-                            f"Push timed out -- {len(lines)} config lines, session '{session}' still pending. Try again.") from e
+                            f"Push timed out — {len(lines)} config lines, session '{session}' still pending on device. "
+                            "Try again.") from e
                     except RuntimeError:
                         raise
                     except Exception:
-                        pass
+                        pass  # verification query itself failed
                 raise RuntimeError(
-                    f"Push timed out -- {len(lines)} config lines, {PUSH_TIMEOUT}s limit -- verify: show running-config | grep __TA") from e
+                    f"Push timed out — {len(lines)} config lines, {PUSH_TIMEOUT}s limit — verify: show running-config | grep __TA") from e
             if open_only:
-                diff = results[-1].strip() if results else ""
+                diff = results[-1].strip() if results else ""  # last cmd is show diffs
             else:
                 diff = results[-2].strip() if len(results) >= 2 else ""
-            eos_errs, eos_warns = _extract_eos_errors("\\n".join(results))
+            eos_errs, eos_warns = _extract_eos_errors('\\n'.join(results))
             if _pre_idempotency_warns:
                 eos_warns = eos_warns + _pre_idempotency_warns
             if eos_errs:
                 eos_errs = _annotate_eapi_errors(eos_errs, lines)
                 eos_errs = self._diagnose_eapi_errors(ip, lines, eos_errs)
+                # Secondary filter: SSH-style eAPI output includes cmd name in the error
+                # string (prompt echo before % line) — catch any that slipped past pre-scan.
                 _real_errs, _cleanup_notes = [], []
                 for err in eos_errs:
                     if (any(cmd in err for cmd in _IDEMPOTENCY_CMDS)
@@ -11828,6 +12250,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             _eapi_dl = len([l for l in (diff or "").splitlines() if l.strip()])
             _vlog(f"[push] {ip}: session {session} {_eapi_action} — {_eapi_dl} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
+
         if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(ip, "terminal length 0", *core_cmds,
                                                force_tty=True)
@@ -11836,29 +12259,41 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
                 raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
+            if VERBOSE: _vlog(f"[push] {ip}: SSH connected")
             if "maximum number of pending sessions" in output.lower():
                 raise RuntimeError(
-                    "EOS pending session limit reached -- Device Bridge will auto-clean "
+                    "EOS pending session limit reached — Device Bridge will auto-clean "
                     "on next push; or manually run: configure session <name> / abort")
-            diff = _extract_session_diff(output)
+            diff                = _extract_session_diff(output)
             eos_errs, eos_warns = _extract_eos_errors(output)
             if eos_errs:
                 _asn_extra["eos_errors"] = eos_errs
             if eos_warns:
                 _asn_extra["eos_warnings"] = eos_warns
             if open_only:
-                _ssh_dl = len([l for l in (diff or "").splitlines() if l.strip()])
-                _vlog(f"[push] {ip}: session {session} open (pending) — {_ssh_dl} diff line(s)", flush=True)
+                diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
+                _vlog(f"[push] {ip}: session {session} open (pending) — {diff_lines} diff line(s)", flush=True)
                 return {"ok": True, "diff": diff, "session_name": session, **_asn_extra}
-            _ssh_action = "dry-run (aborted)" if dry_run else "committed"
-            _ssh_dl = len([l for l in (diff or "").splitlines() if l.strip()])
-            _vlog(f"[push] {ip}: session {session} {_ssh_action} — {_ssh_dl} diff line(s)", flush=True)
+            action = "dry-run (aborted)" if dry_run else "committed"
+            diff_lines = len([l for l in diff.splitlines() if l.strip()]) if diff else 0
+            _vlog(f"[push] {ip}: session {session} {action} — {diff_lines} diff line(s)", flush=True)
             return {"ok": True, "diff": diff, "dry_run": dry_run, **_asn_extra}
-        raise NotImplementedError(f"Config push not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
+
+        raise NotImplementedError(
+            f"Config push not supported for _cfg['transport']={_cfg['transport']!r} — use ssh or eapi")
 
     def _finalize_session(self, ip, session_name, action):
+        """Commit or abort an existing named configure session on the device.
+
+        Used as Phase 2 of the two-phase push modal: Phase 1 opens the session
+        and gets the diff; Phase 2 calls this to commit or abort without
+        re-pushing any config lines — a single short SSH round-trip.
+
+        action: 'commit' or 'abort'
+        Returns {"ok": True, "action": action} on success."""
         if action not in ("commit", "abort"):
             raise ValueError(f"Invalid finalize action: {action!r}")
+
         if _cfg['transport'] == "ssh":
             output, err_text = self._ssh_stdin(
                 ip, "terminal length 0",
@@ -11869,21 +12304,24 @@ class BridgeHandler(BaseHTTPRequestHandler):
                           "connection timed out", "host key verification failed")
             if not output.strip() and any(k in err_text.lower() for k in _auth_errs):
                 raise RuntimeError(f"SSH failed: {_clean_ssh_err(err_text)[:200]}")
+            # EOS prints a warning if the session name is not found (timed out or never opened)
             out_l = output.lower()
             if "session not found" in out_l or "no pending session" in out_l:
                 raise RuntimeError(
-                    f"Configure session '{session_name}' not found -- "
-                    "it may have timed out. Push again.")
+                    f"Configure session '{session_name}' not found — "
+                    "it may have timed out on the device. Push again.")
+            if VERBOSE: _vlog(f"[finalize] {ip}: session {session_name} {action}ed")
             return {"ok": True, "action": action}
+
         if _cfg['transport'] == "eapi":
-            # Verify session still exists before committing: enter then check output.
-            # eAPI creates an empty session if the name is unknown -- check for that.
+            # Verify session still exists before committing: eAPI creates an empty session
+            # for unknown names, so we'd silently commit nothing without this check.
             check = self._eapi_push(ip, "show configuration sessions")
             check_out = check[0] if check else ""
             if session_name not in check_out:
                 raise RuntimeError(
-                    f"Configure session '{session_name}' not found -- "
-                    "it may have timed out. Push again.")
+                    f"Configure session '{session_name}' not found — "
+                    "it may have timed out on the device. Push again.")
             try:
                 self._eapi_push(ip, f"configure session {session_name}", action)
             except OSError as e:
@@ -11899,281 +12337,37 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
                 raise RuntimeError(
-                    f"Finalize timed out -- verify: show configuration sessions") from e
+                    f"Finalize timed out — verify: show configuration sessions") from e
+            if VERBOSE: _vlog(f"[finalize] {ip}: session {session_name} {action}ed (eapi)")
             return {"ok": True, "action": action}
-        raise NotImplementedError(f"Finalize not supported for _cfg['transport']={_cfg['transport']!r} -- use ssh or eapi")
 
-    def _rest_get(self, ip, path):
-        url   = f"https://{ip}:{REST_PORT}/restconf/data/{path}"
-        creds = base64.b64encode(f"{REST_USER}:{REST_PASS}".encode()).decode()
-        req   = urllib.request.Request(url, headers={"Accept":"application/yang-data+json","Authorization":f"Basic {creds}"})
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=_SSL_CTX) as r:
-            return json.loads(r.read())
+        raise NotImplementedError(
+            f"Finalize not supported for _cfg['transport']={_cfg['transport']!r} — use ssh or eapi")
 
-    def _gnmi_get(self, ip, *paths):
-        if not HAS_GNMI:
-            raise RuntimeError("gNMI requires: pip install pygnmi")
-        with gNMIclient(target=(ip, GNMI_PORT), username=GNMI_USER, password=GNMI_PASS, insecure=True) as gc:
-            return [gc.get(path=[p]) for p in paths]
-
+    # ── Dispatch: run EOS show commands via active _cfg['transport'] ─────────────────────
     def _run_cmds(self, ip, *cmds):
+        # _ssh_cmds returns (results, cmd_errors); _eapi_cmds raises on failure
+        # so wrap it to match the same tuple signature.
         if _cfg['transport'] == "ssh":  return self._ssh_cmds(ip, *cmds)
         if _cfg['transport'] == "eapi": return self._eapi_cmds(ip, *cmds), {}
         raise NotImplementedError(f"_run_cmds not supported for _cfg['transport']={_cfg['transport']!r}")
 
-    # -- Orphan detection ------------------------------------------------------
-    def _detect_orphans(self, ip, config_text=None, all_device_names=None, expected_ports=None):
-        """Unified orphan detection -- used by push cleanup and Cleanup UI.
-
-        Returns:
-          { ok, ta_total, matched,
-            interfaces: [{name, description, linkStatus, protocol}],
-            bgp:        [{neighbor, description, asn}],
-            vlans:      [{vid, name}],
-            vrfs:       [{name}],
-            ospf:       [{context, iface}] }
-        """
-        _vlog(f"[detect-orphans/eapi] {ip}: show interfaces description", flush=True)
-        try:
-            (raw,), _ = self._run_cmds(ip, "show interfaces description")
-        except Exception:
-            return {"ok": False, "error": "show interfaces description failed"}
-        iface_descs = (raw or {}).get("interfaceDescriptions", {})
-
-        expected_set = {_norm_iface(p) for p in (expected_ports or [])}
-        if config_text:
-            for line in config_text.splitlines():
-                m = re.match(r"^interface\\s+(\\S+)", line, re.IGNORECASE)
-                if m:
-                    expected_set.add(_norm_iface(m.group(1)))
-
-        ta_total      = 0
-        orphan_ifaces = []
-        for name, info in iface_descs.items():
-            if _TA_ORPHAN_SKIP_RE.match(name):
-                continue
-            desc = info.get("description", "")
-            if "__TA" not in desc:
-                continue
-            ta_total += 1
-            entry = {
-                "name":        name,
-                "description": desc,
-                "linkStatus":  info.get("lineProtocolStatus", info.get("interfaceStatus", "")),
-                "protocol":    info.get("lineProtocolStatus", ""),
-            }
-            if _norm_iface(name) not in expected_set:
-                orphan_ifaces.append(entry)
-
-        orphan_iface_names = {_norm_iface(o["name"]) for o in orphan_ifaces}
-        matched = ta_total - len(orphan_ifaces)
-
-        detection_errors = {}  # {category: error_str} for any category that failed to query
-
-        # Phase 2: remaining checks in parallel -- all independent; orphan_iface_names
-        # is already known from phase 1 so OSPF workers can check it immediately.
-        _pdata = {}
-        _perrs = {}
-
-        def _run_worker(key, fn, *args):
-            try:
-                _pdata[key], _perrs[key] = fn(*args)
-            except Exception as e:
-                _pdata[key] = None
-                _perrs[key] = str(e)[:80]
-
-        def _w_bgp():
-            if not all_device_names:
-                return None, None
-            try:
-                _vlog(f"[detect-orphans] {ip}: show running-config | section router bgp", flush=True)
-                txt = self._text_cmd(ip, "show running-config | section router bgp")
-                _neighbors = txt.count('\n   neighbor ') if txt else 0
-                _vlog(f"[detect-orphans] {ip}: bgp section OK -- {_neighbors} neighbor line(s)", flush=True)
-                return txt, None
-            except Exception as e:
-                _vlog(f"[detect-orphans] {ip}: bgp section FAILED -- {e}", flush=True)
-                return None, str(e)[:80]
-
-        def _w_vlan():
-            if not config_text:
-                return None, None
-            try:
-                _vlog(f"[detect-orphans] {ip}: show vlan", flush=True)
-                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
-                _tagged = sum(1 for v in (vlan_raw or {}).get('vlans', {}).values()
-                              if '__TA' in v.get('name', ''))
-                _vlog(f"[detect-orphans] {ip}: show vlan OK -- {len((vlan_raw or {}).get('vlans', {}))} vlans, {_tagged} __TA-tagged", flush=True)
-                return vlan_raw, None
-            except Exception as e:
-                _vlog(f"[detect-orphans] {ip}: show vlan FAILED -- {e}", flush=True)
-                return None, str(e)[:80]
-
-        def _w_vrf():
-            if not config_text:
-                return None, None
-            try:
-                _vlog(f"[detect-orphans] {ip}: show running-config | section vrf instance", flush=True)
-                txt = self._text_cmd(ip, "show running-config | section vrf instance")
-                _vrfs = txt.count('\nvrf instance ') if txt else 0
-                _vlog(f"[detect-orphans] {ip}: vrf section OK -- {_vrfs} vrf instance(s)", flush=True)
-                return txt, None
-            except Exception as e:
-                _vlog(f"[detect-orphans] {ip}: vrf section FAILED -- {e}", flush=True)
-                return None, str(e)[:80]
-
-        def _w_ospf(kw):
-            if not orphan_iface_names:
-                return None, None
-            try:
-                _vlog(f"[detect-orphans] {ip}: show running-config | section router {kw}", flush=True)
-                txt = self._text_cmd(ip, f"show running-config | section router {kw}")
-                _passive = txt.count('\n   no passive-interface ') if txt else 0
-                _vlog(f"[detect-orphans] {ip}: {kw} section OK -- {_passive} no passive-interface line(s)", flush=True)
-                return txt, None
-            except Exception as e:
-                _vlog(f"[detect-orphans] {ip}: {kw} section FAILED -- {e}", flush=True)
-                return None, str(e)[:80]
-
-        _workers = [
-            threading.Thread(target=_run_worker, args=("bgp",   _w_bgp)),
-            threading.Thread(target=_run_worker, args=("vlan",  _w_vlan)),
-            threading.Thread(target=_run_worker, args=("vrf",   _w_vrf)),
-            threading.Thread(target=_run_worker, args=("ospf",  _w_ospf, "ospf")),
-            threading.Thread(target=_run_worker, args=("ospf3", _w_ospf, "ospf3")),
-        ]
-        for _t in _workers: _t.start()
-        for _t in _workers: _t.join()
-
-        if _perrs.get("bgp"):  detection_errors["bgp"]   = _perrs["bgp"]
-        if _perrs.get("vlan"): detection_errors["vlans"] = _perrs["vlan"]
-        if _perrs.get("vrf"):  detection_errors["vrfs"]  = _perrs["vrf"]
-        if _perrs.get("ospf"): detection_errors["ospf"]  = _perrs["ospf"]
-
-        bgp_text   = _pdata.get("bgp")
-        vlan_raw   = _pdata.get("vlan")
-        vrf_text   = _pdata.get("vrf")
-        ospf_text  = _pdata.get("ospf")
-        ospf3_text = _pdata.get("ospf3")
-
-        # BGP neighbor orphans -- global context only
-        bgp_orphans = []
-        if bgp_text is not None and all_device_names:
-            known_devs = {d.lower() for d in all_device_names}
-            asn_m      = re.search(r"^router bgp\\s+(\\d+)", bgp_text, re.MULTILINE | re.IGNORECASE)
-            asn        = asn_m.group(1) if asn_m else None
-            global_bgp = re.split(r"\\n\\s+vrf\\s+", bgp_text, maxsplit=1)[0]
-            _NEIGH_DESC_RE = re.compile(
-                r"^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?__TA\\S*.*)",
-                re.MULTILINE)
-            _DEV_RE = re.compile(r"(?:Overlay to|To)\\s+(\\S+)", re.IGNORECASE)
-            for m in _NEIGH_DESC_RE.finditer(global_bgp):
-                neighbor = m.group(1)
-                desc     = m.group(2).strip()
-                dev_m    = _DEV_RE.search(desc)
-                if dev_m and dev_m.group(1).lower() not in known_devs:
-                    bgp_orphans.append({"neighbor": neighbor, "description": desc, "asn": asn})
-
-        # VLAN orphans
-        vlan_orphans = []
-        if vlan_raw is not None and config_text:
-            expected_vlans = set()
-            for line in config_text.split("\\n"):
-                vm = re.match(r"^vlan\\s+(\\d+)\\s*$", line, re.IGNORECASE)
-                if vm:
-                    expected_vlans.add(int(vm.group(1)))
-            for vid_str, vinfo in (vlan_raw or {}).get("vlans", {}).items():
-                try:
-                    vid = int(vid_str)
-                except ValueError:
-                    continue
-                if vid in (4093, 4094):
-                    continue
-                if "__TA" in vinfo.get("name", "") and vid not in expected_vlans:
-                    vlan_orphans.append({"vid": vid, "name": vinfo.get("name", "")})
-
-        # VRF orphans
-        vrf_orphans = []
-        if vrf_text is not None and config_text:
-            expected_vrfs = set()
-            for line in config_text.split("\\n"):
-                vm = re.match(r"^vrf\\s+instance\\s+(\\S+)", line, re.IGNORECASE)
-                if vm:
-                    expected_vrfs.add(vm.group(1).lower())
-            _VRF_INST_RE    = re.compile(r"^vrf instance\\s+(\\S+)", re.MULTILINE | re.IGNORECASE)
-            _VRF_DESC_TA_RE = re.compile(r"^\\s+description\\s+\\S+\\s+__TA", re.MULTILINE)
-            for vm in _VRF_INST_RE.finditer(vrf_text):
-                vrf_name = vm.group(1)
-                next_m   = _VRF_INST_RE.search(vrf_text, vm.end())
-                block    = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
-                if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
-                    vrf_orphans.append({"name": vrf_name})
-
-        # OSPF orphans
-        ospf_orphans = []
-        for _ospf_result, _ospf_kw in ((ospf_text, "ospf"), (ospf3_text, "ospf3")):
-            if _ospf_result is None:
-                continue
-            _CTX_RE = re.compile(
-                rf"^(router {_ospf_kw}\\s+\\d+(?:\\s+vrf\\s+\\S+)?)",
-                re.MULTILINE)
-            _NO_PASS_RE = re.compile(
-                r"^\\s+no\\s+passive-interface\\s+(\\S+)", re.MULTILINE)
-            for ctx_m in _CTX_RE.finditer(_ospf_result):
-                ctx_header = ctx_m.group(1)
-                next_ctx   = _CTX_RE.search(_ospf_result, ctx_m.end())
-                block      = _ospf_result[
-                    ctx_m.start(): next_ctx.start() if next_ctx else len(_ospf_result)]
-                for npm in _NO_PASS_RE.finditer(block):
-                    if _norm_iface(npm.group(1)) in orphan_iface_names:
-                        ospf_orphans.append({"context": ctx_header, "iface": npm.group(1)})
-
-        return {
-            "ok":               True,
-            "ta_total":         ta_total,
-            "matched":          matched,
-            "interfaces":       orphan_ifaces,
-            "bgp":              bgp_orphans,
-            "vlans":            vlan_orphans,
-            "vrfs":             vrf_orphans,
-            "ospf":             ospf_orphans,
-            "detection_errors": detection_errors,
-        }
-
-    def _find_bgp_asn_change(self, ip, config_text):
-        """Return ([cmd], asn_info) when the device's running BGP AS differs from
-        config_text, else ([], None). Uses 'show running-config | include router bgp'
-        (plain text SSH) — show ip bgp summary | json returns asn=0 when BGP has no
-        established peers, making it unreliable for ASN detection."""
-        m = re.search(r"^router bgp\s+(\d+)", config_text, re.MULTILINE | re.IGNORECASE)
-        if not m:
-            return [], None
-        new_asn = int(m.group(1))
-        try:
-            out = self._text_cmd(ip, "show running-config | include router bgp")
-        except Exception:
-            return [], None
-        m2 = re.search(r"^router bgp\s+(\d+)", out, re.MULTILINE | re.IGNORECASE)
-        if not m2:
-            return [], None
-        old_asn = int(m2.group(1))
-        if old_asn == new_asn:
-            return [], None
-        if VERBOSE:
-            _vlog(f"[bgp-asn] {ip}: ASN change {old_asn} → {new_asn} -- prepending no router bgp {old_asn}")
-        return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
-
-    # -- Per-device checks -----------------------------------------------------
+    # ── Per-device checks ─────────────────────────────────────────────────────
     def _check_lldp(self, ip):
         if _cfg['transport'] in ("ssh", "eapi"):
             (data,), cmd_errors = self._run_cmds(ip, "show lldp neighbors detail")
             if cmd_errors:
-                raise list(cmd_errors.values())[0]
+                raise list(cmd_errors.values())[0]   # partial LLDP is unusable — re-raise
             return {"ok": True, "neighbors": _normalize_lldp_neighbors(data.get("lldpNeighbors", {}))}
+
         if _cfg['transport'] == "rest":
-            return {"ok": True, "neighbors": _oc_lldp_to_eos(self._rest_get(ip, "openconfig-lldp:lldp/interfaces"))}
+            raw = self._rest_get(ip, "openconfig-lldp:lldp/interfaces")
+            return {"ok": True, "neighbors": _oc_lldp_to_eos(raw)}
+
         if _cfg['transport'] == "gnmi":
-            return {"ok": True, "neighbors": _oc_lldp_to_eos(_gnmi_val(self._gnmi_get(ip, "openconfig-lldp:lldp")[0]))}
+            raw = _gnmi_val(self._gnmi_get(ip, "openconfig-lldp:lldp")[0])
+            return {"ok": True, "neighbors": _oc_lldp_to_eos(raw)}
+
         raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
     def _check_devstatus(self, ip):
@@ -12188,65 +12382,369 @@ class BridgeHandler(BaseHTTPRequestHandler):
             result = _build_devstatus_ssh(ver, ifs, ivlans, errs)
             if cmd_errors:
                 def _fmt(e):
-                    if isinstance(e, subprocess.CalledProcessError): return f"exit {e.returncode}"
-                    if isinstance(e, subprocess.TimeoutExpired): return "timeout"
+                    if isinstance(e, subprocess.CalledProcessError):
+                        return f"exit {e.returncode}"
+                    if isinstance(e, subprocess.TimeoutExpired):
+                        return "timeout"
                     return str(e)[:80]
                 result["cmdErrors"] = {cmd: _fmt(exc) for cmd, exc in cmd_errors.items()}
             return result
+
         if _cfg['transport'] == "rest":
-            plat  = self._rest_get(ip, "openconfig-platform:components")
-            iface = self._rest_get(ip, "openconfig-interfaces:interfaces")
-            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface), "interfaceErrors": {}}
+            plat_raw  = self._rest_get(ip, "openconfig-platform:components")
+            iface_raw = self._rest_get(ip, "openconfig-interfaces:interfaces")
+            return {
+                "ok":              True,
+                "version":         _oc_version(plat_raw),
+                "platform":        _oc_platform(plat_raw),
+                "interfaces":      _oc_iface_status(iface_raw),
+                "interfaceErrors": {},
+            }
+
         if _cfg['transport'] == "gnmi":
-            plat_r, iface_r = self._gnmi_get(ip, "openconfig-platform:components", "openconfig-interfaces:interfaces")
-            plat = _gnmi_val(plat_r); iface = _gnmi_val(iface_r)
-            return {"ok": True, "version": _oc_version(plat), "platform": _oc_platform(plat), "interfaces": _oc_iface_status(iface), "interfaceErrors": {}}
+            plat_r, iface_r = self._gnmi_get(
+                ip,
+                "openconfig-platform:components",
+                "openconfig-interfaces:interfaces",
+            )
+            return {
+                "ok":              True,
+                "version":         _oc_version(_gnmi_val(plat_r)),
+                "platform":        _oc_platform(_gnmi_val(plat_r)),
+                "interfaces":      _oc_iface_status(_gnmi_val(iface_r)),
+                "interfaceErrors": {},
+            }
+
         raise RuntimeError(f"Unknown _cfg['transport']: {_cfg['transport']!r}")
 
-    # -- Parallel runner -------------------------------------------------------
+    # ── Orphan detection ──────────────────────────────────────────────────────
+    def _detect_orphans(self, ip, config_text=None, all_device_names=None, expected_ports=None):
+        """Unified orphan detection — used by both push cleanup and Cleanup UI.
+
+        expected_ports: list of known-good interface names from the topology.
+                        If None, falls back to parsing config_text interface stanzas.
+        config_text:    Generated device config. Used for VLAN/VRF expected sets and
+                        supplements expected_ports for the interface check.
+        all_device_names: All topology device names (BGP orphan check).
+
+        Returns:
+          { ok, ta_total, matched,
+            interfaces: [{name, description, linkStatus, protocol}],
+            bgp:        [{neighbor, description, asn}],
+            vlans:      [{vid, name}],
+            vrfs:       [{name}],
+            ospf:       [{context, iface}] }
+
+        All checks are best-effort — failure returns empty list for that section.
+        """
+        # ── Interface orphans ──────────────────────────────────────────────────
+        _vlog(f"[detect-orphans/eapi] {ip}: show interfaces description", flush=True)
+        try:
+            (raw,), _ = self._run_cmds(ip, "show interfaces description")
+        except Exception:
+            return {"ok": False, "error": "show interfaces description failed"}
+        iface_descs = (raw or {}).get("interfaceDescriptions", {})
+
+        expected_set = {_norm_iface(p) for p in (expected_ports or [])}
+        if config_text:
+            for line in config_text.splitlines():
+                m = re.match(r'^interface\\s+(\\S+)', line, re.IGNORECASE)
+                if m:
+                    expected_set.add(_norm_iface(m.group(1)))
+
+        ta_total      = 0
+        orphan_ifaces = []
+        for name, info in iface_descs.items():
+            if _TA_ORPHAN_SKIP_RE.match(name):
+                continue
+            desc = info.get('description', '')
+            if '__TA' not in desc:
+                continue
+            ta_total += 1
+            entry = {
+                'name':        name,
+                'description': desc,
+                'linkStatus':  info.get('lineProtocolStatus', info.get('interfaceStatus', '')),
+                'protocol':    info.get('lineProtocolStatus', ''),
+            }
+            if _norm_iface(name) not in expected_set:
+                orphan_ifaces.append(entry)
+
+        orphan_iface_names = {_norm_iface(o['name']) for o in orphan_ifaces}
+        matched = ta_total - len(orphan_ifaces)
+
+        detection_errors = {}  # {category: error_str} for any category that failed to query
+
+        # ── Phase 2: remaining checks in parallel ──────────────────────────────
+        # All five are independent of each other; orphan_iface_names is already known
+        # from phase 1 so OSPF workers can check it immediately without a barrier.
+        _pdata = {}  # key → fetched data (None = skipped or error)
+        _perrs = {}  # key → error string
+
+        def _run_worker(key, fn, *args):
+            try:
+                _pdata[key], _perrs[key] = fn(*args)
+            except Exception as e:
+                _pdata[key] = None
+                _perrs[key] = str(e)[:80]
+
+        def _w_bgp():
+            if not all_device_names:
+                return None, None
+            try:
+                _vlog(f"[detect-orphans] {ip}: show running-config | section router bgp", flush=True)
+                txt = self._text_cmd(ip, "show running-config | section router bgp")
+                _neighbors = txt.count('\\n   neighbor ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: bgp section OK — {_neighbors} neighbor line(s)", flush=True)
+                return txt, None
+            except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: bgp section FAILED — {e}", flush=True)
+                return None, str(e)[:80]
+
+        def _w_vlan():
+            if not config_text:
+                return None, None
+            try:
+                _vlog(f"[detect-orphans] {ip}: show vlan", flush=True)
+                (vlan_raw,), _ = self._run_cmds(ip, "show vlan")
+                _tagged = sum(1 for v in (vlan_raw or {}).get('vlans', {}).values()
+                              if '__TA' in v.get('name', ''))
+                _vlog(f"[detect-orphans] {ip}: show vlan OK — {len((vlan_raw or {}).get('vlans', {}))} vlans, {_tagged} __TA-tagged", flush=True)
+                return vlan_raw, None
+            except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: show vlan FAILED — {e}", flush=True)
+                return None, str(e)[:80]
+
+        def _w_vrf():
+            if not config_text:
+                return None, None
+            try:
+                _vlog(f"[detect-orphans] {ip}: show running-config | section vrf instance", flush=True)
+                txt = self._text_cmd(ip, "show running-config | section vrf instance")
+                _vrfs = txt.count('\\nvrf instance ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: vrf section OK — {_vrfs} vrf instance(s)", flush=True)
+                return txt, None
+            except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: vrf section FAILED — {e}", flush=True)
+                return None, str(e)[:80]
+
+        def _w_ospf(kw):
+            if not orphan_iface_names:
+                return None, None
+            try:
+                _vlog(f"[detect-orphans] {ip}: show running-config | section router {kw}", flush=True)
+                txt = self._text_cmd(ip, f'show running-config | section router {kw}')
+                _passive = txt.count('\\n   no passive-interface ') if txt else 0
+                _vlog(f"[detect-orphans] {ip}: {kw} section OK — {_passive} no passive-interface line(s)", flush=True)
+                return txt, None
+            except Exception as e:
+                _vlog(f"[detect-orphans] {ip}: {kw} section FAILED — {e}", flush=True)
+                return None, str(e)[:80]
+
+        _workers = [
+            threading.Thread(target=_run_worker, args=('bgp',   _w_bgp)),
+            threading.Thread(target=_run_worker, args=('vlan',  _w_vlan)),
+            threading.Thread(target=_run_worker, args=('vrf',   _w_vrf)),
+            threading.Thread(target=_run_worker, args=('ospf',  _w_ospf, 'ospf')),
+            threading.Thread(target=_run_worker, args=('ospf3', _w_ospf, 'ospf3')),
+        ]
+        for _t in _workers: _t.start()
+        for _t in _workers: _t.join()
+
+        if _perrs.get('bgp'):   detection_errors['bgp']   = _perrs['bgp']
+        if _perrs.get('vlan'):  detection_errors['vlans'] = _perrs['vlan']
+        if _perrs.get('vrf'):   detection_errors['vrfs']  = _perrs['vrf']
+        if _perrs.get('ospf'):  detection_errors['ospf']  = _perrs['ospf']
+
+        bgp_text   = _pdata.get('bgp')
+        vlan_raw   = _pdata.get('vlan')
+        vrf_text   = _pdata.get('vrf')
+        ospf_text  = _pdata.get('ospf')
+        ospf3_text = _pdata.get('ospf3')
+
+        # ── BGP neighbor orphans ───────────────────────────────────────────────
+        # Global context only — splits before first 'vrf' sub-context line.
+        bgp_orphans = []
+        if bgp_text is not None and all_device_names:
+            known_devs = {d.lower() for d in all_device_names}
+            asn_m      = re.search(r'^router bgp\\s+(\\d+)', bgp_text, re.MULTILINE | re.IGNORECASE)
+            asn        = asn_m.group(1) if asn_m else None
+            global_bgp = re.split(r'\\n\\s+vrf\\s+', bgp_text, maxsplit=1)[0]
+            _NEIGH_DESC_RE = re.compile(
+                r'^\\s*neighbor\\s+(\\S+)\\s+description\\s+(.+?__TA\\S*.*)', re.MULTILINE)
+            _DEV_RE = re.compile(r'(?:Overlay to|To)\\s+(\\S+)', re.IGNORECASE)
+            for m in _NEIGH_DESC_RE.finditer(global_bgp):
+                neighbor = m.group(1)
+                desc     = m.group(2).strip()
+                dev_m    = _DEV_RE.search(desc)
+                if dev_m and dev_m.group(1).lower() not in known_devs:
+                    bgp_orphans.append({'neighbor': neighbor, 'description': desc, 'asn': asn})
+
+        # ── VLAN orphans ───────────────────────────────────────────────────────
+        vlan_orphans = []
+        if vlan_raw is not None and config_text:
+            expected_vlans = set()
+            for line in config_text.split('\\n'):
+                vm = re.match(r'^vlan\\s+(\\d+)\\s*$', line, re.IGNORECASE)
+                if vm:
+                    expected_vlans.add(int(vm.group(1)))
+            for vid_str, vinfo in (vlan_raw or {}).get('vlans', {}).items():
+                try:
+                    vid = int(vid_str)
+                except ValueError:
+                    continue
+                if vid in (4093, 4094):
+                    continue
+                if '__TA' in vinfo.get('name', '') and vid not in expected_vlans:
+                    vlan_orphans.append({'vid': vid, 'name': vinfo.get('name', '')})
+
+        # ── VRF orphans ────────────────────────────────────────────────────────
+        vrf_orphans = []
+        if vrf_text is not None and config_text:
+            expected_vrfs = set()
+            for line in config_text.split('\\n'):
+                vm = re.match(r'^vrf\\s+instance\\s+(\\S+)', line, re.IGNORECASE)
+                if vm:
+                    expected_vrfs.add(vm.group(1).lower())
+            _VRF_INST_RE    = re.compile(r'^vrf instance\\s+(\\S+)', re.MULTILINE | re.IGNORECASE)
+            _VRF_DESC_TA_RE = re.compile(r'^\\s+description\\s+\\S+\\s+__TA', re.MULTILINE)
+            for vm in _VRF_INST_RE.finditer(vrf_text):
+                vrf_name = vm.group(1)
+                next_m   = _VRF_INST_RE.search(vrf_text, vm.end())
+                block    = vrf_text[vm.start(): next_m.start() if next_m else len(vrf_text)]
+                if _VRF_DESC_TA_RE.search(block) and vrf_name.lower() not in expected_vrfs:
+                    vrf_orphans.append({'name': vrf_name})
+
+        # ── OSPF orphans ───────────────────────────────────────────────────────
+        # Stale 'no passive-interface X' in router ospf/ospf3 for orphaned interfaces.
+        # EOS configure sessions are additive — a fresh OSPF block does NOT remove
+        # pre-existing 'no passive-interface' sub-commands; must negate them explicitly.
+        ospf_orphans = []
+        for _ospf_result, _ospf_kw in ((ospf_text, 'ospf'), (ospf3_text, 'ospf3')):
+            if _ospf_result is None:
+                continue
+            _CTX_RE = re.compile(
+                rf'^(router {_ospf_kw}\\s+\\d+(?:\\s+vrf\\s+\\S+)?)', re.MULTILINE)
+            _NO_PASS_RE = re.compile(r'^\\s+no\\s+passive-interface\\s+(\\S+)', re.MULTILINE)
+            for ctx_m in _CTX_RE.finditer(_ospf_result):
+                ctx_header = ctx_m.group(1)
+                next_ctx   = _CTX_RE.search(_ospf_result, ctx_m.end())
+                block      = _ospf_result[
+                    ctx_m.start(): next_ctx.start() if next_ctx else len(_ospf_result)]
+                for npm in _NO_PASS_RE.finditer(block):
+                    if _norm_iface(npm.group(1)) in orphan_iface_names:
+                        ospf_orphans.append({'context': ctx_header, 'iface': npm.group(1)})
+
+        return {
+            'ok':               True,
+            'ta_total':         ta_total,
+            'matched':          matched,
+            'interfaces':       orphan_ifaces,
+            'bgp':              bgp_orphans,
+            'vlans':            vlan_orphans,
+            'vrfs':             vrf_orphans,
+            'ospf':             ospf_orphans,
+            'detection_errors': detection_errors,
+        }
+
+    def _find_bgp_asn_change(self, ip, config_text):
+        """Return (cmds, asn_info) where cmds=['no router bgp <old>'] and
+        asn_info={"from": old, "to": new} when config_text targets a different
+        AS than currently configured on the device, else ([], None).
+
+        EOS does not allow changing the BGP AS number in-place — the old
+        'router bgp <old_asn>' block must be removed before the new one is applied.
+        Called during full-device push so the removal lands in the same configure
+        session and is visible in the diff for user approval.
+        Returns ([], None) on any query failure — best-effort.
+        """
+        m = re.search(r'^router bgp\\s+(\\d+)', config_text, re.MULTILINE | re.IGNORECASE)
+        if not m:
+            return [], None  # no BGP in config being pushed
+        new_asn = int(m.group(1))
+
+        # Use 'show running-config | include router bgp' (plain text via SSH) rather than
+        # 'show ip bgp summary | json' — the JSON \`vrfs.<vrf>.as\` field returns 0 when BGP
+        # has no established peers, making it unreliable for ASN detection.
+        try:
+            out = self._text_cmd(ip, "show running-config | include router bgp")
+        except Exception:
+            return [], None
+        m2 = re.search(r'^router bgp\\s+(\\d+)', out, re.MULTILINE | re.IGNORECASE)
+        if not m2:
+            return [], None  # BGP not in running config
+        old_asn = int(m2.group(1))
+        if old_asn == new_asn:
+            return [], None
+        if VERBOSE:
+            _vlog(f"[bgp-asn] {ip}: ASN change {old_asn} → {new_asn} — prepending no router bgp {old_asn}")
+        return [f"no router bgp {old_asn}"], {"from": old_asn, "to": new_asn}
+
+    # ── Parallel runner ───────────────────────────────────────────────────────
     def _run_parallel(self, ip_map, check_fn):
         results = {}
         lock    = threading.Lock()
         sem     = threading.Semaphore(MAX_WORKERS)
+
         def run(dev, ip):
             ip = (ip or "").strip()
             if not ip:
-                with lock: results[dev] = {"ok": False, "error": "No IP configured"}; return
+                with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                return
             with sem:
                 try:
-                    with lock: results[dev] = check_fn(ip)
+                    # SSH call outside the lock — allows threads to run in parallel.
+                    # Lock only protects the dict write.
+                    result = check_fn(ip)
+                    with lock: results[dev] = result
                 except subprocess.TimeoutExpired:
-                    with lock: results[dev] = {"ok": False, "error": f"Timeout -- {ip} unreachable?"}
+                    with lock: results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except subprocess.CalledProcessError:
-                    with lock: results[dev] = {"ok": False, "error": f"SSH failed -- check admin access on {ip}"}
+                    # If _ssh_auth has already flagged an auth failure (exit-255 threshold
+                    # crossed by an earlier thread), surface that message so the JS status
+                    # bar shows "N auth errors" instead of the generic SSH-failed text.
+                    if not _ssh_auth["ok"] and _ssh_auth.get("msg"):
+                        err_msg = _ssh_auth["msg"]
+                    else:
+                        err_msg = f"SSH failed — check admin access on {ip}"
+                    with lock: results[dev] = {"ok": False, "error": err_msg}
                 except json.JSONDecodeError:
                     with lock: results[dev] = {"ok": False, "error": "Device returned invalid JSON"}
                 except FileNotFoundError:
-                    with lock: results[dev] = {"ok": False, "error": "ssh not found -- is OpenSSH installed?"}
+                    with lock: results[dev] = {"ok": False, "error": "ssh not found — is OpenSSH installed?"}
                 except Exception as e:
                     with lock: results[dev] = {"ok": False, "error": str(e)[:120]}
-        threads = [threading.Thread(target=run, args=(d, i), daemon=True) for d, i in ip_map.items()]
+
+        threads = [threading.Thread(target=run, args=(d, i), daemon=True)
+                   for d, i in ip_map.items()]
         for t in threads: t.start()
         for t in threads: t.join(timeout=TIMEOUT + 3)
         return results
 
+    # ── Response helper ───────────────────────────────────────────────────────
     def _json(self, code, data):
         body = json.dumps(data).encode()
-        self.send_response(code)
-        self.send_header("Content-Type",   "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self._cors(); self.end_headers(); self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type",   "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self._cors()
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # client closed connection before we responded (SSH took too long)
 
     def log_message(self, fmt, *args):
-        _vlog(f"[{self.client_address[0]}] {fmt % args}", flush=True)
+        if VERBOSE:
+            _vlog(f"[{self.client_address[0]}] {fmt % args}", flush=True)
 
 
 if __name__ == "__main__":
     if "-h" in sys.argv or "--help" in sys.argv:
         print(f"""
   TopoAssist Device Bridge  v{VERSION}
-  -----------------------------------------
-  Usage: python device_bridge.py [-b JUMP_HOST] [-t TIMEOUT] [-P PUSH_TIMEOUT] [-v] [-h]
+  ─────────────────────────────────────
+  Usage: python device_bridge.py [-b JUMP_HOST] [-t TIMEOUT] [-p PUSH_TIMEOUT] [-v] [-h]
 
   Options:
     -b JUMP_HOST  Jump host for SSH     default: bus-home
@@ -12254,18 +12752,19 @@ if __name__ == "__main__":
     -t TIMEOUT    Per-device timeout    default: 15  (seconds)
                   Used for show/LLDP/devstatus queries. Keep small so
                   unreachable devices fail fast.
-    -P TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
+    -p TIMEOUT    Push timeout          default: max(t*4, 300)  (seconds)
                   Used for configure-session pushes (>5 cmds). Increase
-                  for large configs (10k+ lines). Example: -P 600
+                  for large configs (10k+ lines). Example: -p 600
     -c TIMEOUT    Cleanup timeout       default: max(p*3, 900)  (seconds)
-                  Used for orphan-cleanup configure sessions. Range-collapsed
-                  commands (e.g. no interface Vlan1-3999) take 10+ min.
-                  Example: -c 1800
-    -v            Verbose -- print SSH connect, session, retry, error, and timeout logs
+                  Used for orphan SVI/VLAN batch cleanup before push.
+                  Range-collapsed deletions (e.g. no interface Vlan1-3999)
+                  commit atomically in EOS and can take 10+ min on large
+                  topologies. Example: -c 1800
+    -v            Verbose — print SSH connect, session, retry, error, and timeout logs
     -h            Show this help and exit
 
   Transport and credentials are configured in the sidebar UI and applied
-  live via POST /settings -- no restart required.
+  live via POST /settings — no restart required.
 
   Legacy (override initial values before sidebar connects):
     -m ssh|eapi   Transport mode        default: eapi
@@ -12278,18 +12777,18 @@ if __name__ == "__main__":
   Examples:
     python device_bridge.py -b jumphost -t 30 -v
     python device_bridge.py -b ""                    # direct SSH, no jump
-    python device_bridge.py -t 30 -P 600             # large-config push headroom
+    python device_bridge.py -t 30 -p 600             # large-config push headroom
 """)
         sys.exit(0)
 
     server = HTTPServer(("127.0.0.1", PORT), BridgeHandler)
     print(f"\\n  TopoAssist Device Bridge  v{VERSION}")
-    print(f"  -----------------------------------------")
+    print(f"  ─────────────────────────────────────")
     print(f"  Listening : http://localhost:{PORT}")
     print(f"  Timeout   : {TIMEOUT}s (queries: -t)  |  Push: {PUSH_TIMEOUT}s (-p)  |  Cleanup: {CLEANUP_PUSH_TIMEOUT}s (-c)")
     print(f"  Verbose   : {'ON (SSH + session logs)' if VERBOSE else 'OFF (run with -v to enable)'}")
     print(f"  Endpoints : /health  /lldp  /devstatus  /pushconfig  /reconcile  /settings")
-    print(f"  -----------------------------------------")
+    print(f"  ─────────────────────────────────────")
     print(f"  Keep this terminal open while using")
     print(f"  Device Bridge in the sidebar.")
     print(f"  Ctrl+C to stop.")
