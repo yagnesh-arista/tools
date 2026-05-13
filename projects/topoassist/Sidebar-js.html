@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.52 | 2026-05-13 19:23:26 -->
+<!-- TopoAssist v260513.53 | 2026-05-13 19:31:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.52";  // keep in sync with Code.gs
+const APP_VERSION = "260513.53";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2629,11 +2629,11 @@ function runValidation(logIssues) {
       if (auditFlagStaleSvi) configErrors.push(`Stale SVI: Mode is '${d.sp_mode_}' but svi_vlan_ has value '${d.svi_vlan_}' — SVI only valid on L2 modes.`);
     }
 
-    // N. STALE MULTI-VLAN ON PURE L3 (single VLAN is allowed on l3-et/l3-po)
-    if (mode.startsWith("l3") && !mode.includes("sub-int") &&
+    // N. MULTI-VLAN ON SINGLE-VLAN MODES (access ports accept only one VLAN; pure l3-et/l3-po use one VLAN for subnet derivation)
+    if (((mode.startsWith("l3") && !mode.includes("sub-int")) || /^l2-(et|po)-access$/.test(mode)) &&
         d.vlan_ && /[,\-]/.test(String(d.vlan_))) {
       auditCheckHadIssue.auditFlagStaleVlan = (auditCheckHadIssue.auditFlagStaleVlan || 0) + 1;
-      if (auditFlagStaleVlan) configErrors.push(`Stale VLANs: Mode is '${d.sp_mode_}' but vlan_ has value '${d.vlan_}' — multiple VLANs only apply on L2 or sub-int modes. Single VLAN is allowed.`);
+      if (auditFlagStaleVlan) configErrors.push(`Multi-VLAN: Mode is '${d.sp_mode_}' but vlan_ has '${d.vlan_}' — only a single VLAN is valid here.`);
     }
 
     // O. STALE VRF ON L2 PORT WITHOUT SVI
