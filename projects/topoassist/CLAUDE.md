@@ -183,7 +183,7 @@ dc.onclick = () => { _autoMinimizeOpenModal(); toggleModalMinimize(modal.id); };
 ```
 Without the guard, restoring a dock chip leaves two modals open simultaneously.
 
-**`_autoMinimizeOpenModal()`** uses a dynamic `.modal-std` query — never a hardcoded candidates array. Self-maintains as new modals are added.
+**`_autoMinimizeOpenModal()`** uses a dynamic `.modal-std` query — never a hardcoded candidates array. Self-maintains as new modals are added. **Skips full-screen GAS containers** (`_FULLSCREEN_CONTAINER_IDS`: `sheetColumnManagerContainer`, `deviceManagerContainer`, `sheetVisContainer`) — minimizing them collapses the GAS dialog window to header-only height, which is never the right behavior for auto-minimize.
 
 **`closeAllModals()`** uses the same dynamic `.modal-std` query.
 
