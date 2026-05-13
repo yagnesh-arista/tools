@@ -1,10 +1,10 @@
-// TopoAssist v260513.54 | 2026-05-13 19:46:17
+// TopoAssist v260513.55 | 2026-05-13 20:10:41
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.54";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.55";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4001,6 +4001,11 @@ function onEdit(e) {
 
     if (startRow < 3) return; // Skip Header rows
 
+    // Bump version BEFORE any processing — auto-cleaning or validation can throw/timeout,
+    // and DATA_VERSION must be bumped regardless so smart poll triggers a fresh fetch.
+    // (Previously at end of function, so any exception silently suppressed the version bump.)
+    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
+
     const numRows = range.getNumRows();
     const numCols = range.getNumColumns();
 
@@ -4075,9 +4080,6 @@ function onEdit(e) {
 
     // 4b. Apply cell background updates from mode column edits (immediate greying)
     bgUpdates.forEach(u => { if (u.col > 0) sheet.getRange(u.row, u.col).setBackground(u.bg); });
-
-    // 5. Always bump version — user made an edit, sidebar must refresh
-    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
 
   } catch (err) {
     console.error("onEdit Error: " + err.toString());

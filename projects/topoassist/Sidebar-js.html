@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.54 | 2026-05-13 19:46:17 -->
+<!-- TopoAssist v260513.55 | 2026-05-13 20:09:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.54";  // keep in sync with Code.gs
+const APP_VERSION = "260513.55";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3881,8 +3881,8 @@ ${peerData ? buildBox(peerIdx, peerData.device, peerData.name, false) : buildBox
   html += `</div></div>`;
 
   // --- 5. BUILD RIGHT PANE: CONFIG SNIPPETS ---
-  let localCfg = myData.details.config || "Loading...";
-  let peerCfg = peerData ? (peerData.details.config || "Loading...") : "";
+  let localCfg = myData.details.config ? _expandTaCleanDisplay(myData.details.config) : "Loading...";
+  let peerCfg = peerData ? (peerData.details.config ? _expandTaCleanDisplay(peerData.details.config) : "Loading...") : "";
 
   html += `<div class="tt-right-pane">
 <div class="tt-config-header">
@@ -4013,7 +4013,7 @@ function showLoopbackTooltip(e, deviceName, loNum) {
       ? configCache[deviceName].data[sectionKey].full
       : null;
     const cfgHtml = cfg
-      ? escapeHtml(cfg)
+      ? escapeHtml(_expandTaCleanDisplay(cfg))
       : '<span style="color:#94a3b8;font-style:italic;font-family:\'JetBrains Mono\',monospace;">Loading\u2026</span>';
 
     const tooltip = document.getElementById('tooltip');
@@ -4077,7 +4077,7 @@ function showVx1Tooltip(e, deviceName) {
       ? configCache[deviceName].data['055_VXLAN'].full
       : null;
     const cfgHtml = cfg
-      ? escapeHtml(cfg)
+      ? escapeHtml(_expandTaCleanDisplay(cfg))
       : '<span style="color:#94a3b8;font-style:italic;font-family:\'JetBrains Mono\',monospace;">Loading…</span>';
 
     const tooltip = document.getElementById('tooltip');
