@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.1 | 2026-05-13 10:56:35 -->
+<!-- TopoAssist v260513.2 | 2026-05-13 11:18:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -2074,6 +2074,12 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       var ugInp = document.getElementById('ugSearchInput');
       if (ugInp) {
         ugInp.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            ugClear();
+            ugInp.blur();
+            return;
+          }
           if (!_ugMarks.length) return;
           if (e.key === 'Enter') {
             e.preventDefault();
