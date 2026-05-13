@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (feat: audit check N extended to cover l2-et-access and l2-po-access — multi-VLAN in vlan_ now fires auditFlagStaleVlan for access modes (was L3 only); message updated to 'Multi-VLAN: only a single VLAN is valid here'. FILES: Sidebar-js.html)
+  Last updated: 2026-05-13 (ui: audit checkbox label "VLAN mismatch on PO link" → "VLAN mismatch between interface" — check runs on all link types, not just PO. FILES: Sidebar.html)
+  Previous: 2026-05-13 (feat: audit check N extended to cover l2-et-access and l2-po-access — multi-VLAN in vlan_ now fires auditFlagStaleVlan for access modes (was L3 only); message updated to 'Multi-VLAN: only a single VLAN is valid here'. FILES: Sidebar-js.html)
   Previous: 2026-05-13 (fix: svi_vlan_='no'/'−' now treated as no-SVI in all JS consumers — (1) audit check D 'Incomplete SVI' no longer fires; (2) applyTopoSviFilter maps them as 'blank' not 'active'. Other consumers (line 13921, 20073) already safe via /^\d+$/ filter. FILES: Sidebar-js.html)
   Previous: 2026-05-13 (fix: audit check D "Incomplete SVI" no longer fires when svi_vlan_='no' or '-' — isSviOn now excludes these explicit no-SVI markers (same as _parseSviVlans and CF rules). FILES: Sidebar-js.html)
   Previous: 2026-05-13 (fix: CF rules A3/A5/N/A-3/N/A-6 now treat svi_vlan_='no' and svi_vlan_='-' as 'no SVI' — ip_type_ and vrf_ correctly grey when L2 mode and svi_vlan_ is empty OR 'no' OR '-'; all 4 rules updated via replace_all. FILES: Code.gs)
