@@ -1,4 +1,5 @@
 #!/bin/bash
+# settings v260513.1 | 2026-05-13 10:44:42
 # Auto-publish UserGuide.html → public_html/topoassist-guide.html on every edit
 input=$(cat)
 f=$(echo "$input" | jq -r '.tool_input.file_path // ""')
