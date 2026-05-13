@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (docs: UserGuide Typical Workflow Step 6 — remove MLAG from Tech Stack list; add note that MLAG is declared in Device Manager. FILES: UserGuide.html)
+  Last updated: 2026-05-13 (docs: UserGuide multi-update — Keyboard Shortcuts section expanded to full Help modal content (search/reset/config search/device cards/navigation/edit mode); GW Address Formula: added super-wide prefix tier (IPv4 /8-/15, IPv6 /32-/47, oct2 dropped, collision warning); "Per-VLAN VRF" renamed to "Per-VLAN & Per-Sub-Interface VRF" throughout; "IP Config"/"IP Configuration Modal" renamed to "Auto Config" to match Sidebar modal title; .inline-code CSS class added. FILES: UserGuide.html)
+  Previous: 2026-05-13 (docs: UserGuide Typical Workflow Step 6 — remove MLAG from Tech Stack list; add note that MLAG is declared in Device Manager. FILES: UserGuide.html)
   Previous: 2026-05-13 (docs: UserGuide — remove all REST/gNMI references (intro para, interface state note, internal VLAN note, push note); only ssh/eapi mentioned now. FILES: UserGuide.html)
   Previous: 2026-05-13 (docs: UserGuide — METHOD default corrected to "eapi"; rest/gnmi removed from METHOD docs and transport options box; "Device Bridge (optional — for live device checks)" h3 renamed to "Device Bridge (for live device checks)". FILES: UserGuide.html)
   Previous: 2026-05-13 (docs: UserGuide remove pip install pygnmi from Installation Step 2 (no pip deps for ssh/eapi/rest/gnmi in practice); gnmi transport note updated to just "requires pygnmi package". FILES: UserGuide.html)
