@@ -1,10 +1,10 @@
-// TopoAssist v260513.2 | 2026-05-13 11:18:25
+// TopoAssist v260513.3 | 2026-05-13 11:18:55
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4238,6 +4238,42 @@ function _parseVrfList(vrfVal) {
 function _resolveVrfAtIndex(vrfList, idx) {
   if (!vrfList || vrfList.length === 0) return null;
   const v = vrfList.length === 1 ? vrfList[0] : (vrfList[idx] || null);
+  return (v && v.toLowerCase() === 'default') ? null : v;
+}
+
+/**
+ * Builds a VLAN→VRF map from vrf_ and vlan_ column values using token-based positional
+ * matching. Ranges in vlan_ (e.g. "20-30") are kept as a unit and mapped to one VRF
+ * token, then expanded to individual VLAN integers in the map.
+ * Returns null when vrfVal is empty or a single VRF (caller uses vrfList[0] instead).
+ */
+function _buildVrfMap(vrfVal, vlanVal) {
+  if (!vrfVal) return null;
+  const vrfTokens = String(vrfVal).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (vrfTokens.length <= 1) return null;
+  const pv = parseVlanWithNative(String(vlanVal || ''));
+  const vlanTokens = String(pv.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  const map = new Map();
+  vlanTokens.forEach(function(token, i) {
+    const rawVrf = vrfTokens[i] || null;
+    const vrf = (rawVrf && rawVrf.toLowerCase() === 'default') ? null : rawVrf;
+    expandVlanString(token).forEach(function(v) { map.set(v, vrf); });
+  });
+  return map;
+}
+
+/**
+ * Resolves the effective VRF for a given VLAN number.
+ * When vrfMap is provided (multi-VRF, range-aware): looks up by VLAN integer.
+ * When vrfMap is null (single VRF): returns vrfList[0] (applies to all VLANs).
+ */
+function _resolveVrfForVlan(vrfMap, vrfList, vlan) {
+  if (vrfMap) {
+    const v = vrfMap.get(parseInt(vlan));
+    return v !== undefined ? v : null;
+  }
+  if (!vrfList || vrfList.length === 0) return null;
+  const v = vrfList[0];
   return (v && v.toLowerCase() === 'default') ? null : v;
 }
 
