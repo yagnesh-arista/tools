@@ -1,10 +1,10 @@
-// TopoAssist v260513.37 | 2026-05-13 17:22:17
+// TopoAssist v260513.38 | 2026-05-13 17:33:50
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.37";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.38";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1995,7 +1995,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (allDevRanges.length > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=$${iC}3=""`)
-        .setBackground("#f1f5f9").setFontColor("#cbd5e1")
+        .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges(allDevRanges).build());
     }
 
