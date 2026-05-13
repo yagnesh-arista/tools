@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.17 | 2026-05-13 14:33:13 -->
+<!-- TopoAssist v260513.18 | 2026-05-13 15:14:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -182,6 +182,19 @@
       padding: 3px 6px;
       border-radius: 4px;
       font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .inline-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: #1e293b;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     .two-col {
@@ -513,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.17</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.18</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -955,22 +968,89 @@ clasp login --no-localhost</pre>
     <!-- ================================================================ -->
     <h2 id="keyboard-shortcuts">⌨️ Keyboard Shortcuts</h2>
 
-    <div class="two-col">
+    <div class="info-box blue" style="margin-top:10px; font-size:12px; font-family:'JetBrains Mono',monospace;">
+      <b>Always active:</b> Backtick <span class="kbd">`</span> and <span class="kbd">Esc</span> work even while typing. All other shortcuts require focus outside an input.
+    </div>
+
+    <!-- Search: Global shortcuts + Examples -->
+    <div class="card" style="margin-top:14px;">
+      <h3 style="margin-top:0; font-size:13px;">Search</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div>
+          <p style="font-size:10px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px; font-family:'JetBrains Mono',monospace;">Global</p>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">/</span> or <span class="kbd">f</span></td><td>Focus search<br><small style="color:#94a3b8; font-style:italic;">In Config modal: focuses config filter</small></td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">v</span></td><td>VLAN trace<br><small style="color:#94a3b8; font-style:italic;">Type v&lt;VLAN ID&gt; — e.g. v10 or v10,20</small></td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">s</span></td><td>Toggle strict search<br><small style="color:#94a3b8; font-style:italic;">Exact match — "leaf01" won't match "leaf01a"</small></td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">↑</span> <span class="kbd">↓</span></td><td>Navigate suggestions</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Enter</span></td><td>Select suggestion<br><small style="color:#94a3b8; font-style:italic;">Or jump to first match if none highlighted</small></td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Esc</span></td><td>Dismiss suggestion list</td></tr>
+          </table>
+        </div>
+        <div>
+          <p style="font-size:10px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px; font-family:'JetBrains Mono',monospace;">Examples</p>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">leaf01</code></td><td>Filter by device name</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">SPINE</code></td><td>Filter by role label</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">l2-et-trunk</code></td><td>Filter by port mode</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">vrf-mgmt</code></td><td>Filter by VRF</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">v10</code></td><td>Trace VLAN 10</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">v10,20</code></td><td>Trace multiple VLANs</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">v10-20</code></td><td>Trace VLAN range</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><code class="inline-code">10.0.0</code></td><td>Find by IP <small style="color:#94a3b8; font-style:italic;">Requires configs loaded</small></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset/Clear + General | Config Search + Device Cards -->
+    <div class="two-col" style="margin-top:14px;">
       <div class="card">
-        <h3>Navigation</h3>
-        <ul style="list-style:none; padding:0;">
-          <li><span class="kbd">`</span> or <span class="kbd">C</span> &nbsp;→ <b>Reset / centre view</b></li>
-          <li><span class="kbd">Ctrl + Scroll</span> &nbsp;→ <b>Zoom</b></li>
-          <li><span class="kbd">Click + Drag</span> &nbsp;→ <b>Pan canvas</b></li>
-        </ul>
+        <h3 style="margin-top:0; font-size:13px;">Reset &amp; Clear</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">`</span></td><td>Reset view &amp; clear all filters<br><small style="color:#94a3b8; font-style:italic;">Always active — works even while typing</small></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">c</span></td><td>Clear traces &amp; reset<br><small style="color:#94a3b8; font-style:italic;">Disabled while typing in an input</small></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Esc</span></td><td>Close top modal</td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Esc</span> + <span class="kbd">Esc</span></td><td>Hard reset — force reload from sheet</td></tr>
+        </table>
+        <h3 style="margin-top:14px; font-size:13px;">General</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">?</span></td><td>Open shortcuts panel</td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><code class="inline-code">dbl-click</code></td><td>Toggle Bridge auto-check<br><small style="color:#94a3b8; font-style:italic;">Double-click Bridge icon — auto-verifies wiring after each refresh</small></td></tr>
+        </table>
       </div>
       <div class="card">
-        <h3>Edit Mode</h3>
-        <ul style="list-style:none; padding:0;">
-          <li><span class="kbd">Click uncabled port (dashed square)</span> &nbsp;→ <b>Select port</b></li>
-          <li><span class="kbd">Click second uncabled port</span> &nbsp;→ <b>Cable the pair</b></li>
-          <li><span class="kbd">Esc</span> &nbsp;→ <b>Cancel selection</b></li>
-        </ul>
+        <h3 style="margin-top:0; font-size:13px;">Config Search</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Enter</span></td><td>Next result<br><small style="color:#94a3b8; font-style:italic;">Find bar inside View Config modal</small></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Shift</span> + <span class="kbd">Enter</span></td><td>Previous result</td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><span class="kbd">Esc</span></td><td>Clear find &amp; close bar</td></tr>
+        </table>
+        <h3 style="margin-top:14px; font-size:13px;">Device Cards</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><code class="inline-code">dbl-click</code></td><td>Collapse / expand card<br><small style="color:#94a3b8; font-style:italic;">State persists across reloads</small></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap; vertical-align:top;"><code class="inline-code">drag right edge</code></td><td>Resize card width<br><small style="color:#94a3b8; font-style:italic;">Persists per card across reloads</small></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Navigation + Edit Mode -->
+    <div class="two-col" style="margin-top:14px;">
+      <div class="card">
+        <h3 style="margin-top:0; font-size:13px;">Navigation</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">`</span> or <span class="kbd">C</span></td><td><b>Reset / centre view</b></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">Ctrl + Scroll</span></td><td><b>Zoom</b></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">Click + Drag</span></td><td><b>Pan canvas</b></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0; font-size:13px;">Edit Mode</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">Click uncabled port</span></td><td><b>Select port</b> <small style="color:#94a3b8; font-style:italic;">(dashed square)</small></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">Click second port</span></td><td><b>Cable the pair</b></td></tr>
+          <tr><td style="padding:3px 10px 3px 0; white-space:nowrap;"><span class="kbd">Esc</span></td><td><b>Cancel selection</b></td></tr>
+        </table>
       </div>
     </div>
 
@@ -1246,12 +1326,17 @@ clasp login --no-localhost</pre>
       <li>IPv4: <code>{First}.{oct2}.{oct3}.{Last}/{Mask}</code> — e.g. first=<code>100</code>, VLAN 1520 → <code>100.15.20.1/24</code></li>
       <li>IPv6: <code>{First}:{oct2}:{oct3}::{Last}/{Mask}</code> — e.g. first=<code>100</code>, VLAN 1520 → <code>100:15:20::1/64</code></li>
     </ul>
-    <p style="font-size:13px;"><b>Wide prefix (IPv4 &lt; /24, IPv6 &lt; /64) — first field becomes a numeric prefix:</b></p>
+    <p style="font-size:13px;"><b>Wide prefix (IPv4 /16–/23, IPv6 /48–/63) — first field becomes a numeric prefix, oct2 becomes part of the first octet:</b></p>
     <ul style="font-size:13px;">
       <li>IPv4: <code>{First}{oct2}.{oct3}.0.{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 4050 → <code>140.50.0.1/16</code></li>
       <li>IPv6: <code>{First}{oct2}:{oct3}:0::{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 4050 → <code>140:50:0::1/32</code></li>
     </ul>
-    <div class="info-box slate" style="font-size:12px;">In wide-prefix mode the First field is locked to <code>1</code> (the only universally valid prefix — larger digits overflow 255 for VLANs ≥ 1000). The live formula examples in the modal update as you type to show the resulting address for a representative VLAN.</div>
+    <p style="font-size:13px;"><b>Super-wide prefix (IPv4 /8–/15, IPv6 /32–/47) — oct2 is dropped entirely; only oct3 (VLAN % 100) distinguishes addresses:</b></p>
+    <ul style="font-size:13px;">
+      <li>IPv4: <code>{First}{oct3}.0.0.{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 34 → <code>134.0.0.1/8</code></li>
+      <li>IPv6: <code>{First}{oct3}:0:0::{Last}/{Mask}</code> — e.g. first=<code>1</code>, VLAN 34 → <code>134:0:0::1/32</code></li>
+    </ul>
+    <div class="info-box slate" style="font-size:12px;">In wide and super-wide mode the First field is locked to <code>1</code> (the only universally valid prefix — larger digits overflow 255 for VLANs ≥ 1000). The live formula examples update as you type.<br><br><b>Super-wide collision risk:</b> VLANs that share the same <code>VLAN % 100</code> (e.g. 34, 134, 234…) map to the <em>same</em> gateway IP — use super-wide only when all GW VLANs have distinct <code>VLAN % 100</code> values. Also avoid oct3=0 (multiples of 100: VLAN 100, 200…) — that produces a <code>100.0.0.x</code> prefix which overlaps reserved ranges.</div>
 
     <h4 style="font-size:13px; margin:14px 0 4px;">Per-Device GW Override (Advanced)</h4>
     <p style="font-size:13px;">The <b>GW Auto Config</b> accordion in the IP Config modal exposes a per-device override table. Each Arista device gets six fields: <b>v4 First</b>, <b>v4 Last</b>, <b>v4 Mask</b>, and the IPv6 equivalents. Fields left empty inherit the global GW values (shown as grey italic placeholder text).</p>
