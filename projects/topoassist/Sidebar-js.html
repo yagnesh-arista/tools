@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.47 | 2026-05-13 18:39:37 -->
+<!-- TopoAssist v260513.48 | 2026-05-13 18:51:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.47";  // keep in sync with Code.gs
+const APP_VERSION = "260513.48";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -12817,6 +12817,7 @@ function openBridgeModal() {
   _loadBridgeTransportPrefs();
   _syncBridgeDevCollapse();
   _populateLldpDevTable();
+  _restoreBridgeDevDots();
   _checkBridgeHealth();
 }
 
@@ -13420,6 +13421,25 @@ function _populateLldpDevTable() {
       <span class="bridge-hn-dot"  id="bridgeHn_${safeId}"  title="Hostname"></span>
     </div>`;
   }).join('');
+}
+
+// Restore SSH status dots from devStatusMap after _populateLldpDevTable() rebuilds HTML.
+function _restoreBridgeDevDots() {
+  if (!currentData || !currentData.nodes) return;
+  currentData.nodes.forEach(n => {
+    const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dot = document.getElementById('bridgeDot_' + safeId);
+    if (!dot) return;
+    const ds = devStatusMap[n.id];
+    if (!ds) return;
+    if (ds.ok) {
+      dot.className = 'bridge-dev-dot dot-green';
+      dot.title = 'SSH OK';
+    } else {
+      dot.className = 'bridge-dev-dot dot-red';
+      dot.title = ds.error || 'Unreachable';
+    }
+  });
 }
 
 // Extract short device name from LLDP systemName FQDN.
