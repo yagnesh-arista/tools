@@ -1,10 +1,10 @@
-// TopoAssist v260513.44 | 2026-05-13 18:27:30
+// TopoAssist v260513.45 | 2026-05-13 18:33:18
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.44";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.45";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4214,12 +4214,13 @@ function compressVlanRanges(numberSet) {
  * svi_vlan_ = '10' or '10,20' → only those VLAN IDs that exist in vlans
  * svi_vlan_ = 'nv100' → VLAN 100 (native VLAN shorthand), if 100 is in vlans
  * svi_vlan_ = '' / undefined → [] (no SVIs)
+ * svi_vlan_ = 'no' or '-'  → [] (explicit "no SVI" marker — stays in sheet for readability)
  * vlans: Array of VLAN IDs (numbers or numeric strings) — caller must include native VLAN if desired.
  * Returns an array of the same element type as vlans.
  */
 function _parseSviVlans(sviVlanVal, vlans) {
   const v = String(sviVlanVal || "").trim().toLowerCase();
-  if (!v) return [];
+  if (!v || v === 'no' || v === '-') return [];  // explicit "no SVI" markers, same as blank
   const raw = Array.isArray(vlans) ? vlans : Array.from(vlans);
   // Guard: EOS only supports SVIs for VLAN IDs 1-4094; silently drop anything outside
   // this range (e.g. 8888 used for L3-et/po-int sub-interface config must not become an SVI).
