@@ -151,6 +151,7 @@ Session end (Stop)
 | Edit `topoassist/device_bridge.py` | `topoassist-pytest-check.sh` | `pytest tests/ -v` summary inline |
 | Edit `topoassist/device_bridge.py` | `topoassist-bridge-version.sh` | Auto-bumps `VERSION = "YYMMDD.N"` in `device_bridge.py` + embedded template in `Sidebar-js.html` |
 | Edit `eos-tricks/` files | `eos-tricks-publish.sh` | Publishes `eos-tricks.html` to `public_html/` |
+| Edit `topoassist/UserGuide.html` | `topoassist-userguide-publish.sh` | Publishes `UserGuide.html` → `public_html/topoassist-guide.html` |
 | Edit tmux-studio file | Inline hook | Copy to `~/.tmux-studio/tmux_studio.py` |
 | Edit `tmux.conf` project files | Inline hook | Copy to `~/.tmux/` + `tmux source-file` reload |
 | Edit `bashrc_bus-home/.bashrc` | Inline hook | Copy to `~/.bashrc` |
