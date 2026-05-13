@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.21 | 2026-05-13 15:18:08 -->
+<!-- TopoAssist v260513.22 | 2026-05-13 15:37:04 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.21</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.22</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -1606,42 +1606,28 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2 id="audit-engine">🛡️ Audit Engine</h2>
-    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which of the 38 checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. The icon changes color to show audit state at a glance: <b style="color:#94a3b8;">dimmed</b> when audit is disabled, <b style="color:#22c55e;">green</b> when enabled with no issues found, and <b style="color:#ef4444;">red</b> when enabled with issues present. A badge shows the error count when issues are found.</p>
-    <ul>
-      <li><b>Unsupported Interface</b> — <code>int_</code> value does not start with <code>Et</code> (Ethernet) or <code>Vx</code> (VTEP). All Arista physical ports use the <code>Et</code> prefix regardless of speed; <code>Vx1</code> is the only valid VTEP entry. Other types (<code>Po</code>, <code>Lo</code>, <code>Ma</code>, etc.) do not belong in <code>int_</code>.</li>
-      <li><b>Po Mismatch</b> — both sides of a cable have <code>po_</code> set but to different Port-Channel numbers. Both ports are flagged.</li>
-      <li><b>Po Asymmetry</b> — one side of a cable has <code>po_</code> set and the peer does not. Both ports are flagged.</li>
-      <li><b>VLAN Mismatch</b> — the <code>vlan_</code> values differ across a cable (Arista-only links).</li>
-      <li><b>Mode Incompatible</b> — the <code>sp_mode_</code> pair across a cable is not a supported combination.</li>
-      <li><b>Missing Po for Port-Channel mode</b> — interface mode is po-based but <code>po_</code> is blank.</li>
-      <li><b>Stale Po value on Ethernet mode</b> — interface mode is et-based but <code>po_</code> has a value.</li>
-      <li><b>Orphan Po (Arista only)</b> — an Arista device port is in Po mode with a <code>po_</code> value but no peer device appears on the same row. Indicates a single-device row design error — Po members must have a connected peer.</li>
-      <li><b>Duplicate Interface</b> — the same <code>int_</code> name appears more than once for the same device.</li>
-      <li><b>Speed Mismatch</b> — both sides of a cable must have the same <code>speed_</code> value.</li>
-      <li><b>VLAN Gateway Conflict</b> — the same VLAN ID is assigned different gateway IPs across devices.</li>
-      <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
-      <li><b>SVI VLAN Mismatch</b> — a VLAN ID in <code>svi_vlan_</code> is not present in <code>vlan_</code>. Config generation silently skips SVIs for VLANs not in the allowed trunk list — this check surfaces the mismatch so the VLAN can be added to <code>vlan_</code> or removed from <code>svi_vlan_</code>. Applies to <code>l2-*</code> modes only; <code>svi_vlan=all</code> is exempt (all trunk VLANs are valid by definition).</li>
-      <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Internal VLAN in topology</b> in the Audit Checks modal (single-click the Audit icon).</li>
-      <li><b>Per-VLAN &amp; Per-Sub-Interface VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
-        <ul style="margin-top:4px;">
-          <li><b>Error</b> — VRF count does not match VLAN count (e.g. 3 VLANs but 2 VRF entries).</li>
-          <li><b>Error</b> — VLAN range (<code>10-20</code>) combined with multiple VRF values — ranges expand to many VLANs making positional mapping ambiguous; use an explicit VLAN list instead.</li>
-          <li><b>Error</b> — Port mode is not sub-interface or trunk SVI; per-VLAN VRF has no effect on access or pure-L2 ports.</li>
-          <li><b>Warn</b> — Trunk port has multiple VRF values but no SVI VLANs configured (<code>svi_vlan_</code> is blank) — per-VLAN VRF on a trunk only applies to SVIs.</li>
-        </ul>
-      </li>
-    </ul>
-    <p style="font-size:13px;">Clicking a flagged port in the topology highlights it. Click the Audit icon again to toggle the mode off.</p>
+    <p><b>Single-click</b> the <b><span class="inline-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span> Audit</b> icon to open the <b>Audit Checks</b> settings modal — configure which checks are enabled. <b>Double-click</b> the same icon to toggle audit mode on or off. Icon colors: <b style="color:#94a3b8;">dimmed</b> = disabled, <b style="color:#22c55e;">green</b> = enabled with no issues, <b style="color:#ef4444;">red</b> = enabled with issues. A badge shows the error count. Click a flagged port in the topology to highlight it.</p>
+    <p style="font-size:13px;">The audit panel has two sections: <b>Live Issues</b> (top) — real-time checks from Device Bridge data (LLDP neighbors, interface state, L1 errors); and <b>Design Issues</b> (below) — topology and config inconsistencies derived from the sheet. Of the 38 total checks, 32 are configurable in the modal; 6 always run and cannot be toggled off: <b>Orphan Po</b>, <b>Stale VLAN</b>, <b>Stale SVI</b>, <b>Missing VLAN</b>, <b>Stale VRF</b>, and <b>Incomplete xcvr speed</b>.</p>
 
     <h3>Audit Check Settings</h3>
-    <p style="font-size:13px;">Click the <b>gear icon</b> next to the Audit badge in the toolbar to open the <b>Audit Checks</b> modal. Each check can be individually enabled or disabled. Settings are saved in browser localStorage and persist across sessions.</p>
+    <p style="font-size:13px;">Single-click the <b>Audit</b> icon to open the <b>Audit Checks</b> modal. Each configurable check can be individually enabled or disabled. Settings are saved in browser localStorage and persist across sessions.</p>
     <table>
       <tr><th>Category</th><th>Check</th><th>Description</th></tr>
+      <tr><td colspan="3" style="background:#eff6ff;color:#1d4ed8;font-weight:600;font-size:11px;padding:5px 8px;letter-spacing:0.03em;">🔌 Live Issues — Device Bridge checks (require active bridge connection)</td></tr>
+      <tr><td rowspan="3"><b>Bridge / LLDP</b></td><td>LLDP New neighbor</td><td>LLDP data reveals a neighbor that is not in the topology — a cable exists but has no matching entry in the sheet. Default on; use to flag extra cabling that needs a sheet row.</td></tr>
+      <tr><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
+      <tr><td>INT Up - no LLDP neighbor</td><td>No LLDP neighbor was seen on a port whose link is up — the topology expects a connected peer but none was discovered. Default on.</td></tr>
+      <tr><td rowspan="4"><b>Bridge / Int State</b></td><td>L1 errors (CRC / FCS)</td><td>Interface error counters (FCS, CRC, symbol, align errors) exceed the configured threshold. Default on — indicates physical layer issues. The threshold is configurable in the Audit Checks modal (default: 1 error).</td></tr>
+      <tr><td>No link (notconnect)</td><td>A cabled port shows <code>notconnect</code> in <code>show interfaces status</code> — the link is not up. Default <b>off</b>; down ports are common in lab setups with unplugged or powered-off devices.</td></tr>
+      <tr><td>Err-Dis (errdisabled)</td><td>A cabled port is in errdisabled state. Default <b>off</b>; errdisabled ports are common during initial bring-up.</td></tr>
+      <tr><td>Disabled (admin shut)</td><td>A cabled port is admin-disabled (<code>disabled</code> in <code>show interfaces status</code>). Default <b>off</b>; shut ports are intentional in many lab setups.</td></tr>
+      <tr><td><b>Bridge / Other</b></td><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation. Requires bridge data — silently skipped if no bridge data available.</td></tr>
+      <tr><td colspan="3" style="background:#f0fdf4;color:#15803d;font-weight:600;font-size:11px;padding:5px 8px;letter-spacing:0.03em;">🛡️ Design Issues — sheet and topology consistency checks</td></tr>
       <tr><td rowspan="5"><b>Port-Channel</b></td><td>PO ID mismatch</td><td>Both sides of a cable declare different Port-Channel numbers.</td></tr>
       <tr><td>PO asymmetry</td><td>Only one side of a cable has a <code>po_</code> value.</td></tr>
       <tr><td>Missing PO row</td><td>An interface is a Po member but no matching Port-Channel row exists.</td></tr>
       <tr><td>Stale PO row</td><td>A Port-Channel row exists but no member interfaces reference it.</td></tr>
-      <tr><td>Orphan Po (Arista only)</td><td>An Arista Po-mode port has no peer device on its row — single-device row design error.</td></tr>
+      <tr><td>Orphan Po (Arista only) <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td>An Arista Po-mode port has no peer device on its row — single-device row design error.</td></tr>
       <tr><td rowspan="3"><b>Interface</b></td><td>Unsupported interface type</td><td><code>int_</code> does not start with <code>Et</code> or <code>Vx</code>.</td></tr>
       <tr><td>Duplicate interface</td><td>The same interface name appears more than once on a device.</td></tr>
       <tr><td>L3 port in MLAG group</td><td>A routed (L3) port is assigned to an MLAG Port-Channel (not supported by EOS).</td></tr>
@@ -1650,33 +1636,25 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <tr><td>SVI VLAN not in trunk allowed-list</td><td>A VLAN in <code>svi_vlan_</code> is absent from <code>vlan_</code> — no SVI will be generated for it.</td></tr>
       <tr><td>VLAN referenced but not defined</td><td>A VLAN is used in the topology but not listed in the global VLAN definitions.</td></tr>
       <tr><td>Duplicate P2P VLAN</td><td>The same VLAN ID is used as a P2P VLAN on more than one link.</td></tr>
-      <tr><td>Stale VLAN (non-L2 mode)</td><td><code>vlan_</code> contains multiple values but <code>sp_mode_</code> is not an L2 or sub-interface mode — extra VLANs are silently ignored by config generation.</td></tr>
-      <tr><td>Stale SVI (non-L2 mode)</td><td><code>svi_vlan_</code> has a value but <code>sp_mode_</code> is not an L2 mode — SVIs cannot be generated without an L2 trunk context.</td></tr>
-      <tr><td>Missing VLAN (L3 mode)</td><td><code>sp_mode_</code> is <code>l3-et-int</code> or <code>l3-po-int</code> but <code>vlan_</code> is blank — required for IP subnet derivation on L3 int modes.</td></tr>
+      <tr><td>Stale VLAN (non-L2 mode) <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td><code>vlan_</code> contains multiple values but <code>sp_mode_</code> is not an L2 or sub-interface mode — extra VLANs are silently ignored by config generation.</td></tr>
+      <tr><td>Stale SVI (non-L2 mode) <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td><code>svi_vlan_</code> has a value but <code>sp_mode_</code> is not an L2 mode — SVIs cannot be generated without an L2 trunk context.</td></tr>
+      <tr><td>Missing VLAN (L3 mode) <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td><code>sp_mode_</code> is <code>l3-et-int</code> or <code>l3-po-int</code> but <code>vlan_</code> is blank — required for IP subnet derivation on L3 int modes.</td></tr>
       <tr><td rowspan="7"><b>IP / Gateway</b></td><td>Invalid SVI (VLAN not trunk-allowed)</td><td>An SVI is configured for a VLAN that is not in the port's trunk allowed list.</td></tr>
       <tr><td>SVI missing IP</td><td>An SVI interface has no IP address configured.</td></tr>
       <tr><td>L3 port missing IP</td><td>A routed port has no IP address in the <code>ip_</code> columns.</td></tr>
       <tr><td>IP type conflict</td><td>Conflicting IPv4/IPv6 IP type settings across a cable.</td></tr>
       <tr><td>Duplicate gateway IP</td><td>The same gateway IP is assigned to different VLANs across devices.</td></tr>
       <tr><td>EVPN per-vlan VTEP VLAN mismatch</td><td>In per-vlan mode, each VLAN gets a unique RT (<code>vlan:vlan</code>). Two VTEPs with no shared VLANs have disjoint RT sets and cannot exchange MAC-IP routes directly. Fix: switch to vlan-aware-bundle, or ensure VTEP VLAN sets overlap. Default ON.</td></tr>
-      <tr><td>Stale VRF (non-SVI mode)</td><td><code>vrf_</code> has a value but <code>sp_mode_</code> is not SVI-capable — the VRF assignment has no effect and config generation ignores it.</td></tr>
+      <tr><td>Stale VRF (non-SVI mode) <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td><code>vrf_</code> has a value but <code>sp_mode_</code> is not SVI-capable — the VRF assignment has no effect and config generation ignores it.</td></tr>
       <tr><td rowspan="3"><b>Mode / Speed</b></td><td>Mode incompatibility</td><td>The <code>sp_mode_</code> combination across a cable is not a valid access/trunk pairing.</td></tr>
       <tr><td>Speed mismatch</td><td>Both sides of a cable must have the same <code>speed_</code> value.</td></tr>
-      <tr><td>Incomplete xcvr speed</td><td><code>xcvr_speed_</code> has a value but <code>xcvr_type_</code> is blank — the transceiver type is needed for breakout and cabling detection.</td></tr>
+      <tr><td>Incomplete xcvr speed <span style="font-size:10px;color:#94a3b8;font-weight:400;">always active</span></td><td><code>xcvr_speed_</code> has a value but <code>xcvr_type_</code> is blank — the transceiver type is needed for breakout and cabling detection.</td></tr>
       <tr><td rowspan="2"><b>MLAG</b></td><td>MLAG peer-link not declared</td><td>Devices appear to be MLAG peers but no peer-link is declared in Device Manager.</td></tr>
       <tr><td>MLAG device not declared</td><td>An interface references an MLAG configuration but the device is not declared as MLAG in Device Manager.</td></tr>
       <tr><td rowspan="2"><b>Snake / IXIA</b></td><td>Snake loopback port not p2p</td><td>A snake loopback interface's <code>ip_type_</code> is not <code>p2p</code> — required for correct snake test IP assignment.</td></tr>
       <tr><td>IXIA EP port not p2p</td><td>An IXIA endpoint interface's <code>ip_type_</code> is not <code>p2p</code> — required for IXIA traffic IP assignment.</td></tr>
-      <tr><td rowspan="3"><b>Bridge / LLDP</b></td><td>LLDP New neighbor</td><td>LLDP data reveals a neighbor that is not in the topology — a cable exists but has no matching entry in the sheet. Default on; use to flag extra cabling that needs a sheet row.</td></tr>
-      <tr><td>LLDP neighbor mismatch</td><td>LLDP data shows a different neighbor or port than the topology expects.</td></tr>
-      <tr><td>INT Up - no LLDP neighbor</td><td>No LLDP neighbor was seen on a port whose link is up — the topology expects a connected peer but none was discovered. Default on.</td></tr>
-      <tr><td rowspan="4"><b>Bridge / Int State</b></td><td>L1 errors (CRC / FCS)</td><td>Interface error counters (FCS, CRC, symbol, align errors) exceed the configured threshold. Default on — indicates physical layer issues. The threshold is configurable in the Audit Checks modal (default: 1 error).</td></tr>
-      <tr><td>No link (notconnect)</td><td>A cabled port shows <code>notconnect</code> in <code>show interfaces status</code> — the link is not up. Default <b>off</b>; down ports are common in lab setups with unplugged or powered-off devices.</td></tr>
-      <tr><td>Err-Dis (errdisabled)</td><td>A cabled port is in errdisabled state. Default <b>off</b>; errdisabled ports are common during initial bring-up.</td></tr>
-      <tr><td>Disabled (admin shut)</td><td>A cabled port is admin-disabled (<code>disabled</code> in <code>show interfaces status</code>). Default <b>off</b>; shut ports are intentional in many lab setups.</td></tr>
-      <tr><td rowspan="1"><b>Bridge / Other</b></td><td>Internal VLAN in topology</td><td>A VLAN in the topology overlaps with an EOS-internal VLAN allocation.</td></tr>
     </table>
-    <p style="font-size:13px;">Each check row has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled and has issues, <b>gray</b> = disabled or audit has not been run yet. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle all checks at once.</p>
+    <p style="font-size:13px;">Each check has a status dot: <b>green</b> = enabled and clean, <b>red</b> = enabled with issues, <b>gray</b> = disabled or audit not yet run. Checks marked <span style="font-size:10px;color:#94a3b8;">always active</span> run regardless of the toggle. Use <b>Enable All</b> / <b>Disable All</b> to bulk-toggle the 32 configurable checks.</p>
 
     <!-- ================================================================ -->
     <h2 id="device-bridge">🔌 Device Bridge</h2>
