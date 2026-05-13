@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.18 | 2026-05-13 15:14:25 -->
+<!-- TopoAssist v260513.19 | 2026-05-13 15:17:11 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.18</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.19</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -1178,7 +1178,7 @@ clasp login --no-localhost</pre>
     <ul style="font-size:13px;">
       <li><b>Missing columns</b> — a column defined in the schema is absent from the sheet. The sheet is out of sync and config generation may silently skip fields. Fix by running <b>Save &amp; Sync</b>.</li>
       <li><b>Extra columns</b> — a column exists in the sheet that is not in the schema. These are orphaned columns — they will be removed on the next Save &amp; Sync (confirmation required).</li>
-      <li><b>Per-VLAN VRF issues</b> — when <code>vrf_</code> contains a comma-separated list, the count must match the number of VLAN <em>tokens</em> in <code>vlan_</code> exactly (a range like <code>20-30</code> counts as one token, not 11). Errors reported:
+      <li><b>Per-VLAN &amp; Per-Sub-Interface VRF issues</b> — when <code>vrf_</code> contains a comma-separated list, the count must match the number of VLAN <em>tokens</em> in <code>vlan_</code> exactly (a range like <code>20-30</code> counts as one token, not 11). Errors reported:
         <ul style="margin-top:4px;">
           <li>VRF token count ≠ VLAN token count (e.g. <code>vlan_: 10,20-30,40</code> has 3 tokens; <code>vrf_: RED,BLUE</code> has 2 — mismatch)</li>
           <li>Port mode is not sub-interface or trunk SVI — per-VLAN VRF has no effect on access or pure-L2 ports</li>
@@ -1571,14 +1571,14 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     </table>
 
     <!-- ================================================================ -->
-    <h3>9. Per-VLAN VRF</h3>
+    <h3>9. Per-VLAN &amp; Per-Sub-Interface VRF</h3>
     <p style="font-size:13px;">The <code>vrf_</code> column supports assigning a <b>different VRF to each VLAN</b> on a trunk or sub-interface port by supplying a comma-separated VRF list that maps positionally to the VLAN list in <code>vlan_</code>.</p>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">Single VRF (legacy behavior)</h4>
     <p style="font-size:13px;">A single value in <code>vrf_</code> applies the same VRF to all VLANs on the port — unchanged from before:</p>
     <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px;">vlan_ = 10,20,30 &nbsp;&nbsp; vrf_ = MGMT<br>→ all three VLANs placed in VRF MGMT</p>
 
-    <h4 style="font-size:12px; margin:10px 0 4px;">Per-VLAN VRF (comma list)</h4>
+    <h4 style="font-size:12px; margin:10px 0 4px;">Per-VLAN &amp; Per-Sub-Interface VRF (comma list)</h4>
     <p style="font-size:13px;">Provide one VRF name per VLAN, in the same order as <code>vlan_</code>:</p>
     <p style="font-size:13px; font-family:'JetBrains Mono',monospace; background:#f1f5f9; padding:8px; border-radius:4px;">vlan_ = 10,20,30 &nbsp;&nbsp; vrf_ = RED,BLUE,GREEN<br>→ VLAN 10 → VRF RED &nbsp;|&nbsp; VLAN 20 → VRF BLUE &nbsp;|&nbsp; VLAN 30 → VRF GREEN</p>
     <p style="font-size:13px;">Works on both:</p>
@@ -1601,7 +1601,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     </ul>
 
     <div class="info-box slate" style="font-size:12px;">
-      Per-VLAN VRF is most useful on uplink trunk ports where different customer VLANs need to be isolated into separate VRFs. For access ports or pure L2 trunks without SVIs, the <code>vrf_</code> column has no effect.
+      Per-VLAN &amp; Per-Sub-Interface VRF is most useful on uplink trunk ports where different customer VLANs need to be isolated into separate VRFs. For access ports or pure L2 trunks without SVIs, the <code>vrf_</code> column has no effect.
     </div>
 
     <!-- ================================================================ -->
@@ -1622,7 +1622,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>Native VLAN on non-trunk port</b> — <code>nv&lt;N&gt;</code> token in <code>vlan_</code> is only valid on <code>l2-*-trunk</code> modes. On access, L3, or sub-interface ports the token has no meaning and is silently ignored in config generation.</li>
       <li><b>SVI VLAN Mismatch</b> — a VLAN ID in <code>svi_vlan_</code> is not present in <code>vlan_</code>. Config generation silently skips SVIs for VLANs not in the allowed trunk list — this check surfaces the mismatch so the VLAN can be added to <code>vlan_</code> or removed from <code>svi_vlan_</code>. Applies to <code>l2-*</code> modes only; <code>svi_vlan=all</code> is exempt (all trunk VLANs are valid by definition).</li>
       <li><b>Internal VLAN Conflict</b> — a VLAN in the <code>vlan_</code> column (including the native VLAN) matches an EOS-internal VLAN auto-allocated by the device (from <code>show vlan internal</code>). Requires a Device Bridge check to run first — the check is silently skipped when no bridge data is available. Configuring a port on an internally-allocated VLAN will fail on EOS. Can be suppressed via <b>Internal VLAN in topology</b> in the Audit Checks modal (single-click the Audit icon).</li>
-      <li><b>Per-VLAN VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
+      <li><b>Per-VLAN &amp; Per-Sub-Interface VRF Issues</b> — flags mismatches when <code>vrf_</code> contains a comma-separated list. Conditions checked:
         <ul style="margin-top:4px;">
           <li><b>Error</b> — VRF count does not match VLAN count (e.g. 3 VLANs but 2 VRF entries).</li>
           <li><b>Error</b> — VLAN range (<code>10-20</code>) combined with multiple VRF values — ranges expand to many VLANs making positional mapping ambiguous; use an explicit VLAN list instead.</li>
