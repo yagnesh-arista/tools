@@ -1,10 +1,10 @@
-// TopoAssist v260513.57 | 2026-05-13 20:16:44
+// TopoAssist v260513.58 | 2026-05-13 20:40:10
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.57";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.58";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1652,6 +1652,31 @@ const FORMAT_CONFIG = {
   }
 };
 
+// Extends peerLinkPorts with Po-keyed entries so calculateConnectionBackgrounds
+// can detect peer links on rows where colorKey is built from the po_ column ("dev:Po4000").
+// globalLinkMap only has Et-keyed entries ("Leaf1:Et40"); this adds "Leaf1:Po4000" alongside.
+function _extendPeerLinkPortsWithPo(topo, headers, rows) {
+  if (!topo.peerLinkPorts || topo.peerLinkPorts.size === 0) return;
+  const etEntries = Array.from(topo.peerLinkPorts); // snapshot — avoid mutating while iterating
+  etEntries.forEach(key => {
+    const colonIdx = key.indexOf(':');
+    if (colonIdx < 0) return;
+    const dev = key.substring(0, colonIdx);
+    const etPort = key.substring(colonIdx + 1);
+    const intColIdx = headers.findIndex(h => h.toLowerCase() === ('int_' + dev).toLowerCase());
+    const poColIdx  = headers.findIndex(h => h.toLowerCase() === ('po_'  + dev).toLowerCase());
+    if (intColIdx < 0 || poColIdx < 0) return;
+    for (let r = 0; r < rows.length; r++) {
+      const intVal = canonicalizeInterface(String(rows[r][intColIdx] || '').trim());
+      if (intVal.toLowerCase() === etPort.toLowerCase()) {
+        const poNorm = normalizePo(String(rows[r][poColIdx] || '').trim());
+        if (poNorm) topo.peerLinkPorts.add(dev + ':' + poNorm); // e.g. "Leaf1:Po4000"
+        break;
+      }
+    }
+  });
+}
+
 // 2. MAIN FUNCTION
 function applyGlobalFormatting() {
   applyVisualFormatting();
@@ -1699,6 +1724,7 @@ function applyVisualFormatting(optionalSheet) {
           if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
         });
       });
+      _extendPeerLinkPortsWithPo(topo, headers, data);
       topo.mlagConfigPorts = new Set();
       Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
         if (!topo.poMap) return;
@@ -4415,6 +4441,7 @@ function getDeviceConfig(deviceName) {
           if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
         });
       });
+      _extendPeerLinkPortsWithPo(topo, headers, rows);
 
       // Rebuild mlagConfigPorts: for each explicit pair, find shared PO bundles
       // (both devices appear as keys in the same poMap entry — same PO toward a common upstream).
@@ -5869,6 +5896,18 @@ function detectMlagState(deviceName, deviceSheetIndex, rows, indices, targetColI
         if (key.startsWith(deviceName + ":")) {
           peerLinkPort = key.split(":")[1];
           break;
+        }
+      }
+      // If the peer link uses a LAG, convert "Et40" → "Port-Channel4000" for the
+      // mlag configuration peer-link command — EOS requires the Port-Channel form.
+      if (peerLinkPort && indices['po'] >= 0) {
+        for (const row of rows) {
+          const etVal = canonicalizeInterface(String(row[targetColIndex] || '').trim());
+          if (etVal.toLowerCase() === peerLinkPort.toLowerCase()) {
+            const poNorm = normalizePo(String(row[indices['po']] || '').trim());
+            if (poNorm) peerLinkPort = 'Port-Channel' + poNorm.replace(/^Po/i, '');
+            break;
+          }
         }
       }
 

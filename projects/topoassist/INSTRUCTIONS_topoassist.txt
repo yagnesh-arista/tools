@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (fix: ta-clean-* markers not expanded in strip copy buttons (copyLeft/copyRight/copyDevice) — all now call _expandTaCleanDisplay(); 8 tests added to test-js.js for _expandTaCleanDisplay. CLAUDE.md invariant tightened. FILES: Sidebar-js.html, test-js.js, CLAUDE.md)
+  Last updated: 2026-05-13 (fix: MLAG peer-link visual and config-gen bugs — (1) _extendPeerLinkPortsWithPo() helper added: after peerLinkPorts is built from Et-keyed globalLinkMap entries, it scans data rows and adds Po-keyed entries ("Leaf1:Po4000") so calculateConnectionBackgrounds can detect peer-link on rows where colorKey is Po-keyed; called in both applyVisualFormatting and getDeviceConfig after the explicit peer forEach; (2) detectMlagState: after extracting peerLinkPort from Et key, scans rows via indices['po'] to find the Port-Channel value and converts to "Port-Channel4000" form for mlag configuration peer-link command. FILES: Code.gs)
+  Previous: 2026-05-13 (fix: ta-clean-* markers not expanded in strip copy buttons (copyLeft/copyRight/copyDevice) — all now call _expandTaCleanDisplay(); 8 tests added to test-js.js for _expandTaCleanDisplay. CLAUDE.md invariant tightened. FILES: Sidebar-js.html, test-js.js, CLAUDE.md)
   Previous: 2026-05-13 (fix: onEdit DATA_VERSION bump moved BEFORE the auto-clean processing loop — was at end of try block so any exception/timeout silently prevented the bump, causing smart poll to never detect the change and auto-refresh to fail after paste. Bump now fires right after guard checks (wrong sheet / col A / header row) so it always runs for valid data-row edits regardless of what the processing loop does. FILES: Code.gs)
   Previous: 2026-05-13 (fix: ta-clean-* markers showing verbatim in port hover tooltip, loopback tooltip, and Vx1 tooltip — all three config render paths (showTooltip, showLoopbackTooltip, showVx1Tooltip) now call _expandTaCleanDisplay() before escapeHtml(). FILES: Sidebar-js.html)
   Previous: 2026-05-13 (ui: audit checkbox label "VLAN mismatch on PO link" → "VLAN mismatch between interface" — check runs on all link types, not just PO. FILES: Sidebar.html)
@@ -1798,20 +1799,28 @@ SECTION 8: TOPOLOGY ENGINE (calculateGlobalTopology)
 Server-side function in Code.gs. Reads the full sheet data and headers.
 Returns:
   mlagConfigPorts — Set<"DeviceName:PoX">  Port-Channels detected as MLAG config ports
-  peerLinkPorts   — Set<"DeviceName:PoX" or "DeviceName:EtX">  MLAG peer-link ports
+  peerLinkPorts   — Set<"DeviceName:EtX" | "DeviceName:PoX">  MLAG peer-link ports
+                    calculateGlobalTopology() returns an empty Set; populated by explicit
+                    DEVICE_MLAG_PEERS override in getDeviceConfig() / applyVisualFormatting():
+                    (1) Et-keyed entries added from globalLinkMap (direct links between peers);
+                    (2) _extendPeerLinkPortsWithPo() then adds Po-keyed entries by scanning data
+                        rows for the po_ value on the same row as each Et entry.
+                    calculateConnectionBackgrounds() uses Po-keyed colorKeys when po_ is filled,
+                    so both Et and Po keys are required for correct peer-link visual detection.
   mlagPeerMap     — Map<deviceName, partnerName>  MLAG pair lookup (both directions)
   globalLinkMap   — Map<"DeviceName:Port", {dev, port}>  full topology link index
   debugLogs       — Array<string>  diagnostic messages (not returned to client)
 
-MLAG DETECTION (STRICT COUNT = 4):
-  - A Port-Channel number is considered MLAG if it appears across >= 4 rows
-    in the entire sheet (counting both int_ and po_ columns)
-  - This is intentional: no non-EOS device will be the MLAG client
-  - Do NOT change this threshold
+MLAG DETECTION (EXPLICIT ONLY — heuristic removed 2026-04-16):
+  - calculateGlobalTopology() returns empty Sets for mlagConfigPorts, peerLinkPorts, mlagPeerMap
+  - All three are populated exclusively by explicit DEVICE_MLAG_PEERS override code in
+    getDeviceConfig() and applyVisualFormatting() — never from PO-count heuristics
+  - poMap is still built by calculateGlobalTopology() (identifies shared PO bundles for mlagConfigPorts)
 
 PEER-LINK DETECTION:
-  - A physical link between two MLAG peers is tagged as a peer-link
-  - Identified from the topology engine, not from sheet data alone
+  - Direct link between two declared MLAG peers in globalLinkMap → Et-keyed peerLinkPorts entry
+  - _extendPeerLinkPortsWithPo() adds matching Po-keyed entry (required for sheet visual styling)
+  - detectMlagState() converts the Et port to Port-Channel form for mlag configuration peer-link
 
 KEY HELPER: hasKey(setObj, key)
   - Case-insensitive Set/Map lookup
