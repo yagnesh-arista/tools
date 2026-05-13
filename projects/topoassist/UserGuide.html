@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.25 | 2026-05-13 15:47:58 -->
+<!-- TopoAssist v260513.26 | 2026-05-13 15:49:50 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.25</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.26</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -543,6 +543,7 @@
       <a href="#audit-engine">🛡️ Audit Engine</a>
       <a href="#device-bridge">🔌 Device Bridge</a>
       <a href="#cabling-export">📐 Cabling Export</a>
+      <a href="#vlan-summary">🔢 VLAN Summary</a>
       <a href="#tips">💡 Tips &amp; Notes</a>
       <a href="#appendix">📎 Appendix</a>
     </div>
@@ -2009,6 +2010,37 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <div class="info-box info-box--dim">
       Model and Rack fields from Device Manager appear in the Topology List report — <code>Model A</code>, <code>Rack A</code>, <code>Model B</code>, <code>Rack B</code> columns adjacent to device names. The Device List report adds a per-device DUT summary block at the top listing <code>device &gt;&gt; rack</code> for all devices with a rack set.
+    </div>
+
+    <!-- ================================================================ -->
+    <h2 id="vlan-summary">🔢 VLAN Summary</h2>
+    <p style="font-size:13px;">Open via the VLAN icon in the secondary toolbar row. Shows all VLANs present in the topology in a sortable, filterable table. Click any row to run a VLAN trace and close the modal.</p>
+
+    <h3>Table Columns</h3>
+    <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:12px;">
+      <thead><tr style="background:#f1f5f9;"><th style="padding:5px 10px;border:1px solid #e2e8f0;text-align:left;">Column</th><th style="padding:5px 10px;border:1px solid #e2e8f0;text-align:left;">Description</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;white-space:nowrap;"><b>VLAN</b></td><td style="padding:5px 10px;border:1px solid #e2e8f0;">VLAN ID. A red <code>[CONFLICT]</code> badge appears when the same VLAN is both user-configured in the topology and EOS-internal on the same device — requires investigation before pushing config.</td></tr>
+        <tr style="background:#f8fafc;"><td style="padding:5px 10px;border:1px solid #e2e8f0;white-space:nowrap;"><b>Type</b></td><td style="padding:5px 10px;border:1px solid #e2e8f0;">
+          <span style="color:#60a5fa;font-weight:700;">L2</span> — VLAN carried on an L2 port (trunk or access) &nbsp;·&nbsp;
+          <span style="color:#f59e0b;font-weight:700;">L3</span> — VLAN on an L3 port, routed interface, or port with an IP address &nbsp;·&nbsp;
+          <span style="color:#0d9488;font-weight:700;">VTEP</span> — VLAN mapped in the Vx1 VNI table (VXLAN tunnel endpoint) &nbsp;·&nbsp;
+          <span style="color:#a855f7;font-weight:700;">INT</span> — EOS-internal VLAN (auto-allocated by EOS; visible only after a Device Bridge check running <code>show vlan internal</code>)
+        </td></tr>
+        <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;white-space:nowrap;"><b>VRF</b></td><td style="padding:5px 10px;border:1px solid #e2e8f0;">VRF associated with this VLAN (from the <code>vrf_</code> column). Dash if no VRF assigned.</td></tr>
+        <tr style="background:#f8fafc;"><td style="padding:5px 10px;border:1px solid #e2e8f0;white-space:nowrap;"><b>Ports / Devices</b></td><td style="padding:5px 10px;border:1px solid #e2e8f0;">All topology ports carrying this VLAN (<code>Device:Port</code>). VTEP devices appear as <span style="color:#0d9488;font-family:'JetBrains Mono',monospace;font-size:11px;">[Vx1: leaf1, leaf2]</span>. EOS-internal devices appear as <span style="color:#a855f7;font-family:'JetBrains Mono',monospace;font-size:11px;">[EOS Internal: leaf1]</span>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Sort &amp; Filter</h3>
+    <ul style="font-size:13px;">
+      <li><b>Filter box</b> — searches VLAN ID, VRF name, device name, and port name simultaneously. Narrows the list as you type.</li>
+      <li><b>Sort buttons</b>: <b>ID</b> (numeric, default), <b>Type</b> (alphabetic), <b>VRF</b> (alphabetic), <b>Ports</b> (descending by port count). Active sort is highlighted blue.</li>
+      <li><b>Conflicts button</b> — toggles red to show only VLANs with a user/EOS-internal conflict on the same device. Combine with sort and filter to isolate problem VLANs.</li>
+    </ul>
+
+    <div class="info-box info-box--dim">
+      INT-type VLANs are only visible after a Device Bridge check — they require live <code>show vlan internal</code> data from EOS. They are not persisted between sessions.
     </div>
 
     <!-- ================================================================ -->

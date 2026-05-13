@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.25 | 2026-05-13 15:47:58 -->
+<!-- TopoAssist v260513.26 | 2026-05-13 15:50:44 -->
 <!DOCTYPE html>
 <html>
 
@@ -1163,7 +1163,7 @@
       <div id="pushConfirmTitle" class="modal-header-title">Config Push</div>
       <button id="btnPushConfirmClose" class="btn-modal-close" onclick="cancelPushConfig()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div id="pushConfirmBody" style="padding:14px 16px;overflow-y:auto;max-height:360px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div>
+    <div id="pushConfirmBody" style="padding:14px 16px;overflow-y:auto;max-height:360px;flex:1;min-height:0;font-family:'JetBrains Mono',monospace;font-size:12px;"></div>
     <div class="modal-actions right-align">
       <button id="btnCancelPushFtr" class="btn-mono" onclick="cancelPushConfig()">Cancel</button>
       <button class="btn-primary-mono" id="btnCommitPush" onclick="commitPushConfig()">Commit</button>
@@ -1245,7 +1245,7 @@
       <div class="modal-header-title">Shortcuts Help</div>
       <button class="btn-modal-close" onclick="closeHelpModal()" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px);">
+    <div style="background: var(--bg-modal, #ffffff); overflow-y: auto; max-height: calc(85vh - 42px); flex: 1; min-height: 0;">
 
       <!-- Always-active notice — shown at top -->
       <div class="help-notice">Backtick ` and Esc are always active — all other shortcuts require focus outside an input.</div>
@@ -1642,7 +1642,7 @@
         <button id="vlanConflictsOnlyBtn" onclick="toggleVlanConflictsOnly()" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-muted);cursor:pointer;user-select:none;-webkit-user-select:none;">Conflicts</button>
       </div>
     </div>
-    <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;background:var(--bg-modal, #ffffff);font-family:'JetBrains Mono',monospace;font-size:12px;">
+    <div id="vlanSummaryBody" style="padding:0;overflow-y:auto;max-height:52vh;flex:1;min-height:0;background:var(--bg-modal, #ffffff);font-family:'JetBrains Mono',monospace;font-size:12px;">
     </div>
     <div class="modal-actions right-align">
       <div id="vlanSummaryCount" style="color:var(--text-muted);font-size:11px;margin-right:auto;padding-left:4px;font-family:'JetBrains Mono',monospace;"></div>
