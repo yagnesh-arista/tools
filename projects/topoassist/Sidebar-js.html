@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.29 | 2026-05-13 16:11:55 -->
+<!-- TopoAssist v260513.33 | 2026-05-13 16:30:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.29";  // keep in sync with Code.gs
+const APP_VERSION = "260513.33";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6295,9 +6295,10 @@ function setActiveModalChip(modalId) {
 }
 
 
+const _FULLSCREEN_CONTAINER_IDS = new Set(['sheetColumnManagerContainer', 'deviceManagerContainer', 'sheetVisContainer']);
 function _autoMinimizeOpenModal() {
   const open = [...document.querySelectorAll('.modal-std')]
-    .find(m => getComputedStyle(m).display !== 'none' && !m.classList.contains('modal-minimized'));
+    .find(m => !_FULLSCREEN_CONTAINER_IDS.has(m.id) && getComputedStyle(m).display !== 'none' && !m.classList.contains('modal-minimized'));
   if (open) toggleModalMinimize(open.id);
 }
 function _refreshDock() {
@@ -7702,7 +7703,6 @@ function showAuditResults(data) {
   const conflicts = data.conflicts || [];
   const debugLogs = data.debugLog || []; // Get logs from server
   const vrfIssues = data.vrfIssues || [];
-  const internalConflicts = _scanInternalVlanConflicts();
 
   let html = "";
 
@@ -7720,20 +7720,6 @@ ${vrfErrors.length > 0 ? 'ERR' : 'WARN'} Per-VLAN VRF Issues (${vrfIssues.length
 <div style="padding:10px;font-size:11px;line-height:1.6;max-height:180px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
 ${vrfIssues.map(i => `<div style="margin-bottom:5px;color:${i.sev === 'error' ? '#b91c1c' : '#92400e'};">
 <b>${i.sev === 'error' ? 'ERROR' : 'WARN'}</b> — ${i.msg}</div>`).join('')}
-</div></div>`;
-  }
-
-  // --- 0b. INTERNAL VLAN CONFLICTS (client-side, requires bridge data) ---
-  if (internalConflicts.length > 0) {
-    html += `<div style="margin-bottom:15px;border:1px solid #f97316;background:#fff7ed;border-radius:6px;overflow:hidden;">
-<div style="background:#ffedd5;padding:8px 12px;font-weight:bold;color:#c2410c;font-size:12px;border-bottom:1px solid #fed7aa;font-family:'JetBrains Mono',monospace;">
-WARN Internal VLAN Conflicts (${internalConflicts.length} port${internalConflicts.length > 1 ? 's' : ''})
-</div>
-<div style="padding:10px;font-size:11px;color:#9a3412;line-height:1.6;max-height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;">
-${internalConflicts.map(c => `<div style="margin-bottom:6px;border-bottom:1px solid #fed7aa;padding-bottom:4px;">
-<b>${c.device}</b> / ${c.port}<br>
-<span style="color:#ea580c">VLAN${c.vlans.length > 1 ? 's' : ''} ${c.vlans.join(', ')} auto-allocated by EOS as internal VLANs</span>
-</div>`).join('')}
 </div></div>`;
   }
 
@@ -7773,7 +7759,7 @@ ${conflicts.map(c => `
   }
 
   // --- 3. SUCCESS CASE ---
-  if (missing.length === 0 && extra.length === 0 && conflicts.length === 0 && internalConflicts.length === 0) {
+  if (missing.length === 0 && extra.length === 0 && conflicts.length === 0) {
     html += `
 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 20px; text-align:center; background:var(--success-bg); border:1px solid var(--success); border-radius:8px; min-height:100px;">
 <div style="margin-bottom:10px;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -7800,7 +7786,7 @@ ${debugLogs.map(l => `<div>> ${l}</div>`).join("")}
   setActiveModalChip('auditModal');
   modal.style.display = "flex";
 
-  const totalIssues = conflicts.length + missing.length + extra.length + internalConflicts.length;
+  const totalIssues = conflicts.length + missing.length + extra.length;
   const badge = document.getElementById("auditBadge");
   if (badge) {
     if (totalIssues > 0) {
