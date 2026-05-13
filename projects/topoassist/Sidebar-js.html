@@ -10692,7 +10692,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260513.4"
+VERSION           = "260513.6"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -10918,7 +10918,7 @@ def _parse_interface_errors(raw):
     return out
 
 
-def _build_devstatus_ssh(ver, ifs, ivlans, errs=None):
+def _build_devstatus_ssh(ver, ifs, ivlans, errs=None, hn=None):
     """Build devstatus response dict from raw _run_cmds results (any may be None on failure).
 
     Each argument corresponds to one SSH/eAPI command result:
@@ -10926,19 +10926,21 @@ def _build_devstatus_ssh(ver, ifs, ivlans, errs=None):
       ifs    — 'show interfaces status'          (None if command failed)
       ivlans — 'show vlan internal usage'        (None if command failed)
       errs   — 'show interfaces counters errors' (None if command failed)
+      hn     — 'show hostname'                   (None if command failed)
 
     A failed command contributes empty data but never causes ok:False — the
     other commands' data is still returned intact.
     """
     ver = ver or {}
     ifs = ifs or {}
+    hn  = hn  or {}
     raw_ver = ver.get("version", "")
     if raw_ver.startswith("Software image version: "):
         raw_ver = raw_ver[len("Software image version: "):]
     raw_ver = raw_ver.split(" (")[0].strip()
     return {
         "ok":             True,
-        "hostname":       ver.get("hostname", ""),
+        "hostname":       hn.get("hostname", ""),
         "version":        raw_ver,
         "platform":       ver.get("modelName", "").lstrip("DCS-"),
         "bridgeMac":      ver.get("systemMacAddress", ""),
@@ -12363,14 +12365,15 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _check_devstatus(self, ip):
         if _cfg['transport'] in ("ssh", "eapi"):
-            (ver, ifs, ivlans, errs), cmd_errors = self._run_cmds(
+            (ver, ifs, ivlans, errs, hn_data), cmd_errors = self._run_cmds(
                 ip,
                 "show version",
                 "show interfaces status",
                 "show vlan internal usage",
                 "show interfaces counters errors",
+                "show hostname",
             )
-            result = _build_devstatus_ssh(ver, ifs, ivlans, errs)
+            result = _build_devstatus_ssh(ver, ifs, ivlans, errs, hn_data)
             if cmd_errors:
                 def _fmt(e):
                     if isinstance(e, subprocess.CalledProcessError):

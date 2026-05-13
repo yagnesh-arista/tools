@@ -1,4 +1,4 @@
-# topoassist v260512.5 | 2026-05-12 11:48:30
+# topoassist v260513.49 | 2026-05-13 18:58:43
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -510,11 +510,11 @@ class TestParseInternalVlans:
 # ── _build_devstatus_ssh ───────────────────────────────────────────────────────
 
 _VER = {
-    "hostname": "spine1",
     "version": "4.32.1F",
     "modelName": "DCS-7050TX3-48C8",
     "systemMacAddress": "aa:bb:cc:dd:ee:ff",
 }
+_HN = {"hostname": "spine1"}
 _IFS = {
     "interfaceStatuses": {
         "Ethernet1": {"linkStatus": "connected"},
@@ -525,8 +525,8 @@ _IVLANS = {"internalVlans": {"1025": "Ethernet1", "1026": "Ethernet2"}}
 
 
 class TestBuildDevstatusSsh:
-    def _run(self, ver=_VER, ifs=_IFS, ivlans=_IVLANS):
-        return db._build_devstatus_ssh(ver, ifs, ivlans)
+    def _run(self, ver=_VER, ifs=_IFS, ivlans=_IVLANS, hn=_HN):
+        return db._build_devstatus_ssh(ver, ifs, ivlans, hn=hn)
 
     def test_happy_path(self):
         r = self._run()
@@ -552,15 +552,25 @@ class TestBuildDevstatusSsh:
     # ── partial failure: show version fails ────────────────────────────────────
 
     def test_ver_none_still_returns_ok(self):
-        # show version thread failed — version/platform/mac blank, rest intact
+        # show version thread failed — version/platform/mac blank; hostname unaffected (from hn)
         r = self._run(ver=None)
         assert r["ok"] is True
         assert r["version"] == ""
         assert r["platform"] == ""
-        assert r["hostname"] == ""
+        assert r["hostname"] == "spine1"   # hn still passed; hostname survives ver=None
         assert r["bridgeMac"] == ""
         assert r["interfaces"]["Ethernet1"]["linkStatus"] == "connected"
         assert r["internalVlans"] == [1025, 1026]
+
+    # ── partial failure: show hostname fails ──────────────────────────────────
+
+    def test_hn_none_still_returns_ok(self):
+        # show hostname thread failed — hostname blank, rest intact
+        r = self._run(hn=None)
+        assert r["ok"] is True
+        assert r["hostname"] == ""
+        assert r["version"] == "4.32.1F"
+        assert r["interfaces"]["Ethernet1"]["linkStatus"] == "connected"
 
     # ── partial failure: show interfaces status fails ──────────────────────────
 
@@ -582,12 +592,13 @@ class TestBuildDevstatusSsh:
         assert r["interfaces"]["Ethernet1"]["linkStatus"] == "connected"
         assert r["internalVlans"] == []
 
-    # ── all three fail ─────────────────────────────────────────────────────────
+    # ── all fail ───────────────────────────────────────────────────────────────
 
     def test_all_none_returns_ok_with_empty_data(self):
-        # All three SSH threads failed — ok:True with all-empty fields
-        r = self._run(ver=None, ifs=None, ivlans=None)
+        # All SSH threads failed — ok:True with all-empty fields
+        r = self._run(ver=None, ifs=None, ivlans=None, hn=None)
         assert r["ok"] is True
+        assert r["hostname"] == ""
         assert r["version"] == ""
         assert r["interfaces"] == {}
         assert r["internalVlans"] == []
