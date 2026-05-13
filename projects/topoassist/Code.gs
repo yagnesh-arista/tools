@@ -1,10 +1,10 @@
-// TopoAssist v260513.48 | 2026-05-13 18:50:52
+// TopoAssist v260513.51 | 2026-05-13 19:08:57
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.48";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.51";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1918,7 +1918,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (ipIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(ipIdx)}3<>""` +
-          `,REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+          `,REGEXMATCH($${mC}3,"^l2"),OR($${getColLet(sviIdx)}3="",$${getColLet(sviIdx)}3="no",$${getColLet(sviIdx)}3="-"))`)
         .setBackground("#fca5a5").setFontColor("#991b1b")
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
@@ -1938,7 +1938,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     if (vrfIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=AND($${iC}3<>"",$${getColLet(vrfIdx)}3<>""` +
-          `,REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+          `,REGEXMATCH($${mC}3,"^l2"),OR($${getColLet(sviIdx)}3="",$${getColLet(sviIdx)}3="no",$${getColLet(sviIdx)}3="-"))`)
         .setBackground("#fca5a5").setFontColor("#991b1b")
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
@@ -2018,7 +2018,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     // N/A-3 — ip_type_ gray for L2 without SVI
     if (ipIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),OR($${getColLet(sviIdx)}3="",$${getColLet(sviIdx)}3="no",$${getColLet(sviIdx)}3="-"))`)
         .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, ipIdx, lastRow - 2, 1)]).build());
     }
@@ -2053,7 +2053,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     // N/A-6 — vrf_ gray for L2 without SVI
     if (vrfIdx > 0 && sviIdx > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),$${getColLet(sviIdx)}3="")`)
+        .whenFormulaSatisfied(`=AND(REGEXMATCH($${mC}3,"^l2"),OR($${getColLet(sviIdx)}3="",$${getColLet(sviIdx)}3="no",$${getColLet(sviIdx)}3="-"))`)
         .setBackground("#c8d5e3").setFontColor("#94a3b8")
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
