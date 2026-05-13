@@ -110,6 +110,7 @@ case "$f" in
     fi
 
     # Sync APP_VERSION constant in Code.gs + Sidebar-js.html
+    # Also sync hardcoded version in UserGuide.html h1 (static file — no GAS scriptlet eval)
     python3 - "$TOPODIR" "$VERSION" <<'PYEOF'
 import sys, re
 topodir, ver = sys.argv[1], sys.argv[2]
@@ -121,6 +122,14 @@ for fname in ['Code.gs', 'Sidebar-js.html']:
         if new != content:
             with open(path, 'w') as fh: fh.write(new)
     except: pass
+# Sync plain-text version in UserGuide.html h1 (replaces old GAS scriptlet <?= APP_VERSION ?>)
+try:
+    path = f'{topodir}/UserGuide.html'
+    with open(path) as fh: content = fh.read()
+    new = re.sub(r'Config Manager v\d{6}\.\d+', f'Config Manager v{ver}', content)
+    if new != content:
+        with open(path, 'w') as fh: fh.write(new)
+except: pass
 PYEOF
 
     # Re-stamp all GAS files so every file ships the same version
