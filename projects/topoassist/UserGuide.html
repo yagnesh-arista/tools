@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.15 | 2026-05-13 14:20:35 -->
+<!-- TopoAssist v260513.16 | 2026-05-13 14:29:29 -->
 <!DOCTYPE html>
 <html>
 
@@ -513,7 +513,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.15</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.16</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -1595,7 +1595,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2 id="device-bridge">🔌 Device Bridge</h2>
-    <p style="font-size:13px;">The Device Bridge is a lightweight local Python server (<code>device_bridge.py</code>) that gives TopoAssist live read access to lab devices via SSH, eAPI, REST, or gNMI — without any cloud dependency. Its primary purpose is to <b>reduce lab bring-up time</b> by surfacing cabling errors, device identity issues, and interface state directly in the topology view.</p>
+    <p style="font-size:13px;">The Device Bridge is a lightweight local Python server (<code>device_bridge.py</code>) that gives TopoAssist live read access to lab devices via SSH or eAPI — without any cloud dependency. Its primary purpose is to <b>reduce lab bring-up time</b> by surfacing cabling errors, device identity issues, and interface state directly in the topology view.</p>
 
     <h3>Setup</h3>
     <div class="step-box">
@@ -1734,7 +1734,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       </tr>
     </table>
     <div class="info-box info-box--dim" style="margin-top:8px;">
-      Interface state data requires a bridge check with <code>METHOD = "ssh"</code> or <code>"eapi"</code>. <code>rest</code> and <code>gnmi</code> transports do not expose interface operational state via the bridge.
+      Interface state data requires a bridge check — run it from the Device Bridge modal after connecting.
     </div>
 
     <h3>Internal VLANs</h3>
@@ -1744,7 +1744,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <li><b>VLAN trace</b> — enter a VLAN in the trace box (e.g. <code>v1025</code>). If the VLAN is EOS-internal on any device, the VLAN legend shows an annotation: <i>"VLAN 1025 — EOS internal on: leaf1, leaf2"</i>. The annotation appears even when no port carries that VLAN explicitly in the topology sheet.</li>
     </ul>
     <div class="info-box" style="background:#f0fdf4; border-color:#16a34a;">
-      Internal VLAN data is only available after a bridge check and is not persisted between sessions — re-run the check to refresh. <code>METHOD = "rest"</code> and <code>"gnmi"</code> do not support <code>show vlan internal</code>; those paths return no internal VLAN data.
+      Internal VLAN data is only available after a bridge check and is not persisted between sessions — re-run the check to refresh.
     </div>
 
     <h3>Bridge / LLDP Audit Checks</h3>
@@ -1787,7 +1787,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
     </ol>
 
     <div class="info-box" style="border-left-color:#f59e0b;background:#fffbeb;margin-bottom:10px;">
-      <b>Note:</b> Config push is supported for <code>ssh</code> and <code>eapi</code> transports only. The <code>rest</code> and <code>gnmi</code> transports are read-only.
+      <b>Note:</b> Config push requires the bridge to be running with <code>METHOD = "eapi"</code> or <code>"ssh"</code>.
     </div>
 
     <h3>What Gets Pushed</h3>
