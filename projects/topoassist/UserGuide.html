@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.12 | 2026-05-13 11:37:05 -->
+<!-- TopoAssist v260513.14 | 2026-05-13 14:15:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -513,7 +513,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.12</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.14</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -646,8 +646,7 @@ clasp login --no-localhost</pre>
 
     <div class="step-box">
       <span class="step-num">Step 2 — Requirements</span>
-      <p>Python 3.8+ is required. The bridge uses only standard library modules for SSH/eAPI/REST modes — no pip installs needed. For gNMI only:</p>
-      <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">pip install pygnmi</pre>
+      <p>Python 3.8+ is required. No pip installs needed — the bridge uses only standard library modules.</p>
     </div>
 
     <div class="step-box">
@@ -1620,7 +1619,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <code>ssh</code> — CLI over SSH; requires OpenSSH + <code>sshpass</code> on the bridge machine. No pip deps.<br>
       <code>eapi</code> — Arista eAPI JSON-RPC over HTTPS (port 443); same output as SSH; single request per device. No pip deps.<br>
       <code>rest</code> — RESTCONF over HTTPS; OpenConfig YANG format. No pip deps. Requires EOS 4.22+.<br>
-      <code>gnmi</code> — gRPC/gNMI; OpenConfig YANG format. Requires <code>pip install pygnmi</code>. Port 6030. EOS 4.22+.
+      <code>gnmi</code> — gRPC/gNMI; OpenConfig YANG format. Requires <code>pygnmi</code> package. Port 6030. EOS 4.22+.
     </div>
 
     <h3>Running a Check</h3>
