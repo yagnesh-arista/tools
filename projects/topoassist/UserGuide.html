@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.26 | 2026-05-13 15:49:50 -->
+<!-- TopoAssist v260513.27 | 2026-05-13 15:53:52 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.26</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.27</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -1446,7 +1446,12 @@ clasp login --no-localhost</pre>
           <li><b>VXLAN</b> — IPv4 VTEP · IPv6 VTEP</li>
           <li><b>EVPN</b> — IPv4 · IPv6 address families, plus two sub-sections:
             <ul>
-              <li><b>SERVICE</b> — <b>Per-VLAN</b> (separate EVPN instance per VLAN, RT = VLAN:VLAN) or <b>Bundle</b> (single <code>EVPN_VLAN_AWARE_BUNDLE</code>, RT = ASN_BASE:1 — must be identical on all VTEPs)</li>
+              <li><b>SERVICE</b> — <b>Per-VLAN</b> (default — separate EVPN instance per VLAN, RT = VLAN:VLAN) or <b>Bundle</b> (vlan-aware-bundle — fewer BGP routes; two sub-modes):
+                <ul>
+                  <li><b>No bundle ranges defined</b> — single <code>EVPN_VLAN_AWARE_BUNDLE</code> with all Vx1 VLANs, RT = ASN_BASE:1. All VTEPs must share this RT — requires identical or overlapping VLAN sets.</li>
+                  <li><b>Named bundles (+ Add)</b> — each range row (e.g. <code>1-1000</code>) defines <code>EVPN_BUNDLE_N</code> with RT = ASN_BASE:N; each device's Vx1 VLANs are intersected with the range so only the relevant subset is advertised. Use when VTEPs have non-overlapping VLAN sets — each VTEP pair exchanges only the bundle RTs covering their shared VLANs.</li>
+                </ul>
+              </li>
               <li><b>VGW</b> — gateway mechanism: <b>Anycast GW</b> (emits <code>ip address virtual</code>, same IP on all VTEPs) or <b>VARP</b> (unique physical <code>ip address</code> per device + shared <code>ip virtual-router address</code>). When VARP is selected, a <b>Virtual Router MAC</b> input appears — this MAC must be identical on all switches in the domain.</li>
             </ul>
           </li>
