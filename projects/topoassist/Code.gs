@@ -1,10 +1,10 @@
-// TopoAssist v260513.36 | 2026-05-13 17:02:30
+// TopoAssist v260513.37 | 2026-05-13 17:22:17
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.36";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.37";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1952,6 +1952,19 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, xcvrSpeedIdx, lastRow - 2, 1)]).build());
     }
 
+    // A-Vx — physical/mode fields filled on Vx1 rows (virtual VTEP port; no physical transceiver or mode)
+    // Paired with N/A-5 and N/A-Vx gray rules — red fires when user fills a field that is N/A for Vx.
+    const vxRedBase = `=AND(REGEXMATCH($${iC}3,"^Vx"),`;
+    [[etSpeedIdx],[xcvrSpeedIdx],[xcvrTypeIdx],[encodingIdx],[modeIdx],[poIdx],[ipIdx]]
+      .forEach(([idx]) => {
+        if (idx > 0) {
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(vxRedBase + `$${getColLet(idx)}3<>"")`)
+            .setBackground("#fca5a5").setFontColor("#991b1b")
+            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+        }
+      });
+
     // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
 
     // A7 — sp_mode_ empty but int_ is filled (mode is required; Vx1 rows have no mode — excluded)
@@ -2048,6 +2061,9 @@ function buildConditionalRules(sheet, headers, lastRow) {
     }
 
     // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
+
+    // W1 — REMOVED: flagged amber when et_speed_ === xcvr_speed_ (intended as breakout mismatch),
+    //              but et_speed_ = xcvr_speed_ is correct for native (non-breakout) ports — too noisy.
 
     // W2 — xcvr_speed_ pale-orange when empty + xcvr_type implies different speed (fill for breakout)
     if (etSpeedIdx > 0 && xcvrSpeedIdx > 0 && xcvrTypeIdx > 0) {
