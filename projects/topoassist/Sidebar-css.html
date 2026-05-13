@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.45 | 2026-05-13 18:32:27 -->
+<!-- TopoAssist v260513.46 | 2026-05-13 18:34:21 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -5947,10 +5947,11 @@
 
 
   /* Bridge toolbar icon states (SVG uses stroke=currentColor) */
-  #btnBridgeToolbar.bridge-down         { color: #ef4444; }  /* red    — enabled, bridge down        */
-  #btnBridgeToolbar.bridge-up           { color: #22c55e; }  /* green  — enabled, bridge up          */
-  #btnBridgeToolbar.bridge-disabled     { opacity: 0.45; }   /* dimmed — integration disabled        */
-  #btnBridgeToolbar.bridge-auth-expired { color: #f97316; }  /* orange — bridge up, SSH auth expired */
+  #btnBridgeToolbar.bridge-down         { color: #ef4444; }  /* red         — enabled, bridge process unreachable    */
+  #btnBridgeToolbar.bridge-up           { color: #22c55e; }  /* green       — enabled, bridge up, all devices OK    */
+  #btnBridgeToolbar.bridge-partial      { color: #d97706; }  /* dark yellow — bridge up, ≥1 device unreachable      */
+  #btnBridgeToolbar.bridge-disabled     { opacity: 0.45; }   /* dimmed      — integration disabled                  */
+  #btnBridgeToolbar.bridge-auth-expired { color: #f97316; }  /* orange      — bridge up, SSH auth session expired   */
 
   /* Audit toolbar icon states (SVG uses stroke=currentColor) */
   #validateBtn.audit-issues   { color: #ef4444; }  /* red   — enabled, issues found */
