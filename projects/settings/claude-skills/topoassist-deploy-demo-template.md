@@ -3,7 +3,7 @@ Push the current TopoAssist code to the template/demo Google Sheet.
 Steps:
 
 1. Verify clasp auth is valid:
-   `python3 -c "import json; d=json.load(open('/root/.clasprc.json' if __import__('os').path.exists('/root/.clasprc.json') else '/home/' + __import__('os').environ.get('USER','') + '/.clasprc.json')); t=d.get('tokens',{}).get('default',{}); print('refresh_token present:', bool(t.get('refresh_token')))" 2>/dev/null || echo "no .clasprc.json or parse error"`
+   `python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.clasprc.json'))); print('refresh_token present:', bool(d.get('tokens',{}).get('default',{}).get('refresh_token')))" 2>/dev/null || echo "no .clasprc.json or parse error"`
    - If output contains "refresh_token present: True": ✓ authenticated — continue.
    - If output contains "False", "no .clasprc.json", or any error: ✗ stop — tell the user to run `clasp login --no-localhost` manually (never run it yourself — concurrent logins corrupt the token).
    Do NOT proceed if auth is uncertain.
