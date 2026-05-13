@@ -1,10 +1,10 @@
-// TopoAssist v260513.42 | 2026-05-13 18:16:11
+// TopoAssist v260513.43 | 2026-05-13 18:20:19
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.42";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.43";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1981,13 +1981,11 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
     }
 
-    // ── 3. INACTIVE GRAY: int_ empty → non-interface columns grey ───────────────
-    // int_ itself stays white so the user sees it as a fillable field.
-    // All other device columns (mode, vlan, xcvr, etc.) are greyed out.
+    // ── 3. INACTIVE GRAY: int_ empty → all device columns grey (including int_ itself)
     const suffix = '_' + dev;
     const allDevRanges = headers.reduce((acc, h, i) => {
       const key = h.slice(0, -(suffix.length));
-      if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key) && key !== 'int') {
+      if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
         acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
       }
       return acc;
