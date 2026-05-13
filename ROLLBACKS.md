@@ -4,6 +4,12 @@ Reverts and rollbacks across all projects, with reasons.
 
 ---
 
+## 2026-05-13 | topoassist | git revert of 42b6818 (c55fafa)
+**Reverted _oc_iface_status admin-status check. The change added REST/gNMI admin-shut detection but only SSH/eAPI transport is used — where EOS already returns "disabled" for admin-shut from `show interfaces status`. The fix was not needed and was applied without confirming which transport the user runs.**
+Files: device_bridge.py, Sidebar-js.html
+
+---
+
 ## 2026-04-29 | tmux.conf | non-git edit (full rollback to 696aea5)
 **Rolled back entire tmux.conf + tmux_click.sh to yesterday's state (commit 696aea5). Multiple attempts to fix scroll direction (WheelUpPane/WheelDownPane) all failed — broke scroll entirely. Reverted to working baseline to be revisited later. Lost today's changes: DoubleClick inline simplification, AI spend widget, xclip→OSC52 y-key fix.**
 Files: projects/tmux.conf/tmux.conf, projects/tmux.conf/tmux_click.sh
