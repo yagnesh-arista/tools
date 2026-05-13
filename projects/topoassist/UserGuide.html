@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.22 | 2026-05-13 15:37:04 -->
+<!-- TopoAssist v260513.23 | 2026-05-13 15:42:39 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.22</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260513.23</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -663,15 +663,10 @@ clasp login --no-localhost</pre>
     </div>
 
     <div class="step-box">
-      <span class="step-num">Step 3 — Configure &amp; run</span>
-      <p>Edit the config block at the top of <code>device_bridge.py</code>:</p>
-      <ul>
-        <li><code>METHOD</code> — <code>"eapi"</code> (default) or <code>"ssh"</code></li>
-        <li><code>JUMP_HOST</code> — SSH jump server hostname; <code>""</code> to reach devices directly</li>
-        <li><code>SSH_USER</code> — device username (default <code>"admin"</code>, passwordless SSH assumed)</li>
-      </ul>
+      <span class="step-num">Step 3 — Run the bridge</span>
+      <p>Run the bridge in a terminal and keep it open. No script editing needed — transport (SSH / eAPI), credentials, and behavior settings are all configured in the <b>Device Bridge modal</b>.</p>
       <pre style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:11px;overflow-x:auto;user-select:text;">python3 device_bridge.py</pre>
-      <p style="margin-top:6px;">The bridge listens on <code>http://localhost:8765</code>. The Device Bridge modal shows a green dot when reachable.</p>
+      <p style="margin-top:6px;">The bridge listens on <code>http://localhost:8765</code>. The Device Bridge modal shows a green dot when reachable. See <a href="#device-bridge">Device Bridge</a> for full modal settings.</p>
     </div>
 
     <!-- ================================================================ -->
@@ -1666,26 +1661,48 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
       <p>Click the <b>Device Bridge</b> toolbar button (shield icon), then click <b>Download Bridge</b> in the modal footer. This saves <code>device_bridge.py</code> to your Downloads folder — it is always in sync with the current sidebar version.</p>
     </div>
     <div class="step-box">
-      <span class="step-num">Step 2 — Configure &amp; run</span>
-      <p>Open <code>device_bridge.py</code> in a text editor and set the config at the top:</p>
-      <ul>
-        <li><code>METHOD</code> — transport to use: <code>"eapi"</code> (default) or <code>"ssh"</code></li>
-        <li><code>JUMP_HOST</code> — SSH jump server hostname (e.g. <code>"bus-home"</code>); set <code>""</code> to SSH devices directly</li>
-        <li><code>SSH_USER</code> — device login username (default <code>"admin"</code>, passwordless)</li>
-      </ul>
-      <p>Then run it in a terminal and keep it open:</p>
+      <span class="step-num">Step 2 — Run</span>
+      <p>Run the bridge in a terminal and keep it open. No script editing needed — all transport and credential settings are configured inside the modal.</p>
       <code style="display:block; background:#f1f5f9; padding:8px 12px; border-radius:6px; font-size:13px; margin-top:6px;">python3 device_bridge.py</code>
-      <p style="margin-top:8px;">The bridge listens on <code>http://localhost:8765</code>. The modal shows a green dot when it is reachable.</p>
+      <p style="margin-top:8px;">The bridge listens on <code>http://localhost:8765</code>. The modal shows a green status dot when it is reachable.</p>
     </div>
-    <div class="info-box blue">
-      <b>Transport options:</b><br>
-      <code>eapi</code> — Arista eAPI JSON-RPC over HTTPS (port 443); single request per device. No pip deps.<br>
-      <code>ssh</code> — CLI over SSH; requires OpenSSH on the bridge machine. No pip deps.
+
+    <h3>Modal Settings</h3>
+    <p style="font-size:13px;">The modal has two settings cards. All values are saved in browser localStorage and take effect on the next check — no bridge restart needed.</p>
+
+    <p style="font-size:13px;"><b>Bridge card</b> — behavior settings:</p>
+    <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:10px;">
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>Enable on topology bring-up</b></td><td>Run a bridge check automatically on each topology load. Double-click the toolbar shield icon to toggle this without opening the modal.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>Auto-reconnect on disconnect</b></td><td>Poll every 60 s when the bridge goes down and resume checks automatically when it comes back.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>Auto-check every N min</b></td><td>Re-run LLDP + status checks on a timer while the bridge is connected (minimum 5 min, default 30 min).</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>L1 error threshold</b></td><td>Flag a port's CRC / FCS error counter only when it meets or exceeds this value (minimum 1, default 1). Applies to the <b>L1 errors</b> audit check.</td></tr>
+    </table>
+
+    <p style="font-size:13px;"><b>Transport card</b> — how the bridge reaches devices:</p>
+    <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:10px;">
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>MODE</b></td><td>Radio buttons: <b>SSH</b> or <b>eAPI</b> (default). Switching reveals the matching credential fields below.</td></tr>
+    </table>
+    <p style="font-size:12px;margin:0 0 4px 0;"><i>SSH fields:</i></p>
+    <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:10px;">
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>USER</b></td><td>Device login username (default <code>admin</code>). Passwordless SSH is assumed when PASS is left empty.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>PASS</b></td><td>Device password. Leave empty for key-based (passwordless) SSH.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>PORT</b></td><td>SSH port (default 22).</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>JUMP</b></td><td>Optional jump host checkbox. When enabled, exposes HOST (jump server hostname, e.g. <code>bus-home</code>) and USER (jump host login, defaults to current user).</td></tr>
+    </table>
+    <p style="font-size:12px;margin:0 0 4px 0;"><i>eAPI fields:</i></p>
+    <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:10px;">
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>USER</b></td><td>eAPI username (default <code>admin</code>).</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>PASS</b></td><td>eAPI password.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>PROTO</b></td><td>Radio buttons: <b>HTTP</b> or <b>HTTPS</b> (default). HTTPS requires a valid (or accepted self-signed) certificate on the device.</td></tr>
+      <tr><td style="padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;"><b>PORT</b></td><td>eAPI port (default 443 for HTTPS, 80 for HTTP).</td></tr>
+    </table>
+    <div class="info-box info-box--dim">
+      No pip dependencies — both SSH and eAPI modes use only Python standard library modules.
     </div>
 
     <h3>Running a Check</h3>
-    <p style="font-size:13px;">Open the modal, enter or confirm the <b>Host / IP</b> for each device (defaults to device name for DNS-resolvable hosts), then click <b>Run Checks</b>. The bridge queries all devices in parallel. A spinner shows progress and updates as each sweep completes (<i>LLDP done</i> → <i>LLDP + status done</i>).</p>
-    <p style="font-size:13px;"><b>Auto-check on connect:</b> when the bridge is running and the topology loads, LLDP + device status checks run automatically in the background. The status bar briefly shows the result. If extra cables are discovered (cables present on the devices but not in the sheet), the bridge toolbar icon gains an amber count badge — click the icon to open the modal and review them.</p>
+    <p style="font-size:13px;">Open the modal and expand the <b>Device Login</b> section. Each device shows an IP / hostname field (defaults to the device name — suitable when devices are DNS-resolvable by that name). Edit any field to override, then click <b>Run Checks</b>. The bridge queries all devices in parallel. A spinner shows progress and updates as each sweep completes (<i>LLDP done</i> → <i>LLDP + status done</i>).</p>
+    <p style="font-size:13px;"><b>Auto-check on connect:</b> when the bridge is running and the topology loads, LLDP + status checks run automatically in the background. If extra cables are discovered (cables present on devices but missing from the sheet), the bridge toolbar icon gains an amber count badge. Click the icon to open the modal and review them.</p>
 
     <h3>Device List — Status Dots</h3>
     <p style="font-size:13px;">Each device row shows two indicator dots after the IP field:</p>
