@@ -1,10 +1,10 @@
-// TopoAssist v260513.59 | 2026-05-13 20:56:39
+// TopoAssist v260513.60 | 2026-05-13 21:02:27
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.59";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.60";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1677,6 +1677,40 @@ function _extendPeerLinkPortsWithPo(topo, headers, rows) {
   });
 }
 
+// Applies DEVICE_MLAG_PEERS explicit declarations to a topo object returned by
+// calculateGlobalTopology(). calculateGlobalTopology always returns empty
+// mlagPeerMap/peerLinkPorts/mlagConfigPorts — this is the single place that
+// populates all three from DocumentProperties. Must be called after
+// calculateGlobalTopology in every consumer: getTopologyData, getDeviceConfig,
+// applyVisualFormatting.
+function _applyExplicitMlagOverride(topo, headers, rows) {
+  const explicitMlagPeers = getDeviceMlagPeers();
+  if (Object.keys(explicitMlagPeers).length === 0) return;
+  topo.mlagPeerMap = explicitMlagPeers;
+  topo.peerLinkPorts = new Set();
+  const processedPairs = new Set();
+  Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+    const pairKey = [devA, devB].sort().join('|');
+    if (processedPairs.has(pairKey)) return;
+    processedPairs.add(pairKey);
+    topo.globalLinkMap.forEach((val, key) => {
+      if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
+      if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
+    });
+  });
+  _extendPeerLinkPortsWithPo(topo, headers, rows);
+  topo.mlagConfigPorts = new Set();
+  Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
+    if (!topo.poMap) return;
+    Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
+      if (devConnections[devA] && devConnections[devB]) {
+        topo.mlagConfigPorts.add(devA + ':' + poName);
+        topo.mlagConfigPorts.add(devB + ':' + poName);
+      }
+    });
+  });
+}
+
 // 2. MAIN FUNCTION
 function applyGlobalFormatting() {
   applyVisualFormatting();
@@ -1706,36 +1740,9 @@ function applyVisualFormatting(optionalSheet) {
     const data = dataRange.getValues();
 
     // Calculate Topology & Colors
-    // Apply the same explicit MLAG peer override used in getDeviceConfig() so that
-    // MLAG cell borders in the sheet reflect declared pairs, not just the PO heuristic.
     const fullData = sheet.getDataRange().getValues();
     const topo = calculateGlobalTopology(fullData, headers);
-    const explicitMlagPeers = getDeviceMlagPeers();
-    if (Object.keys(explicitMlagPeers).length > 0) {
-      topo.mlagPeerMap = explicitMlagPeers;
-      topo.peerLinkPorts = new Set();
-      const processedPairs = new Set();
-      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
-        const pairKey = [devA, devB].sort().join('|');
-        if (processedPairs.has(pairKey)) return;
-        processedPairs.add(pairKey);
-        topo.globalLinkMap.forEach((val, key) => {
-          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
-          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
-        });
-      });
-      _extendPeerLinkPortsWithPo(topo, headers, data);
-      topo.mlagConfigPorts = new Set();
-      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
-        if (!topo.poMap) return;
-        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
-          if (devConnections[devA] && devConnections[devB]) {
-            topo.mlagConfigPorts.add(devA + ':' + poName);
-            topo.mlagConfigPorts.add(devB + ':' + poName);
-          }
-        });
-      });
-    }
+    _applyExplicitMlagOverride(topo, headers, data);
     const result = calculateConnectionBackgrounds(data, headers, lastCol, topo);
 
     // 1. Apply Background Colors
@@ -2683,36 +2690,7 @@ function getTopologyData(forceSync, isColorEnabled) {
     const globalIpPrefs = getIpPreferences();
     const globalNetSettings = getNetworkSettings();
     const topo = calculateGlobalTopology(data, rowHeaders);
-
-    // Apply explicit MLAG peer declarations so peerLinkPorts is populated here too.
-    // Without this, isPeerLink stays false on all nodes → links never get type='peer' →
-    // canvas shows no peer-link styling and the MLAG peer-link audit check always fires.
-    const explicitMlagPeersForTopo = getDeviceMlagPeers();
-    if (Object.keys(explicitMlagPeersForTopo).length > 0) {
-      topo.mlagPeerMap = explicitMlagPeersForTopo;
-      topo.peerLinkPorts = new Set();
-      const _processedPairsTopo = new Set();
-      Object.entries(explicitMlagPeersForTopo).forEach(([devA, devB]) => {
-        const pairKey = [devA, devB].sort().join('|');
-        if (_processedPairsTopo.has(pairKey)) return;
-        _processedPairsTopo.add(pairKey);
-        topo.globalLinkMap.forEach((val, key) => {
-          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
-          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
-        });
-      });
-      _extendPeerLinkPortsWithPo(topo, rowHeaders, data.slice(2));
-      topo.mlagConfigPorts = new Set();
-      Object.entries(explicitMlagPeersForTopo).forEach(([devA, devB]) => {
-        if (!topo.poMap) return;
-        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
-          if (devConnections[devA] && devConnections[devB]) {
-            topo.mlagConfigPorts.add(devA + ':' + poName);
-            topo.mlagConfigPorts.add(devB + ':' + poName);
-          }
-        });
-      });
-    }
+    _applyExplicitMlagOverride(topo, rowHeaders, data.slice(2));
 
     const devices = [];
     let aristaCounter = 0;
@@ -4450,42 +4428,7 @@ function getDeviceConfig(deviceName) {
     // 1. Calculate Topology (Single Source of Truth)
     const topo = calculateGlobalTopology(data, headers);
 
-    // 1a. Apply explicit MLAG peer declarations (overrides topology heuristic).
-    // Only MLAG pair declaration is replaced — peer-link port is still found from
-    // globalLinkMap (direct link between the two declared peers).
-    const explicitMlagPeers = getDeviceMlagPeers();
-    if (Object.keys(explicitMlagPeers).length > 0) {
-      // Replace mlagPeerMap entirely with explicit declarations.
-      topo.mlagPeerMap = explicitMlagPeers;
-
-      // Rebuild peerLinkPorts: for each explicit pair, find the direct link
-      // between the two devices in globalLinkMap and tag those ports.
-      topo.peerLinkPorts = new Set();
-      const processedPairs = new Set();
-      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
-        const pairKey = [devA, devB].sort().join('|');
-        if (processedPairs.has(pairKey)) return;
-        processedPairs.add(pairKey);
-        topo.globalLinkMap.forEach((val, key) => {
-          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
-          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
-        });
-      });
-      _extendPeerLinkPortsWithPo(topo, headers, rows);
-
-      // Rebuild mlagConfigPorts: for each explicit pair, find shared PO bundles
-      // (both devices appear as keys in the same poMap entry — same PO toward a common upstream).
-      topo.mlagConfigPorts = new Set();
-      Object.entries(explicitMlagPeers).forEach(([devA, devB]) => {
-        if (!topo.poMap) return;
-        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
-          if (devConnections[devA] && devConnections[devB]) {
-            topo.mlagConfigPorts.add(devA + ':' + poName);
-            topo.mlagConfigPorts.add(devB + ':' + poName);
-          }
-        });
-      });
-    }
+    _applyExplicitMlagOverride(topo, headers, rows);
 
     const indices = getColumnIndices(headers, deviceName);
     const ipPrefs = getIpPreferences() || {};
