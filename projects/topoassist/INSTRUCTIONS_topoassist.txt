@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (feat: _parseSviVlans now accepts 'no' and '-' as explicit no-SVI markers (same result as blank — returns []) so users can document intent in the sheet without affecting config gen. FILES: Code.gs)
+  Last updated: 2026-05-13 (feat: refined per-device bridge reachability indicators — (1) bridge modal per-device dot reverted to dot-red for SSH-failed devices (was dot-orange; red=device unreachable, distinct from orange=auth-expired toolbar state); (2) card header dev-bridge-dot shows dot-green when ds.ok===true (reachable), dot-orange when ds.ok===false; (3) _bridgeHasDeviceFailures flag: reset to false at start of each runBridgeCheck(); set true on any dot-red (SSH fail); persists across health-check polls so _checkBridgeHealth()/_silentBridgeCheck() re-assert 'partial' vs 'up' correctly; (4) bridge-partial toolbar state (dark-yellow #d97706, CSS class bridge-partial): set by _updateBridgeToolbarIcon after runBridgeCheck completes with ≥1 device unreachable; _bridgeUpState now treats both 'up' and 'partial' as up-state for auto-Bridge/autoCheck. FILES: Sidebar-js.html)
+  Previous: 2026-05-13 (feat: _parseSviVlans now accepts 'no' and '-' as explicit no-SVI markers (same result as blank — returns []) so users can document intent in the sheet without affecting config gen. FILES: Code.gs)
   Previous: 2026-05-13 (fix: smart poll visibility guard removed — getDataVersion() now polls every 4s regardless of tab focus so sheet edits while backgrounded are detected and configCache stays current. FILES: Sidebar-js.html)
   Previous: 2026-05-13 (fix: INACTIVE GRAY now includes int_ column — full row greys when int_ is empty; removed key!=='int' exclusion from SCHEMA_KEYS reduce. FILES: Code.gs)
   Previous: 2026-05-13 (feat: per-device bridge unreachable indicator — orange dot (top-right of card header, position:absolute) added to every device card via dev-bridge-dot span with dataset.devId; applyDevStatusToCards() sets dot-orange when ds.ok===false; runBridgeCheck() resets all dots before check; bridge modal per-device dot changed from dot-red→dot-orange for unreachable (distinguishes per-device failure from global bridge-down red). FILES: Sidebar-js.html, Sidebar-css.html)
@@ -2655,7 +2656,10 @@ Client functions (Sidebar-js.html):
                             overrides port St dots with live op-status from devStatusMap:
                             connected→op-up (green), notconnect→op-down (amber),
                             errdisabled→op-errdisabled (red), other→op-disabled (gray);
-                            called after render() and after each runLldpCheck()
+                            also drives card-header .dev-bridge-dot reachability indicator:
+                            ds.ok===true → dot-green (reachable via bridge SSH);
+                            ds.ok===false → dot-orange (unreachable); absent → hidden;
+                            called after render() and after each runLldpCheck()/runBridgeCheck()
   _normSysName(sysName)   — extracts short device name from LLDP FQDN: strips domain (split
                             on '.')[0]) then takes last dash-segment (split('-').pop()).
                             "DUT-L-Leaf1-VG-cal423.sjc.aristanetworks.com" → "cal423".
@@ -2685,7 +2689,13 @@ Modal UI structure:
   Management IPs table: lldp-dev-row grid (device name | IP input | status dot); Arista only
   Status line: shown during fetch ("Bridge is querying devices via SSH…")
   Results: #bridgeResultSections with three collapsible sections (Issues / OK / No EOS)
-  Per-device dot: dot-green=SSH OK, dot-red=error, dot-gray=no IP/not queried
+  Per-device dot (bridge modal): dot-gray=idle/no IP, dot-green=SSH OK, dot-red=SSH failed (device unreachable)
+  Per-device dot (card header, .dev-bridge-dot): hidden=not checked, dot-green=reachable, dot-orange=unreachable
+  Toolbar icon states: bridge-up (green) · bridge-partial (dark-yellow #d97706, ≥1 device SSH-failed) ·
+                        bridge-down (red) · bridge-auth-expired (orange) · bridge-disabled (dimmed)
+  _bridgeHasDeviceFailures: module-level flag; reset false at runBridgeCheck() start; set true on any
+                             bridge modal dot-red; read by _checkBridgeHealth()/_silentBridgeCheck() to
+                             re-assert 'partial' vs 'up' on periodic health polls
 
 Result row statuses:
   match    — SVG check, green bg — LLDP confirms the cable

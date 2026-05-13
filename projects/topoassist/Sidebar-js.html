@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.46 | 2026-05-13 18:34:21 -->
+<!-- TopoAssist v260513.47 | 2026-05-13 18:39:37 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.46";  // keep in sync with Code.gs
+const APP_VERSION = "260513.47";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10543,7 +10543,8 @@ let _auditClickTimer    = null; // debounce single vs double-click on audit tool
 let _pushAutoCloseTimeout = null; // ID of setTimeout that auto-closes push confirm modal after success
 let _pushSessionGuard   = null; // ID of setTimeout that aborts open EOS session if user doesn't commit in time
 let _silentBridgeTimer  = null; // debounce timer for _silentBridgeCheck
-let _bridgeUpState      = false; // true when bridge is confirmed up; tracks down→up for auto-Bridge trigger
+let _bridgeUpState            = false; // true when bridge is confirmed up; tracks down→up for auto-Bridge trigger
+let _bridgeHasDeviceFailures  = false; // true when last bridge check found ≥1 device unreachable; kept for health-check re-assertion
 let _topologyReady      = false; // true after fetchData() completes; guards _autoRunBridge from firing on stale session data
 let _lastBridgeLinkSig    = null;  // link signature at last Bridge run; null = never run; used to skip LLDP on config-only fetchData
 let _bridgeDeviceTimeout  = 15;   // per-attempt query timeout (seconds) — updated from /health on connect
@@ -13066,7 +13067,7 @@ function _checkBridgeHealth() {
           authWarn.style.display = 'block';
         }
         if (_bridgeReconnectTimer) { clearTimeout(_bridgeReconnectTimer); _bridgeReconnectTimer = null; }
-        _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
+        _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : (_bridgeHasDeviceFailures ? 'partial' : 'up'));
       } else {
         throw new Error('unexpected response');
       }
@@ -13227,7 +13228,7 @@ function _silentBridgeCheck() {
         if (data.status === 'ok') {
           // auth field present only when _cfg['transport']=ssh + key-based auth (no sshpass)
           const authFailed = data.auth && data.auth.ok === false;
-          _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : 'up');
+          _updateBridgeToolbarIcon(authFailed ? 'auth-expired' : (_bridgeHasDeviceFailures ? 'partial' : 'up'));
         } else {
           _updateBridgeToolbarIcon('down');
         }
@@ -13258,18 +13259,19 @@ function _updateBridgeToolbarIcon(state) {
   const btn = document.getElementById('btnBridgeToolbar');
   if (!btn) return;
   const enabled = localStorage.getItem('bridgeEnabled') !== 'false';
-  btn.classList.remove('bridge-up', 'bridge-down', 'bridge-disabled', 'bridge-auth-expired');
+  btn.classList.remove('bridge-up', 'bridge-down', 'bridge-disabled', 'bridge-auth-expired', 'bridge-partial');
   if (!enabled)                       btn.classList.add('bridge-disabled');
   else if (state === 'up')            btn.classList.add('bridge-up');
+  else if (state === 'partial')       btn.classList.add('bridge-partial');
   else if (state === 'down')          btn.classList.add('bridge-down');
   else if (state === 'auth-expired')  btn.classList.add('bridge-auth-expired');
-  // 'idle' = enabled but health unknown — no class (normal toolbar color)
-  // 'auth-expired' = bridge process is up but SSH agent session is expired;
-  //   does NOT set _bridgeUpState=true so auto-Bridge is suppressed (would fail anyway)
+  // 'idle'    = enabled but health unknown — no class (normal toolbar color)
+  // 'partial' = bridge up, ≥1 device unreachable — dark yellow
+  // 'auth-expired' = bridge process is up but SSH agent session is expired — does NOT set _bridgeUpState
 
-  // Auto-Bridge: trigger only on fresh connect (down/idle → up transition)
+  // Auto-Bridge: trigger only on fresh connect (down/idle → up/partial transition)
   const wasUp = _bridgeUpState;
-  _bridgeUpState = (enabled && state === 'up');
+  _bridgeUpState = (enabled && (state === 'up' || state === 'partial'));
   if (!wasUp && _bridgeUpState) { _autoRunBridge(); _startBridgeAutoCheck(); }
   if (wasUp && !_bridgeUpState) { _stopBridgeAutoCheck(); }
 }
@@ -13654,7 +13656,7 @@ function applyDevStatusToCards() {
 
   _refreshModelLines();
 
-  // Per-device bridge reachability dot on card header: orange = unreachable (distinct from global bridge-down red)
+  // Per-device bridge reachability dot on card header: green = reachable, orange = unreachable
   document.querySelectorAll('.dev-bridge-dot').forEach(el => {
     const ds = devStatusMap[el.dataset.devId];
     if (!ds) { el.className = 'dev-bridge-dot'; el.title = ''; return; }
@@ -13662,8 +13664,8 @@ function applyDevStatusToCards() {
       el.className = 'dev-bridge-dot dot-orange';
       el.title = ds.error || 'Device not reachable via bridge';
     } else {
-      el.className = 'dev-bridge-dot';
-      el.title = '';
+      el.className = 'dev-bridge-dot dot-green';
+      el.title = 'Reachable via bridge';
     }
   });
 
@@ -13697,6 +13699,7 @@ function runBridgeCheck() {
   const devices  = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
 
   // Collect IPs and reset per-device dots
+  _bridgeHasDeviceFailures = false;
   document.querySelectorAll('.dev-bridge-dot').forEach(el => { el.className = 'dev-bridge-dot'; el.title = ''; });
   const ipMap = {};
   devices.forEach(n => {
@@ -13776,8 +13779,9 @@ function runBridgeCheck() {
           const res = bridgeData[n.id];
           if (!res)       { dot.className = 'bridge-dev-dot dot-gray';  dot.title = 'No IP / not queried'; }
           else if (res.ok){ dot.className = 'bridge-dev-dot dot-green'; dot.title = 'SSH OK'; }
-          else            { dot.className = 'bridge-dev-dot dot-orange'; dot.title = res.error || 'Error'; }
+          else            { dot.className = 'bridge-dev-dot dot-red'; dot.title = res.error || 'Error'; _bridgeHasDeviceFailures = true; }
         });
+        _updateBridgeToolbarIcon(_bridgeHasDeviceFailures ? 'partial' : 'up');
         const { results, orphans } = _compareBridgeData(bridgeData);
         _populateBridgePortSubTypes(dsData);
         _populateBridgePortL1Errors(dsData);
