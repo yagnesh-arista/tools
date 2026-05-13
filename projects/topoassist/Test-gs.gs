@@ -1,4 +1,4 @@
-// TopoAssist v260513.4 | 2026-05-13 11:19:28
+// TopoAssist v260513.5 | 2026-05-13 11:23:01
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -189,6 +189,32 @@ function test_resolveVrfAtIndex() {
   ];
 }
 
+// ── _buildVrfMap ───────────────────────────────────────────────────────────────
+
+function test_buildVrfMap() {
+  const t = assert_;
+  const m = _buildVrfMap;
+  return [
+    t("null vrfVal → null",               m(null, '10,20'),                     null),
+    t("empty vrfVal → null",              m('', '10,20'),                       null),
+    t("single VRF → null (caller path)",  m('A', '10,20'),                      null),
+    // flat list — positional
+    t("flat: VLAN 10 → A",               m('A,B', '10,20').get(10),            'A'),
+    t("flat: VLAN 20 → B",               m('A,B', '10,20').get(20),            'B'),
+    // range: entire range maps to one VRF token
+    t("range: VLAN 10 → A",              m('A,B,C', '10,20-22,25').get(10),    'A'),
+    t("range: VLAN 20 → B",              m('A,B,C', '10,20-22,25').get(20),    'B'),
+    t("range: VLAN 21 → B",              m('A,B,C', '10,20-22,25').get(21),    'B'),
+    t("range: VLAN 22 → B",              m('A,B,C', '10,20-22,25').get(22),    'B'),
+    t("range: VLAN 25 → C",              m('A,B,C', '10,20-22,25').get(25),    'C'),
+    // 'default' → null (no vrf sub-command in EOS)
+    t("default at idx 0 → null",         m('default,B', '10,20').get(10),      null),
+    t("real VRF at idx 1 kept",          m('default,B', '10,20').get(20),      'B'),
+    // extra VLAN with no matching VRF slot → null
+    t("extra VLAN → null",               m('A,B', '10,20,30').get(30),         null),
+  ];
+}
+
 // ── _auditVrfIssues ────────────────────────────────────────────────────────────
 
 function test_auditVrfIssues() {
@@ -219,21 +245,16 @@ function test_auditVrfIssues() {
     t("l3-po-int + multi-VRF → warn",
       run_('RED,BLUE', '10,20', '', 'l3-po-int')[0].sev, 'warn'),
 
-    // ─── range in vlan_ → warn ────────────────────────────────────────
-    t("pure range + multi-VRF → warn",
-      run_('RED,BLUE', '10-20', '', 'l3-et-sub-int')[0].sev, 'warn'),
-    t("pure range message contains 'range'",
-      run_('RED,BLUE', '10-20', '', 'l3-et-sub-int')[0].msg.includes('range'), true),
-    t("mixed range+list + multi-VRF → warn",
-      run_('RED,BLUE', '10-20,25', '', 'l3-et-sub-int')[0].sev, 'warn'),
-    t("mixed range+list message contains 'mixed'",
-      run_('RED,BLUE', '10-20,25', '', 'l3-et-sub-int')[0].msg.includes('mixed'), true),
-
     // ─── sub-int ──────────────────────────────────────────────────────
     t("sub-int: VRF count matches VLAN count → no issues",
       run_('RED,BLUE', '10,20', '', 'l3-et-sub-int').length, 0),
     t("sub-int: VRF count > VLAN count → error",
       run_('RED,BLUE,GREEN', '10,20', '', 'l3-et-sub-int')[0].sev, 'error'),
+    // range counts as one token — so 3 VRFs matches 3 tokens (10, 20-22, 25)
+    t("sub-int: range — matching token count → no issues",
+      run_('RED,BLUE,GREEN', '10,20-22,25', '', 'l3-et-sub-int').length, 0),
+    t("sub-int: range — VRF count < token count → error",
+      run_('RED,BLUE', '10,20-22,25', '', 'l3-et-sub-int')[0].sev, 'error'),
     t("sub-int: nv<N> token excluded from VLAN count",
       run_('RED,BLUE', '10,20,nv100', '', 'l3-et-sub-int').length, 0),
     t("sub-int: l3-po-sub-int also matched",
@@ -254,6 +275,11 @@ function test_auditVrfIssues() {
       run_('RED,BLUE', '10,20', '1', 'l2-et-trunk').length, 0),
     t("trunk svi=all: VRF count mismatch → error",
       run_('RED,BLUE,GREEN', '10,20', 'all', 'l2-et-trunk')[0].sev, 'error'),
+    // range counts as one token
+    t("trunk svi=all: range — matching token count → no issues",
+      run_('RED,BLUE,GREEN', '10,20-22,25', 'all', 'l2-et-trunk').length, 0),
+    t("trunk svi=all: range — VRF count < token count → error",
+      run_('RED,BLUE', '10,20-22,25', 'all', 'l2-et-trunk')[0].sev, 'error'),
 
     // ─── trunk: explicit svi_vlan list ────────────────────────────────
     t("trunk explicit svi_vlan: count match → no issues",
@@ -1478,6 +1504,7 @@ function runAllTests() {
     { name: "_parseSviVlans",            fn: test_parseSviVlans },
     { name: "_parseVrfList",             fn: test_parseVrfList },
     { name: "_resolveVrfAtIndex",        fn: test_resolveVrfAtIndex },
+    { name: "_buildVrfMap",             fn: test_buildVrfMap },
     { name: "_auditVrfIssues",           fn: test_auditVrfIssues },
     { name: "parseVlanWithNative",       fn: test_parseVlanWithNative },
     { name: "getPhysicalPortParent",     fn: test_getPhysicalPortParent },
