@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (fix: _autoMinimizeOpenModal skips full-screen containers; showAuditResults removes _scanInternalVlanConflicts — internal VLAN conflicts belong in audit mode only, not schema sync. FILES: Sidebar-js.html)
+  Last updated: 2026-05-13 (feat: SFP10 added to xcvr_type_ — schema preset after SFP+; FORMAT_CONFIG color #f1f5f9 (same as SFP+, 10G tier); UserGuide swatch updated to "SFP+ / SFP10". FILES: Code.gs, UserGuide.html)
+  Previous: 2026-05-13 (fix: _autoMinimizeOpenModal skips full-screen containers; showAuditResults removes _scanInternalVlanConflicts — internal VLAN conflicts belong in audit mode only, not schema sync. FILES: Sidebar-js.html)
   Previous: 2026-05-13 (revert: _oc_iface_status admin-status check — reverted 42b6818; only SSH/eAPI transport is used, which already returns "disabled" from EOS for admin-shut ports; REST/gNMI change was not needed. VERSION 260513.4. FILES: device_bridge.py, Sidebar-js.html [downloadBridgeScript() embedded template])
   Previous: 2026-05-13 (feat: xcvr_type_ schema defaults + SFP56 color — added preset dropdown options ['OSFP','QSFP-DD','QSFP56','QSFP28','QSFP100','DSFP','QSFP+','SFP56','SFP28','SFP25','SFP+','SFP','BASE-T'] to _DEFAULT_SCHEMA xcvr_type entry (was empty []); added SFP56→#ccfbf1 (teal-100, 50G speed color) to FORMAT_CONFIG xcvr_type rules between QSFP+ and SFP28; updated UserGuide color swatches + dropdown note. FILES: Code.gs, UserGuide.html)
   Previous: 2026-05-13 (docs: UserGuide — EVPN SERVICE description expanded: Per-VLAN default (RT=VLAN:VLAN); Bundle sub-modes split into "No bundle ranges" (single EVPN_VLAN_AWARE_BUNDLE, RT=ASN_BASE:1) and "Named bundles" (EVPN_BUNDLE_N, RT=ASN_BASE:N, VLANs intersected per device). FILES: UserGuide.html)
