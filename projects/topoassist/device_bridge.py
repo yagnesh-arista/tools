@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260511.37 | 2026-05-11 16:04:52
+# topoassist v260513.31 | 2026-05-13 16:16:10
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260512.1"
+VERSION           = "260513.3"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -323,8 +323,15 @@ def _oc_iface_status(raw):
     result = {}
     for iface in raw.get("openconfig-interfaces:interfaces", raw).get("interface", []):
         name  = iface.get("name", "")
-        oper  = iface.get("state", {}).get("oper-status", "")
-        result[name] = {"linkStatus": oc_to_eos.get(oper, "notconnect")}
+        state = iface.get("state", {})
+        oper  = state.get("oper-status", "")
+        admin = state.get("admin-status", "UP")
+        # admin-shut: oper=DOWN + admin=DOWN → "disabled" so peer-disabled fix works
+        if oper == "DOWN" and admin == "DOWN":
+            link_status = "disabled"
+        else:
+            link_status = oc_to_eos.get(oper, "notconnect")
+        result[name] = {"linkStatus": link_status}
     return result
 
 
