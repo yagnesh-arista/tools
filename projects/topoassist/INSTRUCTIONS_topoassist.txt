@@ -3591,8 +3591,10 @@ Covered functions:
   isValidPort              — port string validation (8 cases)
   _parseSviVlans           — SVI VLAN subset selection (11 cases)
   _parseVrfList            — VRF list parsing (cases)
-  _resolveVrfAtIndex       — VRF lookup by index
-  _auditVrfIssues          — VRF audit: all 6 conditions, error+warn+clean paths (22 cases)
+  _resolveVrfAtIndex       — VRF lookup by index (legacy; kept for tests)
+  _buildVrfMap             — token-based VLAN→VRF map builder (13 cases)
+  _resolveVrfForVlan       — VRF lookup by VLAN number (replaces _resolveVrfAtIndex in config gen)
+  _auditVrfIssues          — VRF audit: all 6 conditions, error+warn+clean paths (24 cases)
   parseVlanWithNative      — nv<N> native-VLAN token split (11 cases)
   getPhysicalPortParent    — strip breakout lane suffix (cases)
   compressPortList         — sort + join port array (cases)
