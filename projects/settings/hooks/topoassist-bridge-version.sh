@@ -1,5 +1,5 @@
 #!/bin/bash
-# settings v260509.2 | 2026-05-09 12:06:25
+# settings v260513.12 | 2026-05-13 11:50:28
 # topoassist-bridge-version.sh
 # Fires after device_bridge.py is edited.
 # Auto-bumps VERSION = "YYMMDD.N" in device_bridge.py AND the embedded
@@ -35,6 +35,11 @@ db_path, sb_path = sys.argv[1], sys.argv[2]
 
 with open(db_path) as fh:
     py_content = fh.read()
+
+# Strip the stamp comment (line 2: "# topoassist v... | ...") — not in the embedded template
+lines = py_content.splitlines(keepends=True)
+if len(lines) > 1 and re.match(r'# topoassist v\d{6}\.\d+', lines[1]):
+    py_content = lines[0] + ''.join(lines[2:])
 
 # Escape for JS template literal: backslashes first, then backticks, then ${
 escaped = py_content.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
