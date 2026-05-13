@@ -433,14 +433,27 @@ box-sizing: border-box;
 Every `.modal-std` modal body must scroll when content overflows, and every floating panel minimize must use JS height-pinning.
 
 ```bash
-# Find modal-std modals — check each body div for overflow-y/flex/min-height
-grep -n "class=\"modal-std\|id=\".*[Mm]odal" \
-  ~/claude/projects/topoassist/Sidebar.html | head -30
+# Find all modal-std modal IDs in Sidebar.html
+grep -n 'class="modal-std' ~/claude/projects/topoassist/Sidebar.html
 
-# Check tech modal body specifically
-grep -n "padding: 18px 22px" \
-  ~/claude/projects/topoassist/Sidebar.html
+# For each modal, find its body div (the div between header and footer that holds scrollable content)
+# and verify it has all three scroll trio properties:
+#   overflow-y: auto   — shows scrollbar when content overflows
+#   flex: 1            — body expands to fill space between header and footer
+#   min-height: 0      — allows body to shrink below content height (enables scroll in flex context)
+#
+# Run this to show all body-level divs inside modal-std that have overflow-y set:
+grep -n "overflow-y" ~/claude/projects/topoassist/Sidebar.html | grep -v "<!--"
 
+# For each hit, check the same line for flex:1 and min-height:0.
+# A line with overflow-y:auto but missing flex:1 OR min-height:0 is a FAIL.
+# Also check CSS classes used on body divs:
+grep -n "modal-body-scroll\|ip-modal-body\|audit-body" ~/claude/projects/topoassist/Sidebar.html
+# Then verify those classes include all three in Sidebar-css.html:
+grep -A5 "\.modal-body-scroll\|\.ip-modal-body\|\.audit-body" ~/claude/projects/topoassist/Sidebar-css.html | grep -E "overflow-y|flex|min-height"
+```
+
+```bash
 # Check floating panel minimize uses height-pinning (not CSS-only)
 grep -A10 "toggleDevVisMinimize" \
   ~/claude/projects/topoassist/Sidebar-js.html | grep -E "style.height|style.overflow"
@@ -448,21 +461,23 @@ grep -A10 "toggleDevVisMinimize" \
 # Check toggleModalMinimize for modal-minimized CSS class approach (correct for .modal-std)
 grep -A5 "function toggleModalMinimize" \
   ~/claude/projects/topoassist/Sidebar-js.html | head -10
-```
 
-```bash
 # Check overlay management in toggleModalMinimize
 grep -A20 "function toggleModalMinimize" \
   ~/claude/projects/topoassist/Sidebar-js.html | grep -E "editOverlay|hadOverlay|data-had"
 ```
 
+✗ FAIL if a `.modal-std` body div has `overflow-y: auto` but is missing `flex: 1` — content clips silently in flex column context instead of scrolling
+✗ FAIL if a `.modal-std` body div has `overflow-y: auto` but is missing `min-height: 0` — flex item refuses to shrink below content height, overflows modal instead of scrolling
 ✗ FAIL if a `.modal-std` body div lacks `overflow-y: auto` AND content can exceed 85vh
+✗ FAIL if a CSS class used as a modal body (e.g. `.modal-body-scroll`, `.ip-modal-body`) is missing any of the three scroll trio properties
 ✗ FAIL if a floating panel minimize function sets child `display:none` but does NOT also set `panel.style.height = header.offsetHeight + 'px'`
 ✗ FAIL if `panel.style.overflow = 'hidden'` is missing from the minimize path
 ✗ FAIL if `toggleModalMinimize` does not hide `editOverlay` on minimize (leaves dim backdrop blocking background)
 ✗ FAIL if `toggleModalMinimize` does not use `data-had-overlay` to restore overlay on un-minimize
 ✗ FAIL if a modal-specific minimize function bypasses `toggleModalMinimize` (loses overlay management)
-⚠ WARN if body div has `overflow-y: auto` but no `flex: 1; min-height: 0` (clips in flex containers)
+
+**Known compliant modals (scroll trio verified 2026-05-13):** networkStackModal, autoConfigModal (ip-modal-body class), deviceBridgeModal, guiEditModal (modal-body-scroll class), auditSettingsModal, auditModal (audit-body class), pushConfirmModal, helpModal, vlanSummaryModal.
 
 ---
 
