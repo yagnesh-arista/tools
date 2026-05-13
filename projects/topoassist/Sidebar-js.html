@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.43 | 2026-05-13 18:20:19 -->
+<!-- TopoAssist v260513.44 | 2026-05-13 18:27:30 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.43";  // keep in sync with Code.gs
+const APP_VERSION = "260513.44";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -620,8 +620,10 @@ function startSmartPolling() {
     const overlay = document.getElementById('loading-overlay');
     if (overlay && overlay.style.display !== 'none' && !overlay.classList.contains('hidden')) return;
 
-    // 4. VISIBILITY GUARD (Don't poll if tab is backgrounded to save quotas)
-    if (document.hidden) return;
+    // Note: visibility guard removed — poll continues when tab is hidden so that sheet edits
+    // made while the tab is backgrounded are detected and configCache is kept current.
+    // getDataVersion() is a single DocumentProperties.getProperty() — ~15 extra calls/min,
+    // well within GAS quota. The background prefetch already runs without a visibility guard.
 
     google.script.run
       .withSuccessHandler(serverVersion => {

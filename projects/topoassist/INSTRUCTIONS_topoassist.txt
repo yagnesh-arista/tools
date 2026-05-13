@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (fix: INACTIVE GRAY now includes int_ column — full row greys when int_ is empty; removed key!=='int' exclusion from SCHEMA_KEYS reduce. FILES: Code.gs)
+  Last updated: 2026-05-13 (fix: smart poll visibility guard removed — getDataVersion() now polls every 4s regardless of tab focus so sheet edits while backgrounded are detected and configCache stays current. FILES: Sidebar-js.html)
+  Previous: 2026-05-13 (fix: INACTIVE GRAY now includes int_ column — full row greys when int_ is empty; removed key!=='int' exclusion from SCHEMA_KEYS reduce. FILES: Code.gs)
   Previous: 2026-05-13 (feat: per-device bridge unreachable indicator — orange dot (top-right of card header, position:absolute) added to every device card via dev-bridge-dot span with dataset.devId; applyDevStatusToCards() sets dot-orange when ds.ok===false; runBridgeCheck() resets all dots before check; bridge modal per-device dot changed from dot-red→dot-orange for unreachable (distinguishes per-device failure from global bridge-down red). FILES: Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-13 (ui: exportCablingModal width 700px → 1050px (50% wider) for single-line cabling display. FILES: Sidebar-css.html)
   Previous: 2026-05-13 (fix: Cabling Export view panel textarea now fills full modal height — added height:100%;min-height:0 to .cabling-view-body .cabling-preview-text override (was only min-height:200px, leaving empty space below content). FILES: Sidebar-css.html)
