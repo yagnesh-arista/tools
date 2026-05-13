@@ -26,7 +26,33 @@ fi
 # Update device_bridge.py
 sed -i "s/^VERSION\(\s*\)= \"[^\"]*\"/VERSION\1= \"$NEW\"/" "$DB"
 
-# Update embedded template in Sidebar-js.html
-sed -i "s/^VERSION\(\s*\)= \"[^\"]*\"/VERSION\1= \"$NEW\"/" "$SB"
+# Sync full content of device_bridge.py into downloadBridgeScript() in Sidebar-js.html
+# This replaces the embedded template literal (const src = `...`;) with the updated file.
+python3 - "$DB" "$SB" <<'PYEOF'
+import sys, re
 
-echo "[BRIDGE VERSION] $CURRENT → $NEW (device_bridge.py + embedded template)"
+db_path, sb_path = sys.argv[1], sys.argv[2]
+
+with open(db_path) as fh:
+    py_content = fh.read()
+
+# Escape for JS template literal: backslashes first, then backticks, then ${
+escaped = py_content.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
+
+with open(sb_path) as fh:
+    sb_content = fh.read()
+
+# Find the template literal: from "const src = `" through "`;" (non-greedy)
+m = re.search(r'const src = `([\s\S]*?)`;', sb_content)
+if not m:
+    print('[BRIDGE SYNC] ERROR: could not find template literal in Sidebar-js.html', file=sys.stderr)
+    sys.exit(1)
+
+new_sb = sb_content[:m.start(1)] + escaped + sb_content[m.end(1):]
+if new_sb != sb_content:
+    with open(sb_path, 'w') as fh:
+        fh.write(new_sb)
+    print(f'[BRIDGE SYNC] Embedded template synced from device_bridge.py ({len(py_content)} bytes)')
+else:
+    print('[BRIDGE SYNC] No content change')
+PYEOF
