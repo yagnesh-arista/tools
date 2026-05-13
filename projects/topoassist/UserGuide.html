@@ -1,4 +1,4 @@
-<!-- TopoAssist v260513.5 | 2026-05-13 11:23:38 -->
+<!-- TopoAssist v260513.10 | 2026-05-13 11:31:45 -->
 <!DOCTYPE html>
 <html>
 
@@ -1099,10 +1099,9 @@ clasp login --no-localhost</pre>
     <ul style="font-size:13px;">
       <li><b>Missing columns</b> — a column defined in the schema is absent from the sheet. The sheet is out of sync and config generation may silently skip fields. Fix by running <b>Save &amp; Sync</b>.</li>
       <li><b>Extra columns</b> — a column exists in the sheet that is not in the schema. These are orphaned columns — they will be removed on the next Save &amp; Sync (confirmation required).</li>
-      <li><b>Per-VLAN VRF issues</b> — when <code>vrf_</code> contains a comma-separated list, the count must match the VLAN count exactly. Errors reported:
+      <li><b>Per-VLAN VRF issues</b> — when <code>vrf_</code> contains a comma-separated list, the count must match the number of VLAN <em>tokens</em> in <code>vlan_</code> exactly (a range like <code>20-30</code> counts as one token, not 11). Errors reported:
         <ul style="margin-top:4px;">
-          <li>VRF count ≠ VLAN count (e.g. 3 VLANs, 2 VRF entries)</li>
-          <li>VLAN range (<code>10-20</code>) combined with multiple VRF values — expand the range to an explicit list first</li>
+          <li>VRF token count ≠ VLAN token count (e.g. <code>vlan_: 10,20-30,40</code> has 3 tokens; <code>vrf_: RED,BLUE</code> has 2 — mismatch)</li>
           <li>Port mode is not sub-interface or trunk SVI — per-VLAN VRF has no effect on access or pure-L2 ports</li>
           <li>Trunk port has multiple VRF entries but <code>svi_vlan_</code> is blank (per-VLAN VRF only applies to SVIs)</li>
         </ul>
