@@ -1,10 +1,10 @@
-// TopoAssist v260513.35 | 2026-05-13 16:42:06
+// TopoAssist v260513.36 | 2026-05-13 17:02:30
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.35";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.36";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1968,11 +1968,13 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, vlanIdx, lastRow - 2, 1)]).build());
     }
 
-    // ── 3. INACTIVE GRAY: int_ empty → whole device row not yet active ────────
-    // Applied to ALL columns belonging to this device as a single multi-range rule.
+    // ── 3. INACTIVE GRAY: int_ empty → non-interface columns grey ───────────────
+    // int_ itself stays white so the user sees it as a fillable field.
+    // All other device columns (mode, vlan, xcvr, etc.) are greyed out.
     const suffix = '_' + dev;
     const allDevRanges = headers.reduce((acc, h, i) => {
-      if (h.endsWith(suffix) && SCHEMA_KEYS.includes(h.slice(0, -(suffix.length)))) {
+      const key = h.slice(0, -(suffix.length));
+      if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key) && key !== 'int') {
         acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
       }
       return acc;
