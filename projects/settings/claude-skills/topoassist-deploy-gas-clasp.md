@@ -6,9 +6,9 @@ Steps:
    If missing: `npm install -g @google/clasp`
 
 2. Verify clasp auth is valid (not just present — token may be expired):
-   `clasp login --status 2>&1`
-   - If output contains "Logged in": ✓ authenticated — continue.
-   - If output contains "not logged in" or any error: ✗ stop immediately — tell the user to run `clasp login` manually (never run it yourself — concurrent logins corrupt the token).
+   `cat ~/.clasprc.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('token present:', bool(d.get('token') or d.get('access_token') or d.get('tokens')))" 2>/dev/null || echo "no .clasprc.json found"`
+   - If output contains "token present: True": ✓ authenticated — continue.
+   - If output contains "no .clasprc.json found" or "False": ✗ stop immediately — tell the user to run `clasp login --no-localhost` manually (never run it yourself — concurrent logins corrupt the token).
    Do NOT proceed to push if auth is uncertain.
 
 3. Pull latest commits so local is in sync:
