@@ -1,10 +1,10 @@
-// TopoAssist v260513.58 | 2026-05-13 20:40:10
+// TopoAssist v260513.59 | 2026-05-13 20:56:39
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.58";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.59";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2683,6 +2683,36 @@ function getTopologyData(forceSync, isColorEnabled) {
     const globalIpPrefs = getIpPreferences();
     const globalNetSettings = getNetworkSettings();
     const topo = calculateGlobalTopology(data, rowHeaders);
+
+    // Apply explicit MLAG peer declarations so peerLinkPorts is populated here too.
+    // Without this, isPeerLink stays false on all nodes → links never get type='peer' →
+    // canvas shows no peer-link styling and the MLAG peer-link audit check always fires.
+    const explicitMlagPeersForTopo = getDeviceMlagPeers();
+    if (Object.keys(explicitMlagPeersForTopo).length > 0) {
+      topo.mlagPeerMap = explicitMlagPeersForTopo;
+      topo.peerLinkPorts = new Set();
+      const _processedPairsTopo = new Set();
+      Object.entries(explicitMlagPeersForTopo).forEach(([devA, devB]) => {
+        const pairKey = [devA, devB].sort().join('|');
+        if (_processedPairsTopo.has(pairKey)) return;
+        _processedPairsTopo.add(pairKey);
+        topo.globalLinkMap.forEach((val, key) => {
+          if (key.startsWith(devA + ':') && val.dev === devB) topo.peerLinkPorts.add(key);
+          if (key.startsWith(devB + ':') && val.dev === devA) topo.peerLinkPorts.add(key);
+        });
+      });
+      _extendPeerLinkPortsWithPo(topo, rowHeaders, data.slice(2));
+      topo.mlagConfigPorts = new Set();
+      Object.entries(explicitMlagPeersForTopo).forEach(([devA, devB]) => {
+        if (!topo.poMap) return;
+        Object.entries(topo.poMap).forEach(([poName, devConnections]) => {
+          if (devConnections[devA] && devConnections[devB]) {
+            topo.mlagConfigPorts.add(devA + ':' + poName);
+            topo.mlagConfigPorts.add(devB + ':' + poName);
+          }
+        });
+      });
+    }
 
     const devices = [];
     let aristaCounter = 0;
