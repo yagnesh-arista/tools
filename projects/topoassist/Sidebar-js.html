@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.55 | 2026-05-13 20:09:54 -->
+<!-- TopoAssist v260513.57 | 2026-05-13 20:16:44 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.55";  // keep in sync with Code.gs
+const APP_VERSION = "260513.57";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3687,9 +3687,9 @@ function handleCopy(text, btnId) {
 }
 
 // --- WRAPPER FUNCTIONS (Connects to your Buttons) ---
-function copyLeft()   { handleCopy(currentLeftConfig,   "btnLeft");   }
-function copyRight()  { handleCopy(currentRightConfig,  "btnRight");  }
-function copyDevice() { handleCopy(currentDeviceConfig, "btnDevice"); }
+function copyLeft()   { handleCopy(_expandTaCleanDisplay(currentLeftConfig   || ''), "btnLeft");   }
+function copyRight()  { handleCopy(_expandTaCleanDisplay(currentRightConfig  || ''), "btnRight");  }
+function copyDevice() { handleCopy(_expandTaCleanDisplay(currentDeviceConfig || ''), "btnDevice"); }
 
 /* REPLACE toggleEditMode IN Sidebar-js.html */
 function toggleEditMode() {

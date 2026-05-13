@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260508.12 | 2026-05-08 14:33:56
+// topoassist v260513.57 | 2026-05-13 20:18:25
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -276,6 +276,67 @@ t('_getEvpnBundleGroups: all empty → []',
 t('_getEvpnBundleGroups: trims whitespace',
   _getEvpnBundleGroupsPure(['  1-100  ']),
   ['1-100']);
+
+// ── _expandTaCleanDisplay ─────────────────────────────────────────────────
+// SYNC: _TA_CLEAN_MAP and _expandTaCleanDisplay must match Sidebar-js.html.
+const _TA_CLEAN_MAP = {
+  'ta-clean-et': ['default switchport trunk allowed vlan','no switchport trunk native vlan','default switchport access vlan','no channel-group','no ipv6 address'],
+  'ta-clean-po': ['default switchport trunk allowed vlan','no switchport trunk native vlan','default switchport access vlan','no ipv6 address'],
+  'ta-clean-vl': ['default ip address','default ip address virtual','default ip virtual-router address','default ipv6 address','default ipv6 address virtual','default ipv6 virtual-router address'],
+};
+
+function _expandTaCleanDisplay(text) {
+  const lines = text.split('\n');
+  const out = [];
+  let pending = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const marker = trimmed.split(/\s+/, 1)[0];
+    if (_TA_CLEAN_MAP[marker] && trimmed.includes(' ')) {
+      pending = _TA_CLEAN_MAP[marker];
+    } else if (pending && /^interface\s/i.test(trimmed)) {
+      out.push(line);
+      for (const cmd of pending) out.push(' ' + cmd);
+      pending = null;
+    } else {
+      pending = null;
+      out.push(line);
+    }
+  }
+  return out.join('\n');
+}
+
+t('_expandTaCleanDisplay: ta-clean-et expands into interface block',
+  _expandTaCleanDisplay('ta-clean-et Et1/1\ninterface Et1/1\n switchport\n switchport mode trunk'),
+  'interface Et1/1\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no channel-group\n no ipv6 address\n switchport\n switchport mode trunk');
+
+t('_expandTaCleanDisplay: ta-clean-po expands (no channel-group)',
+  _expandTaCleanDisplay('ta-clean-po Port-Channel10\ninterface Port-Channel10\n switchport'),
+  'interface Port-Channel10\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no ipv6 address\n switchport');
+
+t('_expandTaCleanDisplay: ta-clean-vl expands into vlan interface block',
+  _expandTaCleanDisplay('ta-clean-vl Vlan100\ninterface Vlan100\n ip address virtual 10.1.1.1/24'),
+  'interface Vlan100\n default ip address\n default ip address virtual\n default ip virtual-router address\n default ipv6 address\n default ipv6 address virtual\n default ipv6 virtual-router address\n ip address virtual 10.1.1.1/24');
+
+t('_expandTaCleanDisplay: no markers — passthrough unchanged',
+  _expandTaCleanDisplay('interface Et1/1\n switchport mode trunk'),
+  'interface Et1/1\n switchport mode trunk');
+
+t('_expandTaCleanDisplay: marker without space treated as plain line',
+  _expandTaCleanDisplay('ta-clean-et\ninterface Et1/1\n switchport'),
+  'ta-clean-et\ninterface Et1/1\n switchport');
+
+t('_expandTaCleanDisplay: marker not followed by interface — marker dropped, next line kept',
+  _expandTaCleanDisplay('ta-clean-et Et1/1\n description stray line\ninterface Et1/1'),
+  ' description stray line\ninterface Et1/1');
+
+t('_expandTaCleanDisplay: empty string passthrough',
+  _expandTaCleanDisplay(''),
+  '');
+
+t('_expandTaCleanDisplay: multiple sequential interface blocks each expanded',
+  _expandTaCleanDisplay('ta-clean-et Et1/1\ninterface Et1/1\n switchport\n!\nta-clean-et Et1/2\ninterface Et1/2\n switchport'),
+  'interface Et1/1\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no channel-group\n no ipv6 address\n switchport\n!\ninterface Et1/2\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no channel-group\n no ipv6 address\n switchport');
 
 // ── Report ────────────────────────────────────────────────────────────────
 
