@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-13 (fix: Cabling Export view panel textarea now fills full modal height — added height:100%;min-height:0 to .cabling-view-body .cabling-preview-text override (was only min-height:200px, leaving empty space below content). FILES: Sidebar-css.html)
+  Last updated: 2026-05-13 (ui: exportCablingModal width 700px → 1050px (50% wider) for single-line cabling display. FILES: Sidebar-css.html)
+  Previous: 2026-05-13 (fix: Cabling Export view panel textarea now fills full modal height — added height:100%;min-height:0 to .cabling-view-body .cabling-preview-text override (was only min-height:200px, leaving empty space below content). FILES: Sidebar-css.html)
   Previous: 2026-05-13 (fix: Cabling Export — Topology List and Device List tabs now call _viewCablingReport instead of _cablingShowTab, so clicking the tab populates the textarea and switching tabs refreshes content for the selected mode. FILES: Sidebar.html)
   Previous: 2026-05-13 (feat: buildConditionalRules — (1) add A-Vx RED rules: et_speed_/xcvr_speed_/xcvr_type_/encoding_/sp_mode_/po_/ip_type_ show red when int_ starts ^Vx and field is filled (paired with existing N/A-5/N/A-Vx gray; gray when empty, red overrides when filled); (2) add W1 REMOVED comment with reason (was: et_speed_=xcvr_speed_ amber — removed because equal speeds is correct for native non-breakout ports; W2 is the refined surviving rule); (3) fix stale INSTRUCTIONS: N/A-5 desc, N/A-Vx undocumented, A8 scope, N/A GRAY color, W1 entry. FILES: Code.gs, INSTRUCTIONS_topoassist.txt)
   Previous: 2026-05-13 (feat: SFP10 added to xcvr_type_ — schema preset after SFP+; FORMAT_CONFIG color #f1f5f9 (same as SFP+, 10G tier); UserGuide swatch updated to "SFP+ / SFP10". FILES: Code.gs, UserGuide.html)
