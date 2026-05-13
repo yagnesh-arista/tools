@@ -1,47 +1,43 @@
 Push the current TopoAssist code to the template/demo Google Sheet.
 
-Run on bus-home. Requires valid clasp auth (`~/.clasprc.json`).
+Steps:
 
-## When to use this
-- After any bug fix or user-facing change you want reflected in the shared template
-- After major feature milestones (consider git tagging with `git tag vYYMMDD`)
-- NOT on every commit — template is intentional releases only
+1. Verify clasp auth is valid:
+   `clasp login --status 2>&1`
+   - If output contains "Logged in": ✓ authenticated — continue.
+   - If output contains "not logged in" or any error: ✗ stop — tell the user to run `clasp login --no-localhost` manually (never run it yourself — concurrent logins corrupt the token).
+   Do NOT proceed if auth is uncertain.
 
-## Deploy steps
+2. Swap to the template Script ID, push, then restore dev config:
+   ```
+   cd ~/claude/projects/topoassist && source ~/.bashrc && \
+   cp .clasp.json .clasp.json.dev && \
+   cp .clasp-template.json .clasp.json && \
+   clasp push --force; \
+   cp .clasp.json.dev .clasp.json && \
+   rm .clasp.json.dev
+   ```
+   The semicolon before the restore ensures `.clasp.json` is always restored even if push fails.
 
-```bash
-cd ~/claude/projects/topoassist && source ~/.bashrc
+3. Report results as a status block:
+   - clasp auth: ✓ authenticated
+   - template push: ✓ N files pushed at <time>  (or ✗ error message)
+   - dev config: ✓ .clasp.json restored
 
-# Swap to template Script ID, push, restore dev config
-cp .clasp.json .clasp.json.dev && \
-cp .clasp-template.json .clasp.json && \
-clasp push --force; \
-cp .clasp.json.dev .clasp.json && \
-rm .clasp.json.dev && \
-echo "✓ Template push done — dev .clasp.json restored"
-```
+---
 
-## If push fails with invalid_grant
-
-Re-auth first:
-```bash
-cd ~/claude/projects/topoassist && source ~/.bashrc
-clasp login --no-localhost
-```
-Visit the printed URL, complete OAuth, paste the code. Then re-run the deploy steps above.
-
-## Template sheet IDs (reference)
+## Reference
 
 | | ID |
 |---|---|
-| Drive (Sheet) | `1mIF9aeQ5oZ1QPkOUpQgGKn55zWAPGIcSjvy7xoapVos` |
-| Script | `1CliQdcCkaLfvNoXakyu6wX5MgHQTEVu5kLTOlhxVM5IlyCX180TMx51d` |
+| Template Drive (Sheet) | `1mIF9aeQ5oZ1QPkOUpQgGKn55zWAPGIcSjvy7xoapVos` |
+| Template Script | `1CliQdcCkaLfvNoXakyu6wX5MgHQTEVu5kLTOlhxVM5IlyCX180TMx51d` |
 | Dev Script | `1NL5x7CnPy2Rceet87qUTWlYxfqWaRC19pk5f1zpQR6k5FWf53BQ2JfDJ` |
 
-Users copy the template sheet via its `/copy` URL (Drive UI → File → Make a copy).
+## When to deploy to template
+- After any bug fix or user-facing change to reflect in the shared template
+- After major feature milestones
+- NOT on every commit — template is intentional releases only
 
 ## Optional: tag the release in git
-
-```bash
-cd ~/claude && git tag v260503 -m "Template release 2026-05-03"
-```
+`git -C ~/claude tag v$(date +%y%m%d) -m "Template release $(date +%Y-%m-%d)"`

@@ -1,10 +1,10 @@
-// TopoAssist v260513.3 | 2026-05-13 11:18:55
+// TopoAssist v260513.4 | 2026-05-13 11:21:08
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.4";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4321,21 +4321,13 @@ function _auditVrfIssues(rows, headers, aristaDevices, rowOffset) {
         return;
       }
 
-      // Range in vlan_ — positional mapping is ambiguous
-      const hasRange = vlanRaw.includes('-');
-      const hasList  = vlanRaw.includes(',');
-      if (hasRange) {
-        const detail = hasList ? 'mixed range+list (e.g. 10-20,25)' : 'range (e.g. 10-20)';
-        issues.push({ sev: 'warn', msg: label + ': expand VLAN ' + detail + ' before using per-VLAN VRF — positional mapping is ambiguous with ranges' });
-        return;
-      }
-
       if (isSubInt) {
         // nv<N> tokens don't generate sub-interfaces — exclude them from the count
+        // Count comma tokens (not expanded VLANs) so ranges count as one slot each
         const pvSub = parseVlanWithNative(vlanRaw);
-        const vlanList = String(pvSub.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-        if (vrfList.length !== vlanList.length) {
-          issues.push({ sev: 'error', msg: label + ': sub-int VRF count (' + vrfList.length + ') must match VLAN count (' + vlanList.length + ') — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+        const vlanTokens = String(pvSub.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        if (vrfList.length !== vlanTokens.length) {
+          issues.push({ sev: 'error', msg: label + ': sub-int VRF count (' + vrfList.length + ') must match VLAN token count (' + vlanTokens.length + ') — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
         }
       } else if (isTrunk) {
         const sviNorm  = sviRaw.toLowerCase();
@@ -4344,11 +4336,12 @@ function _auditVrfIssues(rows, headers, aristaDevices, rowOffset) {
         if (!sviRaw) {
           issues.push({ sev: 'warn', msg: label + ': multi-VRF on trunk but svi_vlan is empty — no SVIs will be created, VRF list has no effect' });
         } else if (sviIsAll) {
+          // Count comma tokens so ranges count as one VRF slot each
           const pv = parseVlanWithNative(vlanRaw);
-          const expanded = Array.from(expandVlanString(String(pv.vlans || '')));
-          if (pv.native) expanded.push(String(pv.native));
-          if (vrfList.length !== expanded.length) {
-            issues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match VLAN count (' + expanded.length + ') when svi_vlan=all — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
+          const tokens = String(pv.vlans || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+          const nativeCount = pv.native ? 1 : 0;
+          if (vrfList.length !== tokens.length + nativeCount) {
+            issues.push({ sev: 'error', msg: label + ': trunk SVI VRF count (' + vrfList.length + ') must match VLAN token count (' + (tokens.length + nativeCount) + ') when svi_vlan=all — got vlan=' + vlanRaw + ', vrf=' + vrfRaw });
           }
         } else {
           const sviList = sviRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
@@ -4614,6 +4607,7 @@ function getDeviceConfig(deviceName) {
         if (_pvAp.native) apVlans.add(parseInt(_pvAp.native));
         const apSviVlans = _parseSviVlans(d.svi_vlan_, Array.from(apVlans));
         const apVrfList = _parseVrfList(d.vrf_);
+        const apVrfMap = _buildVrfMap(d.vrf_, d.vlan_);
         if (apSviVlans.length > 0) {
           apSviVlans.forEach((v, i) => {
             vx1VlanSet.add(parseInt(v));
@@ -4631,7 +4625,7 @@ function getDeviceConfig(deviceName) {
               : gwPfx6_vx1 < 64
                 ? `${cfg2.gw_v6_first}${oct2}:${oct3}:0`
                 : `${cfg2.gw_v6_first}:${oct2}:${oct3}`;
-            const effectiveVrf = _resolveVrfAtIndex(apVrfList, i);
+            const effectiveVrf = _resolveVrfForVlan(apVrfMap, apVrfList, v);
             const desc = effectiveVrf ? `ANYCAST_GW_${effectiveVrf}_${v}` : `ANYCAST_GW_${v}`;
             // GW command: anycast (ip address virtual) vs VARP (ip address + ip virtual-router address)
             const useAnycast = isEvpnActive && gwType !== 'varp';
@@ -5369,6 +5363,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
 
   // Pre-parse per-VLAN VRF list once for this row
   const _vrfList = _parseVrfList(d.vrf_);
+  const _vrfMap  = _buildVrfMap(d.vrf_, d.vlan_);
 
   // 1. SVI (Vlan Interface)
   const sviVlans = _parseSviVlans(d.svi_vlan_, vlansForSvi);
@@ -5382,7 +5377,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
       const _ipTypeLow = (d.ip_type_ || "").toLowerCase();
       const _sviIsGw  = _ipTypeLow.includes('gw');
       const _sviIsP2p = _ipTypeLow.includes('p2p');
-      const _resolvedVrf = _resolveVrfAtIndex(_vrfList, i);
+      const _resolvedVrf = _resolveVrfForVlan(_vrfMap, _vrfList, v);
       let _sviDesc = '';
       if (!_sviIsGw) {
         if (_sviIsP2p) {
@@ -5412,7 +5407,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   else if (mode.includes("-sub-int")) {
     const subDesc = (d.peerDev && d.peerPort) ? `-> ${d.peerDev}-${d.peerPort} __TA` : '__TA';
     vlans.forEach((v, i) => {
-      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n description " + subDesc + "\n" + getIpBlock(v, _resolveVrfAtIndex(_vrfList, i)) + "\n";
+      block += "!\ninterface " + portName + "." + v + "\n encapsulation dot1q vlan " + v + "\n description " + subDesc + "\n" + getIpBlock(v, _resolveVrfForVlan(_vrfMap, _vrfList, v)) + "\n";
       if (addOspfV4) {
         block += " ip ospf network point-to-point\n";
         block += " ip ospf area 0.0.0.0\n";
