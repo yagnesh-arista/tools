@@ -3,9 +3,9 @@ Push the current TopoAssist code to the template/demo Google Sheet.
 Steps:
 
 1. Verify clasp auth is valid:
-   `cat ~/.clasprc.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('token present:', bool(d.get('token') or d.get('access_token') or d.get('tokens')))" 2>/dev/null || echo "no .clasprc.json found"`
-   - If output contains "token present: True": ✓ authenticated — continue.
-   - If output contains "no .clasprc.json found" or "False": ✗ stop — tell the user to run `clasp login --no-localhost` manually (never run it yourself — concurrent logins corrupt the token).
+   `python3 -c "import json; d=json.load(open('/root/.clasprc.json' if __import__('os').path.exists('/root/.clasprc.json') else '/home/' + __import__('os').environ.get('USER','') + '/.clasprc.json')); t=d.get('tokens',{}).get('default',{}); print('refresh_token present:', bool(t.get('refresh_token')))" 2>/dev/null || echo "no .clasprc.json or parse error"`
+   - If output contains "refresh_token present: True": ✓ authenticated — continue.
+   - If output contains "False", "no .clasprc.json", or any error: ✗ stop — tell the user to run `clasp login --no-localhost` manually (never run it yourself — concurrent logins corrupt the token).
    Do NOT proceed if auth is uncertain.
 
 2. Swap to the template Script ID, push, then restore dev config:
