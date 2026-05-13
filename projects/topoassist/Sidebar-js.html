@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.51 | 2026-05-13 19:08:42 -->
+<!-- TopoAssist v260513.52 | 2026-05-13 19:23:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.51";  // keep in sync with Code.gs
+const APP_VERSION = "260513.52";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2519,8 +2519,9 @@ function runValidation(logIssues) {
     const ipType = (d.ip_type_ || "").toLowerCase();
     const portName = node.name.toLowerCase();
 
-    // SVI is "On" if svi_vlan_ has any value ('all' or specific VLANs)
-    let isSviOn = svi !== '';
+    // SVI is "On" if svi_vlan_ has any value ('all' or specific VLANs).
+    // 'no' and '-' are explicit no-SVI markers — treated as blank (same as _parseSviVlans).
+    let isSviOn = svi !== '' && svi !== 'no' && svi !== '-';
     if (portName.startsWith("vlan")) isSviOn = true;
 
     const hasIp = (ipType !== "" && ipType !== "-");
@@ -20161,7 +20162,7 @@ function applyTopoSviFilter() {
     const row = elObj.row;
     if (topoSviFilter.length === 0) { row.classList.remove('hidden-svi'); return; }
     const svi = String(((allNodesData[id] || {}).details || {}).svi_vlan_ || '').toLowerCase().trim();
-    const mapped = svi ? 'active' : 'blank';
+    const mapped = (svi && svi !== 'no' && svi !== '-') ? 'active' : 'blank';
     if (topoSviFilter.indexOf(mapped) !== -1) row.classList.remove('hidden-svi');
     else row.classList.add('hidden-svi');
   });
