@@ -1,10 +1,10 @@
-// TopoAssist v260513.27 | 2026-05-13 15:53:52
+// TopoAssist v260513.28 | 2026-05-13 16:09:24
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.27";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260513.28";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -852,7 +852,7 @@ const DEFAULT_SCHEMA_ARRAY = [
   { key: 'et_speed', label: 'Et Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
   { key: 'xcvr_speed', label: 'Xcvr Speed', options: ['auto', '1g', '10g', '25g', '40g-4', '50g-1', '50g-2', '100g-1', '100g-2', '100g-4', '200g-1', '200g-2', '200g-4', '400g-2', '400g-4', '400g-8', '800g-4', '800g-8', '1.6t-8', 'sfp-1000baset'] },
   { key: 'encoding', label: 'FEC', options: ['fire-code', 'reed-solomon'] },
-  { key: 'xcvr_type', label: 'Xcvr Type', options: [] },
+  { key: 'xcvr_type', label: 'Xcvr Type', options: ['OSFP', 'QSFP-DD', 'QSFP56', 'QSFP28', 'QSFP100', 'DSFP', 'QSFP+', 'SFP28', 'SFP25', 'SFP+', 'SFP', 'BASE-T'] },
   { key: 'snake_int', label: 'Snake Port', options: [] },
   { key: 'desc', label: 'Description', options: [] },
   { key: 'sd', label: 'SD', options: [] },
