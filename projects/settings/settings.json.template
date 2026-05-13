@@ -284,12 +284,6 @@
         "/export/users/ash.chan/MCP/swat-release-mcp/swat_release_server.py"
       ]
     },
-    "gdoc-mcp": {
-      "command": "/export/users/ash.chan/MCP/py310/bin/python3",
-      "args": [
-        "/export/users/ash.chan/MCP/gdoc-mcp/gdoc_server.py"
-      ]
-    },
     "claudeGHCBot": {
       "command": "/export/users/ash.chan/MCP/py310/bin/python3",
       "args": [
