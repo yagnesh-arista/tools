@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.41 | 2026-05-13 17:59:12 -->
+<!-- TopoAssist v260513.42 | 2026-05-13 18:17:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.41";  // keep in sync with Code.gs
+const APP_VERSION = "260513.42";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -8719,6 +8719,11 @@ function render(data) {
       statsDiv.innerHTML = `Tot:${totalPorts} | <span style='color:#4ade80'>Con:${connPorts}</span> | <span style='color:#f87171'>Dis:${totalPorts - connPorts}</span>`;
       header.appendChild(statsDiv);
 
+      const devBridgeDot = document.createElement("span");
+      devBridgeDot.className = "dev-bridge-dot";
+      devBridgeDot.dataset.devId = node.id;
+      header.appendChild(devBridgeDot);
+
       let addBtn = document.createElement("button");
       addBtn.className = "node-add-btn";
       addBtn.innerText = "(+) Link Pair";
@@ -13647,6 +13652,19 @@ function applyDevStatusToCards() {
 
   _refreshModelLines();
 
+  // Per-device bridge reachability dot on card header: orange = unreachable (distinct from global bridge-down red)
+  document.querySelectorAll('.dev-bridge-dot').forEach(el => {
+    const ds = devStatusMap[el.dataset.devId];
+    if (!ds) { el.className = 'dev-bridge-dot'; el.title = ''; return; }
+    if (!ds.ok) {
+      el.className = 'dev-bridge-dot dot-orange';
+      el.title = ds.error || 'Device not reachable via bridge';
+    } else {
+      el.className = 'dev-bridge-dot';
+      el.title = '';
+    }
+  });
+
   // Port St dots: override with live op-status when available
   Object.entries(devStatusMap).forEach(([devId, ds]) => {
     if (!ds || !ds.ok || !ds.interfaces) return;
@@ -13677,6 +13695,7 @@ function runBridgeCheck() {
   const devices  = currentData.nodes.filter(n => allDevicesData[n.id] && allDevicesData[n.id].type !== 'non-arista');
 
   // Collect IPs and reset per-device dots
+  document.querySelectorAll('.dev-bridge-dot').forEach(el => { el.className = 'dev-bridge-dot'; el.title = ''; });
   const ipMap = {};
   devices.forEach(n => {
     const safeId = n.id.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -13755,7 +13774,7 @@ function runBridgeCheck() {
           const res = bridgeData[n.id];
           if (!res)       { dot.className = 'bridge-dev-dot dot-gray';  dot.title = 'No IP / not queried'; }
           else if (res.ok){ dot.className = 'bridge-dev-dot dot-green'; dot.title = 'SSH OK'; }
-          else            { dot.className = 'bridge-dev-dot dot-red';   dot.title = res.error || 'Error'; }
+          else            { dot.className = 'bridge-dev-dot dot-orange'; dot.title = res.error || 'Error'; }
         });
         const { results, orphans } = _compareBridgeData(bridgeData);
         _populateBridgePortSubTypes(dsData);
