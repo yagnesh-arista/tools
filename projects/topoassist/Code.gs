@@ -1,10 +1,10 @@
-// TopoAssist v260514.27 | 2026-05-14 16:27:09
+// TopoAssist v260514.28 | 2026-05-14 16:30:02
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.27";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.28";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -786,6 +786,7 @@ function saveNetworkSettings(settings) {
 */
 function showTopologyWindow() {
   try { _restorePropsFromSheet(); } catch (e) {}  // restore on first open after File→Make a copy
+  try { _seedPropsSheet();       } catch (e) {}  // backfill _TA_PROPS from existing properties if not yet seeded
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const template = HtmlService.createTemplateFromFile('Sidebar');
