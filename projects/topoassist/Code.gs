@@ -1,10 +1,10 @@
-// TopoAssist v260514.22 | 2026-05-14 15:15:15
+// TopoAssist v260514.23 | 2026-05-14 15:35:20
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.22";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.23";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -854,7 +854,7 @@ function openUserGuide() {
 // Rows beyond the current data row count that still receive CF rules and dropdown
 // validation on every rebuild or applyVisualFormatting call. This means the user can
 // add new interface rows without needing a Force Sync to get formatting/dropdowns.
-const CF_ROW_BUFFER = 300;
+const CF_ROW_BUFFER = 10;
 
 // Defines the exact Default Order & Options
 const DEFAULT_SCHEMA_ARRAY = [
