@@ -1,4 +1,4 @@
-<!-- TopoAssist v260514.8 | 2026-05-14 10:33:01 -->
+<!-- TopoAssist v260514.9 | 2026-05-14 10:42:16 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.8</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.9</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -763,7 +763,7 @@ clasp login --no-localhost</pre>
       <li><b>VARP physical IP last octet</b> — same <code>id</code> value</li>
     </ul>
     <div class="info-box amber" style="font-size:12px;">
-      <b>Inserting a device mid-project shifts the DID of every Arista device below it.</b> After any insert, re-push all affected devices. TopoAssist detects a DID shift at push time and shows a yellow warning banner — click <b>Regenerate All Configs</b> in that banner to rebuild configs for all devices before pushing.
+      <b>Inserting a device mid-project shifts the DID of every Arista device below it.</b> After any insert, re-push all affected devices. TopoAssist detects a DID shift at push time and shows a yellow warning banner with three options: <b>Regenerate All Configs</b> (rebuild configs for all devices — use when the shift was unintentional or affects config), <b>Push Anyway</b> (push the current config without regenerating), and <b>Reset Snapshot</b> (dismiss the warning and record the new IDs as the baseline — use when the shift was intentional and configs are already correct).
     </div>
 
     <h3>MLAG Pairing</h3>
@@ -1987,7 +1987,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2 id="cabling-export">📐 Cabling Export</h2>
-    <p style="font-size:13px;">Open via the cable icon in the secondary toolbar row. Generates a structured cabling table in two report formats with optional live-bridge filtering and an AI validation shortcut.</p>
+    <p style="font-size:13px;">Open via the cable icon in the primary toolbar row (VIEW section). Generates a structured cabling table in two report formats with optional live-bridge filtering and an AI validation shortcut.</p>
 
     <h3>Export Tab</h3>
     <p style="font-size:13px;">The default tab. Shows controls for both report types and the AI Validate shortcut.</p>
@@ -2021,7 +2021,7 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <!-- ================================================================ -->
     <h2 id="vlan-summary">🔢 VLAN Summary</h2>
-    <p style="font-size:13px;">Open via the VLAN icon in the secondary toolbar row. Shows all VLANs present in the topology in a sortable, filterable table. Click any row to run a VLAN trace and close the modal.</p>
+    <p style="font-size:13px;">Open via the VLAN icon in the primary toolbar row (VIEW section). Shows all VLANs present in the topology in a sortable, filterable table. Click any row to run a VLAN trace and close the modal.</p>
 
     <h3>Table Columns</h3>
     <table style="font-size:12px;border-collapse:collapse;width:100%;margin-bottom:12px;">

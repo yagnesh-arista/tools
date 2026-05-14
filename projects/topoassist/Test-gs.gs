@@ -1,4 +1,4 @@
-// TopoAssist v260514.8 | 2026-05-14 10:33:01
+// TopoAssist v260514.9 | 2026-05-14 10:42:34
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1521,6 +1521,37 @@ function test_checkAndClearReloadFlag() {
   return results;
 }
 
+function test_deleteSnapshot() {
+  const t = assert_;
+  const results = [];
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const testName = 'SNAP_TEST_DELETESNAPSHOT_UNIT';
+
+  // Ensure clean slate
+  const existing = ss.getSheetByName(testName);
+  if (existing) ss.deleteSheet(existing);
+
+  try {
+    // 1. Deleting non-existent snapshot must throw
+    let threw = false;
+    try { deleteSnapshot(testName); } catch(e) { threw = true; }
+    results.push(t("throws when snapshot does not exist", threw, true));
+
+    // 2. Create a temp sheet, then delete it via deleteSnapshot
+    ss.insertSheet(testName);
+    results.push(t("sheet exists before delete", !!ss.getSheetByName(testName), true));
+    deleteSnapshot(testName);
+    results.push(t("sheet gone after deleteSnapshot", !!ss.getSheetByName(testName), false));
+
+  } finally {
+    // Safety: remove test sheet if still present after a failure
+    const leftover = ss.getSheetByName(testName);
+    if (leftover) ss.deleteSheet(leftover);
+  }
+
+  return results;
+}
+
 function runAllTests() {
   const suites = [
     { name: "canonicalizeInterface",     fn: test_canonicalizeInterface },
@@ -1550,6 +1581,7 @@ function runAllTests() {
     { name: "compressVlanRanges",            fn: test_compressVlanRanges },
     { name: "parseAndExpandDevices",         fn: test_parseAndExpandDevices },
     { name: "checkAndClearReloadFlag",       fn: test_checkAndClearReloadFlag },
+    { name: "deleteSnapshot",               fn: test_deleteSnapshot },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);

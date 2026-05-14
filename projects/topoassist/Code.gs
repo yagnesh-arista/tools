@@ -1,10 +1,10 @@
-// TopoAssist v260514.8 | 2026-05-14 10:33:01
+// TopoAssist v260514.9 | 2026-05-14 10:41:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.8";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.9";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6902,6 +6902,9 @@ function showRestoreWizard() {
           .btn-restore{background:#3b82f6;color:#fff;border:none;padding:9px 14px;border-radius:4px;cursor:pointer;font-weight:bold;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px}
           .btn-restore:hover:not(:disabled){background:#2563eb}
           .btn-restore:disabled{background:#94a3b8;cursor:not-allowed}
+          .btn-delete{background:#fff;color:#b91c1c;border:1px solid #fca5a5;padding:9px 14px;border-radius:4px;cursor:pointer;font-weight:bold;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:6px}
+          .btn-delete:hover:not(:disabled){background:#fee2e2;border-color:#ef4444}
+          .btn-delete:disabled{color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
           #diffPanel{display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:10px;margin-bottom:10px;font-size:11px}
           #diffPanel.show{display:block}
           .diff-loading{color:#64748b;font-style:italic;text-align:center;padding:6px 0}
@@ -6931,14 +6934,17 @@ function showRestoreWizard() {
         </div>
         <div class="warning">△ <b>Warning:</b> Restoring will overwrite ALL data in "<?= targetSheet ?>". This cannot be undone.</div>
         <button class="btn-restore" id="btnRestore" onclick="runRestore()" disabled>Restore Checkpoint</button>
+        <button class="btn-delete" id="btnDelete" onclick="runDelete()" disabled>Delete Checkpoint</button>
         <div id="statusMsg"></div>
         <script>
           function loadDiff(){
             var val=document.getElementById('snapSelect').value;
             var panel=document.getElementById('diffPanel');
-            var btn=document.getElementById('btnRestore');
-            btn.disabled=true;
-            if(!val){panel.classList.remove('show');return;}
+            var btnR=document.getElementById('btnRestore');
+            var btnD=document.getElementById('btnDelete');
+            btnR.disabled=true;
+            if(!val){panel.classList.remove('show');btnD.disabled=true;return;}
+            btnD.disabled=false;
             panel.classList.add('show');
             document.getElementById('diffContent').innerHTML='<div class="diff-loading">Loading diff...</div>';
             google.script.run
@@ -6969,6 +6975,7 @@ function showRestoreWizard() {
             if(!val)return;
             var btn=document.getElementById('btnRestore');
             btn.disabled=true;
+            document.getElementById('btnDelete').disabled=true;
             document.getElementById('snapSelect').disabled=true;
             document.getElementById('statusMsg').innerText='Restoring... Please wait.';
             google.script.run
@@ -6976,9 +6983,39 @@ function showRestoreWizard() {
               .withFailureHandler(function(err){
                 document.getElementById('statusMsg').innerHTML='<span style="color:#b91c1c">Restore failed: '+err.message+'</span>';
                 btn.disabled=false;
+                document.getElementById('btnDelete').disabled=false;
                 document.getElementById('snapSelect').disabled=false;
               })
               .restoreFromSnapshot(val);
+          }
+          function runDelete(){
+            var val=document.getElementById('snapSelect').value;
+            if(!val)return;
+            var label=document.getElementById('snapSelect').options[document.getElementById('snapSelect').selectedIndex].text;
+            if(!confirm('Delete checkpoint "'+label+'"?\n\nThis permanently removes the snapshot tab and cannot be undone.'))return;
+            var btnD=document.getElementById('btnDelete');
+            var btnR=document.getElementById('btnRestore');
+            btnD.disabled=true;
+            btnR.disabled=true;
+            document.getElementById('snapSelect').disabled=true;
+            document.getElementById('statusMsg').innerText='Deleting...';
+            google.script.run
+              .withSuccessHandler(function(){
+                var sel=document.getElementById('snapSelect');
+                sel.querySelector('option[value="'+val+'"]').remove();
+                sel.value='';
+                sel.disabled=false;
+                document.getElementById('diffPanel').classList.remove('show');
+                btnD.disabled=true;
+                btnR.disabled=true;
+                document.getElementById('statusMsg').innerText='Checkpoint deleted.';
+              })
+              .withFailureHandler(function(err){
+                document.getElementById('statusMsg').innerHTML='<span style="color:#b91c1c">Delete failed: '+err.message+'</span>';
+                btnD.disabled=false;
+                document.getElementById('snapSelect').disabled=false;
+              })
+              .deleteSnapshot(val);
           }
         </script>
         <? } ?>
@@ -6989,9 +7026,19 @@ function showRestoreWizard() {
   html.snapshots = getSnapshotList();
   html.targetSheet = SHEET_DATA;
   SpreadsheetApp.getUi().showModalDialog(
-    html.evaluate().setWidth(420).setHeight(430),
+    html.evaluate().setWidth(420).setHeight(470),
     'Restore Sheet Checkpoint'
   );
+}
+
+/**
+ * Deletes a snapshot tab by its internal sheet name (e.g. "SNAP_1715693123456_My_Label").
+ */
+function deleteSnapshot(snapshotName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(snapshotName);
+  if (!sheet) throw new Error('Checkpoint not found: ' + snapshotName);
+  ss.deleteSheet(sheet);
 }
 
 /**
