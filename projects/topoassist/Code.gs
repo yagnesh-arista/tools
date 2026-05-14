@@ -1,10 +1,10 @@
-// TopoAssist v260513.60 | 2026-05-13 21:02:27
+// TopoAssist v260514.1 | 2026-05-14 09:52:12
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260513.60";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3465,6 +3465,10 @@ function saveDeviceIdSnapshot() {
   return snap;
 }
 
+function deleteDeviceIdSnapshot() {
+  PropertiesService.getDocumentProperties().deleteProperty('DEVICE_ID_SNAPSHOT');
+}
+
 function checkDeviceIdShift() {
   var snap = getDeviceIdSnapshot();
   if (!snap) return { shifted: [], isFirstRun: true };
@@ -4009,36 +4013,38 @@ function runFullSheetCleanup(skipVersionBump) {
  * Wrapped in LockService to prevent race conditions during bulk edits.
  */
 function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() !== SHEET_DATA) return;
+
+  const range = e.range;
+  const startRow = range.getRow();
+  const startCol = range.getColumn();
+
+  // Guard: column A is reserved for _sys_ row-visibility column — revert any user edit.
+  // Column A reverts do NOT bump DATA_VERSION (revert restores original state — no topology change).
+  if (startCol === 1) {
+    if (startRow === 2) {
+      range.setValue(DUMMY_VIS_HEADER);
+    } else {
+      range.clearContent();
+    }
+    e.source.toast('Column A is reserved for TopoAssist row visibility markers and cannot be edited.', '⚠ Protected Column', 5);
+    return;
+  }
+
+  if (startRow < 3) return; // Skip Header rows
+
+  // Bump DATA_VERSION BEFORE acquiring the lock — rapid pastes fire multiple concurrent onEdit
+  // executions; if tryLock() times out below, the bump is still recorded so the smart poll
+  // always detects the edit. Without this, a lock-timeout silently skips the bump and the
+  // sidebar never refreshes.
+  PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
+
   // 1. Transactional Lock: Wait up to 10 seconds for other edits to finish
   const lock = LockService.getDocumentLock();
   if (!lock.tryLock(10000)) return;
 
   try {
-    const sheet = e.source.getActiveSheet();
-    if (sheet.getName() !== SHEET_DATA) return;
-
-    const range = e.range;
-    const startRow = range.getRow();
-    const startCol = range.getColumn();
-
-    // Guard: column A is reserved for _sys_ row-visibility column — revert any user edit
-    if (startCol === 1) {
-      if (startRow === 2) {
-        // Row 2 holds the _sys_ header — restore it so ensureDummyColumn doesn't insert a duplicate column
-        range.setValue(DUMMY_VIS_HEADER);
-      } else {
-        range.clearContent();
-      }
-      e.source.toast('Column A is reserved for TopoAssist row visibility markers and cannot be edited.', '⚠ Protected Column', 5);
-      return;
-    }
-
-    if (startRow < 3) return; // Skip Header rows
-
-    // Bump version BEFORE any processing — auto-cleaning or validation can throw/timeout,
-    // and DATA_VERSION must be bumped regardless so smart poll triggers a fresh fetch.
-    // (Previously at end of function, so any exception silently suppressed the version bump.)
-    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
 
     const numRows = range.getNumRows();
     const numCols = range.getNumColumns();

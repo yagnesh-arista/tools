@@ -1,7 +1,7 @@
-<!-- TopoAssist v260513.60 | 2026-05-13 21:00:20 -->
+<!-- TopoAssist v260514.1 | 2026-05-14 09:51:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260513.60";  // keep in sync with Code.gs
+const APP_VERSION = "260514.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -17687,8 +17687,20 @@ function _injectPushIdShiftWarning(shifted) {
     '<button onclick="document.getElementById(\'pushIdShiftBanner\').remove()" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
     'padding:3px 10px;border:1px solid #d6b966;border-radius:3px;background:transparent;' +
     'color:#92400e;cursor:pointer;user-select:none;-webkit-user-select:none;">Push Anyway</button>' +
+    '<button onclick="_resetDeviceIdSnapshot()" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
+    'padding:3px 10px;border:1px solid #d6b966;border-radius:3px;background:transparent;' +
+    'color:#92400e;cursor:pointer;user-select:none;-webkit-user-select:none;">Reset Snapshot</button>' +
     '</div></div>';
   bodyEl.insertAdjacentHTML('afterbegin', banner);
+}
+
+function _resetDeviceIdSnapshot() {
+  const banner = document.getElementById('pushIdShiftBanner');
+  if (banner) banner.remove();
+  _lastIdShiftResult = { shifted: [], isFirstRun: true };
+  google.script.run
+    .withFailureHandler(function() {})
+    .deleteDeviceIdSnapshot();
 }
 
 function _injectPushAsnChangeWarning(asnChanged) {
