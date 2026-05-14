@@ -1,4 +1,4 @@
-<!-- TopoAssist v260514.19 | 2026-05-14 14:39:59 -->
+<!-- TopoAssist v260514.21 | 2026-05-14 14:41:58 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.19</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.21</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -934,9 +934,11 @@ clasp login --no-localhost</pre>
         <td>
           <b>Search / Filter</b> (SEARCH) — type to filter by device name, port, role label, VLAN, mode, IP, or VRF. Special syntax:<br>
           &nbsp;&nbsp;<code>v10</code> or <code>v1050</code> — trace all ports carrying that VLAN (highlighted across the topology).<br>
+          &nbsp;&nbsp;<code>term1,term2</code> — comma-separated OR logic: show devices matching any term.<br>
+          &nbsp;&nbsp;Regex supported: <code>leaf[12]</code>, <code>et[0-9]+/1$</code>, <code>vrf.*(blue|red)</code> — invalid patterns fall back to literal match.<br>
           &nbsp;&nbsp;Press <b>Enter</b> (with no autocomplete item selected) to pan and scroll to the first matching device.<br>
           &nbsp;&nbsp;Click any <b>role pill</b> on a device header to filter the topology to devices with that role (click again to clear).<br>
-          Enable <b>Strict</b> checkbox for exact-match only (no substring).
+          Enable <b>Strict</b> checkbox for whole-word match only (regex still applies within word boundaries).
         </td>
       </tr>
       <tr>
