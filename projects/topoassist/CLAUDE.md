@@ -228,6 +228,21 @@ When the same format string appears in 3+ call sites, extract it to a pure funct
 - `_buildSplitLabel` / `_setSplitBtnLabel` — split-btn label format (all 3 states + colors in one place)
 - `updateDirtyButton("#id", isDirty)` — dirty-state button (amber/green + " *" label); `DeviceManagerSaveButton` and `SheetColumnManagerSaveButton` must call this, never inline it
 
+## _TA_PROPS — Copy-Safe Property Backup
+
+`_TA_PROPS` is a hidden sheet that mirrors all topology configuration so it survives **File → Make a copy**. Every save function that writes user-authored data to any property store must also call `_writePropsSheet(key, value, store)` or `_writePropsSheetBatch(map, store)`.
+
+**Store values:** `'doc'` = DocumentProperties · `'user'` = UserProperties · `'script'` = ScriptProperties
+
+**Currently backed-up keys:**
+- `doc`: DEVICE_ROLES, DEVICE_MLAG_PEERS, NON_ARISTA_DEVICES, 20 tech-settings keys, GLOBAL_DEVICE_CONFIG_TEMPLATE, GW_DEVICE_OVERRIDES, DEVICE_HOSTNAMES, DEVICE_METADATA, SCHEMA_CONFIG_ARRAY
+- `user`: all 21 IP pref keys, CUSTOM_VIEW_PREFS
+- `script`: DEVICE_LABELS, TOPOLOGY_HIDDEN_DEVICES
+
+**Rule:** when adding a new `saveX()` function that stores topology data in any property service, add the matching `_writePropsSheet` call in the same edit. Omitting it silently loses the data on copy.
+
+**Restore:** `_restorePropsFromSheet()` runs at `onOpenInstallable()` and restores all missing keys (no-op if key already set — never overwrites).
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes

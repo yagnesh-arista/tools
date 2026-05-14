@@ -1,10 +1,10 @@
-// TopoAssist v260514.15 | 2026-05-14 14:17:25
+// TopoAssist v260514.16 | 2026-05-14 14:33:04
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.15";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.16";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -750,7 +750,7 @@ function getNetworkSettings() {
 function saveNetworkSettings(settings) {
   const props = PropertiesService.getDocumentProperties();
   const b = (v) => v ? 'true' : 'false';
-  props.setProperties({
+  const techProps = {
     'INT_IPV4':       b(settings.int_ipv4 !== false),  // default true if omitted
     'INT_IPV6':       b(settings.int_ipv6),
     'INT_IPV6_UNNUM': b(settings.int_ipv6_unnum),
@@ -771,7 +771,9 @@ function saveNetworkSettings(settings) {
     'GW_L3_TYPE':          settings.gw_l3_type     || 'anycast',
     'VARP_MAC':            settings.varp_mac        || '001c.7300.0099',
     'EVPN_BUNDLE_GROUPS':  JSON.stringify(Array.isArray(settings.evpn_bundle_groups) ? settings.evpn_bundle_groups : [])
-  });
+  };
+  props.setProperties(techProps);
+  _writePropsSheetBatch(techProps, 'doc');
   return { success: true };
 }
 /**
@@ -901,7 +903,9 @@ function saveSchemaConfig(newArray) {
       }
     }
   }
-  PropertiesService.getDocumentProperties().setProperty('SCHEMA_CONFIG_ARRAY', JSON.stringify(newArray));
+  const schemaJson = JSON.stringify(newArray);
+  PropertiesService.getDocumentProperties().setProperty('SCHEMA_CONFIG_ARRAY', schemaJson);
+  _writePropsSheet('SCHEMA_CONFIG_ARRAY', schemaJson, 'doc');
   return { success: true };
 }
 
@@ -2274,7 +2278,11 @@ function getViewPreferences() {
       const migrated = prefs.map(function(k) { return KEY_MIGRATIONS[k] || k; });
       // Persist if anything changed so future calls are already clean
       const changed = migrated.some(function(k, i) { return k !== prefs[i]; });
-      if (changed) PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', JSON.stringify(migrated));
+      if (changed) {
+        const migratedJson = JSON.stringify(migrated);
+        PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', migratedJson);
+        _writePropsSheet('CUSTOM_VIEW_PREFS', migratedJson, 'user');
+      }
       return migrated;
     }
   } catch (e) { /* malformed JSON — fall through to default */ }
@@ -2294,7 +2302,9 @@ function applyCustomView(selectedKeys) {
   if (lastCol < 2) return;
 
   // A. Save the preference for next time
-  PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', JSON.stringify(selectedKeys));
+  const customViewJson = JSON.stringify(selectedKeys);
+  PropertiesService.getUserProperties().setProperty('CUSTOM_VIEW_PREFS', customViewJson);
+  _writePropsSheet('CUSTOM_VIEW_PREFS', customViewJson, 'user');
 
   // B. Compute target visibility for every column (type filter + device filter combined)
   const prefixes = selectedKeys.map(k => k + '_');
@@ -2496,7 +2506,9 @@ function processDeviceBatch(renames, finalOrderList, hostnamesMap) {
   // Save hostnames BEFORE bumping DATA_VERSION so any poller-triggered getTopologyData
   // that fires immediately after the version bump sees the correct hostname values.
   if (hostnamesMap && typeof hostnamesMap === 'object') {
-    PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', JSON.stringify(hostnamesMap));
+    const hostnamesJson = JSON.stringify(hostnamesMap);
+    PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', hostnamesJson);
+    _writePropsSheet('DEVICE_HOSTNAMES', hostnamesJson, 'doc');
   }
 
   PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
@@ -3033,6 +3045,7 @@ function getGlobalConfig() {
 function saveGlobalConfig(text) {
   const props = PropertiesService.getDocumentProperties();
   props.setProperty(GLOBAL_CONFIG_KEY, text);
+  _writePropsSheet(GLOBAL_CONFIG_KEY, text, 'doc');
   return { success: true };
 }
 
@@ -3137,7 +3150,9 @@ function saveGwDeviceOverrides(overrides) {
       clean[dev] = vals;
     }
   });
-  PropertiesService.getDocumentProperties().setProperty('GW_DEVICE_OVERRIDES', JSON.stringify(clean));
+  const json = JSON.stringify(clean);
+  PropertiesService.getDocumentProperties().setProperty('GW_DEVICE_OVERRIDES', json);
+  _writePropsSheet('GW_DEVICE_OVERRIDES', json, 'doc');
   return { success: true };
 }
 
@@ -3145,15 +3160,12 @@ function saveIpPreferences(prefs) {
   const userProps = PropertiesService.getUserProperties();
   // gw_device_overrides is stored separately in DocumentProperties — remove before UserProperties save
   const gwOverrides = prefs.gw_device_overrides;
-  if (gwOverrides !== undefined) {
-    saveGwDeviceOverrides(gwOverrides);
-    const prefsForUser = Object.assign({}, prefs);
-    delete prefsForUser.gw_device_overrides;
-    delete prefsForUser.arista_devices;
-    userProps.setProperties(prefsForUser);
-  } else {
-    userProps.setProperties(prefs);
-  }
+  const prefsForUser = Object.assign({}, prefs);
+  delete prefsForUser.gw_device_overrides;
+  delete prefsForUser.arista_devices;
+  if (gwOverrides !== undefined) saveGwDeviceOverrides(gwOverrides);
+  userProps.setProperties(prefsForUser);
+  _writePropsSheetBatch(prefsForUser, 'user');
   return { success: true };
 }
 
@@ -3323,7 +3335,9 @@ function saveDeviceVisibility(hiddenList) {
   const props = PropertiesService.getScriptProperties();
   // Device Manager permanent visibility — shared via ScriptProperties (TOPOLOGY_HIDDEN_DEVICES).
   // Does NOT bump DATA_VERSION; Device Manager callers call fetchData(true) explicitly.
-  props.setProperty('TOPOLOGY_HIDDEN_DEVICES', JSON.stringify(hiddenList));
+  const json = JSON.stringify(hiddenList);
+  props.setProperty('TOPOLOGY_HIDDEN_DEVICES', json);
+  _writePropsSheet('TOPOLOGY_HIDDEN_DEVICES', json, 'script');
   return { success: true };
 }
 
@@ -3401,8 +3415,10 @@ function getDeviceLabels() {
 
 function saveDeviceLabels(labelsMap) {
   const props = PropertiesService.getScriptProperties();
-  props.setProperty('DEVICE_LABELS', JSON.stringify(labelsMap));
+  const json = JSON.stringify(labelsMap);
+  props.setProperty('DEVICE_LABELS', json);
   props.setProperty('DATA_VERSION', new Date().getTime().toString());
+  _writePropsSheet('DEVICE_LABELS', json, 'script');
   return { success: true };
 }
 
@@ -3412,7 +3428,9 @@ function getDeviceMetadata() {
 }
 
 function saveDeviceMetadata(metaMap) {
-  PropertiesService.getDocumentProperties().setProperty('DEVICE_METADATA', JSON.stringify(metaMap));
+  const json = JSON.stringify(metaMap);
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_METADATA', json);
+  _writePropsSheet('DEVICE_METADATA', json, 'doc');
   return { success: true };
 }
 
@@ -3422,7 +3440,9 @@ function getDeviceHostnames() {
 }
 
 function saveDeviceHostnames(hostnamesMap) {
-  PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', JSON.stringify(hostnamesMap));
+  const json = JSON.stringify(hostnamesMap);
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_HOSTNAMES', json);
+  _writePropsSheet('DEVICE_HOSTNAMES', json, 'doc');
   return { success: true };
 }
 
@@ -3471,13 +3491,24 @@ function saveDeviceMlagPeers(peersMap) {
 }
 
 // ── _TA_PROPS sheet — survives File → Make a copy ─────────────────────────────
-// DocumentProperties are NOT copied when a spreadsheet is duplicated via File→Make a copy
-// or the /copy URL. This hidden sheet mirrors DEVICE_ROLES, DEVICE_MLAG_PEERS, and
-// NON_ARISTA_DEVICES so they are restored automatically on first open of the copy.
+// DocumentProperties, UserProperties, and ScriptProperties are all lost when a
+// spreadsheet is duplicated via File→Make a copy or the /copy URL. This hidden
+// sheet (3 columns: key | value | store) mirrors all topology configuration so
+// it is restored automatically on first open of the copy.
+//
+// Backed-up groups:
+//   doc   — DEVICE_ROLES, DEVICE_MLAG_PEERS, NON_ARISTA_DEVICES
+//           Tech settings (INT_IPV4…EVPN_BUNDLE_GROUPS — 20 keys)
+//           GLOBAL_DEVICE_CONFIG_TEMPLATE, GW_DEVICE_OVERRIDES
+//           DEVICE_HOSTNAMES, DEVICE_METADATA, SCHEMA_CONFIG_ARRAY
+//   user  — IP preferences (p2p/gw/lo/asn/vni fields — 21 keys), CUSTOM_VIEW_PREFS
+//   script — DEVICE_LABELS, TOPOLOGY_HIDDEN_DEVICES
 
 const _TA_PROPS_SHEET = '_TA_PROPS';
 
-function _writePropsSheet(key, jsonValue) {
+// Write a single key. store = 'doc' | 'user' | 'script' (default 'doc').
+function _writePropsSheet(key, jsonValue, store) {
+  store = store || 'doc';
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(_TA_PROPS_SHEET);
@@ -3485,13 +3516,53 @@ function _writePropsSheet(key, jsonValue) {
       sheet = ss.insertSheet(_TA_PROPS_SHEET);
       sheet.hideSheet();
     }
-    const data = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues() : [];
+    const lastRow = sheet.getLastRow();
+    const data = lastRow > 0 ? sheet.getRange(1, 1, lastRow, 3).getValues() : [];
     for (let i = 0; i < data.length; i++) {
-      if (data[i][0] === key) { sheet.getRange(i + 1, 2).setValue(jsonValue); return; }
+      if (data[i][0] === key) {
+        sheet.getRange(i + 1, 2, 1, 2).setValues([[jsonValue, store]]);
+        return;
+      }
     }
-    sheet.appendRow([key, jsonValue]);
+    sheet.appendRow([key, jsonValue, store]);
   } catch (e) {
     Logger.log('[_writePropsSheet] ' + key + ': ' + e);
+    try { SpreadsheetApp.getActiveSpreadsheet().toast(e.message, '⚠ _TA_PROPS write failed', 5); } catch (_) {}
+  }
+}
+
+// Write multiple keys at once with one sheet read + one write (batch-efficient).
+function _writePropsSheetBatch(entriesMap, store) {
+  store = store || 'doc';
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(_TA_PROPS_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(_TA_PROPS_SHEET);
+      sheet.hideSheet();
+    }
+    const remaining = Object.assign({}, entriesMap);
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 0) {
+      const range = sheet.getRange(1, 1, lastRow, 3);
+      const data = range.getValues();
+      let dirty = false;
+      data.forEach(function(row, i) {
+        if (Object.prototype.hasOwnProperty.call(remaining, row[0])) {
+          data[i][1] = remaining[row[0]];
+          data[i][2] = store;
+          delete remaining[row[0]];
+          dirty = true;
+        }
+      });
+      if (dirty) range.setValues(data);
+    }
+    const newRows = Object.keys(remaining).map(function(k) { return [k, remaining[k], store]; });
+    if (newRows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 3).setValues(newRows);
+    }
+  } catch (e) {
+    Logger.log('[_writePropsSheetBatch] ' + e);
     try { SpreadsheetApp.getActiveSpreadsheet().toast(e.message, '⚠ _TA_PROPS write failed', 5); } catch (_) {}
   }
 }
@@ -3500,13 +3571,15 @@ function _restorePropsFromSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(_TA_PROPS_SHEET);
   if (!sheet || sheet.getLastRow() < 1) return;
-  const data = sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues();
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), 3).getValues();
   const dp = PropertiesService.getDocumentProperties();
-  const keys = ['DEVICE_ROLES', 'DEVICE_MLAG_PEERS', 'NON_ARISTA_DEVICES'];
+  const up = PropertiesService.getUserProperties();
+  const sp = PropertiesService.getScriptProperties();
   data.forEach(function(row) {
-    if (keys.includes(row[0]) && row[1] !== '' && !dp.getProperty(row[0])) {
-      dp.setProperty(row[0], String(row[1]));
-    }
+    const key = row[0], val = String(row[1]), store = row[2] || 'doc';
+    if (!key || val === '') return;
+    const svc = store === 'user' ? up : store === 'script' ? sp : dp;
+    if (!svc.getProperty(key)) svc.setProperty(key, val);
   });
 }
 
