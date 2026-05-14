@@ -1,10 +1,10 @@
-// TopoAssist v260514.13 | 2026-05-14 13:33:13
+// TopoAssist v260514.14 | 2026-05-14 13:49:33
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -848,6 +848,11 @@ function openUserGuide() {
 * SCHEMA STORAGE (ARRAY BASED FOR ORDERING)
 * -------------------
 */
+// Rows beyond the current data row count that still receive CF rules and dropdown
+// validation on every rebuild or applyVisualFormatting call. This means the user can
+// add new interface rows without needing a Force Sync to get formatting/dropdowns.
+const CF_ROW_BUFFER = 200;
+
 // Defines the exact Default Order & Options
 const DEFAULT_SCHEMA_ARRAY = [
   { key: 'int', label: 'Interface', options: [] },
@@ -1497,7 +1502,9 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
     }
 
     // --- STAGE 3: VALIDATION (ALWAYS RUNS) ---
-    const dataRowSpan = finalRowCount - 2;
+    // Extend span by CF_ROW_BUFFER so newly typed interface rows get dropdowns
+    // without needing Force Sync. Capped at sheet max to avoid range errors.
+    const dataRowSpan = Math.min(Math.max(finalRowCount - 2, CF_ROW_BUFFER), mappingSheet.getMaxRows() - 2);
     if (dataRowSpan > 0) {
       validationQueue.forEach(v => {
         try { mappingSheet.getRange(3, v.col, dataRowSpan, 1).setDataValidation(v.rule); } catch (e) { console.warn(`setDataValidation failed at col ${v.col}:`, e.message); }
@@ -1769,7 +1776,9 @@ function applyVisualFormatting(optionalSheet) {
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
-    const rules = buildConditionalRules(sheet, headers, lastRow);
+    // Extend CF beyond current data so new interface rows are immediately styled.
+    const cfLastRow = Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows());
+    const rules = buildConditionalRules(sheet, headers, cfLastRow);
     sheet.setConditionalFormatRules(rules);
 
     // 5. Standard Fonts
@@ -2334,8 +2343,8 @@ function updateSheetDropdownsOnly() {
 
   const schemaObj = getAttributeSchema();
   const headers = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const lastRow = Math.max(sheet.getLastRow(), 100);
-  const rowSpan = lastRow - 2;
+  const lastRow = Math.min(Math.max(sheet.getLastRow(), 2) + CF_ROW_BUFFER, sheet.getMaxRows());
+  const rowSpan = Math.max(lastRow - 2, 1);
 
   ss.toast("Updating dropdown rules...", "Quick Sync", 2);
 
