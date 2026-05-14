@@ -1,10 +1,10 @@
-// TopoAssist v260514.11 | 2026-05-14 11:40:40
+// TopoAssist v260514.12 | 2026-05-14 11:58:01
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.11";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.12";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3481,7 +3481,10 @@ function _writePropsSheet(key, jsonValue) {
       if (data[i][0] === key) { sheet.getRange(i + 1, 2).setValue(jsonValue); return; }
     }
     sheet.appendRow([key, jsonValue]);
-  } catch (e) { /* non-critical — DocumentProperties remain the live source */ }
+  } catch (e) {
+    Logger.log('[_writePropsSheet] ' + key + ': ' + e);
+    try { SpreadsheetApp.getActiveSpreadsheet().toast(e.message, '⚠ _TA_PROPS write failed', 5); } catch (_) {}
+  }
 }
 
 function _restorePropsFromSheet() {
@@ -6978,6 +6981,13 @@ function showRestoreWizard() {
           .btn-delete{background:#fff;color:#b91c1c;border:1px solid #fca5a5;padding:9px 14px;border-radius:4px;cursor:pointer;font-weight:bold;width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:6px}
           .btn-delete:hover:not(:disabled){background:#fee2e2;border-color:#ef4444}
           .btn-delete:disabled{color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
+          #delConfirm{display:none;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:10px;margin-top:8px;font-size:11px}
+          .del-confirm-btns{display:flex;gap:6px;margin-top:8px}
+          .del-confirm-btns button{flex:1;padding:7px 10px;border-radius:4px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:bold;border:none}
+          .btn-cancel-del{background:#fff;color:#64748b;border:1px solid #cbd5e1 !important}
+          .btn-cancel-del:hover{background:#f1f5f9}
+          .btn-confirm-del{background:#b91c1c;color:#fff}
+          .btn-confirm-del:hover{background:#991b1b}
           #diffPanel{display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:10px;margin-bottom:10px;font-size:11px}
           #diffPanel.show{display:block}
           .diff-loading{color:#64748b;font-style:italic;text-align:center;padding:6px 0}
@@ -7008,6 +7018,13 @@ function showRestoreWizard() {
         <div class="warning">△ <b>Warning:</b> Restoring will overwrite ALL data in "<?= targetSheet ?>". This cannot be undone.</div>
         <button class="btn-restore" id="btnRestore" onclick="runRestore()" disabled>Restore Checkpoint</button>
         <button class="btn-delete" id="btnDelete" onclick="runDelete()" disabled>Delete Checkpoint</button>
+        <div id="delConfirm">
+          <div id="delConfirmMsg"></div>
+          <div class="del-confirm-btns">
+            <button class="btn-cancel-del" onclick="cancelDelete()">Cancel</button>
+            <button class="btn-confirm-del" onclick="doDelete()">Permanently Delete</button>
+          </div>
+        </div>
         <div id="statusMsg"></div>
         <script>
           function loadDiff(){
@@ -7061,15 +7078,25 @@ function showRestoreWizard() {
               })
               .restoreFromSnapshot(val);
           }
+          var _delVal='';
           function runDelete(){
             var val=document.getElementById('snapSelect').value;
             if(!val)return;
+            _delVal=val;
             var label=document.getElementById('snapSelect').options[document.getElementById('snapSelect').selectedIndex].text;
-            if(!confirm('Delete checkpoint "'+label+'"?\n\nThis permanently removes the snapshot tab and cannot be undone.'))return;
-            var btnD=document.getElementById('btnDelete');
-            var btnR=document.getElementById('btnRestore');
-            btnD.disabled=true;
-            btnR.disabled=true;
+            document.getElementById('delConfirmMsg').textContent='Delete "'+label+'"? This cannot be undone.';
+            document.getElementById('delConfirm').style.display='block';
+            document.getElementById('btnDelete').disabled=true;
+            document.getElementById('btnRestore').disabled=true;
+          }
+          function cancelDelete(){
+            document.getElementById('delConfirm').style.display='none';
+            document.getElementById('btnDelete').disabled=false;
+            document.getElementById('btnRestore').disabled=false;
+          }
+          function doDelete(){
+            var val=_delVal;
+            document.getElementById('delConfirm').style.display='none';
             document.getElementById('snapSelect').disabled=true;
             document.getElementById('statusMsg').innerText='Deleting...';
             google.script.run
@@ -7079,13 +7106,14 @@ function showRestoreWizard() {
                 sel.value='';
                 sel.disabled=false;
                 document.getElementById('diffPanel').classList.remove('show');
-                btnD.disabled=true;
-                btnR.disabled=true;
+                document.getElementById('btnDelete').disabled=true;
+                document.getElementById('btnRestore').disabled=true;
                 document.getElementById('statusMsg').innerText='Checkpoint deleted.';
               })
               .withFailureHandler(function(err){
                 document.getElementById('statusMsg').innerHTML='<span style="color:#b91c1c">Delete failed: '+err.message+'</span>';
-                btnD.disabled=false;
+                document.getElementById('btnDelete').disabled=false;
+                document.getElementById('btnRestore').disabled=false;
                 document.getElementById('snapSelect').disabled=false;
               })
               .deleteSnapshot(val);
@@ -7099,7 +7127,7 @@ function showRestoreWizard() {
   html.snapshots = getSnapshotList();
   html.targetSheet = SHEET_DATA;
   SpreadsheetApp.getUi().showModalDialog(
-    html.evaluate().setWidth(420).setHeight(470),
+    html.evaluate().setWidth(420).setHeight(520),
     'Sheet Checkpoint Management'
   );
 }
