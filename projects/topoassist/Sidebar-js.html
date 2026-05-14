@@ -1,7 +1,7 @@
-<!-- TopoAssist v260514.28 | 2026-05-14 16:30:02 -->
+<!-- TopoAssist v260514.29 | 2026-05-14 22:30:09 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260514.28";  // keep in sync with Code.gs
+const APP_VERSION = "260514.29";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -1720,7 +1720,7 @@ function SheetColumnManagerSave() {
     sheetColumnManagerLockTimer = null;
     setUiBusy(false);
     btn.innerText = origText;
-    setStatus("⚠ Save timed out — server took too long. Please try again.", "status-error");
+    setStatus("Save timed out — server took too long. Please try again.", "status-error");
   }, 30000);
 
   const applyFormatting = document.getElementById("chkApplyFormatting").checked;
@@ -1854,7 +1854,7 @@ function SheetColumnManagerSave() {
       setUiBusy(false);
       btn.innerText = origText;
       SheetColumnManagerSaveButton();
-      setStatus("✗ Save Failed: " + err.message, "status-error");
+      setStatus("Save Failed: " + err.message, "status-error");
     })
     .saveSchemaConfig(cleanList);
 }
@@ -1927,7 +1927,7 @@ function triggerSyncOnly() {
     .withFailureHandler(err => {
       setUiBusy(false);
       btn.innerHTML = origHtml;
-      setStatus('✗ Pre-sync check failed: ' + err.message, 'status-error');
+      setStatus('Pre-sync check failed: ' + err.message, 'status-error');
     })
     .getOrphanedColumnsInfo(null);
 }
@@ -1976,7 +1976,7 @@ function _runForceSyncNow(btn, origHtml, applyFormatting, deleteOrphans) {
       hideGlobalLoading();
       setUiBusy(false);
       btn.innerHTML = origHtml;
-      setStatus('✗ Sync Failed: ' + err.message, 'status-error');
+      setStatus('Sync Failed: ' + err.message, 'status-error');
     })
     .syncSchemaPreservingOrder(null, applyFormatting, deleteOrphans);
 }
@@ -1991,7 +1991,7 @@ function SheetColumnManagerResetDefaults() {
       isSheetColumnManagerDirty = false;
       SheetColumnManager();
     })
-    .withFailureHandler(err => setStatus("✗ Reset Failed: " + err.message, "status-error"))
+    .withFailureHandler(err => setStatus("Reset Failed: " + err.message, "status-error"))
     .resetSchemaToDefaults();
 }
 
@@ -5108,8 +5108,9 @@ function _updateGwExample() {
   const c4El = document.getElementById('gw-ex4-caution');
   const c6El = document.getElementById('gw-ex6-caution');
   const exVlan = oct2 * 100 + oct3;   // 1520 when oct2=15, oct3=20
-  if (c4El) c4El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}.0.0.${l4n}${m4sw} — VLANs sharing last-2-digits share one GW IP`;
-  if (c6El) c6El.innerHTML = `⚠ VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}:0:0::${l6n}${m6sw} — VLANs sharing last-2-digits share one GW IP`;
+  const _warnSvg = '<svg width="10" height="9" viewBox="0 0 10 9" fill="none" style="vertical-align:-1px;margin-right:2px"><path d="M5 0.5L9.5 8.5H0.5L5 0.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5 3.5v1.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="6.8" r="0.6" fill="currentColor"/></svg>';
+  if (c4El) c4El.innerHTML = `${_warnSvg}VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}.0.0.${l4n}${m4sw} — VLANs sharing last-2-digits share one GW IP`;
+  if (c6El) c6El.innerHTML = `${_warnSvg}VLAN ${exVlan} &amp; ${oct3} → both oct3=${oct3} → 1${oct3s}:0:0::${l6n}${m6sw} — VLANs sharing last-2-digits share one GW IP`;
 
   // ── Populate all three tier sections ──
   set('gw-ex4-std-mphy1',  s4mphy(3));  set('gw-ex4-wide-mphy1',  w4mphy(3));  set('gw-ex4-sw-mphy1',  sw4mphy(3));
@@ -5318,7 +5319,7 @@ function saveIpConfig() {
     .withFailureHandler(err => {
       clearTimeout(_guard);
       hideGlobalLoading();
-      setTimeout(() => { setStatus("✗ Save Failed: " + err.message, "status-error"); }, 50);
+      setTimeout(() => { setStatus("Save Failed: " + err.message, "status-error"); }, 50);
     })
     .saveIpPreferences(prefs);
 }
@@ -10198,7 +10199,7 @@ function fetchData(force, autoVerify, silent) {
     // before calling fetchData; overwriting it here would hide e.g. "Sheet changed —
     // refreshing topology…" before the user can read it.
     if (isFirstLoad && !silent && !savedSelectionId && !selectedDeviceId && statusEl) {
-      setStatus("🚀 Requesting Topology Data.. no local cache");
+      setStatus("Requesting Topology Data — no local cache");
       document.getElementById("status").classList.remove("highlighted");
     }
 
@@ -17226,7 +17227,7 @@ function submitCustomView() {
     })
     .withFailureHandler(err => {
       clearTimeout(_guard);
-      setStatus("✗ Apply Failed: " + err.message, "status-error");
+      setStatus("Apply Failed: " + err.message, "status-error");
     })
     .applyCustomView(selected);
 }
@@ -18735,7 +18736,8 @@ function _renderGenerateDeviceList() {
   if (allCached) {
     const sheetName = m.sheetName || 'Configs';
     header = '<div style="color:#10b981;font-weight:700;margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">'
-      + '✓ ' + totalCached + ' device(s) → written to <b>' + escapeHtml(sheetName) + '</b> tab' + ts + '</div>';
+      + '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-2px;margin-right:3px"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + totalCached + ' device(s) → written to <b>' + escapeHtml(sheetName) + '</b> tab' + ts + '</div>';
   } else if (totalCached > 0) {
     header = '<div style="color:var(--text-muted);margin-bottom:10px;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-style:italic;">'
       + totalCached + ' of ' + devices.length + ' device(s) auto-cached'
@@ -20179,6 +20181,12 @@ function clearVlanFilter() {
 }
 
 function applyVlanFilter() {
+  // Expand filter tokens to a flat Set<string> — handles VTEP range chips like "1-4000"
+  const filterVlans = new Set();
+  topoVlanFilter.forEach(function(tok) {
+    parseVlanInput(tok).forEach(function(v) { filterVlans.add(String(v)); });
+  });
+
   Object.entries(globalPortElements).forEach(function([id, elObj]) {
     const row = elObj.row;
     if (topoVlanFilter.length === 0) { row.classList.remove('hidden-vlan'); return; }
@@ -20189,7 +20197,7 @@ function applyVlanFilter() {
     if (parsed.vlans) {
       parsed.vlans.split(',').forEach(function(v) { v = v.trim(); if (v) portVlans.add(v); });
     }
-    if (topoVlanFilter.some(function(v) { return portVlans.has(v); })) {
+    if ([...portVlans].some(function(v) { return filterVlans.has(v); })) {
       row.classList.remove('hidden-vlan');
     } else {
       row.classList.add('hidden-vlan');
