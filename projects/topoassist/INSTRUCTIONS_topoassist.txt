@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-14 (feat: auto config reload after checkpoint restore — restoreFromSnapshot() sets DocumentProperty _RELOAD_AFTER_RESTORE='1' after syncSchemaPreservingOrder(); new checkAndClearReloadFlag() reads+deletes flag atomically, returns bool; Sidebar-js.html 5s setInterval(_checkRestoreReload) polls it, clears configCache and calls fetchData(true) when flag is consumed; GAS modal blocking ensures poll fires naturally after dialog closes. Test: test_checkAndClearReloadFlag in Test-gs.gs — 3 cases: flag absent→false, flag set→true+clear, second call→false. FILES: Code.gs, Sidebar-js.html, Test-gs.gs)
+  Last updated: 2026-05-14 (fix: gwVlans no longer populated from L2 trunk/access rows — analyzeRow() removed gwVlans.add(v) entirely; L2 trunk rows with ip_type_=gw-* generate regular SVI IP config (not anycast/virtual) and must NOT feed VXLAN VNI mappings; gwVlans is now exclusively populated from Vx1 interface rows (local + MLAG peer), which are the authoritative declaration of what gets VXLAN-extended. FILES: Code.gs)
+  Previous: 2026-05-14 (feat: auto config reload after checkpoint restore — restoreFromSnapshot() sets DocumentProperty _RELOAD_AFTER_RESTORE='1' after syncSchemaPreservingOrder(); new checkAndClearReloadFlag() reads+deletes flag atomically, returns bool; Sidebar-js.html 5s setInterval(_checkRestoreReload) polls it, clears configCache and calls fetchData(true) when flag is consumed; GAS modal blocking ensures poll fires naturally after dialog closes. Test: test_checkAndClearReloadFlag in Test-gs.gs — 3 cases: flag absent→false, flag set→true+clear, second call→false. FILES: Code.gs, Sidebar-js.html, Test-gs.gs)
   Previous: 2026-05-14 (fix: ensureDummyColumn() — insertColumnBefore(1) now only runs when col 1 has non-empty, non-_sys_ content. After sheet.clear() getLastColumn() returns 0 and col 1 is blank; previously an unconditional insert created a ghost column (the old _sys_ position at col 2, same 36px width) visible as a duplicate sys column after 0-device reset. Fix: guard insert with lastCol>=1 && col1Val!=''. FILES: Code.gs)
   Previous: 2026-05-14 (fix: two bugs — (1) onEdit DATA_VERSION bump moved to BEFORE LockService.tryLock(): rapid paste events could fire concurrent onEdit executions; if tryLock timed out, no bump was recorded and the smart poll never triggered a refresh; (2) VXLAN/Lo1 VTEP guard changed from gwVlans.size>0 to vx1Vlans.size>0: gwVlans is populated from GW SVI rows (ip_type_=gw-*) which exist without a Vx1 row — the guard incorrectly generated VTEP config for devices with GW SVIs but no Vx1 interface; vx1Vlans is a new Set in collectDeviceData populated only from explicit Vx1 rows (local + MLAG peer); gwVlans unchanged for VNI mapping + BGP. FILES: Code.gs)
   Previous: 2026-05-14 (feat: delete device ID snapshot — deleteDeviceIdSnapshot() added to Code.gs; "Reset Snapshot" button added to push modal ID-shift banner; _resetDeviceIdSnapshot() clears banner + _lastIdShiftResult + calls GAS. Shift warning now dismissible without regenerating all configs. FILES: Code.gs, Sidebar-js.html)
@@ -2046,15 +2047,16 @@ AP VLAN GW (int_ = vx1):
   underlay-only and never appear in the VXLAN data plane.
 
   collectDeviceData() returns: { allVlans, gwVlans, vx1Vlans, vrfs, hasP2p }
-    - allVlans: L2 rows (isL2=true) + Vx1 rows → system VLAN table
-    - gwVlans:  L2 rows with ip_type_=gw-* + Vx1 rows → VNI mapping + BGP EVPN
-    - vx1Vlans: Vx1 rows ONLY (local + MLAG peer) → VTEP/Lo1 generation guard
-      gwVlans can be non-zero with no Vx1 row (a device with GW SVIs but no Vx1
-      interface); using gwVlans as the VTEP guard incorrectly generated VXLAN config.
-      vx1Vlans is zero unless an explicit Vx1 interface row exists.
+    - allVlans: L2 rows (isL2=true) + Vx1 rows → system VLAN table (vlan N name stanza)
+    - gwVlans:  Vx1 rows ONLY (local + MLAG peer) → VXLAN VNI mapping + BGP EVPN
+      L2 trunk/access rows (including ip_type_=gw-*) do NOT feed gwVlans.
+      L2 trunk rows with ip_type_=gw generate regular SVI IP (not anycast/virtual);
+      they must not appear in VXLAN VNI mappings. The Vx1 row is the sole authoritative
+      declaration of what gets VXLAN-extended (both L2 VNIs and L3 VNIs).
+    - vx1Vlans: Vx1 rows ONLY → VTEP/Lo1 generation guard (zero = no Vx1 row = no VTEP).
     - vrf_: collected into vrfs set via existing analyzeRow() (system block creates VRF).
     - MLAG peer Vx1 rows: handled explicitly for both gwVlans and vx1Vlans because
-      ip_type_ being empty on peer vx1 rows would cause analyzeRow() to skip gwVlans.
+      ip_type_ being empty on peer vx1 rows would cause analyzeRow() to skip them.
 
   getDeviceConfig() interface loop — Vx1 pre-collection (before main rows.forEach):
     - ALL vx1 rows collected into vx1Entries[] before main loop runs.

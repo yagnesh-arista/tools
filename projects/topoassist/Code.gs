@@ -1,10 +1,10 @@
-// TopoAssist v260514.4 | 2026-05-14 10:06:39
+// TopoAssist v260514.5 | 2026-05-14 10:17:49
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.4";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5511,16 +5511,11 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     // 3. Collect VLANs — L2 ports only (l2-et-* and l2-po-*)
     // L3 ports (l3-et-int, l3-et-sub-int, l3-po-int, l3-po-sub-int) use vlan_ for
     // encapsulation dot1q only — no system VLAN table entry needed.
+    // gwVlans is NOT populated from L2 trunk/access rows regardless of ip_type_ —
+    // L2 trunk rows with ip_type_=gw-* generate regular SVI IP config, not anycast/virtual.
+    // VXLAN VNI mappings (gwVlans) come exclusively from Vx1 interface rows.
     if (details.vlan_ && isL2) {
-      const rowVlans = expandVlanString(String(details.vlan_));
-      rowVlans.forEach(v => {
-        allVlans.add(v);
-
-        // Only add to "GW VLANs" if ip_type is Gateway
-        if (ipType.includes("gw")) {
-          gwVlans.add(v);
-        }
-      });
+      expandVlanString(String(details.vlan_)).forEach(v => allVlans.add(v));
     }
 
     // Native VLAN encoded as nv<N> token inside vlan_ — L2 trunk only
