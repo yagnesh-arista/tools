@@ -1,10 +1,10 @@
-// TopoAssist v260514.6 | 2026-05-14 10:31:13
+// TopoAssist v260514.7 | 2026-05-14 10:32:31
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.6";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4139,6 +4139,12 @@ function onEdit(e) {
 // Structural-change guard: re-insert _sys_ column if the user deletes col A.
 // This is an INSTALLABLE trigger handler — ensureOnChangeTrigger() wires it up.
 function onStructuralChange(e) {
+  if (e.changeType === 'OTHER') {
+    // File → Version history → Restore fires changeType='OTHER'.
+    // Set the reload flag so the sidebar clears configCache and fetches fresh data.
+    PropertiesService.getDocumentProperties().setProperty('_RELOAD_AFTER_RESTORE', '1');
+    return;
+  }
   if (e.changeType !== 'REMOVE_COLUMN') return;
   const ss = e.source;
   const sheet = ss.getActiveSheet();
