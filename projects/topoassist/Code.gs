@@ -1,10 +1,10 @@
-// TopoAssist v260514.18 | 2026-05-14 14:34:51
+// TopoAssist v260514.19 | 2026-05-14 14:40:42
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.18";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.19";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -65,6 +65,7 @@ function onOpen() {
 // Wired up by ensureOnOpenTrigger(), called from showTopologyWindow() / showSheetAssistPanel().
 function onOpenInstallable() {
   try { _restorePropsFromSheet(); } catch (e) {}
+  try { _seedPropsSheet(); } catch (e) {}
   try {
     const prefs   = getViewPreferences();
     const allKeys = getSchemaConfig().map(function(s) { return s.key; });
@@ -3581,6 +3582,84 @@ function _restorePropsFromSheet() {
     const svc = store === 'user' ? up : store === 'script' ? sp : dp;
     if (!svc.getProperty(key)) svc.setProperty(key, val);
   });
+}
+
+// One-time forward-fill: seed _TA_PROPS with any current property values not yet there.
+// Runs at onOpenInstallable(). After the first run all keys are present → early exit (no-op).
+function _seedPropsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(_TA_PROPS_SHEET);
+
+  // Build set of keys already recorded
+  const existing = new Set();
+  if (sheet && sheet.getLastRow() > 0) {
+    sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().forEach(function(r) {
+      if (r[0]) existing.add(r[0]);
+    });
+  }
+
+  const dp = PropertiesService.getDocumentProperties();
+  const up = PropertiesService.getUserProperties();
+  const sp = PropertiesService.getScriptProperties();
+
+  const candidates = [
+    // DocumentProperties
+    { key: 'DEVICE_ROLES',                   store: 'doc',    svc: dp },
+    { key: 'DEVICE_MLAG_PEERS',              store: 'doc',    svc: dp },
+    { key: 'NON_ARISTA_DEVICES',             store: 'doc',    svc: dp },
+    { key: 'INT_IPV4',                        store: 'doc',    svc: dp },
+    { key: 'INT_IPV6',                        store: 'doc',    svc: dp },
+    { key: 'INT_IPV6_UNNUM',                  store: 'doc',    svc: dp },
+    { key: 'GW_IPV4',                         store: 'doc',    svc: dp },
+    { key: 'GW_IPV6',                         store: 'doc',    svc: dp },
+    { key: 'BGP_IPV4',                        store: 'doc',    svc: dp },
+    { key: 'BGP_IPV6',                        store: 'doc',    svc: dp },
+    { key: 'BGP_IPV6_UNNUM',                  store: 'doc',    svc: dp },
+    { key: 'BGP_RFC5549',                     store: 'doc',    svc: dp },
+    { key: 'OSPF_IPV4',                       store: 'doc',    svc: dp },
+    { key: 'OSPF_IPV6',                       store: 'doc',    svc: dp },
+    { key: 'OSPF_IPV6_UNNUM',                 store: 'doc',    svc: dp },
+    { key: 'VXLAN_IPV4',                      store: 'doc',    svc: dp },
+    { key: 'VXLAN_IPV6',                      store: 'doc',    svc: dp },
+    { key: 'EVPN_IPV4',                       store: 'doc',    svc: dp },
+    { key: 'EVPN_IPV6',                       store: 'doc',    svc: dp },
+    { key: 'EVPN_SERVICE',                    store: 'doc',    svc: dp },
+    { key: 'GW_L3_TYPE',                      store: 'doc',    svc: dp },
+    { key: 'VARP_MAC',                        store: 'doc',    svc: dp },
+    { key: 'EVPN_BUNDLE_GROUPS',              store: 'doc',    svc: dp },
+    { key: 'GLOBAL_DEVICE_CONFIG_TEMPLATE',   store: 'doc',    svc: dp },
+    { key: 'GW_DEVICE_OVERRIDES',             store: 'doc',    svc: dp },
+    { key: 'DEVICE_HOSTNAMES',                store: 'doc',    svc: dp },
+    { key: 'DEVICE_METADATA',                 store: 'doc',    svc: dp },
+    { key: 'SCHEMA_CONFIG_ARRAY',             store: 'doc',    svc: dp },
+    // UserProperties
+    { key: 'p2p_v4_first',  store: 'user', svc: up }, { key: 'p2p_v4_mask',  store: 'user', svc: up },
+    { key: 'p2p_v6_first',  store: 'user', svc: up }, { key: 'p2p_v6_mask',  store: 'user', svc: up },
+    { key: 'gw_v4_first',   store: 'user', svc: up }, { key: 'gw_v4_last',   store: 'user', svc: up },
+    { key: 'gw_v4_mask',    store: 'user', svc: up }, { key: 'gw_v6_first',  store: 'user', svc: up },
+    { key: 'gw_v6_last',    store: 'user', svc: up }, { key: 'gw_v6_mask',   store: 'user', svc: up },
+    { key: 'lo_base',       store: 'user', svc: up }, { key: 'mlag_peer_base', store: 'user', svc: up },
+    { key: 'vni_base',      store: 'user', svc: up }, { key: 'bgp_asn_base', store: 'user', svc: up },
+    { key: 'bridge_mac',    store: 'user', svc: up }, { key: 'ep1_nh',       store: 'user', svc: up },
+    { key: 'ep1_mac',       store: 'user', svc: up }, { key: 'ep1_subnet',   store: 'user', svc: up },
+    { key: 'ep2_nh',        store: 'user', svc: up }, { key: 'ep2_mac',      store: 'user', svc: up },
+    { key: 'ep2_subnet',    store: 'user', svc: up },
+    { key: 'CUSTOM_VIEW_PREFS', store: 'user', svc: up },
+    // ScriptProperties
+    { key: 'DEVICE_LABELS',          store: 'script', svc: sp },
+    { key: 'TOPOLOGY_HIDDEN_DEVICES', store: 'script', svc: sp },
+  ];
+
+  const newRows = [];
+  candidates.forEach(function(c) {
+    if (existing.has(c.key)) return;
+    const val = c.svc.getProperty(c.key);
+    if (val !== null) newRows.push([c.key, val, c.store]);
+  });
+
+  if (newRows.length === 0) return;
+  if (!sheet) { sheet = ss.insertSheet(_TA_PROPS_SHEET); sheet.hideSheet(); }
+  sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 3).setValues(newRows);
 }
 
 // ── Device ID Snapshot — detect column-order shifts ───────────────────────────

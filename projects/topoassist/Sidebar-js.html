@@ -1,7 +1,7 @@
-<!-- TopoAssist v260514.18 | 2026-05-14 14:34:51 -->
+<!-- TopoAssist v260514.19 | 2026-05-14 14:41:10 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260514.18";  // keep in sync with Code.gs
+const APP_VERSION = "260514.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4191,11 +4191,13 @@ function filterTopology() {
   // 2. PREPARE SEARCH TERMS
   let rawTerms = input.split(",").map(t => t.trim()).filter(t => t !== "");
   let searchPatterns = rawTerms.map(term => {
+    // Try to compile as regex; fall back to literal on syntax error
+    let safeTerm;
+    try { new RegExp(term); safeTerm = term; } catch(e) { safeTerm = escapeRegExp(term); }
     if (isStrict) {
-      let safeTerm = escapeRegExp(term);
-      return new RegExp("(?:^|\\s|\\/|:)" + safeTerm + "(?:$|\\s|\\/|:)", "i");
+      return new RegExp("(?:^|\\s|\\/|:)(?:" + safeTerm + ")(?:$|\\s|\\/|:)", "i");
     } else {
-      return term;
+      return new RegExp(safeTerm, "i");
     }
   });
 
@@ -4213,9 +4215,9 @@ function filterTopology() {
     const intVlans = deviceInternalVlans[n.dataset.id?.toLowerCase()] || [];
 
     // Check if Device Name, Role, or internal VLAN matches
-    let deviceMatch = rawTerms.some(t => {
-      if (isStrict) return deviceName === t;
-      if (deviceName.includes(t) || deviceRoles.includes(t)) return true;
+    let deviceMatch = rawTerms.some((t, i) => {
+      const pat = searchPatterns[i];
+      if (pat.test(deviceName) || pat.test(deviceRoles)) return true;
       const tNum = parseInt(t);
       return !isNaN(tNum) && intVlans.includes(tNum);
     });
@@ -4248,10 +4250,7 @@ function filterTopology() {
       if (deviceMatch) {
         isPortMatch = true;
       } else {
-        isPortMatch = searchPatterns.some(pattern => {
-          if (isStrict) return pattern.test(rowText);
-          return rowText.includes(pattern);
-        });
+        isPortMatch = searchPatterns.some(pattern => pattern.test(rowText));
       }
 
       if (isPortMatch) {
