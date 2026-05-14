@@ -1,10 +1,10 @@
-// TopoAssist v260514.5 | 2026-05-14 10:17:49
+// TopoAssist v260514.6 | 2026-05-14 10:31:13
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.5";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.6";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5240,7 +5240,7 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
   // Omit (undefined) to fall back to d.vrf_ (legacy single-VRF behaviour).
   // _isSvi: true when called from the SVI loop (alias handled externally via ta-clean-vl);
   // false (default) for sub-interfaces and l3-routed callers (keep inline cleanup).
-  const getIpBlock = (v, resolvedVrf, _isSvi = false) => {
+  const getIpBlock = (v, resolvedVrf, _isSvi = false, _vtepSvi = true) => {
     let val = parseInt(v);
     if (isNaN(val)) return "";
 
@@ -5320,8 +5320,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
       // Description prefix: ANYCAST_GW for LEAF+EVPN, GW for everything else.
       // Always includes VRF when set. Never just __TA alone.
       const vrf4Desc = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
-      if (netSettings && netSettings.deviceRole !== 'LEAF') {
-        // Non-LEAF (SPINE/HARNESS/etc): plain routed IP — no virtual or virtual-router address
+      if (!_vtepSvi || (netSettings && netSettings.deviceRole !== 'LEAF')) {
+        // Non-LEAF or non-VTEP SVI: plain routed IP — no virtual or virtual-router address
         const gwDesc = vrf4Desc ? `GW_${vrf4Desc}_${val}` : `GW_${val}`;
         lines.push(` description -> ${gwDesc} __TA`);
         // Inline cleanup only for non-SVI contexts (sub-int, l3-routed).
@@ -5424,8 +5424,9 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
         }
       }
       if (_sviIsGw) {
-        // GW SVIs: ta-clean-vl at global level before interface (alias handles IP cleanup).
-        block += "!\nta-clean-vl Vlan" + v + "\ninterface Vlan" + v + "\n" + getIpBlock(v, _resolvedVrf, true) + "\n";
+        // GW SVIs from L2 trunk rows: regular ip address (not anycast/VARP — not a VTEP VLAN).
+        // ta-clean-vl at global level before interface (alias handles IP cleanup).
+        block += "!\nta-clean-vl Vlan" + v + "\ninterface Vlan" + v + "\n" + getIpBlock(v, _resolvedVrf, true, false) + "\n";
       } else {
         block += "!\ninterface Vlan" + v + "\n" + _sviDesc + getIpBlock(v, _resolvedVrf) + "\n";
       }
