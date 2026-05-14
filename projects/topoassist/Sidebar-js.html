@@ -1,7 +1,7 @@
-<!-- TopoAssist v260514.12 | 2026-05-14 11:55:51 -->
+<!-- TopoAssist v260514.13 | 2026-05-14 13:34:01 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260514.12";  // keep in sync with Code.gs
+const APP_VERSION = "260514.13";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7345,7 +7345,6 @@ No peer connected.<br>Use 'Connect' to add a link.
   html += "</div>";
 
   document.getElementById("modalContent").innerHTML = html;
-  initialEditModalState = _captureFormState('guiEditModal');
 
   // Show Delete or Delete+Unconfigure depending on bridge availability
   const btnDelete = document.getElementById("btnDelete");
@@ -7361,6 +7360,7 @@ No peer connected.<br>Use 'Connect' to add a link.
 
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
+  initialEditModalState = _captureFormState('guiEditModal');
 }
 
 function openConnectModal(domId, portObj) {
@@ -7403,7 +7403,6 @@ function openConnectModal(domId, portObj) {
 
   document.getElementById("modalTitle").innerText = "Connect " + domId + " to New Peer";
   document.getElementById("modalContent").innerHTML = html;
-  initialEditModalState = _captureFormState('guiEditModal');
 
   let btnDelete = document.getElementById("btnDelete");
   if (btnDelete) btnDelete.style.display = "none";
@@ -7412,6 +7411,7 @@ function openConnectModal(domId, portObj) {
 
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
+  initialEditModalState = _captureFormState('guiEditModal');
 }
 
 function openAddLinkModal() {
@@ -7454,7 +7454,6 @@ function openAddLinkModal() {
 
   document.getElementById("modalTitle").innerText = "Add Link Pair";
   document.getElementById("modalContent").innerHTML = html;
-  initialEditModalState = _captureFormState('guiEditModal');
 
   let btnDelete = document.getElementById("btnDelete");
   if (btnDelete) btnDelete.style.display = "none";
@@ -7463,6 +7462,7 @@ function openAddLinkModal() {
 
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
+  initialEditModalState = _captureFormState('guiEditModal');
 }
 
 function openAddModal(deviceId) {
