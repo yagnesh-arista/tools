@@ -1,7 +1,9 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-14 (feat: delete device ID snapshot — deleteDeviceIdSnapshot() added to Code.gs; "Reset Snapshot" button added to push modal ID-shift banner; _resetDeviceIdSnapshot() clears banner + _lastIdShiftResult + calls GAS. Shift warning now dismissible without regenerating all configs. FILES: Code.gs, Sidebar-js.html)
+  Last updated: 2026-05-14 (fix: ensureDummyColumn() — insertColumnBefore(1) now only runs when col 1 has non-empty, non-_sys_ content. After sheet.clear() getLastColumn() returns 0 and col 1 is blank; previously an unconditional insert created a ghost column (the old _sys_ position at col 2, same 36px width) visible as a duplicate sys column after 0-device reset. Fix: guard insert with lastCol>=1 && col1Val!=''. FILES: Code.gs)
+  Previous: 2026-05-14 (fix: two bugs — (1) onEdit DATA_VERSION bump moved to BEFORE LockService.tryLock(): rapid paste events could fire concurrent onEdit executions; if tryLock timed out, no bump was recorded and the smart poll never triggered a refresh; (2) VXLAN/Lo1 VTEP guard changed from gwVlans.size>0 to vx1Vlans.size>0: gwVlans is populated from GW SVI rows (ip_type_=gw-*) which exist without a Vx1 row — the guard incorrectly generated VTEP config for devices with GW SVIs but no Vx1 interface; vx1Vlans is a new Set in collectDeviceData populated only from explicit Vx1 rows (local + MLAG peer); gwVlans unchanged for VNI mapping + BGP. FILES: Code.gs)
+  Previous: 2026-05-14 (feat: delete device ID snapshot — deleteDeviceIdSnapshot() added to Code.gs; "Reset Snapshot" button added to push modal ID-shift banner; _resetDeviceIdSnapshot() clears banner + _lastIdShiftResult + calls GAS. Shift warning now dismissible without regenerating all configs. FILES: Code.gs, Sidebar-js.html)
   Previous: 2026-05-13 (refactor: SSoT — extracted _applyExplicitMlagOverride(topo, headers, rows) helper; was copy-pasted identically in getTopologyData, getDeviceConfig, and applyVisualFormatting; now one call per site. FILES: Code.gs)
   Previous: 2026-05-13 (fix: getTopologyData never applied explicit MLAG peer override — calculateGlobalTopology returns empty peerLinkPorts; without the override block, isPeerLink=false on all nodes → links never got type='peer' → canvas showed no peer-link styling and audit check "MLAG Peer-Link Missing" always fired. Fix: added same explicitMlagPeers override block (+ _extendPeerLinkPortsWithPo + mlagConfigPorts rebuild) to getTopologyData immediately after calculateGlobalTopology, mirroring getDeviceConfig and applyVisualFormatting. FILES: Code.gs)
   Previous: 2026-05-13 (fix: MLAG peer-link visual and config-gen bugs — (1) _extendPeerLinkPortsWithPo() helper added: after peerLinkPorts is built from Et-keyed globalLinkMap entries, it scans data rows and adds Po-keyed entries ("Leaf1:Po4000") so calculateConnectionBackgrounds can detect peer-link on rows where colorKey is Po-keyed; called in both applyVisualFormatting and getDeviceConfig after the explicit peer forEach; (2) detectMlagState: after extracting peerLinkPort from Et key, scans rows via indices['po'] to find the Port-Channel value and converts to "Port-Channel4000" form for mlag configuration peer-link command. FILES: Code.gs)
@@ -2042,11 +2044,15 @@ AP VLAN GW (int_ = vx1):
   EVPN distributes SSID VLANs leaf-to-leaf via Type-2/Type-3 routes; spines are
   underlay-only and never appear in the VXLAN data plane.
 
-  collectDeviceData() special handling for Vx1 (local AND MLAG peer):
-    - VLANs from ALL vx1 rows added to allVlans (VLAN DB) AND gwVlans (VNI mapping).
-    - gwVlans add is unconditional — no ip_type=gw check (ip_type_ unused for vx1 rows).
-    - vrf_ collected into vrfs set via existing analyzeRow() (system block creates VRF).
-    - MLAG peer Vx1 rows: also handled explicitly (same unconditional add) because
+  collectDeviceData() returns: { allVlans, gwVlans, vx1Vlans, vrfs, hasP2p }
+    - allVlans: L2 rows (isL2=true) + Vx1 rows → system VLAN table
+    - gwVlans:  L2 rows with ip_type_=gw-* + Vx1 rows → VNI mapping + BGP EVPN
+    - vx1Vlans: Vx1 rows ONLY (local + MLAG peer) → VTEP/Lo1 generation guard
+      gwVlans can be non-zero with no Vx1 row (a device with GW SVIs but no Vx1
+      interface); using gwVlans as the VTEP guard incorrectly generated VXLAN config.
+      vx1Vlans is zero unless an explicit Vx1 interface row exists.
+    - vrf_: collected into vrfs set via existing analyzeRow() (system block creates VRF).
+    - MLAG peer Vx1 rows: handled explicitly for both gwVlans and vx1Vlans because
       ip_type_ being empty on peer vx1 rows would cause analyzeRow() to skip gwVlans.
 
   getDeviceConfig() interface loop — Vx1 pre-collection (before main rows.forEach):

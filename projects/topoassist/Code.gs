@@ -1,10 +1,10 @@
-// TopoAssist v260514.1 | 2026-05-14 09:52:12
+// TopoAssist v260514.2 | 2026-05-14 09:55:15
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.2";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -499,9 +499,16 @@ const DUMMY_VIS_HEADER = '_sys_';
 function ensureDummyColumn(sheet) {
   // _sys_ column stays visible at all times — eliminates all "can't hide last column" errors.
   // Device columns start at col 2+; setColumnVisibility already skips col 1.
-  const exists = sheet.getLastColumn() >= 1 && String(sheet.getRange(2, 1).getValue()) === DUMMY_VIS_HEADER;
+  const lastCol = sheet.getLastColumn();
+  const col1Val = lastCol >= 1 ? String(sheet.getRange(2, 1).getValue()) : '';
+  const exists = col1Val === DUMMY_VIS_HEADER;
   if (!exists) {
-    sheet.insertColumnBefore(1);
+    // Only insert when col 1 already has non-_sys_ content that must shift right.
+    // After sheet.clear(), lastCol==0 and col1Val=='': write _sys_ in place — no insert —
+    // otherwise a ghost empty column (old _sys_ position) would remain at col 2.
+    if (lastCol >= 1 && col1Val !== '') {
+      sheet.insertColumnBefore(1);
+    }
     const hdrCell = sheet.getRange(2, 1);
     hdrCell.setValue(DUMMY_VIS_HEADER);
     hdrCell.setNote('Managed by TopoAssist — do not edit.\nThis column tracks row visibility and is required for the hide/show feature to work correctly.');
@@ -4532,7 +4539,7 @@ function getDeviceConfig(deviceName) {
     const sysBlocks = generateSystemBlocks(deviceSheetIndex, Array.from(devData.vrfs), Array.from(devData.allVlans), settings, ipPrefs);
     configMap["000_LO0"] = { full: sysBlocks.lo0, blockStatus: "Loopback0" };
     // Lo1: MLAG VTEP devices only — shared IP (min.min.max.max) for vxlan mlag source-interface
-    if (isVxlan && mlagState.isActive && devData.hasP2p && devData.gwVlans.size > 0) {
+    if (isVxlan && mlagState.isActive && devData.hasP2p && devData.vx1Vlans.size > 0) {
       const _loBase = parseInt(ipPrefs && ipPrefs.lo_base) || 0;
       const _myLoId   = deviceSheetIndex + _loBase;
       const _peerLoId = (parseInt(mlagState.peerId) || 0) + _loBase;
@@ -4553,8 +4560,10 @@ function getDeviceConfig(deviceName) {
     if (isVxlan) {
       // Condition 1: Must have P2P links (to be part of the fabric)
       if (devData.hasP2p) {
-        // Condition 2: Must have Gateway VLANs (SVIs) to be a VTEP
-        if (devData.gwVlans.size > 0) {
+        // Condition 2: Must have a Vx1 row with VLANs to be a VTEP
+        // gwVlans includes GW SVI vlans which can be non-zero without a Vx1 row;
+        // vx1Vlans is populated only from explicit Vx1 interface rows.
+        if (devData.vx1Vlans.size > 0) {
           // -> IT IS A LEAF (VTEP)
           let peerIdForVxlan = mlagState.isActive ? mlagState.peerId : deviceSheetIndex;
           configMap["055_VXLAN"] = {
@@ -4577,10 +4586,10 @@ function getDeviceConfig(deviceName) {
             blockStatus: "VXLAN Active"
           };
         } else {
-          // -> Role is LEAF/SPINE but no GW VLANs configured — behaves as underlay router
+          // -> Role is LEAF/SPINE but no Vx1 row with VLANs — behaves as underlay router
           configMap["055_VXLAN"] = {
-            full: `! VXLAN Skipped: ${deviceRole} has no Gateway VLANs configured (no Vx1/SVI rows)\n!`,
-            blockStatus: "Skipped (No GW VLANs)"
+            full: `! VXLAN Skipped: ${deviceRole} has no Vx1 interface row configured\n!`,
+            blockStatus: "Skipped (No Vx1 Row)"
           };
         }
       } else {
@@ -5463,7 +5472,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
 
 function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMap) {
   const allVlans = new Set(); // For System Config (Create VLAN)
-  const gwVlans = new Set(); // For VXLAN/EVPN (Map VNI)
+  const gwVlans = new Set(); // For VXLAN VNI mapping + BGP EVPN (GW SVIs + Vx1 VLANs)
+  const vx1Vlans = new Set(); // Vx1-row VLANs only — guards VTEP/Lo1 generation
   const vrfs = new Set();
   let p2pCount = 0;
 
@@ -5524,12 +5534,12 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     const rawPort = row[targetColIndex];
     if (isValidPort(rawPort)) {
       analyzeRow(row, indices);
-      // Vx1 rows declare AP VLANs — add to both allVlans (generates vlan N/name stanza)
-      // and gwVlans (VNI mapping). ip_type_ is not used for Vx1 rows.
+      // Vx1 rows declare AP VLANs — add to allVlans (vlan N/name stanza), gwVlans (VNI
+      // mapping), and vx1Vlans (VTEP/Lo1 guard). ip_type_ is not used for Vx1 rows.
       if (canonicalizeInterface(rawPort) === "Vx1") {
         const details = extractDetails(row, indices);
         if (details.vlan_) {
-          expandVlanString(String(details.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); });
+          expandVlanString(String(details.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); vx1Vlans.add(v); });
         }
       }
     }
@@ -5537,11 +5547,11 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     if (myMlagPeer && isValidPort(row[peerIntIdx])) {
       analyzeRow(row, peerIndices);
       // Mirror the Vx1 explicit handling for the MLAG peer — ip_type_ is not used for
-      // AP VLAN rows, so analyzeRow alone won't add them to allVlans/gwVlans.
+      // AP VLAN rows, so analyzeRow alone won't add them to allVlans/gwVlans/vx1Vlans.
       if (canonicalizeInterface(row[peerIntIdx]) === "Vx1") {
         const peerDetails = extractDetails(row, peerIndices);
         if (peerDetails.vlan_) {
-          expandVlanString(String(peerDetails.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); });
+          expandVlanString(String(peerDetails.vlan_)).forEach(v => { allVlans.add(v); gwVlans.add(v); vx1Vlans.add(v); });
         }
       }
     }
@@ -5562,7 +5572,7 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
     });
   }
 
-  return { allVlans, gwVlans, vrfs, hasP2p: (p2pCount > 0) };
+  return { allVlans, gwVlans, vx1Vlans, vrfs, hasP2p: (p2pCount > 0) };
 }
 
 /**
