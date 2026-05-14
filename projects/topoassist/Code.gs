@@ -1,10 +1,10 @@
-// TopoAssist v260514.26 | 2026-05-14 16:25:07
+// TopoAssist v260514.27 | 2026-05-14 16:27:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.26";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.27";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -130,6 +130,7 @@ function promptRenameSheet() {
     );
     if (confirm === ui.Button.YES) {
       PropertiesService.getScriptProperties().setProperty('TARGET_SHEET_NAME', newName);
+      _writePropsSheet('TARGET_SHEET_NAME', newName, 'script');
       ui.alert(`✓ Settings Updated.\nThe tool will now look for "${newName}".`);
     }
     return;
@@ -139,6 +140,7 @@ function promptRenameSheet() {
   try {
     actualSheet.setName(newName); // Rename the tab
     PropertiesService.getScriptProperties().setProperty('TARGET_SHEET_NAME', newName); // Save setting
+    _writePropsSheet('TARGET_SHEET_NAME', newName, 'script');
 
     // Update global var for this execution context (though script usually restarts on new action)
     SHEET_DATA = newName;
@@ -783,6 +785,7 @@ function saveNetworkSettings(settings) {
 * -------------------
 */
 function showTopologyWindow() {
+  try { _restorePropsFromSheet(); } catch (e) {}  // restore on first open after File→Make a copy
   try { ensureOnChangeTrigger(); } catch (e) {}
   try { ensureOnOpenTrigger();  } catch (e) {}
   const template = HtmlService.createTemplateFromFile('Sidebar');
