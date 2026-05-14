@@ -1,4 +1,4 @@
-<!-- TopoAssist v260514.25 | 2026-05-14 16:13:49 -->
+<!-- TopoAssist v260514.26 | 2026-05-14 16:25:24 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.25</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260514.26</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -2073,15 +2073,15 @@ ip route vrf SNAKE_Et5 10.100.1.0/24 200.4.0.2              ← rev: secondary e
 
     <h3>Checkpoints (Snapshots)</h3>
     <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Create Sheet Checkpoint</span>
-    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>Snapshot_&lt;timestamp&gt;</code>). Useful as a safety net before running a schema change or a large sheet reorganisation.</p>
+    <p style="font-size:13px;">Takes a full copy of the data sheet as a new tab (<code>SNAP_&lt;timestamp&gt;_&lt;name&gt;</code>). You are prompted to enter a label (e.g. <code>Stable_MLAG_Lab</code>). Useful as a safety net before running a schema change or a large sheet reorganisation.</p>
     <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Sheet Checkpoint Management</span>
-    <p style="font-size:13px;">Manage saved checkpoints. A wizard lists all available snapshots with a diff preview (row delta, changed cells, devices added/removed). Select a checkpoint to <b>Restore</b> (overwrites live sheet data and restores device roles &amp; MLAG pairs) or <b>Delete</b> (permanently removes the snapshot tab).</p>
+    <p style="font-size:13px;">Manage saved checkpoints. A wizard lists all available snapshots with a diff preview (row delta, changed cells, devices added/removed). Select a checkpoint to <b>Restore</b> (overwrites live sheet data and restores all device settings — roles, MLAG pairs, tech stack, IP configuration, and other project data; the sidebar reloads automatically) or <b>Delete</b> (permanently removes the snapshot tab).</p>
 
     <h3>Snake Test</h3>
     <p style="font-size:13px;">The Snake Test chains switch ports with external loopback cables to measure forwarding throughput end-to-end. Full setup documentation — supported modes, sheet wiring, EP1/EP2 config, VRF chain, TTL reset — is in the <a href="#config-generation">Configuration Generation</a> section under <b>8. Snake Test (L2 / L3)</b>.</p>
 
     <h3>Custom View</h3>
-    <span class="menu-path">TopoAssist &gt; Sheet View &gt; Custom View</span>
+    <span class="menu-path">TopoAssist &gt; Sheet View &gt; Custom View...</span>
     <p style="font-size:13px;">Pick any column combination and save it as a named view. The saved view appears in the Sheet View menu alongside the standard views (Cabling, Mode, Speed, Vlan). Useful for project-specific workflows that need a fixed column set not covered by the built-in views.</p>
 
     <div style="text-align:center; color: #94a3b8; font-size: 11px; margin-top: 40px;">
