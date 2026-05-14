@@ -1,7 +1,7 @@
-<!-- TopoAssist v260514.16 | 2026-05-14 14:27:31 -->
+<!-- TopoAssist v260514.17 | 2026-05-14 14:34:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260514.16";  // keep in sync with Code.gs
+const APP_VERSION = "260514.17";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -20183,6 +20183,27 @@ function applyVlanFilter() {
       row.classList.add('hidden-vlan');
     }
   });
+  // Hide device nodes with no visible VLAN-matching ports
+  Object.keys(devicePortsMap).forEach(function(devId) {
+    const node = document.querySelector('#canvas-surface .node[data-id="' + CSS.escape(devId) + '"]');
+    if (!node) return;
+    if (topoVlanFilter.length === 0) {
+      node.classList.remove('hidden-vlan');
+    } else {
+      const ports = devicePortsMap[devId] || [];
+      const hasVisiblePort = ports.some(function(pid) {
+        const elObj = globalPortElements[pid];
+        return elObj && elObj.row && !elObj.row.classList.contains('hidden-vlan');
+      });
+      if (hasVisiblePort) {
+        node.classList.remove('hidden-vlan');
+      } else {
+        node.classList.add('hidden-vlan');
+      }
+    }
+  });
+  requestAnimationFrame(refreshGroupRects);
+  requestAnimationFrame(redrawLinks);
 }
 
 function applyTopoSviFilter() {
