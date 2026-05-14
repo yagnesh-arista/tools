@@ -1,10 +1,10 @@
-// TopoAssist v260514.2 | 2026-05-14 09:55:15
+// TopoAssist v260514.4 | 2026-05-14 10:06:39
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.4";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6855,6 +6855,7 @@ function restoreFromSnapshot(snapshotName) {
     liveSheet.getRange(1, 1, snapData.length, lastCol).setValues(snapData);
     // Re-apply standard formatting (optional but recommended)
     syncSchemaPreservingOrder();
+    PropertiesService.getDocumentProperties().setProperty('_RELOAD_AFTER_RESTORE', '1');
     return { success: true };
   } catch (e) {
     // Rollback: restore live backup if clear/write failed
@@ -6868,6 +6869,19 @@ function restoreFromSnapshot(snapshotName) {
     }
     throw new Error("Restore failed: " + e.message + (liveBackup ? " — original data has been restored." : " — WARNING: original data may be lost."));
   }
+}
+
+/**
+ * Atomic check+clear of the post-restore reload flag.
+ * Called by the sidebar poll; returns true once after a restore, then false until the next restore.
+ */
+function checkAndClearReloadFlag() {
+  const props = PropertiesService.getDocumentProperties();
+  if (props.getProperty('_RELOAD_AFTER_RESTORE') === '1') {
+    props.deleteProperty('_RELOAD_AFTER_RESTORE');
+    return true;
+  }
+  return false;
 }
 
 /**

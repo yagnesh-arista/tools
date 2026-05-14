@@ -1,4 +1,4 @@
-// TopoAssist v260514.2 | 2026-05-14 09:52:40
+// TopoAssist v260514.4 | 2026-05-14 10:10:06
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -1495,6 +1495,32 @@ function test_parseAndExpandDevices() {
 }
 
 
+function test_checkAndClearReloadFlag() {
+  const t = assert_;
+  const results = [];
+  const dp = PropertiesService.getDocumentProperties();
+  const prevVal = dp.getProperty('_RELOAD_AFTER_RESTORE');
+
+  try {
+    // 1. flag absent → returns false
+    dp.deleteProperty('_RELOAD_AFTER_RESTORE');
+    results.push(t("returns false when flag not set", checkAndClearReloadFlag(), false));
+
+    // 2. flag set → returns true and clears it
+    dp.setProperty('_RELOAD_AFTER_RESTORE', '1');
+    results.push(t("returns true when flag is set", checkAndClearReloadFlag(), true));
+
+    // 3. flag was cleared by the previous call → second call returns false
+    results.push(t("returns false after flag consumed (atomic clear)", checkAndClearReloadFlag(), false));
+
+  } finally {
+    if (prevVal !== null && prevVal !== undefined) dp.setProperty('_RELOAD_AFTER_RESTORE', prevVal);
+    else dp.deleteProperty('_RELOAD_AFTER_RESTORE');
+  }
+
+  return results;
+}
+
 function runAllTests() {
   const suites = [
     { name: "canonicalizeInterface",     fn: test_canonicalizeInterface },
@@ -1523,6 +1549,7 @@ function runAllTests() {
     { name: "expandVlanString",              fn: test_expandVlanString },
     { name: "compressVlanRanges",            fn: test_compressVlanRanges },
     { name: "parseAndExpandDevices",         fn: test_parseAndExpandDevices },
+    { name: "checkAndClearReloadFlag",       fn: test_checkAndClearReloadFlag },
   ];
 
   Logger.log(`TopoAssist Tests v${APP_VERSION}`);
