@@ -1,10 +1,10 @@
-// TopoAssist v260514.10 | 2026-05-14 11:34:15
+// TopoAssist v260514.11 | 2026-05-14 11:40:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.10";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.11";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -64,6 +64,7 @@ function onOpen() {
 // Simple onOpen() cannot call showModelessDialog() (AuthMode.LIMITED); this runs with full auth.
 // Wired up by ensureOnOpenTrigger(), called from showTopologyWindow() / showSheetAssistPanel().
 function onOpenInstallable() {
+  try { _restorePropsFromSheet(); } catch (e) {}
   try {
     const prefs   = getViewPreferences();
     const allKeys = getSchemaConfig().map(function(s) { return s.key; });
@@ -3422,7 +3423,9 @@ function getDeviceRoles() {
 }
 
 function saveDeviceRoles(rolesMap, manualNonArista) {
-  PropertiesService.getDocumentProperties().setProperty('DEVICE_ROLES', JSON.stringify(rolesMap));
+  const rolesJson = JSON.stringify(rolesMap);
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_ROLES', rolesJson);
+  _writePropsSheet('DEVICE_ROLES', rolesJson);
   // Auto-sync NON_ARISTA_DEVICES: two sources of non-Arista devices:
   // 1. Role-based: IXIA/SPIRENT roles are always non-Arista (auto-derived from rolesMap).
   // 2. Manual: explicitly toggled via Device Manager Non-EOS button (passed as manualNonArista param).
@@ -3452,8 +3455,47 @@ function saveDeviceMlagPeers(peersMap) {
       normalized[peer] = dev;
     }
   });
-  PropertiesService.getDocumentProperties().setProperty('DEVICE_MLAG_PEERS', JSON.stringify(normalized));
+  const mlagJson = JSON.stringify(normalized);
+  PropertiesService.getDocumentProperties().setProperty('DEVICE_MLAG_PEERS', mlagJson);
+  _writePropsSheet('DEVICE_MLAG_PEERS', mlagJson);
   return { success: true };
+}
+
+// ── _TA_PROPS sheet — survives File → Make a copy ─────────────────────────────
+// DocumentProperties are NOT copied when a spreadsheet is duplicated via File→Make a copy
+// or the /copy URL. This hidden sheet mirrors DEVICE_ROLES, DEVICE_MLAG_PEERS, and
+// NON_ARISTA_DEVICES so they are restored automatically on first open of the copy.
+
+const _TA_PROPS_SHEET = '_TA_PROPS';
+
+function _writePropsSheet(key, jsonValue) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(_TA_PROPS_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(_TA_PROPS_SHEET);
+      sheet.hideSheet();
+    }
+    const data = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues() : [];
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === key) { sheet.getRange(i + 1, 2).setValue(jsonValue); return; }
+    }
+    sheet.appendRow([key, jsonValue]);
+  } catch (e) { /* non-critical — DocumentProperties remain the live source */ }
+}
+
+function _restorePropsFromSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(_TA_PROPS_SHEET);
+  if (!sheet || sheet.getLastRow() < 1) return;
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues();
+  const dp = PropertiesService.getDocumentProperties();
+  const keys = ['DEVICE_ROLES', 'DEVICE_MLAG_PEERS', 'NON_ARISTA_DEVICES'];
+  data.forEach(function(row) {
+    if (keys.includes(row[0]) && row[1] !== '' && !dp.getProperty(row[0])) {
+      dp.setProperty(row[0], String(row[1]));
+    }
+  });
 }
 
 // ── Device ID Snapshot — detect column-order shifts ───────────────────────────
@@ -3855,7 +3897,9 @@ function getNonAristaList() {
 function saveNonAristaList(namesArray) {
   const props = PropertiesService.getDocumentProperties();
   const unique = [...new Set(namesArray)];
-  props.setProperty('NON_ARISTA_DEVICES', JSON.stringify(unique));
+  const json = JSON.stringify(unique);
+  props.setProperty('NON_ARISTA_DEVICES', json);
+  _writePropsSheet('NON_ARISTA_DEVICES', json);
 }
 
 
