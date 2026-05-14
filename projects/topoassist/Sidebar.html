@@ -1,4 +1,4 @@
-<!-- TopoAssist v260514.21 | 2026-05-14 14:41:58 -->
+<!-- TopoAssist v260514.22 | 2026-05-14 15:16:00 -->
 <!DOCTYPE html>
 <html>
 
@@ -213,7 +213,7 @@
             <span class="tb-label">SEARCH</span>
             <div class="tb-btns">
               <div class="search-container">
-                <input type="text" class="mono-search" id="searchInp" placeholder="Filter or v10 to trace VLAN…" autocomplete="off">
+                <input type="text" class="mono-search" id="searchInp" placeholder="Filter, regex, or v10 to trace VLAN…" autocomplete="off">
                 <button id="searchClear" class="search-clear-btn" title="Clear search" style="display:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 <div id="search-autocomplete" class="search-autocomplete-list hidden"></div>
               </div>
@@ -1267,7 +1267,7 @@
                 <kbd>v</kbd>
                 <span>VLAN trace<span class="shortcut-ctx">Type v&lt;VLAN ID&gt; to trace, e.g. v10 or v10,20</span></span>
               </div>
-              <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search<span class="shortcut-ctx">Exact match — "leaf01" won't match "leaf01a"; port text matched as whole token</span></span></div>
+              <div class="shortcut-row"><kbd>s</kbd><span>Toggle strict search<span class="shortcut-ctx">Whole-word match — "leaf01" won't match "leaf01a"; regex still applies within word boundaries</span></span></div>
               <div class="shortcut-row">
                 <div class="kbd-group"><kbd>&#x2191;</kbd><kbd>&#x2193;</kbd></div>
                 <span>Navigate suggestions</span>
@@ -1288,11 +1288,15 @@
               <div class="shortcut-row"><code class="search-ex">SPINE</code><span>Filter by role label</span></div>
               <div class="shortcut-row"><code class="search-ex">l2-et-trunk</code><span>Filter by port mode</span></div>
               <div class="shortcut-row"><code class="search-ex">vrf-mgmt</code><span>Filter by VRF</span></div>
+              <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded</span></span></div>
+              <div class="shortcut-row"><code class="search-ex">leaf,spine</code><span>OR — show devices matching either term</span></div>
+              <div class="shortcut-row"><code class="search-ex">leaf[12]</code><span>Regex — matches leaf1 or leaf2</span></div>
+              <div class="shortcut-row"><code class="search-ex">et[0-9]+/1$</code><span>Regex — all first-lane Ethernet ports</span></div>
+              <div class="shortcut-row"><code class="search-ex">10\.0\.[12]\.</code><span>Regex — IP subnet match</span></div>
               <div class="shortcut-row"><code class="search-ex">v10</code><span>Trace VLAN 10</span></div>
               <div class="shortcut-row"><code class="search-ex">v10,20</code><span>Trace multiple VLANs</span></div>
               <div class="shortcut-row"><code class="search-ex">v10-20</code><span>Trace VLAN range</span></div>
-              <div class="shortcut-row"><code class="search-ex">10.0.0</code><span>Find by IP<span class="shortcut-ctx">Requires configs loaded</span></span></div>
-              <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Strict: exact name only<span class="shortcut-ctx">Won't match leaf01a or spine-leaf01 — press s to toggle</span></span></div>
+              <div class="shortcut-row"><code class="search-ex">leaf01</code><span>Strict: whole-word match only<span class="shortcut-ctx">Won't match leaf01a or spine-leaf01 — press s to toggle</span></span></div>
             </div>
           </div>
 
