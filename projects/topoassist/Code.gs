@@ -1,10 +1,10 @@
-// TopoAssist v260514.24 | 2026-05-14 15:41:46
+// TopoAssist v260514.25 | 2026-05-14 16:15:23
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.24";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.25";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6914,6 +6914,46 @@ function generateVxlanBlock(isMlag, myId, peerId, gwVlans, allDevices, currentDe
 /**
  * Creates a static snapshot of the current data and generated configurations.
  */
+// Reads all rows from _TA_PROPS sheet and returns a JSON string organized by store.
+// Used by createTopologySnapshot to embed a full property snapshot in the SNAP_ tab.
+function _readPropsSheetForSnapshot() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(_TA_PROPS_SHEET);
+    const result = { doc: {}, user: {}, script: {} };
+    if (sheet && sheet.getLastRow() > 0) {
+      sheet.getRange(1, 1, sheet.getLastRow(), 3).getValues().forEach(function(row) {
+        const key = row[0], val = row[1], s = row[2] || 'doc';
+        if (key && val !== '') result[s === 'user' ? 'user' : s === 'script' ? 'script' : 'doc'][key] = String(val);
+      });
+    } else {
+      // Fallback when _TA_PROPS hasn't been seeded yet
+      const dp = PropertiesService.getDocumentProperties();
+      result.doc['DEVICE_ROLES'] = dp.getProperty('DEVICE_ROLES') || '{}';
+      result.doc['DEVICE_MLAG_PEERS'] = dp.getProperty('DEVICE_MLAG_PEERS') || '{}';
+    }
+    return JSON.stringify(result);
+  } catch (e) {
+    Logger.log('[_readPropsSheetForSnapshot] ' + e);
+    return '{"doc":{},"user":{},"script":{}}';
+  }
+}
+
+// Writes all properties from a _TA_PROPS_SNAP payload back to their respective stores.
+// Used by restoreFromSnapshot — unconditionally overwrites (checkpoint restore = full rollback).
+function _restorePropsFromSnapshot(propsSnap) {
+  const dp = PropertiesService.getDocumentProperties();
+  const up = PropertiesService.getUserProperties();
+  const sp = PropertiesService.getScriptProperties();
+  ['doc', 'user', 'script'].forEach(function(store) {
+    if (!propsSnap[store]) return;
+    const svc = store === 'user' ? up : store === 'script' ? sp : dp;
+    Object.keys(propsSnap[store]).forEach(function(key) {
+      if (propsSnap[store][key] !== '') svc.setProperty(key, propsSnap[store][key]);
+    });
+  });
+}
+
 function createTopologySnapshot() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sourceSheet = ss.getSheetByName(SHEET_DATA);
@@ -6943,16 +6983,11 @@ function createTopologySnapshot() {
     const fullRange = snapSheet.getDataRange();
     fullRange.setValues(fullRange.getValues());
 
-    // 3. Add metadata header (row 1 = label, row 2 = timestamp + source, row 3 = device properties JSON)
-    const dp = PropertiesService.getDocumentProperties();
-    const metaProps = JSON.stringify({
-      roles: dp.getProperty('DEVICE_ROLES') || '{}',
-      mlag:  dp.getProperty('DEVICE_MLAG_PEERS') || '{}'
-    });
+    // 3. Add metadata header (row 1 = label, row 2 = timestamp + source, row 3 = full property snapshot)
     snapSheet.insertRowsBefore(1, 3);
     snapSheet.getRange("A1").setValue("SNAPSHOT METADATA").setFontWeight("bold");
     snapSheet.getRange("A2").setValue("Created: " + new Date().toLocaleString() + " | Source: " + SHEET_DATA);
-    snapSheet.getRange("A3").setValue("PROPS:" + metaProps);
+    snapSheet.getRange("A3").setValue("_TA_PROPS_SNAP:" + _readPropsSheetForSnapshot());
     snapSheet.setTabColor("orange");
 
     ss.toast("Snapshot created: " + snapshotName, "Success");
@@ -6995,9 +7030,9 @@ function getSnapshotDiff(snapshotName) {
   const snapLastRow = snapSheet.getLastRow();
   const snapLastCol = snapSheet.getLastColumn();
 
-  // Detect format: new snapshots have "PROPS:" in row 3
+  // Detect format: new snapshots have "_TA_PROPS_SNAP:" or legacy "PROPS:" in row 3
   const row3Val = snapLastRow >= 3 ? String(snapSheet.getRange(3, 1).getValue()) : '';
-  const metaRows = row3Val.startsWith('PROPS:') ? 3 : 2;
+  const metaRows = (row3Val.startsWith('_TA_PROPS_SNAP:') || row3Val.startsWith('PROPS:')) ? 3 : 2;
   // Sheet original layout: row1=device names, row2=int_ headers, rows3+=data
   const snapHeaderRow = metaRows + 2; // int_ headers row in snapshot
   const snapDataStart = metaRows + 3; // first data row in snapshot
@@ -7055,12 +7090,13 @@ function restoreFromSnapshot(snapshotName) {
   const lastRow = snapSheet.getLastRow();
   const lastCol = snapSheet.getLastColumn();
 
-  // Detect metadata format: new snapshots have 3 header rows (row 3 starts with "PROPS:"),
-  // legacy snapshots have 2. Data starts at dataStartRow.
+  // Detect metadata format: 3-row header when row 3 starts with "_TA_PROPS_SNAP:" (full) or "PROPS:" (legacy).
   const row3Val = lastRow >= 3 ? String(snapSheet.getRange(3, 1).getValue()) : '';
-  const hasProps = row3Val.startsWith('PROPS:');
-  const dataStartRow = hasProps ? 4 : 3;
-  const metaRowCount = dataStartRow - 1;
+  const hasFullProps   = row3Val.startsWith('_TA_PROPS_SNAP:');
+  const hasLegacyProps = !hasFullProps && row3Val.startsWith('PROPS:');
+  const hasProps       = hasFullProps || hasLegacyProps;
+  const dataStartRow   = hasProps ? 4 : 3;
+  const metaRowCount   = dataStartRow - 1;
 
   if (lastRow < dataStartRow) throw new Error("Snapshot appears empty.");
 
@@ -7069,9 +7105,11 @@ function restoreFromSnapshot(snapshotName) {
   // Validate snapshot before touching live sheet
   if (!snapData || snapData.length === 0) throw new Error("Snapshot data is empty — restore aborted.");
 
-  // Read device properties stored in snapshot (new format only)
+  // Parse saved properties from snapshot row 3
   let savedProps = null;
-  if (hasProps) {
+  if (hasFullProps) {
+    try { savedProps = JSON.parse(row3Val.slice('_TA_PROPS_SNAP:'.length)); } catch(e) { /* ignore malformed */ }
+  } else if (hasLegacyProps) {
     try { savedProps = JSON.parse(row3Val.slice('PROPS:'.length)); } catch(e) { /* ignore malformed */ }
   }
 
@@ -7086,8 +7124,10 @@ function restoreFromSnapshot(snapshotName) {
   try {
     liveSheet.clear();
     liveSheet.getRange(1, 1, snapData.length, lastCol).setValues(snapData);
-    // Restore device roles and MLAG peers if snapshot includes them
-    if (savedProps) {
+    // Restore all properties (full format) or just roles+mlag (legacy format)
+    if (hasFullProps && savedProps) {
+      _restorePropsFromSnapshot(savedProps);
+    } else if (hasLegacyProps && savedProps) {
       const dp = PropertiesService.getDocumentProperties();
       if (savedProps.roles) dp.setProperty('DEVICE_ROLES', savedProps.roles);
       if (savedProps.mlag)  dp.setProperty('DEVICE_MLAG_PEERS', savedProps.mlag);

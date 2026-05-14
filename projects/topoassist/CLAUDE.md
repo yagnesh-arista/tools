@@ -243,6 +243,16 @@ When the same format string appears in 3+ call sites, extract it to a pure funct
 
 **Restore:** `_restorePropsFromSheet()` runs at `onOpenInstallable()` and restores all missing keys (no-op if key already set — never overwrites).
 
+## _TA_PROPS_SNAP — Checkpoint-Embedded Property Backup
+
+Each SNAP_ tab stores a full property snapshot in row 3 as `_TA_PROPS_SNAP:{json}` where json = `{"doc":{...},"user":{...},"script":{...}}` — a dump of all `_TA_PROPS` rows at checkpoint creation time.
+
+**Two mechanisms, one invariant:** `_TA_PROPS` (hidden sheet) and `_TA_PROPS_SNAP` (embedded in each SNAP_ tab) must always cover the same set of keys. Since `_TA_PROPS_SNAP` is built by reading `_TA_PROPS` at snapshot time (`_readPropsSheetForSnapshot()`), coverage is automatic — **the only action required when adding a new `saveX()` is to wire `_writePropsSheet`**; the snapshot system inherits it.
+
+**Restore path:** `restoreFromSnapshot()` detects `_TA_PROPS_SNAP:` prefix → calls `_restorePropsFromSnapshot(propsSnap)` which unconditionally overwrites all three stores (full rollback). Legacy snapshots with `PROPS:` prefix only restore DEVICE_ROLES + DEVICE_MLAG_PEERS.
+
+**Fallback:** if `_TA_PROPS` sheet doesn't exist when snapshot is created, `_readPropsSheetForSnapshot()` reads DEVICE_ROLES + DEVICE_MLAG_PEERS directly from DocumentProperties.
+
 ## After Every Change
 - List the exact files modified (GAS files vs local `device_bridge.py`)
 - Check if `UserGuide.html` needs updating for any user-facing changes
