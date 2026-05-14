@@ -1,10 +1,10 @@
-// TopoAssist v260514.9 | 2026-05-14 10:41:37
+// TopoAssist v260514.10 | 2026-05-14 11:34:15
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.9";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260514.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -47,7 +47,7 @@ function onOpen() {
       .addItem('Change Sheet Name', 'promptRenameSheet')
       .addSeparator()
       .addItem('Create Sheet Checkpoint', 'createTopologySnapshot')
-      .addItem('Restore Sheet Checkpoint', 'showRestoreWizard')
+      .addItem('Sheet Checkpoint Management', 'showRestoreWizard')
       .addSeparator()
       .addItem('New Project — Reset All Data', 'showNewProjectDialog'))
     .addSeparator()
@@ -6735,10 +6735,16 @@ function createTopologySnapshot() {
     const fullRange = snapSheet.getDataRange();
     fullRange.setValues(fullRange.getValues());
 
-    // 3. Add metadata header
-    snapSheet.insertRowsBefore(1, 2);
+    // 3. Add metadata header (row 1 = label, row 2 = timestamp + source, row 3 = device properties JSON)
+    const dp = PropertiesService.getDocumentProperties();
+    const metaProps = JSON.stringify({
+      roles: dp.getProperty('DEVICE_ROLES') || '{}',
+      mlag:  dp.getProperty('DEVICE_MLAG_PEERS') || '{}'
+    });
+    snapSheet.insertRowsBefore(1, 3);
     snapSheet.getRange("A1").setValue("SNAPSHOT METADATA").setFontWeight("bold");
     snapSheet.getRange("A2").setValue("Created: " + new Date().toLocaleString() + " | Source: " + SHEET_DATA);
+    snapSheet.getRange("A3").setValue("PROPS:" + metaProps);
     snapSheet.setTabColor("orange");
 
     ss.toast("Snapshot created: " + snapshotName, "Success");
@@ -6768,7 +6774,7 @@ function getSnapshotList() {
 
 /**
  * Computes a diff summary between the live sheet and a named snapshot.
- * Snapshot structure: rows 1-2 = metadata, row 3 = device names, row 4 = int_ headers, rows 5+ = data.
+ * Supports both legacy (2 metadata rows) and new (3 metadata rows with PROPS) formats.
  */
 function getSnapshotDiff(snapshotName) {
   const ss        = SpreadsheetApp.getActiveSpreadsheet();
@@ -6781,14 +6787,20 @@ function getSnapshotDiff(snapshotName) {
   const snapLastRow = snapSheet.getLastRow();
   const snapLastCol = snapSheet.getLastColumn();
 
-  if (snapLastRow < 4) throw new Error("Snapshot appears empty or corrupted.");
+  // Detect format: new snapshots have "PROPS:" in row 3
+  const row3Val = snapLastRow >= 3 ? String(snapSheet.getRange(3, 1).getValue()) : '';
+  const metaRows = row3Val.startsWith('PROPS:') ? 3 : 2;
+  // Sheet original layout: row1=device names, row2=int_ headers, rows3+=data
+  const snapHeaderRow = metaRows + 2; // int_ headers row in snapshot
+  const snapDataStart = metaRows + 3; // first data row in snapshot
+
+  if (snapLastRow < snapHeaderRow) throw new Error("Snapshot appears empty or corrupted.");
 
   const liveHeaders = liveLastRow >= 2
     ? liveSheet.getRange(2, 1, 1, liveLastCol).getValues()[0]
     : [];
 
-  // Snapshot row 4 = original row 2 (int_ headers), after 2 metadata rows + row 1 device names
-  const snapHeaders = snapSheet.getRange(4, 1, 1, snapLastCol).getValues()[0];
+  const snapHeaders = snapSheet.getRange(snapHeaderRow, 1, 1, snapLastCol).getValues()[0];
 
   const liveDevices = new Set(
     liveHeaders.filter(h => String(h).startsWith('int_')).map(h => String(h).slice(4))
@@ -6800,9 +6812,9 @@ function getSnapshotDiff(snapshotName) {
   const devicesAdded   = [...snapDevices].filter(d => !liveDevices.has(d));
   const devicesRemoved = [...liveDevices].filter(d => !snapDevices.has(d));
 
-  // Data rows: live rows 3+ ; snapshot rows 5+
+  // Data rows: live rows 3+ ; snapshot rows after headers
   const liveDataRows = Math.max(0, liveLastRow - 2);
-  const snapDataRows = Math.max(0, snapLastRow - 4);
+  const snapDataRows = Math.max(0, snapLastRow - (snapDataStart - 1));
 
   let changedCells = 0;
   const overlapRows = Math.min(liveDataRows, snapDataRows);
@@ -6810,7 +6822,7 @@ function getSnapshotDiff(snapshotName) {
 
   if (overlapRows > 0 && overlapCols > 0) {
     const liveData = liveSheet.getRange(3, 1, overlapRows, overlapCols).getValues();
-    const snapData = snapSheet.getRange(5, 1, overlapRows, overlapCols).getValues();
+    const snapData = snapSheet.getRange(snapDataStart, 1, overlapRows, overlapCols).getValues();
     for (let r = 0; r < overlapRows; r++) {
       for (let c = 0; c < overlapCols; c++) {
         if (String(liveData[r][c]) !== String(snapData[r][c])) changedCells++;
@@ -6832,17 +6844,28 @@ function restoreFromSnapshot(snapshotName) {
 
   if (!liveSheet || !snapSheet) throw new Error("Sheet missing.");
 
-  // Snapshots have 2 extra metadata rows at the top.
-  // We grab data starting from Row 3 (the original Row 1).
   const lastRow = snapSheet.getLastRow();
   const lastCol = snapSheet.getLastColumn();
 
-  if (lastRow < 3) throw new Error("Snapshot appears empty.");
+  // Detect metadata format: new snapshots have 3 header rows (row 3 starts with "PROPS:"),
+  // legacy snapshots have 2. Data starts at dataStartRow.
+  const row3Val = lastRow >= 3 ? String(snapSheet.getRange(3, 1).getValue()) : '';
+  const hasProps = row3Val.startsWith('PROPS:');
+  const dataStartRow = hasProps ? 4 : 3;
+  const metaRowCount = dataStartRow - 1;
 
-  const snapData = snapSheet.getRange(3, 1, lastRow - 2, lastCol).getValues();
+  if (lastRow < dataStartRow) throw new Error("Snapshot appears empty.");
+
+  const snapData = snapSheet.getRange(dataStartRow, 1, lastRow - metaRowCount, lastCol).getValues();
 
   // Validate snapshot before touching live sheet
   if (!snapData || snapData.length === 0) throw new Error("Snapshot data is empty — restore aborted.");
+
+  // Read device properties stored in snapshot (new format only)
+  let savedProps = null;
+  if (hasProps) {
+    try { savedProps = JSON.parse(row3Val.slice('PROPS:'.length)); } catch(e) { /* ignore malformed */ }
+  }
 
   // Back up live sheet so we can rollback if the restore write fails
   const liveLastRow = liveSheet.getLastRow();
@@ -6855,6 +6878,12 @@ function restoreFromSnapshot(snapshotName) {
   try {
     liveSheet.clear();
     liveSheet.getRange(1, 1, snapData.length, lastCol).setValues(snapData);
+    // Restore device roles and MLAG peers if snapshot includes them
+    if (savedProps) {
+      const dp = PropertiesService.getDocumentProperties();
+      if (savedProps.roles) dp.setProperty('DEVICE_ROLES', savedProps.roles);
+      if (savedProps.mlag)  dp.setProperty('DEVICE_MLAG_PEERS', savedProps.mlag);
+    }
     // Re-apply standard formatting (optional but recommended)
     syncSchemaPreservingOrder();
     PropertiesService.getDocumentProperties().setProperty('_RELOAD_AFTER_RESTORE', '1');
@@ -6919,7 +6948,7 @@ function showRestoreWizard() {
         </style>
       </head>
       <body>
-        <div class="title">Restore Sheet Checkpoint</div>
+        <div class="title">Sheet Checkpoint Management</div>
         <? if (snapshots.length === 0) { ?>
           <div class="warning">No checkpoints found. Use <b>Create Sheet Checkpoint</b> first.</div>
         <? } else { ?>
@@ -7027,7 +7056,7 @@ function showRestoreWizard() {
   html.targetSheet = SHEET_DATA;
   SpreadsheetApp.getUi().showModalDialog(
     html.evaluate().setWidth(420).setHeight(470),
-    'Restore Sheet Checkpoint'
+    'Sheet Checkpoint Management'
   );
 }
 
