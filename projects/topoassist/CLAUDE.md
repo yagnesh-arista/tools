@@ -242,11 +242,17 @@ Instead, track state in a `data-*` attribute and compare that:
 if (el.dataset.splitState !== 'ready') return;
 ```
 
-**`setSplitBtnState(splitId, labelText, bg, actionsDisabled, state)`** is the canonical writer — pass the optional `state` arg and it writes `wrapper.dataset.splitState`. Valid states: `'ready' | 'fetching' | 'non-eos' | 'error'`.
+**`setSplitBtnState(splitId, labelText, state, actionsDisabled)`** is the canonical writer. `state` drives both `dataset.splitState` and `style.background` via `_SPLIT_STATE_BG`:
 
-- `_setSplitBtnLabel` always passes `state` → `setSplitBtnState` (normal path)
-- Any direct `setSplitBtnState` call (e.g. `_updateStripFetchError`) **must** pass a `state` arg — omitting it leaves `dataset.splitState` stale from the prior call, causing `refreshConfigAges` to overwrite error labels with age text
-- Never set `dataset.splitState` outside `setSplitBtnState`
+```javascript
+const _SPLIT_STATE_BG = { ready: '#10b981', fetching: '#f59e0b', 'non-eos': '#64748b', error: '#ef4444' };
+```
+
+- `state` is always the 3rd arg — there is no separate `bg` parameter
+- `dataset.splitState` is always written unconditionally — no stale-state risk
+- `_setSplitBtnLabel` calls `setSplitBtnState(id, label, state, state!=='ready')` — no `bg` computation
+- Direct callers (e.g. `_updateStripFetchError`) pass `'error'` — no color literal
+- Never pass a hex color as the 3rd arg; never set `dataset.splitState` outside `setSplitBtnState`
 - Never read `style.background` to determine split-btn state
 
 ## _TA_PROPS — Copy-Safe Property Backup
