@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260515.15 | 2026-05-15 17:47:12
+// topoassist v260515.18 | 2026-05-15 17:50:48
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -304,14 +304,15 @@ t('_getEvpnBundleGroups: trims whitespace',
     };
     return el;
   }
-  // SYNC: setSplitBtnState must match Sidebar-js.html
-  function setSplitBtnState(splitId, labelText, bg, actionsDisabled, state) {
+  // SYNC: _SPLIT_STATE_BG and setSplitBtnState must match Sidebar-js.html
+  const _SPLIT_STATE_BG = { ready: '#10b981', fetching: '#f59e0b', 'non-eos': '#64748b', error: '#ef4444' };
+  function setSplitBtnState(splitId, labelText, state, actionsDisabled) {
     const wrapper = _mockDom[splitId];
     if (!wrapper) return;
     const label = wrapper.querySelector('.split-label');
     if (label) label.innerText = labelText;
-    wrapper.style.background = bg;
-    if (state !== undefined) wrapper.dataset.splitState = state;
+    wrapper.style.background = _SPLIT_STATE_BG[state] || '#64748b';
+    wrapper.dataset.splitState = state;
     const copyBtn = wrapper.querySelector('.copy-action');
     const viewBtn = wrapper.querySelector('.view-action');
     const pushBtn = wrapper.querySelector('.push-action');
@@ -321,34 +322,32 @@ t('_getEvpnBundleGroups: trims whitespace',
   }
   let _mockDom = {};
 
-  // state param provided → dataset.splitState written
+  // state drives both dataset.splitState and style.background
   _mockDom = { splitDevice: makeSplitEl() };
-  setSplitBtnState('splitDevice', 'lbl', '#10b981', false, 'ready');
-  t('setSplitBtnState: state=ready writes dataset.splitState', _mockDom.splitDevice.dataset.splitState, 'ready');
+  setSplitBtnState('splitDevice', 'lbl', 'ready', false);
+  t('setSplitBtnState: ready → splitState=ready', _mockDom.splitDevice.dataset.splitState, 'ready');
+  t('setSplitBtnState: ready → bg=#10b981', _mockDom.splitDevice.style.background, '#10b981');
 
   _mockDom = { splitDevice: makeSplitEl() };
-  setSplitBtnState('splitDevice', 'lbl', '#f59e0b', true, 'fetching');
-  t('setSplitBtnState: state=fetching writes dataset.splitState', _mockDom.splitDevice.dataset.splitState, 'fetching');
+  setSplitBtnState('splitDevice', 'lbl', 'fetching', true);
+  t('setSplitBtnState: fetching → splitState=fetching', _mockDom.splitDevice.dataset.splitState, 'fetching');
+  t('setSplitBtnState: fetching → bg=#f59e0b', _mockDom.splitDevice.style.background, '#f59e0b');
 
-  // error path: previously ready → set to error → splitState must be 'error'
+  // error path: previously ready → error overwrites splitState and sets red bg
   _mockDom = { splitDevice: makeSplitEl('ready') };
-  setSplitBtnState('splitDevice', 'err', '#ef4444', false, 'error');
-  t('setSplitBtnState: state=error overwrites prior ready state', _mockDom.splitDevice.dataset.splitState, 'error');
-
-  // state omitted → dataset.splitState unchanged (backward compat for any direct callers)
-  _mockDom = { splitDevice: makeSplitEl('ready') };
-  setSplitBtnState('splitDevice', 'lbl', '#10b981', false);
-  t('setSplitBtnState: state omitted — dataset.splitState unchanged', _mockDom.splitDevice.dataset.splitState, 'ready');
+  setSplitBtnState('splitDevice', 'err', 'error', false);
+  t('setSplitBtnState: error overwrites prior ready splitState', _mockDom.splitDevice.dataset.splitState, 'error');
+  t('setSplitBtnState: error → bg=#ef4444', _mockDom.splitDevice.style.background, '#ef4444');
 
   // unknown splitId → no throw
   _mockDom = {};
   let threw = false;
-  try { setSplitBtnState('splitDevice', 'lbl', '#10b981', false, 'ready'); } catch(e) { threw = true; }
+  try { setSplitBtnState('splitDevice', 'lbl', 'ready', false); } catch(e) { threw = true; }
   t('setSplitBtnState: unknown id — no throw', threw, false);
 
   // buttons disabled when actionsDisabled=true
   _mockDom = { splitDevice: makeSplitEl() };
-  setSplitBtnState('splitDevice', 'lbl', '#f59e0b', true, 'fetching');
+  setSplitBtnState('splitDevice', 'lbl', 'fetching', true);
   t('setSplitBtnState: actionsDisabled=true disables all buttons',
     [_mockDom.splitDevice._btns.copy.disabled, _mockDom.splitDevice._btns.view.disabled, _mockDom.splitDevice._btns.push.disabled],
     [true, true, true]);

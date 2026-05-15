@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.16 | 2026-05-15 17:48:37 -->
+<!-- TopoAssist v260515.18 | 2026-05-15 17:50:15 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.16";  // keep in sync with Code.gs
+const APP_VERSION = "260515.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3612,10 +3612,13 @@ function formatAgeLabel(epochMs) {
 }
 
 // --- SPLIT BUTTON STATE HELPER ---
-// Sets label text, wrapper background, and enables/disables all action buttons.
-// Optional state param ('ready'|'fetching'|'non-eos'|'error') written to dataset.splitState
-// so consumers never need to compare style.background (Chrome normalizes hex → rgb).
-function setSplitBtnState(splitId, labelText, bg, actionsDisabled, state) {
+// Color map — SSoT for split-btn background per state. Never hardcode colors at call sites.
+const _SPLIT_STATE_BG = { ready: '#10b981', fetching: '#f59e0b', 'non-eos': '#64748b', error: '#ef4444' };
+
+// Sets label text, wrapper background (derived from state), and enables/disables action buttons.
+// state: 'ready' | 'fetching' | 'non-eos' | 'error' — written to dataset.splitState so
+// consumers never compare style.background (Chrome normalizes hex → rgb on read).
+function setSplitBtnState(splitId, labelText, state, actionsDisabled) {
   const wrapper = document.getElementById(splitId);
   if (!wrapper) return;
   const label = wrapper.querySelector('.split-label');
@@ -3623,8 +3626,8 @@ function setSplitBtnState(splitId, labelText, bg, actionsDisabled, state) {
   const viewBtn = wrapper.querySelector('.view-action');
   const pushBtn = wrapper.querySelector('.push-action');
   if (label) label.innerText = labelText;
-  wrapper.style.background = bg;
-  if (state !== undefined) wrapper.dataset.splitState = state;
+  wrapper.style.background = _SPLIT_STATE_BG[state] || '#64748b';
+  wrapper.dataset.splitState = state;
   if (copyBtn) copyBtn.disabled = actionsDisabled;
   if (viewBtn) viewBtn.disabled = actionsDisabled;
   if (pushBtn) pushBtn.disabled = actionsDisabled;
@@ -3644,12 +3647,9 @@ function _buildSplitLabel(sheetId, dev, port, state, ageOrTime) {
   if (state === 'fetching') return `${base} [${ageOrTime}] - Fetching`;
   return `${base} [${ageOrTime}]`;
 }
-// Sets label text + visual state (color, disabled). Delegates format to _buildSplitLabel.
-// Passes state to setSplitBtnState — dataset.splitState is written there, not here.
+// Sets label + visual state. Color derived from state via _SPLIT_STATE_BG — no bg arg needed.
 function _setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime) {
-  const bg       = state === 'ready' ? "#10b981" : state === 'fetching' ? "#f59e0b" : "#64748b";
-  const disabled = state !== 'ready';
-  setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), bg, disabled, state);
+  setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), state, state !== 'ready');
 }
 
 // --- GLOBAL COPY HANDLER ---
@@ -7067,18 +7067,17 @@ function _getBaseBlock(deviceName) {
 function _updateStripFetchError(deviceName, label) {
   const sheetId = (allDevicesData[deviceName] && allDevicesData[deviceName].sheetIndex) || "-";
   const errLabel = `[${sheetId}] ${deviceName} — ${label}`;
-  const errColor = "#ef4444";
   if (selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
-    setSplitBtnState("splitDevice", errLabel, errColor, false, 'error');
+    setSplitBtnState("splitDevice", errLabel, 'error', false);
   }
   if (selectedLineId) {
     const link = linkMap[selectedLineId];
     if (link) {
       if (link.u.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
-        setSplitBtnState("splitLeft", errLabel, errColor, false, 'error');
+        setSplitBtnState("splitLeft", errLabel, 'error', false);
       }
       if (link.v.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
-        setSplitBtnState("splitRight", errLabel, errColor, false, 'error');
+        setSplitBtnState("splitRight", errLabel, 'error', false);
       }
     }
   }
