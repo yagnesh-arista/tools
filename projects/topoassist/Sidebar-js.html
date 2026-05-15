@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.25 | 2026-05-15 18:06:00 -->
+<!-- TopoAssist v260515.26 | 2026-05-15 19:07:57 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.25";  // keep in sync with Code.gs
+const APP_VERSION = "260515.26";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14836,7 +14836,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
   }
 }
 
-function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync = false) {
+function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync = false, orphansOnly = false) {
   if (_pushAutoCloseTimeout) { clearTimeout(_pushAutoCloseTimeout); _pushAutoCloseTimeout = null; }
   _autoMinimizeOpenModal();   // minimize any open modal so pushConfirmModal is the only one visible
   const modal    = document.getElementById('pushConfirmModal');
@@ -14858,8 +14858,9 @@ function _showPushConfirmModal(deviceName, diff, readOnly = false, alreadyInSync
     return;
   }
   const noCommit = readOnly || alreadyInSync;
-  if (titleEl)    titleEl.textContent     = alreadyInSync ? _buildPushTitle(deviceName, deviceName, 'In Sync') : (readOnly ? _buildPushTitle(deviceName, deviceName, 'Verify') : _buildPushTitle(deviceName, deviceName, 'Push'));
-  if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = 'Commit'; }
+  const _titleState = alreadyInSync ? 'In Sync' : readOnly ? 'Verify' : orphansOnly ? 'Orphan Cleanup' : 'Push';
+  if (titleEl)    titleEl.textContent     = _buildPushTitle(deviceName, deviceName, _titleState);
+  if (commitBtn)  { commitBtn.style.display = noCommit ? 'none' : 'inline-block'; commitBtn.disabled = false; commitBtn.textContent = orphansOnly ? 'Clean up' : 'Commit'; }
   if (cancelFtr)  cancelFtr.textContent   = noCommit ? 'Close' : 'Cancel';
   if (alreadyInSync) {
     body.innerHTML = `<div style="color:var(--text-muted,#94a3b8);font-style:italic;padding:4px 0;">Running config already matches — no push needed.</div>`;
