@@ -266,9 +266,13 @@ const _SPLIT_STATE_BG = { ready: '#10b981', fetching: '#f59e0b', 'non-eos': '#64
 - `user`: all 21 IP pref keys, CUSTOM_VIEW_PREFS
 - `script`: DEVICE_LABELS, TOPOLOGY_HIDDEN_DEVICES
 
-**Rule:** when adding a new `saveX()` function that stores topology data in any property service, add the matching `_writePropsSheet` call in the same edit. Omitting it silently loses the data on copy.
+**Rule:** when adding a new `saveX()` function that stores topology data in any property service, do both in the same edit:
+1. Add `_writePropsSheet(key, val, store)` in the save function (write-through on every save)
+2. Add `{key, store, svc: <propService>}` to the `candidates` array in `_seedPropsSheet()` (backfill for sheets that predate this key)
 
-**Restore:** `_restorePropsFromSheet()` runs at `onOpenInstallable()` and restores all missing keys (no-op if key already set — never overwrites).
+Omitting step 1 silently loses the data on copy. Omitting step 2 means the key is missing from `_TA_PROPS` on sheets that existed before the save was wired (pre-copy backfill will skip it).
+
+**Restore:** `_restorePropsFromSheet()` runs at `onOpenInstallable()` and `showTopologyWindow()` and restores all missing keys (no-op if key already set — never overwrites).
 
 ## _TA_PROPS_SNAP — Checkpoint-Embedded Property Backup
 
