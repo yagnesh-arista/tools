@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260515.8 | 2026-05-15 12:45:50
+# topoassist v260515.17 | 2026-05-15 17:49:19
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260515.4"
+VERSION           = "260515.5"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -1628,7 +1628,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                                 "eos_warnings": _cleanup_notes, **_asn_extra}
                     if _cleanup_notes:
                         _asn_extra["eos_warnings"] = _cleanup_notes
-                    return {"ok": False, "error": '\n'.join(_real_errs or eos_errs), **_asn_extra}
+                    return {"ok": False, "error": '\n'.join(_real_errs or eos_errs),
+                            "session_name": session, **_asn_extra}
                 raise
             except OSError as e:
                 # Socket/read timeout — eAPI dispatched all commands including 'commit'
