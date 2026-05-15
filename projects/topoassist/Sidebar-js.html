@@ -10709,7 +10709,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260515.7"
+VERSION           = "260515.10"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -11249,6 +11249,20 @@ def _orphans_to_cmds(orphans):
     return cmds
 
 
+def _items_to_orphans(items):
+    """Convert JS [{type, data}] items array to _detect_orphans() dict for _orphans_to_cmds()."""
+    orphans = {'interfaces': [], 'bgp': [], 'vlans': [], 'vrfs': [], 'ospf': []}
+    for item in (items or []):
+        t = item.get('type')
+        d = item.get('data', {})
+        if   t == 'interface': orphans['interfaces'].append(d)
+        elif t == 'bgp':       orphans['bgp'].append(d)
+        elif t == 'vlan':      orphans['vlans'].append(d)
+        elif t == 'vrf':       orphans['vrfs'].append(d)
+        elif t == 'ospf':      orphans['ospf'].append(d)
+    return orphans
+
+
 def _batch_orphan_cmds(cmds, batch_size):
     """Split orphan command list into batches that never cut mid-block.
 
@@ -11368,7 +11382,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path not in ("/lldp", "/devstatus", "/pushconfig",
                               "/pushconfig/finalize", "/pushconfig/detect_orphans",
-                              "/reconcile", "/settings"):
+                              "/reconcile", "/reconcile/cleanup", "/settings"):
             self._json(404, {"error": "not found"})
             return
         try:
@@ -11457,6 +11471,47 @@ class BridgeHandler(BaseHTTPRequestHandler):
             with lock:
                 for dev in results:
                     if results[dev] is None:
+                        results[dev] = {"ok": False, "error": "Cleanup timed out"}
+            self._json(200, results)
+        elif self.path == "/reconcile/cleanup":
+            # ipMap values: {ip, items: [{type, data}]}
+            # Converts selected orphan items → _orphans_to_cmds() → _batch_orphan_cmds() → push.
+            # Command generation is server-side (Python SSoT) — JS sends structured items, not raw EOS CLI.
+            push_timeout = body.get("push_timeout", CLEANUP_PUSH_TIMEOUT)
+            results      = {}
+            lock         = threading.Lock()
+            sem          = threading.Semaphore(MAX_WORKERS)
+            def _do_item_cleanup(dev, entry):
+                ip    = (entry.get("ip") or "").strip()
+                items = entry.get("items") or []
+                if not ip:
+                    with lock: results[dev] = {"ok": False, "error": "No IP configured"}
+                    return
+                cmds = _orphans_to_cmds(_items_to_orphans(items))
+                if not cmds:
+                    with lock: results[dev] = {"ok": True}
+                    return
+                batches = _batch_orphan_cmds(cmds, CLEANUP_BATCH_SIZE)
+                errors  = []
+                with sem:
+                    for _bn, batch in enumerate(batches, 1):
+                        try:
+                            res = self._push_config(ip, '\\n'.join(batch),
+                                                    push_timeout=push_timeout)
+                            if not res.get("ok"):
+                                errors.append(res.get("error") or f"batch {_bn} failed")
+                        except Exception as e:
+                            errors.append(str(e)[:120])
+                with lock:
+                    results[dev] = {"ok": not errors,
+                                    "error": '\\n'.join(errors) if errors else None}
+            threads = [threading.Thread(target=_do_item_cleanup, args=(d, v), daemon=True)
+                       for d, v in ip_map.items()]
+            for t in threads: t.start()
+            for t in threads: t.join(timeout=TIMEOUT + 5)
+            with lock:
+                for dev in ip_map:
+                    if dev not in results:
                         results[dev] = {"ok": False, "error": "Cleanup timed out"}
             self._json(200, results)
         elif self.path == "/pushconfig/detect_orphans":
