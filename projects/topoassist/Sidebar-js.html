@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.30 | 2026-05-15 20:39:24 -->
+<!-- TopoAssist v260515.32 | 2026-05-15 20:48:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.30";  // keep in sync with Code.gs
+const APP_VERSION = "260515.32";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10709,7 +10709,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260515.10"
+VERSION           = "260515.12"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -14513,66 +14513,38 @@ function runCleanSelected() {
   _doCleanDevItems(devItems);
 }
 
-const _CLEANUP_BATCH_SIZE = 300;
-
 async function _doCleanDevItems(devItems) {
   const total    = Object.values(devItems).reduce((s, a) => s + a.length, 0);
   const devCount = Object.keys(devItems).length;
   if (!total) { setStatus('Nothing to clean', 'status-warn'); return; }
   if (!confirm('Clean ' + total + ' orphan' + (total > 1 ? 's' : '') + ' on ' + devCount + ' device' + (devCount > 1 ? 's' : '') + '?\n\nThis pushes EOS commands to remove stale __TA config.')) return;
 
-  // Split each device's items into chunks — large orphan sets (e.g. thousands of SVIs)
-  // would time out if sent as a single configure session.
-  const devChunks = {};
+  const t0 = Date.now();
+  setStatus(`Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''}…`, 'status-info');
+  const _timer = setInterval(() => {
+    setStatus(`Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''} — ${Math.floor((Date.now() - t0) / 1000)}s…`, 'status-info');
+  }, 1000);
+
+  // Send structured items to /reconcile/cleanup — server generates EOS commands via
+  // _orphans_to_cmds() (Python SSoT) and handles batching via _batch_orphan_cmds().
+  const ipMap = {};
   Object.entries(devItems).forEach(([dev, items]) => {
-    const chunks = [];
-    for (let i = 0; i < items.length; i += _CLEANUP_BATCH_SIZE) chunks.push(items.slice(i, i + _CLEANUP_BATCH_SIZE));
-    devChunks[dev] = chunks;
+    ipMap[dev] = { ip: (_cleanupIpMap[dev] || {}).ip || '', items };
   });
-  const numBatches = Math.max(...Object.values(devChunks).map(c => c.length));
 
-  // Track per-device success count and first error
-  const devOk  = {};
-  const devErr = {};
-  Object.keys(devItems).forEach(dev => { devOk[dev] = 0; devErr[dev] = null; });
-
-  for (let bi = 0; bi < numBatches; bi++) {
-    const ipMap = {};
-    Object.entries(devChunks).forEach(([dev, chunks]) => {
-      const chunk = chunks[bi];
-      if (!chunk) return;
-      ipMap[dev] = { ip: (_cleanupIpMap[dev] || {}).ip || '', config: _buildCleanupConfig(chunk) };
+  let results = {};
+  try {
+    const r = await fetch(BRIDGE_URL + '/reconcile/cleanup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ipMap, push_timeout: _bridgeCleanupTimeout }),
     });
-
-    const cmdCount  = Object.values(ipMap).reduce((s, e) => s + e.config.split('\n').filter(Boolean).length, 0);
-    const batchBase = numBatches > 1
-      ? `Cleanup batch ${bi + 1}/${numBatches} (${cmdCount} cmds)`
-      : `Pushing cleanup to ${devCount} device${devCount > 1 ? 's' : ''}`;
-    const batchT0 = Date.now();
-    const batchTimer = setInterval(() => {
-      setStatus(`${batchBase} — ${Math.floor((Date.now() - batchT0) / 1000)}s…`, 'status-info');
-    }, 1000);
-    setStatus(`${batchBase}…`, 'status-info');
-
-    try {
-      const r = await fetch(BRIDGE_URL + '/pushconfig', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ipMap, push_timeout: _bridgeCleanupTimeout }),
-      });
-      clearInterval(batchTimer);
-      if (!r.ok) throw new Error('Bridge HTTP ' + r.status);
-      const results = await r.json();
-      if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
-      Object.entries(ipMap).forEach(([dev, entry]) => {
-        const res = results[dev];
-        const n   = entry.config.split('\n').filter(Boolean).length;
-        if (res && res.ok) { devOk[dev] += n; }
-        else if (!devErr[dev]) { devErr[dev] = (res && res.error) || 'no response'; }
-      });
-    } catch (err) {
-      clearInterval(batchTimer);
-      Object.keys(ipMap).forEach(dev => { if (!devErr[dev]) devErr[dev] = err.message; });
-    }
+    clearInterval(_timer);
+    if (!r.ok) throw new Error('Bridge HTTP ' + r.status);
+    results = await r.json();
+    if (results.auth_expired) { _handleBridgeAuthExpired(results.message); return; }
+  } catch (err) {
+    clearInterval(_timer);
+    Object.keys(devItems).forEach(dev => { results[dev] = { ok: false, error: err.message }; });
   }
 
   // Render final results
@@ -14581,13 +14553,14 @@ async function _doCleanDevItems(devItems) {
   Object.entries(devItems).forEach(([dev, items]) => {
     const safe = escapeHtml(dev);
     const n    = items.length;
-    if (devErr[dev]) {
+    const res  = results[dev];
+    if (!res || !res.ok) {
       failCount++;
       rowsHtml +=
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;' +
         'margin-bottom:2px;background:var(--bg-secondary,#f8fafc);border-radius:3px;">' +
         `<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-main);">${safe}</span>` +
-        `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ef4444;">Error: ${escapeHtml(devErr[dev])}</span></div>`;
+        `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ef4444;">Error: ${escapeHtml((res && res.error) || 'no response')}</span></div>`;
     } else {
       okCount++;
       rowsHtml +=
@@ -14606,7 +14579,7 @@ async function _doCleanDevItems(devItems) {
     reconBody.innerHTML =
       `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;padding-bottom:10px;">` +
       `<span style="font-weight:700;color:${summaryClr};">${escapeHtml(summaryTxt)}</span>` +
-      `<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">${ts}${numBatches > 1 ? ` (${numBatches} batches)` : ''}</span></div>` +
+      `<span style="font-weight:400;color:var(--text-muted);margin-left:10px;font-size:11px;">${ts}</span></div>` +
       rowsHtml;
   }
   if (failCount > 0) {
