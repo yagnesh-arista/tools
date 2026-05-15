@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.21 | 2026-05-15 17:55:41 -->
+<!-- TopoAssist v260515.22 | 2026-05-15 17:57:26 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.21";  // keep in sync with Code.gs
+const APP_VERSION = "260515.22";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -17588,6 +17588,17 @@ function openConfigFromButton(target) {
   }
 }
 
+const _PUSH_IFACE_LABEL = 'Push Base+Ifs';
+const _PUSH_ALL_LABEL   = 'Push All';
+
+// Hide both config-modal push buttons and reset to idle state.
+function _clearPushBtns() {
+  const piBtn = document.getElementById('btnCfgPushIface');
+  const paBtn = document.getElementById('btnCfgPushAll');
+  if (piBtn) { piBtn.style.display = 'none'; piBtn.disabled = false; piBtn.textContent = _PUSH_IFACE_LABEL; }
+  if (paBtn) { paBtn.style.display = 'none'; paBtn.disabled = false; paBtn.textContent = _PUSH_ALL_LABEL; }
+}
+
 // Show/hide and reset Push buttons in config modal based on view type.
 // Hides both push buttons for non-EOS devices — SSH push not applicable.
 function _setPushBtnVisibility(viewType) {
@@ -17596,13 +17607,13 @@ function _setPushBtnVisibility(viewType) {
   if (!piBtn || !paBtn) return;
   const devName  = _configViewContext && _configViewContext.deviceName;
   const isNonEos = devName && allDevicesData[devName] && allDevicesData[devName].type === 'non-arista';
-  if (isNonEos) { piBtn.style.display = 'none'; paBtn.style.display = 'none'; return; }
+  if (isNonEos) { _clearPushBtns(); return; }
   piBtn.style.display = 'inline-block';
-  piBtn.disabled = false; piBtn.textContent = 'Push Base+Ifs';
+  piBtn.disabled = false; piBtn.textContent = _PUSH_IFACE_LABEL;
   // 'device' view: show both Push Base+Ifs (all iface blocks) + Push All (full config)
   // 'interface' view: show only Push Base+Ifs (the single selected interface)
   paBtn.style.display = viewType === 'device' ? 'inline-block' : 'none';
-  paBtn.disabled = false; paBtn.textContent = 'Push All';
+  paBtn.disabled = false; paBtn.textContent = _PUSH_ALL_LABEL;
 }
 
 // Extract all interface sections from formatted config text (joined with \n!\n).
