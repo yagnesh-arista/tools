@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.8 | 2026-05-15 12:45:05 -->
+<!-- TopoAssist v260515.9 | 2026-05-15 14:13:06 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.8";  // keep in sync with Code.gs
+const APP_VERSION = "260515.9";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -631,6 +631,8 @@ function startSmartPolling() {
           dbg("Change detected (v" + serverVersion + ")! Refreshing...");
           localDataVersion = serverVersion;
           setStatus("Sheet changed — refreshing topology\u2026", "status-info");
+          configCache = {};
+          _markConfigsFetching();
           fetchData(false);
         }
       })
@@ -10100,6 +10102,20 @@ function stopBackgroundPrefetch() {
   if (prefetchInterval) clearInterval(prefetchInterval);
   prefetchQueue = [];
   prefetchTotal = 0;
+}
+
+// Flip the currently selected device card to Fetching state immediately when a sheet
+// version change is detected — before topology rebuild completes.
+function _markConfigsFetching() {
+  if (!selectedDeviceId) return;
+  const wrapper = document.getElementById('splitDevice');
+  if (!wrapper || wrapper.style.background !== '#10b981') return;
+  const devData = allDevicesData[selectedDeviceId];
+  if (!devData) return;
+  const devId = devData.sheetIndex || '-';
+  const time = new Date().toLocaleTimeString('en-US',
+    { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  _setSplitBtnLabel('splitDevice', devId, selectedDeviceId, null, 'fetching', time);
 }
 
 // Selective config cache invalidation — called after every fetchData() render.
