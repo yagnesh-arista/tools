@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.2 | 2026-05-15 11:46:08 -->
+<!-- TopoAssist v260515.3 | 2026-05-15 11:50:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.2";  // keep in sync with Code.gs
+const APP_VERSION = "260515.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10050,7 +10050,9 @@ function startBackgroundPrefetch() {
 
   let st = document.getElementById("status");
 
-  // 3. Start a slow loop (1 request every 3 seconds)
+  // 3. Start a slow loop (1 request every 8 seconds — 3s was too aggressive; with 10+ devices
+  //    each taking 2-8s, 3s created a continuous wall of GAS calls. 8s gives each call room to
+  //    breathe while still pre-warming the cache within ~1.5 min for a 10-device topology.)
   prefetchInterval = setInterval(() => {
     // Stop if queue is empty
     if (prefetchQueue.length === 0) {

@@ -1,10 +1,10 @@
-// TopoAssist v260515.2 | 2026-05-15 11:46:53
+// TopoAssist v260515.3 | 2026-05-15 11:48:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260515.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260515.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2708,7 +2708,11 @@ function getTopologyData(forceSync, isColorEnabled) {
 
     // PHASE 2: VISUAL STYLES
     safeCachePut(cache, 'TOPOLOGY_STATUS', '🔹 Phase 2/6: Applying visual styles...', 200);
-    if (isColorEnabled || forceSync) {
+    // Only apply sheet formatting on explicit (force) refresh — not on smart-poll-triggered
+    // auto-refreshes. applyGlobalFormatting makes 3 sheet reads + 5 writes (~2-4s); firing it
+    // on every user edit (via smart poll cache miss) caused cascade slowness. Sheet colors stay
+    // from the last force refresh and update again when the user hits Refresh or Force Sync.
+    if (forceSync) {
       try { applyGlobalFormatting(); } catch (e) { console.error("Auto-Coloring failed: " + e.message); }
     }
 
