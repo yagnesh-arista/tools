@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.11 | 2026-05-15 16:19:05 -->
+<!-- TopoAssist v260515.12 | 2026-05-15 17:38:29 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.11";  // keep in sync with Code.gs
+const APP_VERSION = "260515.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -18925,8 +18925,7 @@ function toggleAllCards() {
 // =====================================================================
 
 function refreshConfigAges() {
-  const isGreen = w => w && w.style.display !== 'none' &&
-    (w.style.background === 'rgb(16, 185, 129)' || w.style.background === '#10b981');
+  const isGreen = w => w && w.style.display !== 'none' && w.dataset.splitState === 'ready';
 
   if (selectedDeviceId) {
     const dev = allDevicesData[selectedDeviceId];
