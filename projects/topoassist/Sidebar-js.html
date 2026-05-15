@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.24 | 2026-05-15 17:57:40 -->
+<!-- TopoAssist v260515.25 | 2026-05-15 18:06:00 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.24";  // keep in sync with Code.gs
+const APP_VERSION = "260515.25";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3667,11 +3667,7 @@ function handleCopy(text, btnId) {
     if (wrapper) wrapper.style.background = "#3b82f6";
     setTimeout(() => {
       btn.innerText = originalLabel;
-      if (wrapper) {
-        const isReady = (btnId === "btnDevice") ? !!currentDeviceConfig :
-          (btnId === "btnLeft") ? !!currentLeftConfig : !!currentRightConfig;
-        wrapper.style.background = isReady ? "#10b981" : "#f59e0b";
-      }
+      if (wrapper) wrapper.style.background = _SPLIT_STATE_BG[wrapper.dataset.splitState] || '#64748b';
     }, 2000);
   };
 
@@ -18766,7 +18762,7 @@ function _copyGenRow(devName, btn) {
     if (wrapper) wrapper.style.background = '#3b82f6';
     setTimeout(() => {
       btn.textContent = orig;
-      if (wrapper) wrapper.style.background = '#10b981';
+      if (wrapper) wrapper.style.background = _SPLIT_STATE_BG[wrapper.dataset.splitState] || '#64748b';
     }, 2000);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
