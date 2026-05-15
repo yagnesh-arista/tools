@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.9 | 2026-05-15 14:13:06 -->
+<!-- TopoAssist v260515.10 | 2026-05-15 15:55:34 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.9";  // keep in sync with Code.gs
+const APP_VERSION = "260515.10";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3647,6 +3647,8 @@ function _setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime) {
   const bg       = state === 'ready' ? "#10b981" : state === 'fetching' ? "#f59e0b" : "#64748b";
   const disabled = state !== 'ready';
   setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), bg, disabled);
+  const wrapper = document.getElementById(splitId);
+  if (wrapper) wrapper.dataset.splitState = state;
 }
 
 // --- GLOBAL COPY HANDLER ---
@@ -10109,7 +10111,7 @@ function stopBackgroundPrefetch() {
 function _markConfigsFetching() {
   if (!selectedDeviceId) return;
   const wrapper = document.getElementById('splitDevice');
-  if (!wrapper || wrapper.style.background !== '#10b981') return;
+  if (!wrapper || wrapper.dataset.splitState !== 'ready') return;
   const devData = allDevicesData[selectedDeviceId];
   if (!devData) return;
   const devId = devData.sheetIndex || '-';
