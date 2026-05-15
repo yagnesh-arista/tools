@@ -230,6 +230,23 @@ When the same format string appears in 3+ call sites, extract it to a pure funct
 - `_buildSplitLabel` / `_setSplitBtnLabel` — split-btn label format (all 3 states + colors in one place)
 - `updateDirtyButton("#id", isDirty)` — dirty-state button (amber/green + " *" label); `DeviceManagerSaveButton` and `SheetColumnManagerSaveButton` must call this, never inline it
 
+## Never Compare style.background / style.color to a Hex String
+
+Chrome normalizes hex colors when reading back inline styles: setting `el.style.background = '#10b981'` then reading `el.style.background` returns `'rgb(16, 185, 129)'` — the hex string comparison always fails silently.
+
+**Rule: never read `style.background`, `style.backgroundColor`, or `style.color` in a conditional.**
+
+Instead, track state in a `data-*` attribute and compare that:
+```javascript
+// Setting state (e.g. in _setSplitBtnLabel):
+el.dataset.splitState = state;   // 'ready' | 'fetching' | 'non-eos'
+
+// Reading state (e.g. in _markConfigsFetching, refreshConfigAges):
+if (el.dataset.splitState !== 'ready') return;
+```
+
+`_setSplitBtnLabel` is the SSoT for split-btn state — it writes `dataset.splitState` on every call. All consumers must read `dataset.splitState`, never `style.background`.
+
 ## _TA_PROPS — Copy-Safe Property Backup
 
 `_TA_PROPS` is a hidden sheet that mirrors all topology configuration so it survives **File → Make a copy**. Every save function that writes user-authored data to any property store must also call `_writePropsSheet(key, value, store)` or `_writePropsSheetBatch(map, store)`.
