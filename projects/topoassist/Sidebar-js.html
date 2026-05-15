@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.22 | 2026-05-15 17:57:26 -->
+<!-- TopoAssist v260515.24 | 2026-05-15 17:57:40 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.22";  // keep in sync with Code.gs
+const APP_VERSION = "260515.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -18334,10 +18334,7 @@ function closeConfigModal() {
   document.getElementById("configModal").style.display = "none";
   document.getElementById("editOverlay").style.display = "none";
   _configViewContext = null;
-  const piBtn = document.getElementById('btnCfgPushIface');
-  const paBtn = document.getElementById('btnCfgPushAll');
-  if (piBtn) { piBtn.style.display = 'none'; piBtn.disabled = false; piBtn.textContent = 'Push Base+Ifs'; }
-  if (paBtn) { paBtn.style.display = 'none'; paBtn.disabled = false; paBtn.textContent = 'Push All'; }
+  _clearPushBtns();
   const cfgSt = document.getElementById('cfgPushStatus');
   if (cfgSt) { cfgSt.style.display = 'none'; cfgSt.innerHTML = ''; }
 }
