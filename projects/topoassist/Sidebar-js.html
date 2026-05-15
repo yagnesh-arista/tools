@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.10 | 2026-05-15 15:55:34 -->
+<!-- TopoAssist v260515.11 | 2026-05-15 16:19:05 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.10";  // keep in sync with Code.gs
+const APP_VERSION = "260515.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -14768,6 +14768,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
       _previewingPush = null;
       if (btn) { btn.disabled = false; btn.textContent = origText; }
       _updatePushPreviewError(label, deviceName, res.error || 'something went wrong');
+      if (res.orphans_pending) _injectOrphanPendingBanner(res.orphans_pending, false);
       return;
     }
     // EOS command rejections — commands silently failed inside the session.
@@ -14805,7 +14806,7 @@ async function pushDeviceConfig(deviceName, btnId, portFilter = null) {
     _pendingPush = { deviceName, ip, config, btnId, origText, label, sessionName: res.session_name, allDeviceNames: _allDevNames };
     if (btn) btn.textContent = 'Pending…';
     _showPushConfirmModal(label, res.diff);
-    if (res.orphans_pending) _injectOrphanPendingBanner(res.orphans_pending);
+    if (res.orphans_pending) _injectOrphanPendingBanner(res.orphans_pending, true);
     if (_p1EosErrs) _injectEosRejectionBanner(_p1EosErrs);
     if (_p1EosWarns) _injectEosWarningBanner(_p1EosWarns);
     if (res.asn_changed) _injectPushAsnChangeWarning(res.asn_changed);
@@ -17776,7 +17777,8 @@ function _injectPushAsnChangeWarning(asnChanged) {
 
 // Injects a blue info banner when orphans are detected in Phase 1 — cleanup deferred to commit.
 // orphans: {interfaces:[{name}], bgp:[{asn,neighbor}], vlans:[{vid}], vrfs:[{name}], ospf:[{context,iface}]}
-function _injectOrphanPendingBanner(orphans) {
+// pushOk: true when Phase 1 push succeeded (Commit button visible); false when push failed (show advisory note)
+function _injectOrphanPendingBanner(orphans, pushOk = true) {
   const bodyEl = document.getElementById('pushConfirmBody');
   if (!orphans || !bodyEl) return;
   const total = (orphans.interfaces || []).length + (orphans.bgp || []).length +
@@ -17792,12 +17794,15 @@ function _injectOrphanPendingBanner(orphans) {
   const shown  = parts.slice(0, 20);
   const extra  = parts.length - shown.length;
   const detail = shown.join(', ') + (extra > 0 ? ' … and ' + extra + ' more' : '');
+  const action = pushOk
+    ? 'will be removed when you click Commit'
+    : 'fix the push error above, then re-push — cleanup will run automatically';
   const banner =
     '<div id="pushOrphanPendingBanner" style="font-family:\'JetBrains Mono\',monospace;font-size:11px;' +
     'background:#eff6ff;border:1px solid #3b82f6;border-radius:4px;' +
     'padding:8px 10px;margin-top:8px;color:#1e40af;line-height:1.5;">' +
     '<span style="user-select:none;-webkit-user-select:none;">' +
-    '<b>' + total + ' orphan' + (total !== 1 ? 's' : '') + ' detected</b> — will be removed when you click Commit: ' +
+    '<b>' + total + ' orphan' + (total !== 1 ? 's' : '') + ' detected</b> — ' + action + ': ' +
     '</span>' +
     '<span style="user-select:text;-webkit-user-select:text;">' + detail + '</span>' +
     '</div>';
