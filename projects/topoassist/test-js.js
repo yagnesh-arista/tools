@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260513.57 | 2026-05-13 20:18:25
+// topoassist v260515.15 | 2026-05-15 17:47:12
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -276,6 +276,83 @@ t('_getEvpnBundleGroups: all empty → []',
 t('_getEvpnBundleGroups: trims whitespace',
   _getEvpnBundleGroupsPure(['  1-100  ']),
   ['1-100']);
+
+// ── setSplitBtnState — dataset.splitState behavior ───────────────────────
+// SYNC: setSplitBtnState must match Sidebar-js.html.
+// Tests focus on the dataset.splitState write — Chrome normalizes hex→rgb so
+// we never compare style.background; dataset.splitState is the SSoT for state.
+{
+  function makeSplitEl(initState) {
+    const el = {
+      style: { background: '' },
+      dataset: initState ? { splitState: initState } : {},
+      _lbl: { innerText: '' },
+      _btns: { copy: { disabled: false }, view: { disabled: false }, push: { disabled: false } },
+      classList: {
+        _s: new Set(),
+        contains(c) { return this._s.has(c); },
+        add(c)      { this._s.add(c); },
+        remove(c)   { this._s.delete(c); },
+      },
+      querySelector(sel) {
+        if (sel === '.split-label')  return this._lbl;
+        if (sel === '.copy-action')  return this._btns.copy;
+        if (sel === '.view-action')  return this._btns.view;
+        if (sel === '.push-action')  return this._btns.push;
+        return null;
+      },
+    };
+    return el;
+  }
+  // SYNC: setSplitBtnState must match Sidebar-js.html
+  function setSplitBtnState(splitId, labelText, bg, actionsDisabled, state) {
+    const wrapper = _mockDom[splitId];
+    if (!wrapper) return;
+    const label = wrapper.querySelector('.split-label');
+    if (label) label.innerText = labelText;
+    wrapper.style.background = bg;
+    if (state !== undefined) wrapper.dataset.splitState = state;
+    const copyBtn = wrapper.querySelector('.copy-action');
+    const viewBtn = wrapper.querySelector('.view-action');
+    const pushBtn = wrapper.querySelector('.push-action');
+    if (copyBtn) copyBtn.disabled = actionsDisabled;
+    if (viewBtn) viewBtn.disabled = actionsDisabled;
+    if (pushBtn) pushBtn.disabled = actionsDisabled;
+  }
+  let _mockDom = {};
+
+  // state param provided → dataset.splitState written
+  _mockDom = { splitDevice: makeSplitEl() };
+  setSplitBtnState('splitDevice', 'lbl', '#10b981', false, 'ready');
+  t('setSplitBtnState: state=ready writes dataset.splitState', _mockDom.splitDevice.dataset.splitState, 'ready');
+
+  _mockDom = { splitDevice: makeSplitEl() };
+  setSplitBtnState('splitDevice', 'lbl', '#f59e0b', true, 'fetching');
+  t('setSplitBtnState: state=fetching writes dataset.splitState', _mockDom.splitDevice.dataset.splitState, 'fetching');
+
+  // error path: previously ready → set to error → splitState must be 'error'
+  _mockDom = { splitDevice: makeSplitEl('ready') };
+  setSplitBtnState('splitDevice', 'err', '#ef4444', false, 'error');
+  t('setSplitBtnState: state=error overwrites prior ready state', _mockDom.splitDevice.dataset.splitState, 'error');
+
+  // state omitted → dataset.splitState unchanged (backward compat for any direct callers)
+  _mockDom = { splitDevice: makeSplitEl('ready') };
+  setSplitBtnState('splitDevice', 'lbl', '#10b981', false);
+  t('setSplitBtnState: state omitted — dataset.splitState unchanged', _mockDom.splitDevice.dataset.splitState, 'ready');
+
+  // unknown splitId → no throw
+  _mockDom = {};
+  let threw = false;
+  try { setSplitBtnState('splitDevice', 'lbl', '#10b981', false, 'ready'); } catch(e) { threw = true; }
+  t('setSplitBtnState: unknown id — no throw', threw, false);
+
+  // buttons disabled when actionsDisabled=true
+  _mockDom = { splitDevice: makeSplitEl() };
+  setSplitBtnState('splitDevice', 'lbl', '#f59e0b', true, 'fetching');
+  t('setSplitBtnState: actionsDisabled=true disables all buttons',
+    [_mockDom.splitDevice._btns.copy.disabled, _mockDom.splitDevice._btns.view.disabled, _mockDom.splitDevice._btns.push.disabled],
+    [true, true, true]);
+}
 
 // ── _expandTaCleanDisplay ─────────────────────────────────────────────────
 // SYNC: _TA_CLEAN_MAP and _expandTaCleanDisplay must match Sidebar-js.html.

@@ -238,14 +238,16 @@ Chrome normalizes hex colors when reading back inline styles: setting `el.style.
 
 Instead, track state in a `data-*` attribute and compare that:
 ```javascript
-// Setting state (e.g. in _setSplitBtnLabel):
-el.dataset.splitState = state;   // 'ready' | 'fetching' | 'non-eos'
-
-// Reading state (e.g. in _markConfigsFetching, refreshConfigAges):
+// Reading state:
 if (el.dataset.splitState !== 'ready') return;
 ```
 
-`_setSplitBtnLabel` is the SSoT for split-btn state — it writes `dataset.splitState` on every call. All consumers must read `dataset.splitState`, never `style.background`.
+**`setSplitBtnState(splitId, labelText, bg, actionsDisabled, state)`** is the canonical writer — pass the optional `state` arg and it writes `wrapper.dataset.splitState`. Valid states: `'ready' | 'fetching' | 'non-eos' | 'error'`.
+
+- `_setSplitBtnLabel` always passes `state` → `setSplitBtnState` (normal path)
+- Any direct `setSplitBtnState` call (e.g. `_updateStripFetchError`) **must** pass a `state` arg — omitting it leaves `dataset.splitState` stale from the prior call, causing `refreshConfigAges` to overwrite error labels with age text
+- Never set `dataset.splitState` outside `setSplitBtnState`
+- Never read `style.background` to determine split-btn state
 
 ## _TA_PROPS — Copy-Safe Property Backup
 
