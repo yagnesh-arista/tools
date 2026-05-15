@@ -1,10 +1,10 @@
-// TopoAssist v260515.5 | 2026-05-15 12:08:47
+// TopoAssist v260515.7 | 2026-05-15 12:18:45
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260515.5";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260515.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1748,8 +1748,10 @@ function _applyExplicitMlagOverride(topo, headers, rows) {
 }
 
 // 2. MAIN FUNCTION
-function applyGlobalFormatting() {
-  applyVisualFormatting();
+// fullRebuild=true → all 5 steps (CF rules + fonts) — use for Force Sync.
+// fullRebuild=false → backgrounds + borders only — safe for auto-refresh.
+function applyGlobalFormatting(fullRebuild) {
+  applyVisualFormatting(undefined, fullRebuild);
 }
 
 /**
@@ -1757,14 +1759,16 @@ function applyGlobalFormatting() {
  * 🎨 GLOBAL VISUAL FORMATTING ENGINE
  * ------------------------------------------------------------------------
  */
-function applyVisualFormatting(optionalSheet) {
+// fullRebuild=true → all 5 steps (run on Force Sync / schema changes).
+// fullRebuild=false → steps 1-3 only (backgrounds + borders); skips CF-rule
+//   rebuild and font reset. CF rules are structural (column-based) and do not
+//   change when cell values are edited — skipping them on auto-refresh saves
+//   ~1-2s per reload without any visible difference to the user.
+function applyVisualFormatting(optionalSheet, fullRebuild) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = optionalSheet || ss.getSheetByName(SHEET_DATA);
-    if (!sheet) {
-      console.warn("applyVisualFormatting: Sheet not found");
-      return;
-    }
+    if (!sheet) return;
 
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -1797,8 +1801,13 @@ function applyVisualFormatting(optionalSheet) {
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
-    // Extend CF beyond current data so new interface rows are immediately styled.
-    const cfLastRow = Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows());
+    // CF_ROW_BUFFER pre-covers rows beyond current data so newly added interface rows
+    // get formatting immediately. The buffer makes the rule range larger (+300 rows),
+    // which is the expensive part of setConditionalFormatRules — only extend on Force
+    // Sync (fullRebuild). Auto-refresh still rebuilds rules for current rows (fast).
+    const cfLastRow = fullRebuild
+      ? Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows())
+      : lastRow;
     const rules = buildConditionalRules(sheet, headers, cfLastRow);
     sheet.setConditionalFormatRules(rules);
 
@@ -1806,7 +1815,7 @@ function applyVisualFormatting(optionalSheet) {
     dataRange.setFontFamily("Consolas").setFontSize(10).setVerticalAlignment("middle").setHorizontalAlignment("center");
 
   } catch (e) {
-    console.error("Error in applyVisualFormatting:", e);
+    // silent — sheet formatting is best-effort; topology data is returned regardless
   }
 }
 
@@ -2708,12 +2717,12 @@ function getTopologyData(forceSync, isColorEnabled) {
 
     // PHASE 2: VISUAL STYLES
     safeCachePut(cache, 'TOPOLOGY_STATUS', '🔹 Phase 2/6: Applying visual styles...', 200);
-    // Only apply sheet formatting on explicit (force) refresh — not on smart-poll-triggered
-    // auto-refreshes. applyGlobalFormatting makes 3 sheet reads + 5 writes (~2-4s); firing it
-    // on every user edit (via smart poll cache miss) caused cascade slowness. Sheet colors stay
-    // from the last force refresh and update again when the user hits Refresh or Force Sync.
-    if (forceSync) {
-      try { applyGlobalFormatting(); } catch (e) { console.error("Auto-Coloring failed: " + e.message); }
+    // Run when Colors checkbox is on (isColorEnabled) OR on Force Sync.
+    // fullRebuild=forceSync: CF-rule rebuild + font reset only on Force Sync (structural changes).
+    // Auto-refresh (forceSync=false): backgrounds + borders only — skips the expensive CF-rule
+    // rebuild (~1-2s saved per reload) since CF rules don't change on per-cell edits.
+    if (isColorEnabled || forceSync) {
+      try { applyGlobalFormatting(forceSync); } catch (e) { /* best-effort */ }
     }
 
     // Read Data
