@@ -1,7 +1,7 @@
-<!-- TopoAssist v260515.12 | 2026-05-15 17:38:29 -->
+<!-- TopoAssist v260515.14 | 2026-05-15 17:46:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260515.12";  // keep in sync with Code.gs
+const APP_VERSION = "260515.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3614,7 +3614,9 @@ function formatAgeLabel(epochMs) {
 
 // --- SPLIT BUTTON STATE HELPER ---
 // Sets label text, wrapper background, and enables/disables all action buttons.
-function setSplitBtnState(splitId, labelText, bg, actionsDisabled) {
+// Optional state param ('ready'|'fetching'|'non-eos'|'error') written to dataset.splitState
+// so consumers never need to compare style.background (Chrome normalizes hex → rgb).
+function setSplitBtnState(splitId, labelText, bg, actionsDisabled, state) {
   const wrapper = document.getElementById(splitId);
   if (!wrapper) return;
   const label = wrapper.querySelector('.split-label');
@@ -3623,6 +3625,7 @@ function setSplitBtnState(splitId, labelText, bg, actionsDisabled) {
   const pushBtn = wrapper.querySelector('.push-action');
   if (label) label.innerText = labelText;
   wrapper.style.background = bg;
+  if (state !== undefined) wrapper.dataset.splitState = state;
   if (copyBtn) copyBtn.disabled = actionsDisabled;
   if (viewBtn) viewBtn.disabled = actionsDisabled;
   if (pushBtn) pushBtn.disabled = actionsDisabled;
@@ -3643,12 +3646,11 @@ function _buildSplitLabel(sheetId, dev, port, state, ageOrTime) {
   return `${base} [${ageOrTime}]`;
 }
 // Sets label text + visual state (color, disabled). Delegates format to _buildSplitLabel.
+// Passes state to setSplitBtnState — dataset.splitState is written there, not here.
 function _setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime) {
   const bg       = state === 'ready' ? "#10b981" : state === 'fetching' ? "#f59e0b" : "#64748b";
   const disabled = state !== 'ready';
-  setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), bg, disabled);
-  const wrapper = document.getElementById(splitId);
-  if (wrapper) wrapper.dataset.splitState = state;
+  setSplitBtnState(splitId, _buildSplitLabel(sheetId, dev, port, state, ageOrTime), bg, disabled, state);
 }
 
 // --- GLOBAL COPY HANDLER ---
@@ -7068,16 +7070,16 @@ function _updateStripFetchError(deviceName, label) {
   const errLabel = `[${sheetId}] ${deviceName} — ${label}`;
   const errColor = "#ef4444";
   if (selectedDeviceId && deviceName.toLowerCase() === selectedDeviceId.toLowerCase()) {
-    setSplitBtnState("splitDevice", errLabel, errColor, false);
+    setSplitBtnState("splitDevice", errLabel, errColor, false, 'error');
   }
   if (selectedLineId) {
     const link = linkMap[selectedLineId];
     if (link) {
       if (link.u.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
-        setSplitBtnState("splitLeft", errLabel, errColor, false);
+        setSplitBtnState("splitLeft", errLabel, errColor, false, 'error');
       }
       if (link.v.toLowerCase().startsWith(deviceName.toLowerCase() + ":")) {
-        setSplitBtnState("splitRight", errLabel, errColor, false);
+        setSplitBtnState("splitRight", errLabel, errColor, false, 'error');
       }
     }
   }
