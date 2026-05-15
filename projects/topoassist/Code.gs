@@ -1,10 +1,10 @@
-// TopoAssist v260514.29 | 2026-05-14 22:25:38
+// TopoAssist v260515.1 | 2026-05-15 11:39:26
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260514.29";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260515.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5466,11 +5466,11 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
 
     // --- VRF assignment priority: IXIA role > snake > per-VLAN resolvedVrf > sheet vrf_ ---
     if (d.ixiaRole === 'in' && d.snakeFirstPrimary) {
-      lines.push(` vrf SNAKE_${d.snakeFirstPrimary}`);
+      lines.push(` vrf ${_snakeVrf(d.snakeFirstPrimary)}`);
     } else if (d.ixiaRole === 'out' && d.snakeLastSecondary) {
-      lines.push(` vrf SNAKE_${d.snakeLastSecondary}`);
+      lines.push(` vrf ${_snakeVrf(d.snakeLastSecondary)}`);
     } else if (d.isSnakePrimary || d.isSnakeSecondary) {
-      lines.push(` vrf SNAKE_${portName}`);
+      lines.push(` vrf ${_snakeVrf(portName)}`);
     } else {
       const effectiveVrf = resolvedVrf !== undefined ? resolvedVrf : d.vrf_;
       if (effectiveVrf && effectiveVrf.toLowerCase() !== 'default') lines.push(` vrf ${effectiveVrf}`);
@@ -5781,12 +5781,17 @@ function collectDeviceData(rows, headers, targetColIndex, deviceName, mlagPeerMa
       if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
       const det = extractDetails(row, indices);
       if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
-      vrfs.add("SNAKE_" + canonicalizeInterface(primaryRaw));
-      vrfs.add("SNAKE_" + canonicalizeInterface(secondaryRaw));
+      vrfs.add(_snakeVrf(canonicalizeInterface(primaryRaw)));
+      vrfs.add(_snakeVrf(canonicalizeInterface(secondaryRaw)));
     });
   }
 
   return { allVlans, gwVlans, vx1Vlans, vrfs, hasP2p: (p2pCount > 0) };
+}
+
+/** Returns a sanitized EOS VRF name for a snake port (replaces / with - so EOS accepts it). */
+function _snakeVrf(portName) {
+  return "SNAKE_" + String(portName).replace(/\//g, "-");
 }
 
 /**
@@ -5848,21 +5853,24 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
     lines.push(`!`);
     lines.push(`! Pair ${idx + 1}: ${primaryPort} <-> ${secondaryPort} (VLAN ${vlan}, subnet ${subnet}.0/24)`);
 
+    const pVrf = _snakeVrf(primaryPort);
+    const sVrf = _snakeVrf(secondaryPort);
+
     // Static ARP — bridge-mac trick, used by both forward and reverse chains
-    lines.push(`arp vrf SNAKE_${primaryPort}   ${remoteIp} ${bridgeMac} arpa`);
-    lines.push(`arp vrf SNAKE_${secondaryPort} ${remoteIp} ${bridgeMac} arpa`);
+    lines.push(`arp vrf ${pVrf}   ${remoteIp} ${bridgeMac} arpa`);
+    lines.push(`arp vrf ${sVrf} ${remoteIp} ${bridgeMac} arpa`);
 
     // ── PRIMARY port routes ──────────────────────────────────────────────────
     // Forward: exits primary → loopback cable → secondary (one route per ep2 subnet)
-    fwdRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${primaryPort} ${r} ${remoteIp}`));
+    fwdRoutes.forEach(r => lines.push(`ip route vrf ${pVrf} ${r} ${remoteIp}`));
 
     // Reverse terminal (first pair): exit to EP1 traffic gen
     if (isFirst && revRoutes.length) {
-      if (ep1Mac && ep1Nh) lines.push(`arp vrf SNAKE_${primaryPort} ${ep1Nh} ${ep1Mac} arpa`);
+      if (ep1Mac && ep1Nh) lines.push(`arp vrf ${pVrf} ${ep1Nh} ${ep1Mac} arpa`);
       if (ep1Nh) {
-        revRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${primaryPort} ${r} ${ep1Nh}`));
+        revRoutes.forEach(r => lines.push(`ip route vrf ${pVrf} ${r} ${ep1Nh}`));
       } else {
-        lines.push(`! SNAKE_${primaryPort}: EP1 NH not set — fill in if EP1 not directly connected`);
+        lines.push(`! ${pVrf}: EP1 NH not set — fill in if EP1 not directly connected`);
       }
     }
     // Reverse chain (idx > 0): jump backward to previous secondary VRF
@@ -5871,17 +5879,17 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
       const prevOct2   = Math.floor(prev.vlan / 100);
       const prevOct3   = prev.vlan % 100;
       const prevRemote = `${base}.${prevOct2}.${prevOct3}.2`;
-      revRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${primaryPort} ${r} egress-vrf SNAKE_${prev.secondaryPort} ${prevRemote}`));
+      revRoutes.forEach(r => lines.push(`ip route vrf ${pVrf} ${r} egress-vrf ${_snakeVrf(prev.secondaryPort)} ${prevRemote}`));
     }
 
     // ── SECONDARY port routes ────────────────────────────────────────────────
     // Forward terminal (last pair): exit to EP2 traffic gen
     if (isLast && fwdRoutes.length) {
-      if (ep2Mac && ep2Nh) lines.push(`arp vrf SNAKE_${secondaryPort} ${ep2Nh} ${ep2Mac} arpa`);
+      if (ep2Mac && ep2Nh) lines.push(`arp vrf ${sVrf} ${ep2Nh} ${ep2Mac} arpa`);
       if (ep2Nh) {
-        fwdRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${secondaryPort} ${r} ${ep2Nh}`));
+        fwdRoutes.forEach(r => lines.push(`ip route vrf ${sVrf} ${r} ${ep2Nh}`));
       } else {
-        lines.push(`! SNAKE_${secondaryPort}: EP2 NH not set — fill in if EP2 not directly connected`);
+        lines.push(`! ${sVrf}: EP2 NH not set — fill in if EP2 not directly connected`);
       }
     }
     // Forward chain: jump forward to next primary VRF
@@ -5890,10 +5898,10 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
       const nextOct2   = Math.floor(next.vlan / 100);
       const nextOct3   = next.vlan % 100;
       const nextRemote = `${base}.${nextOct2}.${nextOct3}.2`;
-      fwdRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${secondaryPort} ${r} egress-vrf SNAKE_${next.primaryPort} ${nextRemote}`));
+      fwdRoutes.forEach(r => lines.push(`ip route vrf ${sVrf} ${r} egress-vrf ${_snakeVrf(next.primaryPort)} ${nextRemote}`));
     }
     // Reverse: exits secondary → loopback cable → primary (one route per ep1 subnet)
-    revRoutes.forEach(r => lines.push(`ip route vrf SNAKE_${secondaryPort} ${r} ${remoteIp}`));
+    revRoutes.forEach(r => lines.push(`ip route vrf ${sVrf} ${r} ${remoteIp}`));
   });
 
   lines.push(`!`);

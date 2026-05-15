@@ -1,4 +1,4 @@
-// TopoAssist v260514.29 | 2026-05-14 22:25:38
+// TopoAssist v260515.1 | 2026-05-15 11:41:49
 /**
  * TopoAssist — GAS Unit Test Harness
  *
@@ -700,6 +700,17 @@ function test_buildCableGroupsForTest() {
 //   revDest  = ep1_subnet ? "${ep1_subnet}.99/32" : "10.99.99.99/32"
 //   PRIMARY routes: fwd always + rev terminal (ep1_nh) or rev chain (egress-vrf prev.secondary)
 //   SECONDARY routes: fwd terminal (ep2_nh) or fwd chain (egress-vrf next.primary) + rev always
+
+function test_snakeVrf() {
+  const t = assert_;
+  const f = _snakeVrf;
+  return [
+    t("plain port — no slash",         f('Et1'),              'SNAKE_Et1'),
+    t("breakout port — slash replaced", f('Et61/1'),           'SNAKE_Et61-1'),
+    t("multi-slash",                   f('Et5/22/3'),         'SNAKE_Et5-22-3'),
+    t("already canonical",             f('Po10'),             'SNAKE_Po10'),
+  ];
+}
 
 function test_generateSnakeStaticConfig() {
   const t = assert_;
@@ -1568,6 +1579,7 @@ function runAllTests() {
     { name: "compressPortList",          fn: test_compressPortList },
     { name: "_breakoutSides",            fn: test_breakoutSides },
     { name: "_buildCableGroupsForTest",       fn: test_buildCableGroupsForTest },
+    { name: "_snakeVrf",                         fn: test_snakeVrf },
     { name: "generateSnakeStaticConfig",      fn: test_generateSnakeStaticConfig },
     { name: "generateSnakeTtlPbrConfig",          fn: test_generateSnakeTtlPbrConfig },
     { name: "generateSnakeTtlTrafficPolicyConfig", fn: test_generateSnakeTtlTrafficPolicyConfig },
