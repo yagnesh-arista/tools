@@ -1,4 +1,4 @@
-<!-- TopoAssist v260515.3 | 2026-05-15 11:48:37 -->
+<!-- TopoAssist v260515.4 | 2026-05-15 12:07:04 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260515.3</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260515.4</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -809,6 +809,7 @@ clasp login --no-localhost</pre>
     <p style="font-size:13px;">Connection background colors, conditional dimming, and speed tier colors are applied automatically as you fill the sheet. If formatting drifts (e.g. after adding a column or running a schema change), re-sync it:</p>
     <span class="menu-path">TopoAssist &gt; Sheet Manager &gt; Column &amp; Formatting Manager</span>
     <p style="font-size:13px;">Check the <b>Apply GSheet Coloring</b> checkbox before clicking <b>Save &amp; Sync</b>.</p>
+    <p style="font-size:13px;">The <code>snake_int_</code> sub-header (row 2) uses a distinct shade of the device color — same hue as the device group, but noticeably deeper — so it stands apart from <code>int_</code> and other columns at a glance.</p>
 
     <h3>Connecting Interfaces</h3>
     <div class="info-box blue" style="margin-top:8px;">
@@ -1518,7 +1519,7 @@ clasp login --no-localhost</pre>
     <h4 style="font-size:12px; margin:10px 0 4px;">L3 VRF Chain — What Gets Generated</h4>
     <p style="font-size:13px;">For each L3 snake pair, TopoAssist auto-generates across four config sections:</p>
     <ul style="font-size:13px;">
-      <li><b>001_SYSTEM</b> — <code>vrf instance SNAKE_Et2</code> + <code>ip routing vrf SNAKE_Et2</code> (one entry per port; no <code>ipv6 unicast-routing</code> in snake VRFs).</li>
+      <li><b>001_SYSTEM</b> — <code>vrf instance SNAKE_Et2</code> + <code>ip routing vrf SNAKE_Et2</code> (one entry per port; no <code>ipv6 unicast-routing</code> in snake VRFs). <b>Breakout ports</b>: <code>/</code> is replaced with <code>-</code> in the VRF name because EOS rejects slashes in VRF instance names — e.g. <code>Et61/1</code> → <code>SNAKE_Et61-1</code>.</li>
       <li><b>050_EtX</b> — interface block per port: <code>vrf SNAKE_EtX</code>, <code>ip address {base}.oct2.oct3.1/24</code>, <code>no shutdown</code>. No OSPF (cannot form adjacency with yourself). Both the primary and secondary get their own <code>050_</code> block.</li>
       <li><b>050_TRAFFIC_SNAKE_EP1_L3 / 050_TRAFFIC_SNAKE_EP2_L3</b> — regular P2P interface blocks, placed in the first/last snake VRF respectively (auto-assigned from <code>desc_</code>).</li>
       <li><b>080_SNAKE</b> — static ARP + bidirectional route chain. Two bridge-MAC ARP entries per pair. Each EP field accepts comma-separated CIDRs; one <code>ip route</code> is emitted per subnet per VRF hop. Forward routes use EP2 Subnets (EP1→EP2); reverse routes use EP1 Subnets (EP2→EP1). Legacy 3-octet prefix (e.g. <code>10.99.99</code>) is auto-expanded to <code>10.99.99.0/24</code>. Empty field = no routes for that direction (ARP skeleton only).</li>
