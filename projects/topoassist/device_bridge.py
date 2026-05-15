@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# topoassist v260513.49 | 2026-05-13 18:56:49
+# topoassist v260515.8 | 2026-05-15 12:45:50
 """
 TopoAssist Device Bridge
 ========================
@@ -137,7 +137,7 @@ VERBOSE = "-v" in sys.argv
 def _vlog(msg, flush=True):
     print(f"  {time.strftime('%H:%M:%S')} {msg}", flush=flush)
 
-VERSION           = "260513.6"
+VERSION           = "260515.4"
 PORT              = 8765
 # CLI flags (-b/-t/-p) take priority; env vars are the fallback.
 _b        = _arg("-b")
@@ -964,10 +964,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     except Exception as _oe:
                         _vlog(f"[orphan-finalize] {ip}: detection error — {_oe}", flush=True)
                 try:
-                    fin_result = self._finalize_session(ip, session_name, action)
-                    if orphans_cleaned:
-                        fin_result["orphans_cleaned"] = orphans_cleaned
-                    results[dev] = fin_result
+                    results[dev] = self._finalize_or_restage(
+                        ip, session_name, action, config_text, orphans_cleaned)
                 except subprocess.TimeoutExpired:
                     results[dev] = {"ok": False, "error": f"Timeout — {ip} unreachable?"}
                 except Exception as e:
@@ -1719,6 +1717,39 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
         raise NotImplementedError(
             f"Config push not supported for _cfg['transport']={_cfg['transport']!r} — use ssh or eapi")
+
+    def _finalize_or_restage(self, ip, session_name, action, config_text, orphans_cleaned):
+        """Commit/abort a named EOS configure session, re-staging if the session expired.
+
+        EOS configure sessions have a ~30s idle timeout. If the user takes longer
+        than that to click Commit in the push review modal, _finalize_session raises
+        RuntimeError('session not found'). This method catches that case and, when
+        action=='commit' and config_text is available, immediately re-pushes the full
+        config in a new session and commits it — making the push resilient to session
+        timeout with no change to the UI flow.
+
+        Returns the final result dict. Sets restaged=True when re-staging occurred.
+        """
+        try:
+            result = self._finalize_session(ip, session_name, action)
+        except RuntimeError as e:
+            _msg = str(e)
+            _expired = "not found" in _msg.lower() or "timed out" in _msg.lower()
+            if action == "commit" and config_text and _expired:
+                _vlog(
+                    f"[finalize] {ip}: session {session_name} expired — "
+                    f"re-staging {len(config_text.splitlines())} lines",
+                    flush=True,
+                )
+                result = self._push_config(
+                    ip, config_text, dry_run=False, open_only=False,
+                    all_ifaces=False, all_device_names=None)
+                result["restaged"] = True
+            else:
+                raise
+        if orphans_cleaned:
+            result["orphans_cleaned"] = orphans_cleaned
+        return result
 
     def _finalize_session(self, ip, session_name, action):
         """Commit or abort an existing named configure session on the device.

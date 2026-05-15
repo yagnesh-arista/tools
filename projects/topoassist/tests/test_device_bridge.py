@@ -1,4 +1,4 @@
-# topoassist v260513.49 | 2026-05-13 18:58:43
+# topoassist v260515.8 | 2026-05-15 12:44:43
 """
 Unit tests for pure functions in device_bridge.py.
 
@@ -8,6 +8,7 @@ Only pure functions are tested here — functions that take data in and return
 data out with no network, filesystem, or GAS API dependencies.
 """
 
+import pytest
 import device_bridge as db
 
 
@@ -844,6 +845,75 @@ class TestFinalizeSessionTimeoutRecovery:
             import pytest
             with pytest.raises(RuntimeError, match="Finalize timed out"):
                 h._finalize_session("192.168.1.1", "topoassist_123", "abort")
+
+
+# ── _finalize_or_restage: session-timeout resilience ─────────────────────────
+
+class TestFinalizeOrRestage:
+    """_finalize_or_restage re-stages config when EOS session expires during review."""
+
+    def test_session_found_commits_normally(self):
+        h = object.__new__(db.BridgeHandler)
+        h._finalize_session = mock.Mock(return_value={"ok": True, "action": "commit"})
+        h._push_config = mock.Mock()
+        result = h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", "interface Et1\n", None)
+        assert result["ok"] is True
+        h._push_config.assert_not_called()
+
+    def test_session_expired_restages_and_commits(self):
+        h = object.__new__(db.BridgeHandler)
+        config = "interface Et1\n description test __TA\n"
+        h._finalize_session = mock.Mock(side_effect=RuntimeError(
+            "Configure session 'topoassist_1' not found — it may have timed out. Push again."))
+        h._push_config = mock.Mock(return_value={"ok": True, "diff": "some diff"})
+        result = h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", config, None)
+        assert result["ok"] is True
+        assert result.get("restaged") is True
+        h._push_config.assert_called_once_with(
+            "1.2.3.4", config, dry_run=False, open_only=False,
+            all_ifaces=False, all_device_names=None)
+
+    def test_session_expired_no_config_raises(self):
+        h = object.__new__(db.BridgeHandler)
+        h._finalize_session = mock.Mock(side_effect=RuntimeError("session not found"))
+        h._push_config = mock.Mock()
+        with pytest.raises(RuntimeError, match="session not found"):
+            h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", "", None)
+        h._push_config.assert_not_called()
+
+    def test_abort_with_expired_session_raises(self):
+        h = object.__new__(db.BridgeHandler)
+        h._finalize_session = mock.Mock(side_effect=RuntimeError(
+            "Configure session 'topoassist_1' not found"))
+        h._push_config = mock.Mock()
+        with pytest.raises(RuntimeError, match="not found"):
+            h._finalize_or_restage("1.2.3.4", "topoassist_1", "abort", "config text", None)
+        h._push_config.assert_not_called()
+
+    def test_orphans_cleaned_merged_into_result(self):
+        h = object.__new__(db.BridgeHandler)
+        h._finalize_session = mock.Mock(return_value={"ok": True, "action": "commit"})
+        orphans = {"interfaces": ["Et1"], "bgp": [], "vlans": [], "vrfs": [], "ospf": []}
+        result = h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", "", orphans)
+        assert result["orphans_cleaned"] == orphans
+
+    def test_orphans_merged_after_restage(self):
+        h = object.__new__(db.BridgeHandler)
+        config = "interface Et1\n"
+        h._finalize_session = mock.Mock(side_effect=RuntimeError("session not found"))
+        h._push_config = mock.Mock(return_value={"ok": True, "diff": ""})
+        orphans = {"interfaces": ["Et2"], "bgp": [], "vlans": [], "vrfs": [], "ospf": []}
+        result = h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", config, orphans)
+        assert result.get("restaged") is True
+        assert result["orphans_cleaned"] == orphans
+
+    def test_non_timeout_runtime_error_propagates(self):
+        h = object.__new__(db.BridgeHandler)
+        h._finalize_session = mock.Mock(side_effect=RuntimeError("SSH failed: permission denied"))
+        h._push_config = mock.Mock()
+        with pytest.raises(RuntimeError, match="SSH failed"):
+            h._finalize_or_restage("1.2.3.4", "topoassist_1", "commit", "config", None)
+        h._push_config.assert_not_called()
 
 
 # ── VERSION sync ───────────────────────────────────────────────────────────────
