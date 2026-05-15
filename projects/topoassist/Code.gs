@@ -1,10 +1,10 @@
-// TopoAssist v260515.1 | 2026-05-15 11:39:26
+// TopoAssist v260515.2 | 2026-05-15 11:46:53
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260515.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260515.2";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1532,6 +1532,7 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
 
     let colorCursor = 0;
     let row1Colors = [];
+    const snakeIntRow2Cols = []; // {col (1-indexed, post-_sys_), hue} — for row-2 visual distinction
 
     devicesToProcess.forEach((devObj, i) => {
       const isNonArista = devObj.type === 'non-arista';
@@ -1545,6 +1546,13 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
       let color = applyFormatting ? hslToHex(hue, 85, 88) : "#ffffff";
 
       for (let k = 0; k < devAttributes.length; k++) row1Colors.push(color);
+
+      // snake_int_ gets a distinct row-2 shade so it's visually separate from int_
+      const snakeIdx = devAttributes.indexOf('snake_int_');
+      if (snakeIdx !== -1 && applyFormatting) {
+        snakeIntRow2Cols.push({ col: 2 + colorCursor + snakeIdx, hue });
+      }
+
       colorCursor += devAttributes.length;
     });
 
@@ -1566,6 +1574,10 @@ function rebuildSheet(forcedOrderList, forcedSchemaList, applyFormatting) {
       // Device colors start at col 2 — col 1 is _sys_ (already styled by ensureDummyColumn)
       if (row1Colors.length > 0) mappingSheet.getRange(1, 2, 1, row1Colors.length).setBackgrounds([row1Colors]);
       mappingSheet.getRange(2, 2, 1, outRow2.length).setBackground("#f1f5f9");
+      // snake_int_ header in row 2 gets a distinct shade so it stands apart from int_
+      snakeIntRow2Cols.forEach(({ col, hue }) => {
+        mappingSheet.getRange(2, col, 1, 1).setBackground(hslToHex(hue, 55, 82));
+      });
       applyGlobalFormatting();
     }
 
