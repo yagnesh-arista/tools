@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.30 | 2026-05-16 16:09:22 -->
+<!-- TopoAssist v260516.31 | 2026-05-16 16:17:48 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.30";  // keep in sync with Code.gs
+const APP_VERSION = "260516.31";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5192,9 +5192,10 @@ function openIpConfigModal(btn) {
       document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
     }
 
-    // Show snake section only when snake ports exist in the current topology
+    // Show snake fields only when snake ports exist; placeholder shown otherwise
     const _hasSnake = Object.values(allNodesData).some(n => n.details && (n.details.isSnakePrimary || n.details.isSnakeSecondary));
     document.getElementById('snakeTestSection').style.display = _hasSnake ? '' : 'none';
+    document.getElementById('snakeNoPorts').style.display     = _hasSnake ? 'none' : '';
     document.getElementById("ip_ep1_nh").value     = prefs.ep1_nh     || "";
     document.getElementById("ip_ep1_mac").value    = prefs.ep1_mac    || "";
     document.getElementById("ip_ep1_subnet").value = prefs.ep1_subnet || "";
