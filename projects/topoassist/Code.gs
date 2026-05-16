@@ -1,10 +1,10 @@
-// TopoAssist v260516.25 | 2026-05-16 15:34:37
+// TopoAssist v260516.26 | 2026-05-16 15:53:24
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.25";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.26";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4023,6 +4023,7 @@ function processRowLinks(nodes, rowIndex, linksArray, devicePortsMap) {
 function determineCategory(details, legends) {
   const ipType = (details.ip_type_ || "").toLowerCase();
   const spMode = (details.sp_mode_ || "").toLowerCase();
+  if (details.isSnakePrimary || details.isSnakeSecondary) return "P2P";
   if (legends.gw && legends.gw.some(l => ipType.includes(l))) return "GW";
   if (legends.p2p && legends.p2p.some(l => ipType.includes(l))) return "P2P";
   if (!ipType) { if ((legends.l2 && legends.l2.some(l => spMode === l)) || spMode.includes("access") || spMode.includes("trunk")) return "L2"; }
@@ -5596,8 +5597,8 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
     let oct2 = Math.floor(val / 100);
     let oct3 = val % 100;
 
-    // A. P2P LINKS
-    if (ipType.includes("p2p")) {
+    // A. P2P LINKS (snake ports always enter this branch — ip_type_ is intentionally blank)
+    if (ipType.includes("p2p") || d.isSnakePrimary || d.isSnakeSecondary) {
       if (d.isSnakePrimary || d.isSnakeSecondary) {
         // VRF chain snake: each port in its own SNAKE_{portName} VRF, .1/24 as host IP.
         // Unique VLAN (audit-enforced) → unique oct2.oct3 subnet per pair.

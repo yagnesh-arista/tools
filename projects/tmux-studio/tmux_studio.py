@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.9 | 2026-05-16 15:39:27
+# tmux-studio v260516.11 | 2026-05-16 15:55:32
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -590,6 +590,22 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
 # =============================================================================
 # PANE INFO
 # =============================================================================
+def _get_pane_eos_cli(pane_target: str) -> str:
+    """Scan pane screen content (last 200 lines) for the most recent EOS CLI command.
+    EOS prompts end with '# ' (e.g. 'mrvp454.02:17:34# watch 1 show ip bgp summary').
+    Returns the command string after '# ', or '' if none found (idle prompt).
+    """
+    cap = subprocess.run(
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-200"],
+        capture_output=True, text=True
+    )
+    for line in reversed(cap.stdout.splitlines()):
+        if "# " in line:
+            cmd = line.rsplit("# ", 1)[-1].strip()
+            if cmd:
+                return cmd
+    return ""
+
 def get_pane_commands(session: str, win_index: str) -> List[Dict]:
     target = f"{session}:{win_index}"
     result = subprocess.run(
@@ -603,25 +619,23 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         if len(parts) < 4:
             continue
         idx, pid, cmd, active = parts
-        # Check for a foreground child process running inside the shell.
-        # ps --ppid gives direct children; if one exists, that's the real command.
+        # Get the local foreground process (child of shell if one is running).
         child = subprocess.run(["ps", "--ppid", pid, "-o", "args="], capture_output=True, text=True)
         child_cmds = [l.strip() for l in child.stdout.strip().splitlines() if l.strip()]
         if child_cmds:
-            full_cmd = child_cmds[0]
+            local_cmd = child_cmds[0]
         else:
             ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
-            full_cmd = ps.stdout.strip() or cmd
-        # Capture what's currently on the pane's screen (last non-empty line).
-        # This shows EOS CLI state inside SSH sessions that ps cannot see.
-        cap = subprocess.run(
-            ["tmux", "capture-pane", "-t", f"{target}.{idx}", "-p"],
-            capture_output=True, text=True
-        )
-        screen_lines = [l.rstrip() for l in cap.stdout.splitlines() if l.strip()]
-        screen_line = screen_lines[-1] if screen_lines else ""
-        panes.append({"index": idx, "pid": pid, "command": full_cmd,
-                      "screen_line": screen_line, "is_active": active == "1"})
+            local_cmd = ps.stdout.strip() or cmd
+        # For SSH panes, scan the pane screen for the EOS CLI command being run
+        # on the remote device (ps only sees the local 'ssh' process, not what's
+        # running inside the session).
+        if local_cmd.split()[0] == "ssh":
+            eos_cli = _get_pane_eos_cli(f"{target}.{idx}")
+            display_cmd = eos_cli if eos_cli else local_cmd
+        else:
+            display_cmd = local_cmd
+        panes.append({"index": idx, "pid": pid, "command": display_cmd, "is_active": active == "1"})
     return panes
 
 # =============================================================================
