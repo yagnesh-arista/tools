@@ -1,10 +1,10 @@
-// TopoAssist v260516.17 | 2026-05-16 14:28:10
+// TopoAssist v260516.18 | 2026-05-16 14:28:49
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.17";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.18";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2046,6 +2046,21 @@ function buildConditionalRules(sheet, headers, lastRow) {
         }
       });
 
+    // A-SNAKE — ip_type_/vrf_/svi_vlan_ filled on snake rows (these columns are N/A for snake)
+    // Paired with N/A-SNAKE gray rules below — red fires when a field that is auto-managed/unused
+    // has user content. Higher priority than the gray rule so filled cells show red, not gray.
+    if (snakeIdx > 0) {
+      const sC_early = getColLet(snakeIdx);
+      [[ipIdx], [vrfIdx], [sviIdx]].forEach(([idx]) => {
+        if (idx > 0) {
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(`=AND($${sC_early}3<>"",$${getColLet(idx)}3<>"")`)
+            .setBackground("#fca5a5").setFontColor("#991b1b")
+            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+        }
+      });
+    }
+
     // ── 2. MISSING AMBER: required field empty when int_ is filled ────────────
 
     // A7 — sp_mode_ empty but int_ is filled (mode is required; Vx1 rows have no mode — excluded)
@@ -2143,7 +2158,6 @@ function buildConditionalRules(sheet, headers, lastRow) {
     //   ip_type_ — auto-forced to p2p; user value is overwritten by addSnakePair()
     //   vrf_     — auto-assigned as SNAKE_<portName>; user vrf_ is ignored for snake ports
     //   svi_vlan_— no SVI generated for snake ports (extends N/A-1 which only covers l3 mode)
-    const snakeIdx = getColIdx('snake_int_' + dev);
     if (snakeIdx > 0) {
       const sC = getColLet(snakeIdx);
       const snakeFormula = `=$${sC}3<>""`;
