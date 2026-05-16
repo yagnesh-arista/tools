@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (fix: _get_pane_eos_cli() now tries EOS watch header first ('Every Ns: <cmd>') by scanning forward, then falls back to '# <cmd>' prompt pattern; _EOS_WATCH_RE compiled regex added; import re added. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (feat: _get_pane_cli_via_recall() added — sends C-c, waits 0.5s, sends Up, captures prompt line for recalled command, sends Enter to restart; get_pane_commands() uses it as fallback when passive _get_pane_eos_cli() returns empty for SSH panes. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (fix: _get_pane_eos_cli() now tries EOS watch header first ('Every Ns: <cmd>') by scanning forward, then falls back to '# <cmd>' prompt pattern; _EOS_WATCH_RE compiled regex added; import re added. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: pane-info now shows EOS CLI command running inside SSH panes via _get_pane_eos_cli() — scans last 200 pane lines backward for '# <cmd>' pattern; clone-window reverted to layout-only (replay_window_cli + _SHELL_NAMES removed); pane-info display condensed to single line per pane. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
@@ -420,12 +421,20 @@ _EOS_WATCH_RE: compiled regex
   Pattern: r'^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$'
 
 _get_pane_eos_cli(pane_target) -> str
-  Runs tmux capture-pane -t <pane_target> -p -S -200 (last 200 lines).
-  Pass 1 (forward): match _EOS_WATCH_RE against each line — watch headers
-    appear at the top of the visible screen when a watch command is active.
+  Non-disruptive passive scan (last 200 pane lines).
+  Pass 1 (forward): match _EOS_WATCH_RE — 'Every Ns: <cmd>' header at top of screen.
   Pass 2 (backward): scan for '# ' (EOS prompt suffix) in scrollback.
-    Returns text after '# ' if non-empty.
-  Returns '' for idle panes (no command found by either pass).
+  Returns '' when neither matches (caller falls through to recall method).
+
+_get_pane_cli_via_recall(pane_target) -> str
+  Disruptive fallback used when passive scan returns empty.
+  1. Send C-c to interrupt running command.
+  2. Sleep 0.5s (wait for EOS prompt over SSH).
+  3. Send Up (recall last command in EOS shell history).
+  4. Sleep 0.2s.
+  5. capture-pane — scan backward for '# <cmd>' to extract recalled command.
+  6. Send Enter to restart the command.
+  Returns the recalled command string, or '' if prompt pattern not found.
 
 get_pane_commands(session, win_index) -> List[Dict]
   Runs tmux list-panes -t {session}:{win_index} with TMUX_SEP fields:

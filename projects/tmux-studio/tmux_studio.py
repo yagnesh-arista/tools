@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.13 | 2026-05-16 15:59:42
+# tmux-studio v260516.14 | 2026-05-16 16:04:48
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -596,29 +596,48 @@ _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
 def _get_pane_eos_cli(pane_target: str) -> str:
     """Extract the EOS CLI command currently running in an SSH pane.
 
-    Strategy (in order):
-    1. EOS watch header: 'Every Ns: <command>  <timestamp>' appears at the top
-       of the visible screen when a watch command is running. Scan forward.
-    2. EOS prompt + command: '<hostname># <command>' in scrollback. Scan backward.
-    Returns '' for idle panes (no command found).
+    Strategy (in order — non-disruptive):
+    1. EOS watch header: 'Every Ns: <command>  <timestamp>' at top of screen.
+    2. EOS prompt + command: '<hostname># <command>' in scrollback.
+    Returns '' when neither pattern matches (falls through to recall method).
     """
     cap = subprocess.run(
         ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-200"],
         capture_output=True, text=True
     )
     lines = cap.stdout.splitlines()
-    # Pass 1: watch header (top of screen — scan forward)
     for line in lines:
         m = _EOS_WATCH_RE.match(line.strip())
         if m:
             return m.group(1).strip()
-    # Pass 2: prompt pattern (scrollback — scan backward)
     for line in reversed(lines):
         if "# " in line:
             cmd = line.rsplit("# ", 1)[-1].strip()
             if cmd:
                 return cmd
     return ""
+
+def _get_pane_cli_via_recall(pane_target: str) -> str:
+    """Get the running EOS CLI by interrupting, recalling last command, then re-running.
+    Used when passive scan fails (e.g. EOS watch with no detectable header).
+    Sends: C-c → wait → Up → capture prompt line → Enter (restarts the command).
+    """
+    subprocess.run(["tmux", "send-keys", "-t", pane_target, "C-c"], capture_output=True)
+    time.sleep(0.5)  # wait for EOS prompt to appear over SSH
+    subprocess.run(["tmux", "send-keys", "-t", pane_target, "Up"], capture_output=True)
+    time.sleep(0.2)
+    cap = subprocess.run(
+        ["tmux", "capture-pane", "-t", pane_target, "-p"],
+        capture_output=True, text=True
+    )
+    recalled = ""
+    for line in reversed(cap.stdout.splitlines()):
+        if "# " in line:
+            recalled = line.rsplit("# ", 1)[-1].strip()
+            if recalled:
+                break
+    subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)
+    return recalled
 
 def get_pane_commands(session: str, win_index: str) -> List[Dict]:
     target = f"{session}:{win_index}"
@@ -645,7 +664,10 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         # on the remote device (ps only sees the local 'ssh' process, not what's
         # running inside the session).
         if local_cmd.split()[0] == "ssh":
-            eos_cli = _get_pane_eos_cli(f"{target}.{idx}")
+            pane_target = f"{target}.{idx}"
+            eos_cli = _get_pane_eos_cli(pane_target)
+            if not eos_cli:
+                eos_cli = _get_pane_cli_via_recall(pane_target)
             display_cmd = eos_cli if eos_cli else local_cmd
         else:
             display_cmd = local_cmd
