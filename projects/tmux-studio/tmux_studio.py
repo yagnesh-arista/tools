@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.5 | 2026-05-16 15:20:53
+# tmux-studio v260516.7 | 2026-05-16 15:33:03
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -603,8 +603,15 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         if len(parts) < 4:
             continue
         idx, pid, cmd, active = parts
-        ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
-        full_cmd = ps.stdout.strip() or cmd
+        # Check for a foreground child process running inside the shell.
+        # ps --ppid gives direct children; if one exists, that's the real command.
+        child = subprocess.run(["ps", "--ppid", pid, "-o", "args="], capture_output=True, text=True)
+        child_cmds = [l.strip() for l in child.stdout.strip().splitlines() if l.strip()]
+        if child_cmds:
+            full_cmd = child_cmds[0]
+        else:
+            ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
+            full_cmd = ps.stdout.strip() or cmd
         panes.append({"index": idx, "pid": pid, "command": full_cmd, "is_active": active == "1"})
     return panes
 

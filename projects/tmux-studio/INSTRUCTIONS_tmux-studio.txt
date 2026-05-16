@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
   Previous: 2026-05-16 (cosmetic: copy-layout target prompt example updated to "3,4,6-8". FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout target picker supports ranges and mixed syntax (e.g. "3-6", "3,4,5-8"); _parse_window_nums() splits by comma then expands N-M tokens via range(); deduped with dict.fromkeys. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout target now accepts comma-separated numbers for multiple targets (e.g. "1,3,5"); deduped via dict.fromkeys; all targets get the same source layout applied sequentially; per-target ✓ confirmation line printed. FILES: tmux_studio.py)
@@ -411,8 +412,14 @@ copy_window_layout(src, tgt)
 get_pane_commands(session, win_index) -> List[Dict]
   Runs tmux list-panes -t {session}:{win_index} with TMUX_SEP fields:
     pane_index, pane_pid, pane_current_command, pane_active.
-  For each pane: runs ps -p <pid> -o args= for the full command with args.
-  Falls back to pane_current_command if ps returns empty or fails.
+  For each pane:
+    1. ps --ppid <pid> -o args= — gets direct child processes of the shell.
+       If any children exist, uses child_cmds[0] as the displayed command.
+       This correctly shows "python3 watch.py" instead of "-bash" when a
+       foreground command is running inside the pane.
+    2. Fallback: ps -p <pid> -o args= (the shell itself, e.g. -bash) when
+       no child process exists (pane is idle at prompt).
+    3. Last resort: pane_current_command from tmux.
   Returns list of dicts: {index, pid, command, is_active (bool)}.
 
 --- HELPERS ---
