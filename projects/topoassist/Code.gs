@@ -1,10 +1,10 @@
-// TopoAssist v260516.16 | 2026-05-16 14:21:54
+// TopoAssist v260516.17 | 2026-05-16 14:28:10
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.16";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.17";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1967,6 +1967,7 @@ function buildConditionalRules(sheet, headers, lastRow) {
     const xcvrSpeedIdx = getColIdx('xcvr_speed_'+ dev);
     const xcvrTypeIdx  = getColIdx('xcvr_type_' + dev);
     const encodingIdx  = getColIdx('encoding_'  + dev);
+    const snakeIdx     = getColIdx('snake_int_' + dev);
 
     if (intIdx <= 0 || modeIdx <= 0) return;
 
