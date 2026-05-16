@@ -1,10 +1,10 @@
-// TopoAssist v260515.32 | 2026-05-15 20:48:00
+// TopoAssist v260516.1 | 2026-05-16 10:43:34
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260515.32";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4064,6 +4064,7 @@ function addSnakePair(dev, portA, portB, attrs) {
       setVal(nextRow, headers.indexOf(prefix + dev), v);
     });
 
+    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
     return { success: true };
   } catch (e) { return { error: e.message }; }
   finally { lock.releaseLock(); }
