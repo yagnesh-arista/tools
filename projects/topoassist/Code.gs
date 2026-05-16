@@ -1,10 +1,10 @@
-// TopoAssist v260516.6 | 2026-05-16 11:31:28
+// TopoAssist v260516.7 | 2026-05-16 11:36:30
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.6";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.7";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2138,6 +2138,24 @@ function buildConditionalRules(sheet, headers, lastRow) {
         .setRanges([sheet.getRange(3, vrfIdx, lastRow - 2, 1)]).build());
     }
 
+    // N/A-SNAKE: when snake_int_ is filled, these columns are always N/A regardless of mode:
+    //   ip_type_ — auto-forced to p2p; user value is overwritten by addSnakePair()
+    //   vrf_     — auto-assigned as SNAKE_<portName>; user vrf_ is ignored for snake ports
+    //   svi_vlan_— no SVI generated for snake ports (extends N/A-1 which only covers l3 mode)
+    const snakeIdx = getColIdx('snake_int_' + dev);
+    if (snakeIdx > 0) {
+      const sC = getColLet(snakeIdx);
+      const snakeFormula = `=$${sC}3<>""`;
+      [[ipIdx], [vrfIdx], [sviIdx]].forEach(([idx]) => {
+        if (idx > 0) {
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(snakeFormula)
+            .setBackground("#c8d5e3").setFontColor("#94a3b8")
+            .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+        }
+      });
+    }
+
     // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
 
     // W1 — REMOVED: flagged amber when et_speed_ === xcvr_speed_ (intended as breakout mismatch),
@@ -4055,7 +4073,9 @@ function addSnakePair(dev, portA, portB, attrs) {
       }
     }
 
-    // vlan_ is required — snake VRF chain config (080_SNAKE) gates on it
+    // sp_mode_ and vlan_ are required for snake config generation
+    const modeVal = (attrs && attrs.sp_mode_) ? String(attrs.sp_mode_).trim() : "";
+    if (!modeVal) return { error: "sp_mode_ is required for snake ports — use l3-et-int (L3) or l2-et-access/l2-et-trunk (L2)" };
     const vlanVal = (attrs && attrs.vlan_) ? String(attrs.vlan_).trim() : "";
     if (!vlanVal) return { error: "vlan_ is required for snake ports — enter the VLAN for the snake VRF chain" };
 

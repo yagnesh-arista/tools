@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.6 | 2026-05-16 11:31:28 -->
+<!-- TopoAssist v260516.7 | 2026-05-16 11:36:47 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.6";  // keep in sync with Code.gs
+const APP_VERSION = "260516.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7568,6 +7568,10 @@ function saveEdit() {
     if (devA === devB) {
       // Snake self-loop — same device on both sides
       if (!updatesA.ip_type_) updatesA.ip_type_ = "p2p";
+      if (!updatesA.sp_mode_ || !String(updatesA.sp_mode_).trim()) {
+        setStatus("Snake port: sp_mode_ is required — use l3-et-int (L3) or l2-et-access/l2-et-trunk (L2)", "status-error");
+        btn.innerText = originalText; btn.disabled = false; return;
+      }
       if (!updatesA.vlan_ || !String(updatesA.vlan_).trim()) {
         setStatus("Snake port: vlan_ is required — enter the VLAN for the snake VRF chain", "status-error");
         btn.innerText = originalText; btn.disabled = false; return;

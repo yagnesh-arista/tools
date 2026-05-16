@@ -1,4 +1,4 @@
-<!-- TopoAssist v260516.6 | 2026-05-16 11:31:28 -->
+<!-- TopoAssist v260516.7 | 2026-05-16 11:37:18 -->
 <!DOCTYPE html>
 <html>
 
@@ -526,7 +526,7 @@
       </div>
     </div>
 
-    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260516.6</h1>
+    <h1 style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Network Topology &amp; Config Manager v260516.7</h1>
 
     <!-- Quick Navigation -->
     <div class="quick-nav">
@@ -1490,11 +1490,19 @@ clasp login --no-localhost</pre>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">Sheet Setup — Snake Pairs</h4>
     <p style="font-size:13px;">Each snake pair occupies one row. Open the Edit modal with the <b>same device on both sides</b> (devA = devB) — TopoAssist detects this and writes to both <code>int_</code> and <code>snake_int_</code> columns automatically. You can also fill the sheet directly:</p>
-    <ul style="font-size:13px;">
-      <li><code>int_Leaf1</code> = primary port (e.g., <code>Et2</code>)</li>
-      <li><code>snake_int_Leaf1</code> = secondary port (e.g., <code>Et3</code>)</li>
-      <li><code>sp_mode_Leaf1</code>, <code>vlan_Leaf1</code>, <code>ip_type_Leaf1</code> — set once per row, applied to both ports</li>
-    </ul>
+    <table class="legend-table" style="font-size:12px; margin-bottom:8px;">
+      <tr><th>Column</th><th>Required?</th><th>Value</th></tr>
+      <tr><td><code>int_Leaf1</code></td><td><b>Required</b></td><td>Primary port — the port where traffic enters the snake (e.g., <code>Et2</code>)</td></tr>
+      <tr><td><code>snake_int_Leaf1</code></td><td><b>Required</b></td><td>Secondary port — the other end of the loopback cable (e.g., <code>Et3</code>)</td></tr>
+      <tr><td><code>sp_mode_Leaf1</code></td><td><b>Required</b></td><td><code>l3-et-int</code> for L3 snake (routed ports, IP addressing); <code>l2-et-access</code> or <code>l2-et-trunk</code> for L2 snake</td></tr>
+      <tr><td><code>vlan_Leaf1</code></td><td><b>Required</b></td><td>A unique VLAN per snake pair — determines the L3 subnet (<code>{base}.⌊vlan÷100⌋.vlan%100.0/24</code>). The sheet will flag this amber if missing. Config will not generate without it.</td></tr>
+      <tr><td><code>ip_type_Leaf1</code></td><td>Auto-set</td><td>Always forced to <code>p2p</code> by TopoAssist — leave blank. The cell is grayed out on snake rows.</td></tr>
+      <tr><td><code>vrf_Leaf1</code></td><td>N/A</td><td>Ignored for snake — VRF is auto-assigned as <code>SNAKE_{portName}</code>. Cell is grayed out.</td></tr>
+      <tr><td><code>et_speed_</code>, <code>xcvr_*</code></td><td>Optional</td><td>Physical port settings — set as needed for breakout or transceiver spec</td></tr>
+    </table>
+    <p style="font-size:13px; color:#92400e; background:#fef3c7; border-left:3px solid #f59e0b; padding:6px 8px; margin:0 0 8px;">
+      <b>Sheet formatting:</b> missing <code>sp_mode_</code> or <code>vlan_</code> on a snake row turns those cells <b>amber</b>. <code>ip_type_</code>, <code>vrf_</code>, and <code>svi_vlan_</code> are grayed (N/A) when <code>snake_int_</code> is filled. Run <b>Save &amp; Sync</b> in the sheet after adding snake rows for formatting to apply.
+    </p>
     <p style="font-size:13px;">Snake pairs appear as <b>orange arcs</b> looping off the right side of the device node on the canvas.</p>
 
     <h4 style="font-size:12px; margin:10px 0 4px;">Sheet Setup — EP1 / EP2 Ports</h4>
