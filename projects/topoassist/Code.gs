@@ -1,10 +1,10 @@
-// TopoAssist v260516.22 | 2026-05-16 15:26:44
+// TopoAssist v260516.23 | 2026-05-16 15:28:51
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.22";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.23";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1801,13 +1801,12 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
-    // CF_ROW_BUFFER pre-covers rows beyond current data so newly added interface rows
-    // get formatting immediately. The buffer makes the rule range larger (+300 rows),
-    // which is the expensive part of setConditionalFormatRules — only extend on Force
-    // Sync (fullRebuild). Auto-refresh still rebuilds rules for current rows (fast).
-    const cfLastRow = fullRebuild
-      ? Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows())
-      : lastRow;
+    // CF_ROW_BUFFER always applied — blank rows beyond lastRow must retain INACTIVE GRAY.
+    // Non-full refresh used to set cfLastRow = lastRow (no buffer), which caused
+    // setConditionalFormatRules to REPLACE the Force Sync rules and strip coverage from
+    // blank rows, making them lose grey on every subsequent edit. Always extending by
+    // CF_ROW_BUFFER keeps blank rows covered without requiring a Force Sync.
+    const cfLastRow = Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows());
     const rules = buildConditionalRules(sheet, headers, cfLastRow);
     sheet.setConditionalFormatRules(rules);
 
