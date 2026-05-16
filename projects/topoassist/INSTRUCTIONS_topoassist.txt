@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-16 (fix: A-SNAKE CF red rules — added paired A-SNAKE red rules (bg #fca5a5/#991b1b) for ip_type_, vrf_, svi_vlan_ when snake_int_ filled AND column not empty; snakeIdx hoisted to top of per-device index block; A-SNAKE pushed in section 1 so red has higher CF priority than N/A-SNAKE gray. FILES: Code.gs)
+  Last updated: 2026-05-16 (fix: snake port SSoT — (1) Sidebar-js.html linkMap entry now includes type:link.type so getPeerId() snake-preference loop (linkObj.type==='snake') fires correctly; (2) Sidebar-js.html selectPortOrLink() SSoT: instead of selectLine(lines[0]) (always the regular cable), uses getPeerId() peer result to find the link ID that connects to that peer via portMap scan — keeps snake-preference logic in one place (getPeerId), selectPortOrLink just resolves link from peer identity; (3) Code.gs generateSnakeTtlPbrConfig() + generateSnakeTtlTrafficPolicyConfig() now emit global ACL/route-map/traffic-policies blocks only — per-interface stanzas removed (were duplicating interface blocks with getIpBlock()); (4) Code.gs getIpBlock() snake P2P branch now emits TTL sub-commands (no ip policy, no traffic-policy input/output, ip policy route-map SNAKE_SET_TTL, traffic-policy input/output SNAKE_TTL_POLICY) — SSoT for interface-level TTL config; (5) Code.gs buildConditionalRules() SNAKE-PEER replaced with SNAKE-ROW: single multi-range rule covers all SCHEMA_KEYS columns for the device (same allDevRanges pattern as INACTIVE GRAY) — A-SNAKE RED and N/A-SNAKE GRAY remain higher-priority and override blue per-column. FILES: Sidebar-js.html, Code.gs)
   Previous: 2026-05-16 (refactor: cfgPanel-view button labels SSoT — btnCfgViewCopyIface and btnCfgViewPushIface text removed from static HTML; _openCfgPanelView now sets both via _COPY_IFACE_LABEL / _PUSH_IFACE_LABEL constants (same source as configModal). FILES: Sidebar.html, Sidebar-js.html)
   Previous: 2026-05-16 (fix: snake topology — (1) Code.gs getTopologyData() SNAKE secondary loop: after setting details.peerDev/peerPort, now syncs details back into devicePorts[devName][snakePort].details (replaces empty {} created by globalLinkMap.forEach block) so node.ports has full sp_mode_/ip_type_/peerDev/peerPort — prevents secondary port from being hidden by INT SORT mode filter and ensures showTooltip strict-sync fires on secondary; (2) Sidebar-js.html getPeerId(): now iterates all portMap links and returns snake-type link first before falling back to lines[0] — prevents wrong peer when primary snake port also has a regular cable link to another device; Fix C (addSnakePair client-side guards for ip_type_/sp_mode_/vlan_) was already present from prior session. FILES: Code.gs, Sidebar-js.html)
   Previous: 2026-05-16 (fix: remove Tooltip button from configModal — #btnCfgShowTooltip button removed from action bar (Sidebar.html); _showCfgModalTooltip(e) function deleted; ttBtn management removed from _clearPushBtns and _setPushBtnVisibility. Hover tooltips on canvas interfaces already show interface config via details.config (processDeviceConfig) — no button needed. FILES: Sidebar.html, Sidebar-js.html)
@@ -2009,6 +2009,13 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
     W2: xcvr_speed_ pale-orange (#fed7aa) when empty + xcvr_type_ set + et_speed_
         implies a different speed tier (hint to fill xcvr_speed_ for breakout)
   Priority 6 — MEMBER PORT: italic + muted text on int_ when int_ starts ^Et AND po_ set
+  SNAKE-ROW (blue #dbeafe/#1e40af): when snake_int_<dev> is filled, all SCHEMA_KEYS columns
+    for that device turn blue (multi-range rule, same allDevRanges pattern as INACTIVE GRAY).
+    A-SNAKE RED (priority 1) and N/A-SNAKE GRAY (priority 4) override blue per-column.
+  A-SNAKE RED (#fca5a5/#991b1b): when snake_int_ filled AND ip_type_/vrf_/svi_vlan_ not empty
+    → RED on that column (fields are auto-managed for snake ports — user should not fill them).
+  N/A-SNAKE GRAY (#c8d5e3/#94a3b8): when snake_int_ filled → ip_type_, vrf_, svi_vlan_ gray
+    (auto-forced to p2p/SNAKE_VRF/no-SVI; these fields are N/A regardless of mode).
 
 IMPORTANT: After editing buildConditionalRules, user must click Force Sync
 (toolbar button in the sidebar) for conditional format changes to take effect.
