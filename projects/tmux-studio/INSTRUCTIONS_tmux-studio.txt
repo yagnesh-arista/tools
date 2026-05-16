@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (feat: copy-layout subcommand — interactive picker lists all tmux windows numbered; user picks source then target; _list_windows_flat() flattens get_tmux_layout() output; copy_window_layout() normalizes target pane count (kill extras or split-window to add) then applies source layout string via select-layout. Usage: tmux-studio copy-layout. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (feat: copy-layout target now accepts comma-separated numbers for multiple targets (e.g. "1,3,5"); deduped via dict.fromkeys; all targets get the same source layout applied sequentially; per-target ✓ confirmation line printed. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (feat: copy-layout subcommand — interactive picker lists all tmux windows numbered; user picks source then target; _list_windows_flat() flattens get_tmux_layout() output; copy_window_layout() normalizes target pane count (kill extras or split-window to add) then applies source layout string via select-layout. Usage: tmux-studio copy-layout. FILES: tmux_studio.py)
   Previous: 2026-04-17 (Added CLAUDE.md with critical constraints; added .claude/commands/check.md (/check command))
   Previous: 2026-04-13 (User feedback: added "Reading tmux state..." before get_tmux_layout() in save; added "Reading current tmux state..." before get_tmux_layout() in restore — both were previously silent during the slow tmux command phase; file: tmux_studio.py)
   Previous: 2026-04-11 (Renamed tmux_manager_studio.py -> tmux_studio.py and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.1 | 2026-05-16 14:49:00
+# tmux-studio v260516.2 | 2026-05-16 14:53:42
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -895,26 +895,31 @@ def main():
 
             while True:
                 try:
-                    tgt_num = int(input(f"Select {Colors.ORANGE}target{Colors.RESET} window (number): ").strip())
-                    if 1 <= tgt_num <= len(windows) and tgt_num != src_num: break
-                    if tgt_num == src_num:
-                        print(f"{Colors.RED}Source and target must be different.{Colors.RESET}")
+                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 1,3,5): ").strip()
+                    nums = list(dict.fromkeys(int(x.strip()) for x in raw.split(',') if x.strip()))
+                    valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                    if nums and valid: break
+                    if any(n == src_num for n in nums):
+                        print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
                     else:
-                        print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                        print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
                 except ValueError:
-                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+                    print(f"{Colors.RED}Enter comma-separated numbers (e.g. 9 or 1,3,5).{Colors.RESET}")
 
-            tgt = windows[tgt_num - 1]
-            tgt_panes = f"{tgt['pane_count']} pane{'s' if tgt['pane_count'] != 1 else ''}"
+            targets = [windows[n - 1] for n in nums]
 
             print(f"\n  Source: {Colors.GREEN}{src['session']}:{src['win_index']} [{src['win_name']}]{Colors.RESET} — {src_panes}")
-            print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes} → will become {src_panes}")
+            for tgt in targets:
+                tgt_panes = f"{tgt['pane_count']} pane{'s' if tgt['pane_count'] != 1 else ''}"
+                print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes} → will become {src_panes}")
 
-            if not ask_confirmation("Apply source layout to target window?"):
+            if not ask_confirmation(f"Apply source layout to {len(targets)} target window(s)?"):
                 print(f"{Colors.RED}Cancelled.{Colors.RESET}"); sys.exit(0)
 
-            copy_window_layout(src, tgt)
-            print(f"\n{Colors.GREEN}Layout copied: [{src['win_name']}] → [{tgt['win_name']}]{Colors.RESET}")
+            for tgt in targets:
+                copy_window_layout(src, tgt)
+                print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}]")
+            print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
 
     except KeyboardInterrupt:
         print(f"\n{Colors.RED}Operation cancelled.{Colors.RESET}")
