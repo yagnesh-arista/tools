@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.4 | 2026-05-16 15:04:50
+# tmux-studio v260516.5 | 2026-05-16 15:20:53
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -588,6 +588,27 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
                 subprocess.run(["tmux", "kill-window", "-t", f"{s_name}:{w_idx}"])
 
 # =============================================================================
+# PANE INFO
+# =============================================================================
+def get_pane_commands(session: str, win_index: str) -> List[Dict]:
+    target = f"{session}:{win_index}"
+    result = subprocess.run(
+        ["tmux", "list-panes", "-t", target, "-F",
+         f"#{{pane_index}}{TMUX_SEP}#{{pane_pid}}{TMUX_SEP}#{{pane_current_command}}{TMUX_SEP}#{{pane_active}}"],
+        capture_output=True, text=True
+    )
+    panes = []
+    for line in result.stdout.strip().splitlines():
+        parts = line.split(TMUX_SEP, 3)
+        if len(parts) < 4:
+            continue
+        idx, pid, cmd, active = parts
+        ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
+        full_cmd = ps.stdout.strip() or cmd
+        panes.append({"index": idx, "pid": pid, "command": full_cmd, "is_active": active == "1"})
+    return panes
+
+# =============================================================================
 # COPY LAYOUT
 # =============================================================================
 def _list_windows_flat(layout: Dict) -> List[Dict]:
@@ -643,6 +664,7 @@ def main():
     p_manage.add_argument("-f", "--file", default=get_default_filepath())
 
     sub.add_parser("copy-layout")
+    sub.add_parser("pane-info")
 
     args = parser.parse_args()
     abs_path = os.path.abspath(args.file) if hasattr(args, "file") else None
@@ -931,6 +953,38 @@ def main():
                 copy_window_layout(src, tgt)
                 print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}]")
             print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
+
+        elif args.cmd == "pane-info":
+            if not tmux_running():
+                print(f"{Colors.RED}No Tmux running{Colors.RESET}"); sys.exit(1)
+
+            current = get_tmux_layout()
+            windows = _list_windows_flat(current)
+
+            if not windows:
+                print(f"{Colors.RED}No windows found.{Colors.RESET}"); sys.exit(1)
+
+            print(f"\n{Colors.BLUE}Available Windows:{Colors.RESET}")
+            for i, w in enumerate(windows, 1):
+                panes = f"{w['pane_count']} pane{'s' if w['pane_count'] != 1 else ''}"
+                print(f"  {Colors.CYAN}{i}.{Colors.RESET} {w['session']}:{w['win_index']} [{w['win_name']}] — {panes}")
+
+            while True:
+                try:
+                    num = int(input(f"\nSelect window (number): ").strip())
+                    if 1 <= num <= len(windows): break
+                    print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                except ValueError:
+                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+
+            win = windows[num - 1]
+            pane_list = get_pane_commands(win["session"], win["win_index"])
+
+            print(f"\n{Colors.BLUE}{win['session']}:{win['win_index']} [{win['win_name']}] — {len(pane_list)} pane(s):{Colors.RESET}")
+            for p in pane_list:
+                active = f" {Colors.GREEN}[active]{Colors.RESET}" if p["is_active"] else ""
+                print(f"  {Colors.CYAN}pane {p['index']}{Colors.RESET}{active}  pid {p['pid']}")
+                print(f"    {p['command']}")
 
     except KeyboardInterrupt:
         print(f"\n{Colors.RED}Operation cancelled.{Colors.RESET}")
