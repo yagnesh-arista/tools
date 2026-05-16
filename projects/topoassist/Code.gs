@@ -1,10 +1,10 @@
-// TopoAssist v260516.20 | 2026-05-16 15:04:55
+// TopoAssist v260516.22 | 2026-05-16 15:26:44
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.20";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.22";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2948,8 +2948,13 @@ function getTopologyData(forceSync, isColorEnabled) {
         links.push({ id: "snake-" + linkKey, u: key, v: val.dev + ":" + val.port, type: 'snake' });
         [{ dev: devA, port: portA }, { dev: val.dev, port: val.port }].forEach(({ dev, port }) => {
           if (devicePorts[dev]) {
-            if (!devicePorts[dev][port]) devicePorts[dev][port] = { name: port, connected: true, order: 9999, details: {} };
-            else devicePorts[dev][port].connected = true;
+            if (!devicePorts[dev][port]) {
+              // Secondary port: sort immediately after its primary (devA:portA is already in devicePorts).
+              const primaryOrder = (devicePorts[devA] && devicePorts[devA][portA]) ? (devicePorts[devA][portA].order || 0) : 0;
+              devicePorts[dev][port] = { name: port, connected: true, order: primaryOrder + 0.5, details: {} };
+            } else {
+              devicePorts[dev][port].connected = true;
+            }
           }
         });
         // Set peerDev/peerPort on the primary port node (already in allCollectedNodes from main loop)
@@ -5349,9 +5354,13 @@ function generateConfig(portName, d, ipPrefs, seenPos, netSettings, vx1VlanSet) 
     else if (d.peerDev && d.peerPort) {
       let desc = "";
 
+      // Rule S: Snake self-loop — Format: -> SNAKE-{peerDev}-{peerPort}
+      if (d.isSnakePrimary || d.isSnakeSecondary) {
+        desc = `SNAKE-${d.peerDev}-${d.peerPort}`;
+      }
       // Rule 4, 6, 8: Child of Po (Regular OR MLAG OR PeerLink)
       // Format: -> Leaf2-Et1-Po10 (PeerDev-PeerPort-LocalPo)
-      if (hasPo) {
+      else if (hasPo) {
         desc = `${d.peerDev}-${d.peerPort}-${poVal}`;
       }
       // Rule 3: Physical Peer Link (Standalone)
