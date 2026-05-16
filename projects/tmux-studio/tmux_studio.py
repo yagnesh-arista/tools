@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.7 | 2026-05-16 15:33:03
+# tmux-studio v260516.8 | 2026-05-16 15:37:20
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -612,7 +612,16 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         else:
             ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
             full_cmd = ps.stdout.strip() or cmd
-        panes.append({"index": idx, "pid": pid, "command": full_cmd, "is_active": active == "1"})
+        # Capture what's currently on the pane's screen (last non-empty line).
+        # This shows EOS CLI state inside SSH sessions that ps cannot see.
+        cap = subprocess.run(
+            ["tmux", "capture-pane", "-t", f"{target}.{idx}", "-p"],
+            capture_output=True, text=True
+        )
+        screen_lines = [l.rstrip() for l in cap.stdout.splitlines() if l.strip()]
+        screen_line = screen_lines[-1] if screen_lines else ""
+        panes.append({"index": idx, "pid": pid, "command": full_cmd,
+                      "screen_line": screen_line, "is_active": active == "1"})
     return panes
 
 # =============================================================================
@@ -990,8 +999,10 @@ def main():
             print(f"\n{Colors.BLUE}{win['session']}:{win['win_index']} [{win['win_name']}] — {len(pane_list)} pane(s):{Colors.RESET}")
             for p in pane_list:
                 active = f" {Colors.GREEN}[active]{Colors.RESET}" if p["is_active"] else ""
-                print(f"  {Colors.CYAN}pane {p['index']}{Colors.RESET}{active}  pid {p['pid']}")
-                print(f"    {p['command']}")
+                print(f"  {Colors.CYAN}pane {p['index']}{Colors.RESET}{active}")
+                print(f"    process : {p['command']}")
+                if p.get("screen_line"):
+                    print(f"    screen  : {p['screen_line']}")
 
     except KeyboardInterrupt:
         print(f"\n{Colors.RED}Operation cancelled.{Colors.RESET}")
