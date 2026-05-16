@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.14 | 2026-05-16 16:04:48
+# tmux-studio v260516.15 | 2026-05-16 16:12:48
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -30,6 +30,8 @@ from typing import Any, Dict, List, Set
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+_vm = re.search(r'v([\d.]+)', open(__file__).readlines()[1])
+VERSION = _vm.group(1) if _vm else "?"
 DEFAULT_SSH_USER = "admin"
 DEFAULT_JSON_FILENAME = "sessions.json"
 STUDIO_DIR = os.path.join(os.path.expanduser("~"), ".tmux-studio")
@@ -592,14 +594,19 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
 # PANE INFO
 # =============================================================================
 _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
+# EOS prompt: hostname (may include dots, dashes, timestamps) optionally followed
+# by a config sub-mode in parens, then '#' and at least one space before the command.
+# Rejects bare 'ssh ...' lines that appear in scrollback from initial session setup.
+_EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s+(.+)$")
 
 def _get_pane_eos_cli(pane_target: str) -> str:
     """Extract the EOS CLI command currently running in an SSH pane.
 
     Strategy (in order — non-disruptive):
     1. EOS watch header: 'Every Ns: <command>  <timestamp>' at top of screen.
-    2. EOS prompt + command: '<hostname># <command>' in scrollback.
-    Returns '' when neither pattern matches (falls through to recall method).
+    2. EOS prompt line: '<hostname[.ts][(...)]># <command>' in scrollback (backward).
+       Uses _EOS_PROMPT_RE — rejects ambiguous bare '# cmd' matches like ssh lines.
+    Returns '' when neither matches (caller falls through to recall method).
     """
     cap = subprocess.run(
         ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-200"],
@@ -611,10 +618,9 @@ def _get_pane_eos_cli(pane_target: str) -> str:
         if m:
             return m.group(1).strip()
     for line in reversed(lines):
-        if "# " in line:
-            cmd = line.rsplit("# ", 1)[-1].strip()
-            if cmd:
-                return cmd
+        m = _EOS_PROMPT_RE.match(line.strip())
+        if m:
+            return m.group(1).strip()
     return ""
 
 def _get_pane_cli_via_recall(pane_target: str) -> str:
@@ -746,6 +752,8 @@ def main():
 
     args = parser.parse_args()
     abs_path = os.path.abspath(args.file) if hasattr(args, "file") else None
+
+    print(f"{Colors.CYAN}tmux-studio v{VERSION}{Colors.RESET}")
 
     try:
         if args.cmd == "save":

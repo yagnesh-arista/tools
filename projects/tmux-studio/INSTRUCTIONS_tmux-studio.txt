@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (feat: _get_pane_cli_via_recall() added — sends C-c, waits 0.5s, sends Up, captures prompt line for recalled command, sends Enter to restart; get_pane_commands() uses it as fallback when passive _get_pane_eos_cli() returns empty for SSH panes. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (feat: VERSION constant extracted from line 2 stamp via re; printed as "tmux-studio vX" at top of every subcommand run; _EOS_PROMPT_RE regex added — requires hostname-shaped prefix before '#' to avoid false matches on 'ssh admin@...' lines in scrollback. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (feat: _get_pane_cli_via_recall() added — sends C-c, waits 0.5s, sends Up, captures prompt line for recalled command, sends Enter to restart; get_pane_commands() uses it as fallback when passive _get_pane_eos_cli() returns empty for SSH panes. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: _get_pane_eos_cli() now tries EOS watch header first ('Every Ns: <cmd>') by scanning forward, then falls back to '# <cmd>' prompt pattern; _EOS_WATCH_RE compiled regex added; import re added. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: pane-info now shows EOS CLI command running inside SSH panes via _get_pane_eos_cli() — scans last 200 pane lines backward for '# <cmd>' pattern; clone-window reverted to layout-only (replay_window_cli + _SHELL_NAMES removed); pane-info display condensed to single line per pane. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
@@ -416,14 +417,24 @@ copy_window_layout(src, tgt)
     If target has too few panes: split-window -d until count matches.
   Apply: select-layout <src_window_layout>.
 
+VERSION: str
+  Extracted from line 2 of __file__ (stamp line '# tmux-studio vX.Y | date').
+  Printed as 'tmux-studio vX.Y' at the top of every subcommand invocation.
+
 _EOS_WATCH_RE: compiled regex
   Matches EOS watch header: 'Every Ns: <command>  <timestamp>'
   Pattern: r'^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$'
 
+_EOS_PROMPT_RE: compiled regex
+  Matches EOS prompt line with a command. Requires hostname-shaped prefix
+  (alphanumeric + dots/dashes, optional config sub-mode in parens) before '#'.
+  Rejects bare '# ssh ...' false positives from session-setup scrollback.
+  Pattern: r'^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s+(.+)$'
+
 _get_pane_eos_cli(pane_target) -> str
   Non-disruptive passive scan (last 200 pane lines).
   Pass 1 (forward): match _EOS_WATCH_RE — 'Every Ns: <cmd>' header at top of screen.
-  Pass 2 (backward): scan for '# ' (EOS prompt suffix) in scrollback.
+  Pass 2 (backward): match _EOS_PROMPT_RE — hostname-gated prompt + command.
   Returns '' when neither matches (caller falls through to recall method).
 
 _get_pane_cli_via_recall(pane_target) -> str
