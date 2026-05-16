@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.4 | 2026-05-16 11:07:41 -->
+<!-- TopoAssist v260516.5 | 2026-05-16 11:21:24 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.4";  // keep in sync with Code.gs
+const APP_VERSION = "260516.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7567,6 +7567,11 @@ function saveEdit() {
 
     if (devA === devB) {
       // Snake self-loop — same device on both sides
+      if (!updatesA.ip_type_) updatesA.ip_type_ = "p2p";
+      if (!updatesA.vlan_ || !String(updatesA.vlan_).trim()) {
+        setStatus("Snake port: vlan_ is required — enter the VLAN for the snake VRF chain", "status-error");
+        btn.innerText = originalText; btn.disabled = false; return;
+      }
       google.script.run.withSuccessHandler(onAddSuccess).withFailureHandler(onAddFail)
         .addSnakePair(devA, portA, portB, updatesA);
     } else {

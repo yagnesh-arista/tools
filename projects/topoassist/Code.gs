@@ -1,10 +1,10 @@
-// TopoAssist v260516.4 | 2026-05-16 11:07:17
+// TopoAssist v260516.5 | 2026-05-16 11:21:48
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.4";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -4055,6 +4055,10 @@ function addSnakePair(dev, portA, portB, attrs) {
       }
     }
 
+    // vlan_ is required — snake VRF chain config (080_SNAKE) gates on it
+    const vlanVal = (attrs && attrs.vlan_) ? String(attrs.vlan_).trim() : "";
+    if (!vlanVal) return { error: "vlan_ is required for snake ports — enter the VLAN for the snake VRF chain" };
+
     const nextRow = sheet.getLastRow() + 1;
     const setVal = (r, c, v) => { if (c >= 0) sheet.getRange(r, c + 1).setValue(v); };
     setVal(nextRow, intColIdx, portA);
@@ -4063,6 +4067,10 @@ function addSnakePair(dev, portA, portB, attrs) {
       const prefix = fieldMap[k] || (k + "_");
       setVal(nextRow, headers.indexOf(prefix + dev), v);
     });
+
+    // Force ip_type_=p2p AFTER attrs — snake rows always require p2p regardless of user input
+    const ipTypeColIdx = headers.indexOf("ip_type_" + dev);
+    setVal(nextRow, ipTypeColIdx, "p2p");
 
     PropertiesService.getScriptProperties().setProperty('DATA_VERSION', new Date().getTime().toString());
     return { success: true };
