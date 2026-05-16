@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.27 | 2026-05-16 15:57:25 -->
+<!-- TopoAssist v260516.28 | 2026-05-16 15:57:43 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.27";  // keep in sync with Code.gs
+const APP_VERSION = "260516.28";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -10364,6 +10364,7 @@ function fetchData(force, autoVerify, silent) {
       if (data.links) globalLinks = data.links;
       if (data.portFrequency) globalPortFrequency = data.portFrequency;
       if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
+      if (typeof data.snakeBridgeMacConfigured !== 'undefined') _snakeBridgeMacConfigured = data.snakeBridgeMacConfigured;
       currentData = data;
 
       // Pre-load device metadata so topology card model lines are populated before bridge runs
@@ -17376,6 +17377,7 @@ function loadFromSession() {
         if (data.links) globalLinks = data.links;
         if (data.portFrequency) globalPortFrequency = data.portFrequency;
         if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
+      if (typeof data.snakeBridgeMacConfigured !== 'undefined') _snakeBridgeMacConfigured = data.snakeBridgeMacConfigured;
         currentData = data;
         return data;
       }
