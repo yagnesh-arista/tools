@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260515.18 | 2026-05-15 17:50:48
+// topoassist v260516.9 | 2026-05-16 11:56:14
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -413,6 +413,66 @@ t('_expandTaCleanDisplay: empty string passthrough',
 t('_expandTaCleanDisplay: multiple sequential interface blocks each expanded',
   _expandTaCleanDisplay('ta-clean-et Et1/1\ninterface Et1/1\n switchport\n!\nta-clean-et Et1/2\ninterface Et1/2\n switchport'),
   'interface Et1/1\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no channel-group\n no ipv6 address\n switchport\n!\ninterface Et1/2\n default switchport trunk allowed vlan\n no switchport trunk native vlan\n default switchport access vlan\n no channel-group\n no ipv6 address\n switchport');
+
+// ── _buildCopyInterfaceText ───────────────────────────────────────────────
+// SYNC: must match _buildCopyInterfaceText in Sidebar-js.html.
+
+let currentRawConfig = '';
+
+function _extractInterfaceBlock(text, portFilter) {
+  if (!portFilter) return null;
+  const norm = portFilter.toLowerCase();
+  const blocks = (text || '').split('\n!\n');
+  return blocks.find(b => b.trim().toLowerCase().startsWith('interface ' + norm)) || null;
+}
+
+function _getBaseBlock(devName) {
+  return devName === 'DEV_WITH_BASE' ? '! base config\nhostname DEV_WITH_BASE' : null;
+}
+
+function _buildCopyInterfaceText(devName, portFilter) {
+  if (portFilter) {
+    return _extractInterfaceBlock(currentRawConfig, portFilter) || currentRawConfig || '';
+  }
+  const lines = (currentRawConfig || '').split('\n');
+  const out = [];
+  let inIntf = false;
+  lines.forEach(line => {
+    const isHeader = line.length > 0 && !line.startsWith(' ') && !line.startsWith('!');
+    if (isHeader) inIntf = line.toLowerCase().startsWith('interface ')
+                        && !line.toLowerCase().startsWith('interface defaults');
+    if (inIntf) out.push(line);
+  });
+  let result = out.join('\n');
+  if (devName) {
+    const base = _getBaseBlock(devName);
+    if (base) result = base + '\n!\n' + result;
+  }
+  return result;
+}
+
+currentRawConfig = 'interface Et1/1\n description peer\n!\ninterface Et2/1\n description uplink';
+t('_buildCopyInterfaceText: portFilter set → returns matching block',
+  _buildCopyInterfaceText('DEV1', 'Et1/1'),
+  'interface Et1/1\n description peer');
+
+t('_buildCopyInterfaceText: portFilter set, no match → falls back to full currentRawConfig',
+  _buildCopyInterfaceText('DEV1', 'Et9/9'),
+  currentRawConfig);
+
+currentRawConfig = 'interface Et1/1\n description peer\n!\ninterface Et2/1\n description uplink';
+t('_buildCopyInterfaceText: no portFilter, no base → all interface sections (! separator preserved)',
+  _buildCopyInterfaceText('DEV1', null),
+  'interface Et1/1\n description peer\n!\ninterface Et2/1\n description uplink');
+
+t('_buildCopyInterfaceText: no portFilter, with base → base + interfaces',
+  _buildCopyInterfaceText('DEV_WITH_BASE', null),
+  '! base config\nhostname DEV_WITH_BASE\n!\ninterface Et1/1\n description peer\n!\ninterface Et2/1\n description uplink');
+
+currentRawConfig = 'ip routing\ninterface defaults\n no ip address\ninterface Et1/1\n description peer';
+t('_buildCopyInterfaceText: excludes interface defaults section',
+  _buildCopyInterfaceText('DEV1', null),
+  'interface Et1/1\n description peer');
 
 // ── Report ────────────────────────────────────────────────────────────────
 
