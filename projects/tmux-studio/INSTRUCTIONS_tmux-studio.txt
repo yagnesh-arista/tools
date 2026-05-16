@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
   Previous: 2026-05-16 (cosmetic: copy-layout target prompt example updated to "3,4,6-8". FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout target picker supports ranges and mixed syntax (e.g. "3-6", "3,4,5-8"); _parse_window_nums() splits by comma then expands N-M tokens via range(); deduped with dict.fromkeys. FILES: tmux_studio.py)
@@ -93,6 +94,14 @@ SECTION 3: CLI USAGE
 
   tmux-studio manage                # Interactive JSON session manager
   tmux-studio manage -f /path/to/file.json
+
+  tmux-studio clone-window          # Copy layout + replay CLI commands from source to target(s)
+    Same picker flow as copy-layout.
+    After applying the layout, replay_window_cli() sends each non-shell source
+    pane command to the corresponding target pane via tmux send-keys.
+    Source window name is substituted with target window name in each command
+    (e.g. "ssh admin@mrvp454" → "ssh admin@mrvp455").
+    Panes whose command is a bare shell (-bash, bash, -zsh, etc.) are skipped.
 
   tmux-studio copy-layout           # Copy pane layout from one window to one or more targets
     Interactive flow:

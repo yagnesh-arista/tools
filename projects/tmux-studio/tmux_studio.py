@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.8 | 2026-05-16 15:37:20
+# tmux-studio v260516.9 | 2026-05-16 15:39:27
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -659,6 +659,47 @@ def copy_window_layout(src: Dict, tgt: Dict) -> None:
 
     subprocess.run(["tmux", "select-layout", "-t", tgt_target, src["layout"]], capture_output=True)
 
+def _parse_window_nums(raw: str) -> List[int]:
+    nums = []
+    for tok in raw.split(','):
+        tok = tok.strip()
+        if '-' in tok:
+            a, b = tok.split('-', 1)
+            nums.extend(range(int(a), int(b) + 1))
+        elif tok:
+            nums.append(int(tok))
+    return list(dict.fromkeys(nums))  # dedupe, preserve order
+
+_SHELL_NAMES = frozenset(["-bash", "bash", "-zsh", "zsh", "-sh", "sh"])
+
+def replay_window_cli(src: Dict, tgt: Dict) -> None:
+    """Send CLI commands from src panes to corresponding tgt panes.
+    Substitutes src window name with tgt window name in each command.
+    Skips idle shell panes (no foreground command running).
+    """
+    import time
+    time.sleep(0.3)  # let layout settle
+
+    src_panes = get_pane_commands(src["session"], src["win_index"])
+
+    tgt_target = f"{tgt['session']}:{tgt['win_index']}"
+    tgt_idx_result = subprocess.run(
+        ["tmux", "list-panes", "-t", tgt_target, "-F", "#{pane_index}"],
+        capture_output=True, text=True
+    )
+    tgt_indices = [l.strip() for l in tgt_idx_result.stdout.strip().splitlines() if l.strip()]
+
+    for i, pane in enumerate(src_panes):
+        if i >= len(tgt_indices):
+            break
+        cmd = pane["command"]
+        if not cmd or cmd in _SHELL_NAMES:
+            continue
+        if src["win_name"] in cmd:
+            cmd = cmd.replace(src["win_name"], tgt["win_name"])
+        pane_target = f"{tgt['session']}:{tgt['win_index']}.{tgt_indices[i]}"
+        subprocess.run(["tmux", "send-keys", "-t", pane_target, cmd, "Enter"])
+
 # =============================================================================
 # COMMANDS
 # =============================================================================
@@ -680,6 +721,7 @@ def main():
     p_manage.add_argument("-f", "--file", default=get_default_filepath())
 
     sub.add_parser("copy-layout")
+    sub.add_parser("clone-window")
     sub.add_parser("pane-info")
 
     args = parser.parse_args()
@@ -931,17 +973,6 @@ def main():
             src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
             print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
 
-            def _parse_window_nums(raw):
-                nums = []
-                for tok in raw.split(','):
-                    tok = tok.strip()
-                    if '-' in tok:
-                        a, b = tok.split('-', 1)
-                        nums.extend(range(int(a), int(b) + 1))
-                    elif tok:
-                        nums.append(int(tok))
-                return list(dict.fromkeys(nums))  # dedupe, preserve order
-
             while True:
                 try:
                     raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
@@ -968,6 +999,62 @@ def main():
             for tgt in targets:
                 copy_window_layout(src, tgt)
                 print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}]")
+            print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
+
+        elif args.cmd == "clone-window":
+            if not tmux_running():
+                print(f"{Colors.RED}No Tmux running{Colors.RESET}"); sys.exit(1)
+
+            current = get_tmux_layout()
+            windows = _list_windows_flat(current)
+
+            if len(windows) < 2:
+                print(f"{Colors.RED}Need at least 2 windows to clone.{Colors.RESET}"); sys.exit(1)
+
+            print(f"\n{Colors.BLUE}Available Windows:{Colors.RESET}")
+            for i, w in enumerate(windows, 1):
+                panes = f"{w['pane_count']} pane{'s' if w['pane_count'] != 1 else ''}"
+                print(f"  {Colors.CYAN}{i}.{Colors.RESET} {w['session']}:{w['win_index']} [{w['win_name']}] — {panes}")
+
+            while True:
+                try:
+                    src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
+                    if 1 <= src_num <= len(windows): break
+                    print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                except ValueError:
+                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+
+            src = windows[src_num - 1]
+            src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
+            print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
+
+            while True:
+                try:
+                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
+                    nums = _parse_window_nums(raw)
+                    valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                    if nums and valid: break
+                    if any(n == src_num for n in nums):
+                        print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
+                    else:
+                        print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
+                except ValueError:
+                    print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
+
+            targets = [windows[n - 1] for n in nums]
+
+            print(f"\n  Source: {Colors.GREEN}{src['session']}:{src['win_index']} [{src['win_name']}]{Colors.RESET} — {src_panes}")
+            for tgt in targets:
+                tgt_panes = f"{tgt['pane_count']} pane{'s' if tgt['pane_count'] != 1 else ''}"
+                print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes} → layout + CLI from [{src['win_name']}]")
+
+            if not ask_confirmation(f"Clone layout + CLI from [{src['win_name']}] to {len(targets)} target(s)?"):
+                print(f"{Colors.RED}Cancelled.{Colors.RESET}"); sys.exit(0)
+
+            for tgt in targets:
+                copy_window_layout(src, tgt)
+                replay_window_cli(src, tgt)
+                print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}] (layout + CLI)")
             print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
 
         elif args.cmd == "pane-info":
