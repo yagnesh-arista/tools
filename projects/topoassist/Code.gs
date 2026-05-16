@@ -1,10 +1,10 @@
-// TopoAssist v260516.1 | 2026-05-16 10:43:34
+// TopoAssist v260516.3 | 2026-05-16 11:04:00
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -7011,7 +7011,11 @@ function createTopologySnapshot() {
     .replace(/\s+/g, '_')
     .replace(/[\/\\:*?"<>|'\[\]]/g, '')
     .slice(0, 40) || 'checkpoint';
-  const snapshotName = "SNAP_" + new Date().getTime() + "_" + safeName;
+  const _now = new Date();
+  const _pad = n => String(n).padStart(2, '0');
+  const _ts = String(_now.getFullYear()).slice(2) + _pad(_now.getMonth() + 1) + _pad(_now.getDate()) +
+              _pad(_now.getHours()) + _pad(_now.getMinutes()) + _pad(_now.getSeconds());
+  const snapshotName = "SNAP_" + _ts + "_" + safeName;
 
   try {
     // 1. Create the Snapshot Sheet
