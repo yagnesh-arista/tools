@@ -1,4 +1,4 @@
-<!-- TopoAssist v260516.11 | 2026-05-16 12:28:25 -->
+<!-- TopoAssist v260516.12 | 2026-05-16 12:35:54 -->
 <!DOCTYPE html>
 <html>
 
@@ -1481,10 +1481,10 @@
         </div>
         <span id="configMatchCount" class="match-badge hidden">0 matches</span>
         <div class="divider-v" style="height: 18px; margin: 0 4px;"></div>
-        <button class="btn-mono btn-sm" id="btnCfgCopyInterface" onclick="copyInterfaceConfig()" title="Copy Base config + user template + all interface blocks">Copy Base+Ifs</button>
+        <button class="btn-mono btn-sm" id="btnCfgCopyInterface" onclick="copyInterfaceConfig()" title="Copy Base config + user template + all interface blocks">Copy Base+Ints</button>
         <button class="btn-mono btn-sm" id="btnCfgCopyAll" onclick="copyAllConfig()" title="Copy full device config">Copy All</button>
         <div class="divider-v" id="cfgPushDivider" style="height: 18px; margin: 0 4px; display:none;"></div>
-        <button class="btn-mono btn-sm" id="btnCfgPushIface" onclick="_pushCurrentDeviceInterface()" title="Push interface config(s) via Device Bridge" style="display:none;">Push Base+Ifs</button>
+        <button class="btn-mono btn-sm" id="btnCfgPushIface" onclick="_pushCurrentDeviceInterface()" title="Push interface config(s) via Device Bridge" style="display:none;">Push Base+Ints</button>
         <button class="btn-mono btn-sm" id="btnCfgPushAll" onclick="_pushCurrentDeviceAll()" title="Push full config via Device Bridge" style="display:none;">Push All</button>
         <button class="btn-mono btn-sm" id="btnCfgShowTooltip" onmouseenter="_showCfgModalTooltip(event)" onmouseleave="hideTooltip()" title="Preview interface tooltip" style="display:none;">Tooltip</button>
       </div>
@@ -1568,10 +1568,10 @@
             </div>
             <span id="cfgViewMatchCount" class="match-badge hidden"></span>
             <div class="divider-v" style="height:18px;margin:0 2px;flex-shrink:0;"></div>
-            <button class="btn-mono btn-sm" id="btnCfgViewCopyIface" onclick="_cfgViewCopyInterface()" title="Copy Base config + user template + all interface blocks" style="font-family:'JetBrains Mono',monospace;">Copy Base+Ifs</button>
+            <button class="btn-mono btn-sm" id="btnCfgViewCopyIface" onclick="_cfgViewCopyInterface()" title="Copy Base config + user template + all interface blocks" style="font-family:'JetBrains Mono',monospace;">Copy Base+Ints</button>
             <button class="btn-mono btn-sm" id="btnCfgViewCopyAll" onclick="_cfgViewCopyAll()" style="font-family:'JetBrains Mono',monospace;">Copy All</button>
             <div class="divider-v" id="cfgViewPushDiv" style="height:18px;margin:0 2px;flex-shrink:0;display:none;"></div>
-            <button class="btn-mono btn-sm" id="btnCfgViewPushIface" onclick="_pushCurrentDeviceInterface()" title="Push interface config(s) via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push Base+Ifs</button>
+            <button class="btn-mono btn-sm" id="btnCfgViewPushIface" onclick="_pushCurrentDeviceInterface()" title="Push interface config(s) via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push Base+Ints</button>
             <button class="btn-mono btn-sm" id="btnCfgViewPushAll" onclick="_pushCurrentDeviceAll()" title="Push full config via Device Bridge" style="display:none;font-family:'JetBrains Mono',monospace;">Push All</button>
           </div>
           <!-- Search hint -->

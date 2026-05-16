@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.11 | 2026-05-16 12:28:59 -->
+<!-- TopoAssist v260516.12 | 2026-05-16 12:35:35 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.11";  // keep in sync with Code.gs
+const APP_VERSION = "260516.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7047,7 +7047,7 @@ function selectPortOrLink(portId) {
 }
 
 // Returns 000_BASE + 000_GTPL concatenated — device baseline + user template.
-// Used by "Copy Base+Ifs" to prepend before interface blocks.
+// Used by "Copy Base+Ints" to prepend before interface blocks.
 function _getBaseBlock(deviceName) {
   const data = configCache[deviceName] && configCache[deviceName].data;
   if (!data) return '';
@@ -17615,9 +17615,9 @@ function openConfigFromButton(target) {
   }
 }
 
-const _COPY_IFACE_LABEL = 'Copy Base+Ifs';
+const _COPY_IFACE_LABEL = 'Copy Base+Ints';
 const _COPY_INT_LABEL   = 'Copy Int';
-const _PUSH_IFACE_LABEL = 'Push Base+Ifs';
+const _PUSH_IFACE_LABEL = 'Push Base+Ints';
 const _PUSH_INT_LABEL   = 'Push Int';
 const _PUSH_ALL_LABEL   = 'Push All';
 
@@ -17640,7 +17640,7 @@ function _clearPushBtns() {
 }
 
 // Set all configModal action buttons for the given view type.
-// 'device': Copy Base+Ifs / Copy All / Push Base+Ifs / Push All — Tooltip hidden.
+// 'device': Copy Base+Ints / Copy All / Push Base+Ints / Push All — Tooltip hidden.
 // 'interface': Copy Int / Push Int / Tooltip — Copy All and Push All hidden.
 // Non-EOS: all buttons hidden (no generated config).
 function _setPushBtnVisibility(viewType) {
