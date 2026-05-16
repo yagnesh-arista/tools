@@ -1,10 +1,10 @@
-// TopoAssist v260516.24 | 2026-05-16 15:31:16
+// TopoAssist v260516.25 | 2026-05-16 15:34:37
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.24";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.25";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1801,14 +1801,19 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
-    // CF_ROW_BUFFER always applied — blank rows beyond lastRow must retain INACTIVE GRAY.
-    // Non-full refresh used to set cfLastRow = lastRow (no buffer), which caused
-    // setConditionalFormatRules to REPLACE the Force Sync rules and strip coverage from
-    // blank rows, making them lose grey on every subsequent edit. Always extending by
-    // CF_ROW_BUFFER keeps blank rows covered without requiring a Force Sync.
-    const cfLastRow = Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows());
-    const rules = buildConditionalRules(sheet, headers, cfLastRow);
-    sheet.setConditionalFormatRules(rules);
+    // CF rules are ONLY rebuilt on fullRebuild (Force Sync / schema changes).
+    // Auto-refresh skips setConditionalFormatRules entirely — existing rules remain in
+    // effect and their formulas re-evaluate dynamically against current cell values.
+    // This is correct because: (a) CF formula conditions (mode, svi_vlan_, int_) are
+    // live-evaluated per cell — no rebuild needed for value changes; (b) the Force Sync
+    // buffer (lastRow + CF_ROW_BUFFER) already covers blank rows beyond lastRow; skipping
+    // CF rebuild on auto-refresh preserves that coverage instead of overwriting it with a
+    // smaller range (the previous bug that stripped grey from blank rows 10-20).
+    if (fullRebuild) {
+      const cfLastRow = Math.min(lastRow + CF_ROW_BUFFER, sheet.getMaxRows());
+      const rules = buildConditionalRules(sheet, headers, cfLastRow);
+      sheet.setConditionalFormatRules(rules);
+    }
 
     // 5. Standard Fonts
     dataRange.setFontFamily("Consolas").setFontSize(10).setVerticalAlignment("middle").setHorizontalAlignment("center");
