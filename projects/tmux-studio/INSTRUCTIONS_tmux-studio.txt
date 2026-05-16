@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (cosmetic: copy-layout target prompt example updated to "3,4,6-8". FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (cosmetic: copy-layout target prompt example updated to "3,4,6-8". FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout target picker supports ranges and mixed syntax (e.g. "3-6", "3,4,5-8"); _parse_window_nums() splits by comma then expands N-M tokens via range(); deduped with dict.fromkeys. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout target now accepts comma-separated numbers for multiple targets (e.g. "1,3,5"); deduped via dict.fromkeys; all targets get the same source layout applied sequentially; per-target ✓ confirmation line printed. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: copy-layout subcommand — interactive picker lists all tmux windows numbered; user picks source then target; _list_windows_flat() flattens get_tmux_layout() output; copy_window_layout() normalizes target pane count (kill extras or split-window to add) then applies source layout string via select-layout. Usage: tmux-studio copy-layout. FILES: tmux_studio.py)
@@ -91,6 +92,21 @@ SECTION 3: CLI USAGE
 
   tmux-studio manage                # Interactive JSON session manager
   tmux-studio manage -f /path/to/file.json
+
+  tmux-studio copy-layout           # Copy pane layout from one window to one or more targets
+    Interactive flow:
+      1. Numbered list of all windows across all sessions — pick source number
+      2. Enter target window number(s): single (2), comma list (1,3,5),
+         range (3-6), or mixed (3,4,6-8)
+      3. Each target's pane count is normalized to match source (extras killed,
+         missing panes added with split-window -d), then select-layout applies
+         the source window_layout string. Per-target ✓ confirmation printed.
+
+  tmux-studio pane-info             # Show full running command for each pane in a window
+    Interactive flow:
+      1. Numbered list of all windows — pick one
+      2. Prints table: pane index, active marker (*), PID, full command
+         (via ps -p <pid> -o args=; falls back to pane_current_command if ps fails)
 
   (where 'tmux-studio' = alias for 'python3 ~/.tmux-studio/tmux_studio.py')
 
@@ -370,6 +386,35 @@ cleanup_extras(saved_layout, protected_sessions=None)
     If in safe_sessions but not in saved (i.e. only in protected): skip window cleanup.
     Else: for each window not in saved window indices: kill-window.
 
+--- COPY LAYOUT ---
+
+_list_windows_flat(layout) -> List[Tuple[int, str, str, str]]
+  Flattens get_tmux_layout() output into a numbered list of windows.
+  Each tuple: (display_num, session_name, window_index, window_name).
+  Used by copy-layout and pane-info pickers.
+
+_parse_window_nums(raw) -> List[int]
+  Parses a comma/range combo string such as "3,4,6-8" into a deduplicated
+  list of ints in input order.
+  Algorithm: split by ',' -> for each token, if '-' present expand via range()
+  -> collect -> dedupe with dict.fromkeys() (preserves insertion order).
+
+copy_window_layout(src, tgt)
+  src, tgt: tuples of (session_name, window_index).
+  Reads source pane count and window_layout via list-panes.
+  Reads target pane IDs via list-panes -F #{pane_id}.
+  Normalize target pane count:
+    If target has too many panes: kill excess pane IDs from the end.
+    If target has too few panes: split-window -d until count matches.
+  Apply: select-layout tiled, then select-layout <src_window_layout>.
+
+get_pane_commands(session, win_index) -> List[Dict]
+  Runs tmux list-panes -t {session}:{win_index} with TMUX_SEP fields:
+    pane_index, pane_pid, pane_current_command, pane_active.
+  For each pane: runs ps -p <pid> -o args= for the full command with args.
+  Falls back to pane_current_command if ps returns empty or fails.
+  Returns list of dicts: {index, pid, command, is_active (bool)}.
+
 --- HELPERS ---
 
 ask_confirmation(prompt) -> bool
@@ -388,9 +433,10 @@ send_ssh(target, window_name)
 --- MAIN / ARGPARSE ---
 
 main()
-  Subcommands: save, restore, manage.
+  Subcommands: save, restore, manage, copy-layout, pane-info.
   save/restore: -o/--override (store_true), -f/--file (default path).
   manage: -f/--file only.
+  copy-layout, pane-info: no file args; operate on live tmux state only.
   abs_path = os.path.abspath(args.file).
   Outer try/except KeyboardInterrupt -> print cancelled, sys.exit(1).
 
@@ -442,6 +488,22 @@ main()
       'r <nums>': parse comma-separated ints.
         Validate len == total sessions and set == full index set.
         Reorder saved["sessions"] per given order. Backup + write.
+
+  COPY-LAYOUT FLOW:
+    Check tmux running. Get current layout via get_tmux_layout().
+    _list_windows_flat() -> numbered list. Print it.
+    User picks source number -> resolve to (session, window_index).
+    User enters target number(s) as single/comma/range/mixed string.
+    _parse_window_nums(raw) -> list of target display nums.
+    For each target num: resolve (session, window_index), call copy_window_layout().
+    Print ✓ per target.
+
+  PANE-INFO FLOW:
+    Check tmux running. Get current layout via get_tmux_layout().
+    _list_windows_flat() -> numbered list. Print it.
+    User picks window number -> resolve to (session, window_index).
+    get_pane_commands(session, window_index) -> pane list.
+    Print header, then for each pane: index, active marker (*), pid, full command.
 
 --------------------------------------------------------------------------------
 SECTION 8: KNOWN LIMITATIONS / FUTURE IMPROVEMENTS
