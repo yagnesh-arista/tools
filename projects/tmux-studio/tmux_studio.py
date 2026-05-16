@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.3 | 2026-05-16 15:02:42
+# tmux-studio v260516.4 | 2026-05-16 15:04:50
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -906,7 +906,7 @@ def main():
 
             while True:
                 try:
-                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,5-8): ").strip()
+                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
                     nums = _parse_window_nums(raw)
                     valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
                     if nums and valid: break

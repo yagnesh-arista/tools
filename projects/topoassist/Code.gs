@@ -1,10 +1,10 @@
-// TopoAssist v260516.19 | 2026-05-16 15:02:47
+// TopoAssist v260516.20 | 2026-05-16 15:04:55
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.19";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.20";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2170,13 +2170,21 @@ function buildConditionalRules(sheet, headers, lastRow) {
         }
       });
 
-      // SNAKE-PEER: highlight int_ and snake_int_ as a peer pair when snake_int_ is filled
-      [intIdx, snakeIdx].forEach(idx => {
+      // SNAKE-ROW: highlight all device schema columns when snake_int_ is filled.
+      // A-SNAKE RED and N/A-SNAKE GRAY rules are higher priority and override per-column.
+      const snakeAllDevRanges = headers.reduce((acc, h, i) => {
+        const key = h.slice(0, -(suffix.length));
+        if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
+          acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
+        }
+        return acc;
+      }, []);
+      if (snakeAllDevRanges.length > 0) {
         rules.push(SpreadsheetApp.newConditionalFormatRule()
           .whenFormulaSatisfied(snakeFormula)
           .setBackground("#dbeafe").setFontColor("#1e40af")
-          .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
-      });
+          .setRanges(snakeAllDevRanges).build());
+      }
     }
 
     // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
@@ -5590,6 +5598,14 @@ function generateComplexL3Block(portName, d, ipPrefs, netSettings, vx1VlanSet) {
           lines.push(` no ipv6 address`);
           lines.push(` ipv6 address ${cfg.p2p_v6_first}:${oct2}:${oct3}::1/64`);
         }
+        // TTL reset sub-commands (SSoT — global ACL/route-map/traffic-policy in 081/082 sections).
+        // `no ip policy` / `no traffic-policy` clear stale config when switching TTL method.
+        lines.push(` no ip policy`);
+        lines.push(` no traffic-policy input`);
+        lines.push(` no traffic-policy output`);
+        lines.push(` ip policy route-map SNAKE_SET_TTL`);
+        lines.push(` traffic-policy input SNAKE_TTL_POLICY`);
+        lines.push(` traffic-policy output SNAKE_TTL_POLICY`);
       } else {
         // Regular P2P: last octet = device sheetIndex, configured mask
         if (p2pHasIpv4) {
@@ -6006,7 +6022,9 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
  * Outputs:
  *   - ip access-list SNAKE_TTL_MATCH (permit all IPv4)
  *   - route-map SNAKE_SET_TTL permit 10 (match ACL, set ip ttl 64)
- *   - interface stanzas with `ip policy route-map SNAKE_SET_TTL` per snake port
+ *
+ * Per-interface `ip policy route-map SNAKE_SET_TTL` sub-commands are emitted by
+ * getIpBlock() for each snake port (SSoT — prevents duplicate interface blocks).
  *
  * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}]
  */
@@ -6024,15 +6042,6 @@ function generateSnakeTtlPbrConfig(snakePairs) {
     '!'
   ];
 
-  snakePairs.forEach(({ primaryPort, secondaryPort }) => {
-    lines.push(`interface ${primaryPort}`);
-    lines.push(`   ip policy route-map SNAKE_SET_TTL`);
-    lines.push('!');
-    lines.push(`interface ${secondaryPort}`);
-    lines.push(`   ip policy route-map SNAKE_SET_TTL`);
-    lines.push('!');
-  });
-
   return lines.join('\n');
 }
 
@@ -6040,7 +6049,9 @@ function generateSnakeTtlPbrConfig(snakePairs) {
  * Generates Traffic Policy TTL reset config for all snake interfaces.
  * Outputs:
  *   - traffic-policies block with SNAKE_TTL_POLICY (set ip ttl 64 on all IPv4)
- *   - interface stanzas applying the policy input + output per snake port
+ *
+ * Per-interface `traffic-policy input/output SNAKE_TTL_POLICY` sub-commands are emitted
+ * by getIpBlock() for each snake port (SSoT — prevents duplicate interface blocks).
  *
  * @param {Array} snakePairs — [{primaryPort, secondaryPort, vlan}]
  */
@@ -6059,17 +6070,6 @@ function generateSnakeTtlTrafficPolicyConfig(snakePairs) {
     '   !',
     '!'
   ];
-
-  snakePairs.forEach(({ primaryPort, secondaryPort }) => {
-    lines.push(`interface ${primaryPort}`);
-    lines.push(`   traffic-policy input SNAKE_TTL_POLICY`);
-    lines.push(`   traffic-policy output SNAKE_TTL_POLICY`);
-    lines.push('!');
-    lines.push(`interface ${secondaryPort}`);
-    lines.push(`   traffic-policy input SNAKE_TTL_POLICY`);
-    lines.push(`   traffic-policy output SNAKE_TTL_POLICY`);
-    lines.push('!');
-  });
 
   return lines.join('\n');
 }
