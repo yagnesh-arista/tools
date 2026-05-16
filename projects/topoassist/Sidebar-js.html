@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.26 | 2026-05-16 15:53:02 -->
+<!-- TopoAssist v260516.27 | 2026-05-16 15:57:25 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.26";  // keep in sync with Code.gs
+const APP_VERSION = "260516.27";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -3034,6 +3034,25 @@ function runValidation(logIssues) {
         }
       }
     });
+  }
+
+  // =========================================================
+  // CHECK GROUP 9: SNAKE BRIDGE MAC MISSING
+  // Static ARP entries for the snake VRF chain require bridge_mac to be set.
+  // If any snake ports exist and bridge_mac is not configured, the 080_SNAKE
+  // section will only emit a placeholder comment — no ARP or routing entries.
+  // =========================================================
+  if (auditFlagSnakeBridgeMac) {
+    const _hasSnakePorts = Object.values(allNodesData).some(n => n.details && (n.details.isSnakePrimary || n.details.isSnakeSecondary));
+    if (_hasSnakePorts && !_snakeBridgeMacConfigured) {
+      auditCheckHadIssue.auditFlagSnakeBridgeMac = 1;
+      const _snakeMacErr = 'Snake Bridge MAC: bridge_mac not set in Auto Config → static ARP + egress-vrf routes will not generate. Set Bridge MAC in Auto Config → Snake Settings.';
+      if (!validationErrors['_snake_bridge_mac']) validationErrors['_snake_bridge_mac'] = [];
+      if (!validationErrors['_snake_bridge_mac'].includes(_snakeMacErr)) {
+        validationErrors['_snake_bridge_mac'].push(_snakeMacErr);
+        portErrorCount++;
+      }
+    }
   }
 
   // =========================================================
@@ -10559,6 +10578,7 @@ var auditFlagMlagPeerLink       = localStorage.getItem('auditFlagMlagPeerLink') 
 var auditFlagUndeclaredMlag     = localStorage.getItem('auditFlagUndeclaredMlag')      !== 'false';
 var auditFlagSnakeIpType        = localStorage.getItem('auditFlagSnakeIpType')         !== 'false';
 var auditFlagIxiaIpType         = localStorage.getItem('auditFlagIxiaIpType')          !== 'false';
+var auditFlagSnakeBridgeMac     = localStorage.getItem('auditFlagSnakeBridgeMac')      !== 'false';
 
 // Audit run state — tracks which checks fired issues in the last run
 let auditHasRun = false;
@@ -10568,6 +10588,7 @@ let deviceMetadata = {};        // devName → {model: "", rack: ""} — persist
 let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal VLAN IDs from EOS
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _snakeTrafficFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeTrafficWarning()
+let _snakeBridgeMacConfigured = true; // set from topology data; true by default to avoid false positives before first load
 let _leftDev   = null; // device name for the left link strip (used by Copy, View, Push)
 let _rightDev  = null; // device name for the right link strip (used by Copy, View, Push)
 let _leftPort  = null; // interface name for left strip (null = device-level push, no port filter)

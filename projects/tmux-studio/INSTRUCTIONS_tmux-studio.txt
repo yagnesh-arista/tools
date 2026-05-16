@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (fix: pane-info now shows EOS CLI command running inside SSH panes via _get_pane_eos_cli() — scans last 200 pane lines backward for '# <cmd>' pattern; clone-window reverted to layout-only (replay_window_cli + _SHELL_NAMES removed); pane-info display condensed to single line per pane. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
   Previous: 2026-05-16 (cosmetic: copy-layout target prompt example updated to "3,4,6-8". FILES: tmux_studio.py)
@@ -95,13 +96,8 @@ SECTION 3: CLI USAGE
   tmux-studio manage                # Interactive JSON session manager
   tmux-studio manage -f /path/to/file.json
 
-  tmux-studio clone-window          # Copy layout + replay CLI commands from source to target(s)
-    Same picker flow as copy-layout.
-    After applying the layout, replay_window_cli() sends each non-shell source
-    pane command to the corresponding target pane via tmux send-keys.
-    Source window name is substituted with target window name in each command
-    (e.g. "ssh admin@mrvp454" → "ssh admin@mrvp455").
-    Panes whose command is a bare shell (-bash, bash, -zsh, etc.) are skipped.
+  tmux-studio clone-window          # Copy pane layout from source to target(s) — layout only
+    Same picker flow and behavior as copy-layout. Alias with a more intuitive name.
 
   tmux-studio copy-layout           # Copy pane layout from one window to one or more targets
     Interactive flow:
@@ -410,45 +406,32 @@ _parse_window_nums(raw) -> List[int]
   Algorithm: split by ',' -> for each token, if '-' present expand via range()
   -> collect -> dedupe with dict.fromkeys() (preserves insertion order).
 
-_SHELL_NAMES: frozenset
-  {"-bash", "bash", "-zsh", "zsh", "-sh", "sh"} — commands treated as idle
-  shell prompts; skipped by replay_window_cli() (nothing to replay).
-
 copy_window_layout(src, tgt)
-  src, tgt: tuples of (session_name, window_index).
-  Reads source pane count and window_layout via list-panes.
+  src, tgt: window dicts with {session, win_index, pane_count, layout}.
   Reads target pane IDs via list-panes -F #{pane_id}.
   Normalize target pane count:
     If target has too many panes: kill excess pane IDs from the end.
     If target has too few panes: split-window -d until count matches.
-  Apply: select-layout tiled, then select-layout <src_window_layout>.
+  Apply: select-layout <src_window_layout>.
+
+_get_pane_eos_cli(pane_target) -> str
+  Runs tmux capture-pane -t <pane_target> -p -S -200 (last 200 lines).
+  Scans lines in reverse for '# ' (EOS prompt suffix).
+  Returns text after the last '# ' that is non-empty (the EOS CLI command).
+  Returns '' when the pane is at an idle prompt (no command after '#').
 
 get_pane_commands(session, win_index) -> List[Dict]
   Runs tmux list-panes -t {session}:{win_index} with TMUX_SEP fields:
     pane_index, pane_pid, pane_current_command, pane_active.
   For each pane:
-    1. ps --ppid <pid> -o args= — gets direct child processes of the shell.
-       If any children exist, uses child_cmds[0] as the displayed command.
-       This correctly shows "python3 watch.py" instead of "-bash" when a
-       foreground command is running inside the pane.
-    2. Fallback: ps -p <pid> -o args= (the shell itself, e.g. -bash) when
-       no child process exists (pane is idle at prompt).
-    3. Last resort: pane_current_command from tmux.
-    4. tmux capture-pane -t {target}.{idx} -p — last non-empty line of the
-       pane's screen content, stored as screen_line. Shows EOS CLI state inside
-       SSH sessions that ps cannot see.
-  Returns list of dicts: {index, pid, command, screen_line, is_active (bool)}.
-
-replay_window_cli(src, tgt)
-  src, tgt: window dicts with {session, win_index, win_name}.
-  Sleeps 0.3s (lets layout settle after copy_window_layout).
-  Calls get_pane_commands(src) for source pane commands.
-  Gets target pane indices via list-panes -F #{pane_index}.
-  For each source/target pane pair (by position):
-    - Skips if command is in _SHELL_NAMES (idle shell, nothing to replay).
-    - Replaces src win_name with tgt win_name in the command string.
-    - Sends command to target pane via tmux send-keys + Enter.
-  Stops when either list is exhausted (extra target panes left empty).
+    1. ps --ppid <pid> -o args= — child processes of the shell.
+       If found, uses child_cmds[0] as local_cmd.
+    2. Fallback: ps -p <pid> -o args= (the shell itself, e.g. -bash).
+    3. If local_cmd starts with "ssh": calls _get_pane_eos_cli() to extract
+       the EOS CLI command running on the remote device from the pane screen.
+       Uses eos_cli as command if non-empty, else local_cmd (ssh ...).
+    4. Non-SSH panes: command = local_cmd.
+  Returns list of dicts: {index, pid, command, is_active (bool)}.
 
 --- HELPERS ---
 
@@ -526,11 +509,8 @@ main()
 
   CLONE-WINDOW FLOW:
     Same picker flow as COPY-LAYOUT (source + targets).
-    For each target: copy_window_layout(src, tgt) then replay_window_cli(src, tgt).
-    replay_window_cli: waits 0.3s, calls get_pane_commands(src), gets target pane
-    indices, iterates pane pairs by position — skips _SHELL_NAMES, substitutes
-    src win_name with tgt win_name, sends command via tmux send-keys + Enter.
-    Per-target ✓ printed with "(layout + CLI)" label.
+    For each target: copy_window_layout(src, tgt) — layout only, no CLI replay.
+    Per-target ✓ printed.
 
   COPY-LAYOUT FLOW:
     Check tmux running. Get current layout via get_tmux_layout().
@@ -546,7 +526,8 @@ main()
     _list_windows_flat() -> numbered list. Print it.
     User picks window number -> resolve to (session, window_index).
     get_pane_commands(session, window_index) -> pane list.
-    Print header, then for each pane: index, active marker (*), pid, full command.
+    Print header, then for each pane: single line — index, [active], command.
+    For SSH panes, command is the EOS CLI extracted from screen (not "ssh ...").
 
 --------------------------------------------------------------------------------
 SECTION 8: KNOWN LIMITATIONS / FUTURE IMPROVEMENTS
