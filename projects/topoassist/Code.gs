@@ -1,10 +1,10 @@
-// TopoAssist v260516.13 | 2026-05-16 12:41:44
+// TopoAssist v260516.14 | 2026-05-16 14:20:06
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2955,6 +2955,11 @@ function getTopologyData(forceSync, isColorEnabled) {
           if (snakeSelfLoop && snakeSelfLoop.isSelfLoop) {
             details.peerDev = snakeSelfLoop.dev;
             details.peerPort = snakeSelfLoop.port;
+          }
+          // Sync full details into devicePorts so node.ports has peerDev/peerPort/sp_mode_/etc
+          // (the forEach block above creates secondary ports with details:{} — replace it here)
+          if (devicePorts[devName] && devicePorts[devName][snakePort]) {
+            devicePorts[devName][snakePort].details = details;
           }
           allCollectedNodes.push({
             devObj: device, deviceName: devName, pName: snakePort, port: snakePort,
