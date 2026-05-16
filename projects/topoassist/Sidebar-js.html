@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.10 | 2026-05-16 12:00:22 -->
+<!-- TopoAssist v260516.11 | 2026-05-16 12:28:59 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.10";  // keep in sync with Code.gs
+const APP_VERSION = "260516.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -17499,52 +17499,45 @@ function clearConfigSearch() {
   input.focus();
 }
 
-/* --- UPDATED: showConfigModal with Shortcuts & Aliases --- */
+function _renderConfigIntoView(configText, preId, searchInputId, clearBtnId, badgeId) {
+  currentRawConfig = _expandTaCleanDisplay(configText);
+  const body     = document.getElementById(preId);
+  const inp      = document.getElementById(searchInputId);
+  const clearBtn = document.getElementById(clearBtnId);
+  const badge    = document.getElementById(badgeId);
+  if (body) body.innerHTML = _renderWithLineNums(
+    currentRawConfig.split('\n').map((t, i) => ({text: t, lineNum: i + 1}))
+  );
+  if (inp) {
+    inp.value = '';
+    inp.oninput = _makeConfigSearchHandler({inp, body, clearBtn, badge});
+  }
+  if (clearBtn) clearBtn.classList.add('hidden');
+  if (badge)    badge.classList.add('hidden');
+  return {body, inp, clearBtn, badge};
+}
+
 function showConfigModal(deviceName, configText, opts) {
   if (!configText) return;
-
-  // Expand ta-clean-* markers to paste-ready EOS commands for display and clipboard
-  currentRawConfig = _expandTaCleanDisplay(configText);
-
   const modal = document.getElementById("configModal");
-  const overlay = document.getElementById("editOverlay");
-  const body = document.getElementById("configBody");
   const title = document.getElementById("configModalTitle");
-
-  const searchInput = document.getElementById("configSearch");
-  const clearBtn = document.getElementById("configSearchClear");
-  const matchBadge = document.getElementById("configMatchCount");
-
-  // Reset UI State
   title.innerText = "Config: " + _fmtDev(deviceName);
-  searchInput.value = "";
-  clearBtn.classList.add("hidden");
-  matchBadge.classList.add("hidden");
-
-  // Show Full Config initially (with line numbers for error correlation)
-  body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map((text, i) => ({text, lineNum: i + 1})));
-
-  // Display Modal — skip auto-minimize when called from inside another modal (e.g. Config Center)
+  const { inp: searchInput } = _renderConfigIntoView(
+    configText, 'configBody', 'configSearch', 'configSearchClear', 'configMatchCount'
+  );
   if (!opts || !opts.noAutoMinimize) _autoMinimizeOpenModal();
   setActiveModalChip('configModal');
   modal.style.display = "flex";
   searchInput.focus();
-
-  // --- 1. KEYBOARD SHORTCUTS (Esc to Clear) ---
-  searchInput.onkeydown = function (e) {
+  searchInput.onkeydown = function(e) {
     if (e.key === "Escape") {
       if (this.value.trim() !== "") {
-        // If text exists, CLEAR it and keep modal open
         e.preventDefault();
         e.stopPropagation();
         clearConfigSearch();
       }
-      // If empty, let the event bubble up to the Global Handler (which closes the modal)
     }
   };
-
-  // --- 2. SMART FILTER LOGIC ---
-  searchInput.oninput = _makeConfigSearchHandler({inp: searchInput, body, clearBtn, badge: matchBadge});
 }
 
 /**
@@ -18771,7 +18764,6 @@ function _viewGeneratedConfigByName(name) {
 function _openCfgPanelView(name) {
   var text = _getConfigTextForDevice(name);
   if (!text) return;
-  currentRawConfig = _expandTaCleanDisplay(text);
   _configViewContext = { deviceName: name, portFilter: null };
   var title = document.getElementById('cfgViewTitle');
   if (title) title.innerHTML =
@@ -18780,21 +18772,14 @@ function _openCfgPanelView(name) {
     + '<span>' + escapeHtml(_fmtDev(name)) + '</span>';
   var genSub = document.getElementById('cfgNavGenSub');
   if (genSub) genSub.textContent = '↳ ' + _fmtDev(name);
-  var body = document.getElementById('cfgViewBody');
-  if (body) body.innerHTML = _renderWithLineNums(currentRawConfig.split('\n').map(function(t, i) { return {text: t, lineNum: i + 1}; }));
-  var clr = document.getElementById('cfgViewSearchClear');
-  var badge = document.getElementById('cfgViewMatchCount');
-  var inp = document.getElementById('cfgViewSearch');
+  var { inp } = _renderConfigIntoView(text, 'cfgViewBody', 'cfgViewSearch', 'cfgViewSearchClear', 'cfgViewMatchCount');
   if (inp) {
-    inp.value = '';
-    inp.oninput = _makeConfigSearchHandler({inp, body, clearBtn: clr, badge});
     inp.onkeydown = function(e) {
       if (e.key === 'Escape' && inp.value.trim() !== '') {
         e.preventDefault(); e.stopPropagation(); _clearCfgViewSearch();
       }
     };
   }
-  if (badge) badge.classList.add('hidden');
   var isNonEos = _isNonEosDev(name);
   var pushDiv   = document.getElementById('cfgViewPushDiv');
   var pushIface = document.getElementById('btnCfgViewPushIface');

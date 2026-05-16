@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// topoassist v260516.9 | 2026-05-16 11:56:14
+// topoassist v260516.11 | 2026-05-16 12:30:37
 // Node.js runner for Tests-client.html logic — no dependencies, no jsdom.
 // SYNC: applyHint and lockFirst below must match Sidebar-js.html (see SYNC comments there).
 
@@ -473,6 +473,92 @@ currentRawConfig = 'ip routing\ninterface defaults\n no ip address\ninterface Et
 t('_buildCopyInterfaceText: excludes interface defaults section',
   _buildCopyInterfaceText('DEV1', null),
   'interface Et1/1\n description peer');
+
+// ── _renderConfigIntoView ────────────────────────────────────────────────
+// SYNC: _renderConfigIntoView must match Sidebar-js.html.
+// Tests the currentRawConfig assignment, search-input reset, and hidden-class
+// application. DOM interactions are stubbed inline.
+{
+  function _makeStubEl() {
+    return { innerHTML: '', value: '', oninput: null, classList: { _added: [], add(c) { this._added.push(c); } } };
+  }
+
+  let _mockRenderDom = {};
+  function _mockGetById(id) { return _mockRenderDom[id] || null; }
+  const _origDocument = global.document;
+  global.document = { getElementById: _mockGetById };
+  const _savedRenderWithLineNums = global._renderWithLineNums;
+  global._renderWithLineNums = () => '<rendered>';
+  const _savedMakeHandler = global._makeConfigSearchHandler;
+  global._makeConfigSearchHandler = () => () => {};
+
+  // SYNC: copy of _renderConfigIntoView from Sidebar-js.html
+  function _renderConfigIntoView(configText, preId, searchInputId, clearBtnId, badgeId) {
+    currentRawConfig = _expandTaCleanDisplay(configText);
+    const body     = document.getElementById(preId);
+    const inp      = document.getElementById(searchInputId);
+    const clearBtn = document.getElementById(clearBtnId);
+    const badge    = document.getElementById(badgeId);
+    if (body) body.innerHTML = _renderWithLineNums(
+      currentRawConfig.split('\n').map((t, i) => ({text: t, lineNum: i + 1}))
+    );
+    if (inp) {
+      inp.value = '';
+      inp.oninput = _makeConfigSearchHandler({inp, body, clearBtn, badge});
+    }
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (badge)    badge.classList.add('hidden');
+    return {body, inp, clearBtn, badge};
+  }
+
+  function setupRenderDom() {
+    _mockRenderDom = {
+      configBody:         _makeStubEl(),
+      configSearch:       _makeStubEl(),
+      configSearchClear:  _makeStubEl(),
+      configMatchCount:   _makeStubEl(),
+    };
+  }
+
+  setupRenderDom();
+  _renderConfigIntoView('interface Et1/1\n ip address 10.0.0.1/30',
+    'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: sets currentRawConfig to expanded text',
+    currentRawConfig, 'interface Et1/1\n ip address 10.0.0.1/30');
+
+  setupRenderDom();
+  _renderConfigIntoView('interface Et1/1', 'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: resets search input value to empty string',
+    _mockRenderDom.configSearch.value, '');
+
+  setupRenderDom();
+  _renderConfigIntoView('interface Et1/1', 'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: wires inp.oninput handler',
+    typeof _mockRenderDom.configSearch.oninput, 'function');
+
+  setupRenderDom();
+  _renderConfigIntoView('interface Et1/1', 'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: hides badge (adds hidden class)',
+    _mockRenderDom.configMatchCount.classList._added.includes('hidden'), true);
+  t('_renderConfigIntoView: hides clearBtn (adds hidden class)',
+    _mockRenderDom.configSearchClear.classList._added.includes('hidden'), true);
+
+  setupRenderDom();
+  const ret = _renderConfigIntoView('test', 'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: returns {body, inp, clearBtn, badge} object',
+    !!(ret && ret.body && ret.inp && ret.clearBtn && ret.badge), true);
+
+  setupRenderDom();
+  _renderConfigIntoView('ta-clean-et Et1/1\ninterface Et1/1\n switchport',
+    'configBody', 'configSearch', 'configSearchClear', 'configMatchCount');
+  t('_renderConfigIntoView: expands ta-clean markers via _expandTaCleanDisplay',
+    currentRawConfig.includes('default switchport trunk allowed vlan'), true);
+
+  // Restore
+  global.document = _origDocument;
+  global._renderWithLineNums = _savedRenderWithLineNums;
+  global._makeConfigSearchHandler = _savedMakeHandler;
+}
 
 // ── Report ────────────────────────────────────────────────────────────────
 
