@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.14 | 2026-05-16 14:20:06 -->
+<!-- TopoAssist v260516.15 | 2026-05-16 14:20:45 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.14";  // keep in sync with Code.gs
+const APP_VERSION = "260516.15";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6785,13 +6785,17 @@ function getPeerId(portId) {
   let lines = portMap[portId];
   if (!lines || lines.length === 0) return null;
 
-  // Get the first connected link
+  // Prefer snake link — prevents wrong peer when port has both snake + regular links
+  for (let linkId of lines) {
+    let linkObj = linkMap[linkId];
+    if (linkObj && linkObj.type === 'snake') {
+      return (linkObj.u === portId) ? linkObj.v : linkObj.u;
+    }
+  }
+
   let linkId = lines[0];
   let linkObj = linkMap[linkId];
-
   if (!linkObj) return null;
-
-  // If I am U, return V. If I am V, return U.
   return (linkObj.u === portId) ? linkObj.v : linkObj.u;
 }
 
