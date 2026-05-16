@@ -404,10 +404,15 @@ _list_windows_flat(layout) -> List[Tuple[int, str, str, str]]
   Used by copy-layout and pane-info pickers.
 
 _parse_window_nums(raw) -> List[int]
+  Module-level helper (used by copy-layout, clone-window).
   Parses a comma/range combo string such as "3,4,6-8" into a deduplicated
   list of ints in input order.
   Algorithm: split by ',' -> for each token, if '-' present expand via range()
   -> collect -> dedupe with dict.fromkeys() (preserves insertion order).
+
+_SHELL_NAMES: frozenset
+  {"-bash", "bash", "-zsh", "zsh", "-sh", "sh"} — commands treated as idle
+  shell prompts; skipped by replay_window_cli() (nothing to replay).
 
 copy_window_layout(src, tgt)
   src, tgt: tuples of (session_name, window_index).
@@ -429,7 +434,21 @@ get_pane_commands(session, win_index) -> List[Dict]
     2. Fallback: ps -p <pid> -o args= (the shell itself, e.g. -bash) when
        no child process exists (pane is idle at prompt).
     3. Last resort: pane_current_command from tmux.
-  Returns list of dicts: {index, pid, command, is_active (bool)}.
+    4. tmux capture-pane -t {target}.{idx} -p — last non-empty line of the
+       pane's screen content, stored as screen_line. Shows EOS CLI state inside
+       SSH sessions that ps cannot see.
+  Returns list of dicts: {index, pid, command, screen_line, is_active (bool)}.
+
+replay_window_cli(src, tgt)
+  src, tgt: window dicts with {session, win_index, win_name}.
+  Sleeps 0.3s (lets layout settle after copy_window_layout).
+  Calls get_pane_commands(src) for source pane commands.
+  Gets target pane indices via list-panes -F #{pane_index}.
+  For each source/target pane pair (by position):
+    - Skips if command is in _SHELL_NAMES (idle shell, nothing to replay).
+    - Replaces src win_name with tgt win_name in the command string.
+    - Sends command to target pane via tmux send-keys + Enter.
+  Stops when either list is exhausted (extra target panes left empty).
 
 --- HELPERS ---
 
@@ -449,10 +468,10 @@ send_ssh(target, window_name)
 --- MAIN / ARGPARSE ---
 
 main()
-  Subcommands: save, restore, manage, copy-layout, pane-info.
+  Subcommands: save, restore, manage, copy-layout, clone-window, pane-info.
   save/restore: -o/--override (store_true), -f/--file (default path).
   manage: -f/--file only.
-  copy-layout, pane-info: no file args; operate on live tmux state only.
+  copy-layout, clone-window, pane-info: no file args; operate on live tmux state only.
   abs_path = os.path.abspath(args.file).
   Outer try/except KeyboardInterrupt -> print cancelled, sys.exit(1).
 
@@ -504,6 +523,14 @@ main()
       'r <nums>': parse comma-separated ints.
         Validate len == total sessions and set == full index set.
         Reorder saved["sessions"] per given order. Backup + write.
+
+  CLONE-WINDOW FLOW:
+    Same picker flow as COPY-LAYOUT (source + targets).
+    For each target: copy_window_layout(src, tgt) then replay_window_cli(src, tgt).
+    replay_window_cli: waits 0.3s, calls get_pane_commands(src), gets target pane
+    indices, iterates pane pairs by position — skips _SHELL_NAMES, substitutes
+    src win_name with tgt win_name, sends command via tmux send-keys + Enter.
+    Per-target ✓ printed with "(layout + CLI)" label.
 
   COPY-LAYOUT FLOW:
     Check tmux running. Get current layout via get_tmux_layout().
