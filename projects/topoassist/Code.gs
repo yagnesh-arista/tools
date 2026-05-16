@@ -1,10 +1,10 @@
-// TopoAssist v260516.8 | 2026-05-16 11:51:13
+// TopoAssist v260516.10 | 2026-05-16 12:01:03
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.8";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260516.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2154,6 +2154,14 @@ function buildConditionalRules(sheet, headers, lastRow) {
             .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
         }
       });
+
+      // SNAKE-PEER: highlight int_ and snake_int_ as a peer pair when snake_int_ is filled
+      [intIdx, snakeIdx].forEach(idx => {
+        rules.push(SpreadsheetApp.newConditionalFormatRule()
+          .whenFormulaSatisfied(snakeFormula)
+          .setBackground("#dbeafe").setFontColor("#1e40af")
+          .setRanges([sheet.getRange(3, idx, lastRow - 2, 1)]).build());
+      });
     }
 
     // ── 5. QUALITY WARNINGS ───────────────────────────────────────────────────
@@ -2921,6 +2929,11 @@ function getTopologyData(forceSync, isColorEnabled) {
             else devicePorts[dev][port].connected = true;
           }
         });
+        // Set peerDev/peerPort on the primary port node (already in allCollectedNodes from main loop)
+        [[devA, portA, val.dev, val.port], [val.dev, val.port, devA, portA]].forEach(([myDev, myPort, pd, pp]) => {
+          const n = allCollectedNodes.find(nn => nn.deviceName === myDev && nn.pName === myPort);
+          if (n) { n.details.peerDev = pd; n.details.peerPort = pp; }
+        });
       });
 
       // Add snake secondary ports to allCollectedNodes for config generation
@@ -2937,6 +2950,12 @@ function getTopologyData(forceSync, isColorEnabled) {
           details.sheetIndex = device.sheetIndex;
           details.category = determineCategory(details, legends);
           details.isSnakeSecondary = true;
+          // Set peerDev/peerPort so showTooltip strict-sync and config descriptions show the peer
+          const snakeSelfLoop = topo.globalLinkMap ? topo.globalLinkMap.get(devName + ":" + snakePort) : null;
+          if (snakeSelfLoop && snakeSelfLoop.isSelfLoop) {
+            details.peerDev = snakeSelfLoop.dev;
+            details.peerPort = snakeSelfLoop.port;
+          }
           allCollectedNodes.push({
             devObj: device, deviceName: devName, pName: snakePort, port: snakePort,
             details: details, rowId: -1
