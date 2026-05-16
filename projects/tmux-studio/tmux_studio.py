@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# tmux-studio v260420.1 | 2026-04-20 01:32:16 | git commit: 24977e6
-Tmux Studio - Final Production Build
+# tmux-studio v260516.1 | 2026-05-16 14:49:00
+"""Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
 1. Strict Structure Sync: Matches windows by Index, panes by Order.
@@ -588,6 +588,41 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
                 subprocess.run(["tmux", "kill-window", "-t", f"{s_name}:{w_idx}"])
 
 # =============================================================================
+# COPY LAYOUT
+# =============================================================================
+def _list_windows_flat(layout: Dict) -> List[Dict]:
+    flat = []
+    for sess in layout.get("sessions", []):
+        for win in sess["windows"]:
+            flat.append({
+                "session":   sess["session_name"],
+                "win_index": win["window_index"],
+                "win_name":  win["window_name"],
+                "pane_count": len(win["panes"]),
+                "layout":    win["window_layout"],
+            })
+    return flat
+
+def copy_window_layout(src: Dict, tgt: Dict) -> None:
+    tgt_target = f"{tgt['session']}:{tgt['win_index']}"
+    src_count  = src["pane_count"]
+
+    tgt_pane_ids = subprocess.run(
+        ["tmux", "list-panes", "-t", tgt_target, "-F", "#{pane_id}"],
+        capture_output=True, text=True
+    ).stdout.strip().splitlines()
+    tgt_count = len(tgt_pane_ids)
+
+    if tgt_count > src_count:
+        for pane_id in tgt_pane_ids[src_count:]:
+            subprocess.run(["tmux", "kill-pane", "-t", pane_id], capture_output=True)
+    elif tgt_count < src_count:
+        for _ in range(src_count - tgt_count):
+            subprocess.run(["tmux", "split-window", "-t", tgt_target, "-d"], capture_output=True)
+
+    subprocess.run(["tmux", "select-layout", "-t", tgt_target, src["layout"]], capture_output=True)
+
+# =============================================================================
 # COMMANDS
 # =============================================================================
 def main():
@@ -607,8 +642,10 @@ def main():
     p_manage = sub.add_parser("manage")
     p_manage.add_argument("-f", "--file", default=get_default_filepath())
 
+    sub.add_parser("copy-layout")
+
     args = parser.parse_args()
-    abs_path = os.path.abspath(args.file)
+    abs_path = os.path.abspath(args.file) if hasattr(args, "file") else None
 
     try:
         if args.cmd == "save":
@@ -828,6 +865,56 @@ def main():
                     except ValueError:
                         print(f"{Colors.RED}Format error. Use: r 2,1,3{Colors.RESET}")
         # ----------------------------------------
+
+        elif args.cmd == "copy-layout":
+            if not tmux_running():
+                print(f"{Colors.RED}No Tmux running{Colors.RESET}"); sys.exit(1)
+
+            current = get_tmux_layout()
+            windows = _list_windows_flat(current)
+
+            if len(windows) < 2:
+                print(f"{Colors.RED}Need at least 2 windows to copy a layout.{Colors.RESET}"); sys.exit(1)
+
+            print(f"\n{Colors.BLUE}Available Windows:{Colors.RESET}")
+            for i, w in enumerate(windows, 1):
+                panes = f"{w['pane_count']} pane{'s' if w['pane_count'] != 1 else ''}"
+                print(f"  {Colors.CYAN}{i}.{Colors.RESET} {w['session']}:{w['win_index']} [{w['win_name']}] — {panes}")
+
+            while True:
+                try:
+                    src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
+                    if 1 <= src_num <= len(windows): break
+                    print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                except ValueError:
+                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+
+            src = windows[src_num - 1]
+            src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
+            print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
+
+            while True:
+                try:
+                    tgt_num = int(input(f"Select {Colors.ORANGE}target{Colors.RESET} window (number): ").strip())
+                    if 1 <= tgt_num <= len(windows) and tgt_num != src_num: break
+                    if tgt_num == src_num:
+                        print(f"{Colors.RED}Source and target must be different.{Colors.RESET}")
+                    else:
+                        print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                except ValueError:
+                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+
+            tgt = windows[tgt_num - 1]
+            tgt_panes = f"{tgt['pane_count']} pane{'s' if tgt['pane_count'] != 1 else ''}"
+
+            print(f"\n  Source: {Colors.GREEN}{src['session']}:{src['win_index']} [{src['win_name']}]{Colors.RESET} — {src_panes}")
+            print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes} → will become {src_panes}")
+
+            if not ask_confirmation("Apply source layout to target window?"):
+                print(f"{Colors.RED}Cancelled.{Colors.RESET}"); sys.exit(0)
+
+            copy_window_layout(src, tgt)
+            print(f"\n{Colors.GREEN}Layout copied: [{src['win_name']}] → [{tgt['win_name']}]{Colors.RESET}")
 
     except KeyboardInterrupt:
         print(f"\n{Colors.RED}Operation cancelled.{Colors.RESET}")
