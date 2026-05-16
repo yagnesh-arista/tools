@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.23 | 2026-05-16 15:28:51 -->
+<!-- TopoAssist v260516.24 | 2026-05-16 15:32:03 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.23";  // keep in sync with Code.gs
+const APP_VERSION = "260516.24";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -2551,8 +2551,8 @@ function runValidation(logIssues) {
       if (auditFlagMissingIpSvi) configErrors.push(`Incomplete SVI: SVI is active but IP Type is blank.`);
     }
 
-    // E. MISSING IP FOR L3
-    if (mode.startsWith("l3") && !portName.startsWith("vlan") && !hasIp) {
+    // E. MISSING IP FOR L3 (skip snake ports — blank ip_type_ is correct, system forces p2p internally)
+    if (mode.startsWith("l3") && !portName.startsWith("vlan") && !hasIp && !d.isSnakePrimary && !d.isSnakeSecondary) {
       auditCheckHadIssue.auditFlagMissingIpL3 = (auditCheckHadIssue.auditFlagMissingIpL3 || 0) + 1;
       if (auditFlagMissingIpL3) configErrors.push(`Incomplete L3: Routed interface (${mode}) requires IP Type.`);
     }
@@ -2705,10 +2705,12 @@ function runValidation(logIssues) {
     }
 
     // R. SNAKE PORT WITH WRONG IP TYPE
+    // Blank ip_type_ is correct for snake ports (system forces p2p internally); only fire when
+    // the user has explicitly set ip_type_ to a non-p2p value.
     if (d.isSnakePrimary || d.isSnakeSecondary) {
-      if (!ipType.includes('p2p')) {
+      if (d.ip_type_ && d.ip_type_.trim() && !ipType.includes('p2p')) {
         auditCheckHadIssue.auditFlagSnakeIpType = (auditCheckHadIssue.auditFlagSnakeIpType || 0) + 1;
-        if (auditFlagSnakeIpType) configErrors.push(`Wrong IP Type: Snake loopback port requires ip_type_=p2p — '${d.ip_type_ || 'blank'}' generates wrong address/command in SNAKE VRF.`);
+        if (auditFlagSnakeIpType) configErrors.push(`Wrong IP Type: Snake loopback port requires ip_type_=p2p — '${d.ip_type_}' generates wrong address/command in SNAKE VRF.`);
       }
     }
 
@@ -2870,6 +2872,9 @@ function runValidation(logIssues) {
       const node = allNodesData[pid];
       if (!node || !node.details || !node.name) return;
       const d = node.details;
+
+      // Snake primary+secondary share the same VLAN intentionally — skip from conflict tracking.
+      if (d.isSnakePrimary || d.isSnakeSecondary) return;
 
       let logicalOwner = node.name;
       if (d.po_ && d.po_.trim() !== "") logicalOwner = d.po_.trim();
