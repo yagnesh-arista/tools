@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.18 | 2026-05-16 14:28:25 -->
+<!-- TopoAssist v260516.19 | 2026-05-16 15:02:55 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.18";  // keep in sync with Code.gs
+const APP_VERSION = "260516.19";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7013,7 +7013,11 @@ function selectPortOrLink(portId) {
   let peer = getPeerId(portId);
   if (peer) {
     let lines = portMap[portId];
-    if (lines && lines.length > 0) { selectLine(lines[0]); }
+    if (lines && lines.length > 0) {
+      // SSoT: getPeerId already chose the correct peer (prefers snake); find the link that connects to it.
+      const correctLinkId = lines.find(lid => { const lk = linkMap[lid]; return lk && (lk.u === peer || lk.v === peer); });
+      selectLine(correctLinkId || lines[0]);
+    }
   } else {
     // Disconnected / Single Port Logic
     if (selectedLineId && linkMap[selectedLineId]) { let old = linkMap[selectedLineId]; restoreLinkStyle(old); }
@@ -8980,7 +8984,7 @@ function render(data) {
 
     // Map Links
     links.forEach(function (link) {
-      linkMap[link.id] = { u: link.u, v: link.v, id: link.id };
+      linkMap[link.id] = { u: link.u, v: link.v, id: link.id, type: link.type };
       if (!portMap[link.u]) portMap[link.u] = []; portMap[link.u].push(link.id);
       if (!portMap[link.v]) portMap[link.v] = []; portMap[link.v].push(link.id);
     });

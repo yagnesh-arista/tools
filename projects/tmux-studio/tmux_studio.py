@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.2 | 2026-05-16 14:53:42
+# tmux-studio v260516.3 | 2026-05-16 15:02:42
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -893,10 +893,21 @@ def main():
             src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
             print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
 
+            def _parse_window_nums(raw):
+                nums = []
+                for tok in raw.split(','):
+                    tok = tok.strip()
+                    if '-' in tok:
+                        a, b = tok.split('-', 1)
+                        nums.extend(range(int(a), int(b) + 1))
+                    elif tok:
+                        nums.append(int(tok))
+                return list(dict.fromkeys(nums))  # dedupe, preserve order
+
             while True:
                 try:
-                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 1,3,5): ").strip()
-                    nums = list(dict.fromkeys(int(x.strip()) for x in raw.split(',') if x.strip()))
+                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,5-8): ").strip()
+                    nums = _parse_window_nums(raw)
                     valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
                     if nums and valid: break
                     if any(n == src_num for n in nums):
@@ -904,7 +915,7 @@ def main():
                     else:
                         print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
                 except ValueError:
-                    print(f"{Colors.RED}Enter comma-separated numbers (e.g. 9 or 1,3,5).{Colors.RESET}")
+                    print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
 
             targets = [windows[n - 1] for n in nums]
 
