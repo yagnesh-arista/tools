@@ -1,4 +1,4 @@
-<!-- TopoAssist v260516.29 | 2026-05-16 15:58:32 -->
+<!-- TopoAssist v260516.30 | 2026-05-16 16:09:02 -->
 <!DOCTYPE html>
 <html>
 
@@ -942,9 +942,16 @@
         </div>
       </div>
 
+      <div id="snakeTestSection" style="display:none">
       <div class="section-header">Snake Test</div>
       <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
+      </div>
+      <div class="info-box info-box--dim" style="margin:6px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
+        <strong>Bridge MAC</strong> — the system MAC of the switch running the snake loopback cable.<br>
+        Find it: <code>show version | grep MAC</code> or let Device Bridge auto-detect (pre-fills after a check).<br>
+        Used in static ARP so egress-vrf traffic exits through the loopback cable into the next VRF.<br>
+        <strong>EP1/EP2</strong> — only needed if the traffic generator is not directly connected to this switch.
       </div>
       <div class="snake-inputs" style="margin-top:6px;--ip-label-w:100px">
           <div class="ip-row" style="--label-w:140px"><span class="ip-label">Bridge MAC</span>
@@ -983,6 +990,7 @@
             </div>
           </div>
       </div>
+      </div><!-- /snakeTestSection -->
 
     </div>
     <div class="modal-actions right-align">
