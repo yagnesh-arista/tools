@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-16 (fix: pane-info now shows EOS CLI command running inside SSH panes via _get_pane_eos_cli() — scans last 200 pane lines backward for '# <cmd>' pattern; clone-window reverted to layout-only (replay_window_cli + _SHELL_NAMES removed); pane-info display condensed to single line per pane. FILES: tmux_studio.py)
+  Last updated: 2026-05-16 (fix: _get_pane_eos_cli() now tries EOS watch header first ('Every Ns: <cmd>') by scanning forward, then falls back to '# <cmd>' prompt pattern; _EOS_WATCH_RE compiled regex added; import re added. FILES: tmux_studio.py)
+  Previous: 2026-05-16 (fix: pane-info now shows EOS CLI command running inside SSH panes via _get_pane_eos_cli() — scans last 200 pane lines backward for '# <cmd>' pattern; clone-window reverted to layout-only (replay_window_cli + _SHELL_NAMES removed); pane-info display condensed to single line per pane. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: clone-window subcommand — copies layout + replays CLI commands from source to target window(s); replay_window_cli() sends each non-shell source pane command to corresponding target pane, substituting source window name with target window name; _parse_window_nums() promoted to module level; _SHELL_NAMES constant added; pane-info display: PID removed, screen_line shown; get_pane_commands() adds tmux capture-pane screen_line field. FILES: tmux_studio.py)
   Previous: 2026-05-16 (fix: get_pane_commands() now checks ps --ppid <pid> for foreground child processes first; falls back to ps -p <pid> (shell itself) only when no child is running — correctly shows "python3 watch.py" instead of "-bash" in active panes. FILES: tmux_studio.py)
   Previous: 2026-05-16 (feat: pane-info subcommand — interactive window picker, prints each pane's index, active marker, PID, and full running command via ps -p <pid> -o args=; get_pane_commands() helper added. FILES: tmux_studio.py)
@@ -414,11 +415,17 @@ copy_window_layout(src, tgt)
     If target has too few panes: split-window -d until count matches.
   Apply: select-layout <src_window_layout>.
 
+_EOS_WATCH_RE: compiled regex
+  Matches EOS watch header: 'Every Ns: <command>  <timestamp>'
+  Pattern: r'^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$'
+
 _get_pane_eos_cli(pane_target) -> str
   Runs tmux capture-pane -t <pane_target> -p -S -200 (last 200 lines).
-  Scans lines in reverse for '# ' (EOS prompt suffix).
-  Returns text after the last '# ' that is non-empty (the EOS CLI command).
-  Returns '' when the pane is at an idle prompt (no command after '#').
+  Pass 1 (forward): match _EOS_WATCH_RE against each line — watch headers
+    appear at the top of the visible screen when a watch command is active.
+  Pass 2 (backward): scan for '# ' (EOS prompt suffix) in scrollback.
+    Returns text after '# ' if non-empty.
+  Returns '' for idle panes (no command found by either pass).
 
 get_pane_commands(session, win_index) -> List[Dict]
   Runs tmux list-panes -t {session}:{win_index} with TMUX_SEP fields:

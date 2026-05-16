@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.12 | 2026-05-16 15:56:06
+# tmux-studio v260516.13 | 2026-05-16 15:59:42
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import time
+import re
 import readline # Enables proper input handling (History/Arrows)
 from datetime import datetime
 from typing import Any, Dict, List, Set
@@ -590,16 +591,29 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
 # =============================================================================
 # PANE INFO
 # =============================================================================
+_EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
+
 def _get_pane_eos_cli(pane_target: str) -> str:
-    """Scan pane screen content (last 200 lines) for the most recent EOS CLI command.
-    EOS prompts end with '# ' (e.g. 'mrvp454.02:17:34# watch 1 show ip bgp summary').
-    Returns the command string after '# ', or '' if none found (idle prompt).
+    """Extract the EOS CLI command currently running in an SSH pane.
+
+    Strategy (in order):
+    1. EOS watch header: 'Every Ns: <command>  <timestamp>' appears at the top
+       of the visible screen when a watch command is running. Scan forward.
+    2. EOS prompt + command: '<hostname># <command>' in scrollback. Scan backward.
+    Returns '' for idle panes (no command found).
     """
     cap = subprocess.run(
         ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-200"],
         capture_output=True, text=True
     )
-    for line in reversed(cap.stdout.splitlines()):
+    lines = cap.stdout.splitlines()
+    # Pass 1: watch header (top of screen — scan forward)
+    for line in lines:
+        m = _EOS_WATCH_RE.match(line.strip())
+        if m:
+            return m.group(1).strip()
+    # Pass 2: prompt pattern (scrollback — scan backward)
+    for line in reversed(lines):
         if "# " in line:
             cmd = line.rsplit("# ", 1)[-1].strip()
             if cmd:
