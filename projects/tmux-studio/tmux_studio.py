@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.13 | 2026-05-17 13:19:49
+# tmux-studio v260517.15 | 2026-05-17 13:21:46
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
