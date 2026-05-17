@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.7 | 2026-05-17 12:22:33
+# tmux-studio v260517.8 | 2026-05-17 12:35:23
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -732,20 +732,29 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         else:
             ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
             local_cmd = ps.stdout.strip() or cmd
-        # For SSH panes: ps only sees the local 'ssh admin@device' process — not the EOS
-        # command running inside. Use screen scan + recall to find the actual CLI.
-        if local_cmd.split()[0] == "ssh":
+        # Detect whether this pane is an SSH connection or a bare shell.
+        # Bare shells (-bash, bash) may also be EOS sessions (virtual device direct
+        # connections) where ps --ppid finds no local child — apply passive scan too.
+        _BARE_SHELLS = {"-bash", "bash", "-zsh", "zsh", "-sh", "sh"}
+        is_ssh = local_cmd.split()[0] == "ssh"
+        is_shell = local_cmd.lstrip("-") in _BARE_SHELLS
+        if is_ssh or is_shell:
             pane_target = f"{target}.{idx}"
-            device = _ssh_target_host(local_cmd)
             eos_cli = _get_pane_eos_cli(pane_target)
             if eos_cli == _PANE_IDLE:
-                display_cmd = f"{device} (idle)"
+                if is_ssh:
+                    display_cmd = f"{_ssh_target_host(local_cmd)} (idle)"
+                else:
+                    display_cmd = local_cmd  # shell pane at EOS idle — no device name
             elif eos_cli:
                 display_cmd = eos_cli
+            elif is_ssh:
+                # Screen full of output — interrupt and recall (safe for SSH panes)
+                recalled = _get_pane_cli_via_recall(pane_target)
+                display_cmd = recalled if recalled else f"{_ssh_target_host(local_cmd)} (idle)"
             else:
-                # Screen full of output (e.g. watch command) — interrupt and recall
-                eos_cli = _get_pane_cli_via_recall(pane_target)
-                display_cmd = eos_cli if eos_cli else f"{device} (idle)"
+                # Shell pane with screen full of output — cannot safely C-c
+                display_cmd = local_cmd
         else:
             display_cmd = local_cmd
         panes.append({"index": idx, "pid": pid, "command": display_cmd, "is_active": active == "1"})
