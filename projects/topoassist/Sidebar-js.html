@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.1 | 2026-05-17 11:03:14 -->
+<!-- TopoAssist v260517.3 | 2026-05-17 11:06:41 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.1";  // keep in sync with Code.gs
+const APP_VERSION = "260517.3";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5192,10 +5192,20 @@ function openIpConfigModal(btn) {
       document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
     }
 
-    // Show snake fields only when snake ports exist; placeholder shown otherwise
-    const _hasSnake = Object.values(allNodesData).some(n => n.details && (n.details.isSnakePrimary || n.details.isSnakeSecondary));
+    // Show snake fields only when snake ports exist; placeholder shown otherwise.
+    // Prefer _snakeDeviceNames (from topology load); fall back to scanning allNodesData.
+    const _snakeDevs = _snakeDeviceNames.length > 0
+      ? _snakeDeviceNames
+      : Object.values(allNodesData).filter(n => n.details && (n.details.isSnakePrimary || n.details.isSnakeSecondary))
+          .map(n => n.details.dev || (n.id && n.id.split(':')[0])).filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i).sort();
+    const _hasSnake = _snakeDevs.length > 0;
     document.getElementById('snakeTestSection').style.display = _hasSnake ? '' : 'none';
     document.getElementById('snakeNoPorts').style.display     = _hasSnake ? 'none' : '';
+    if (_hasSnake) {
+      document.getElementById('snakeDeviceList').textContent =
+        'Snake detected on: ' + _snakeDevs.join(', ') + ' — enter the DUT system MAC below.';
+    }
     document.getElementById("ip_ep1_nh").value     = prefs.ep1_nh     || "";
     document.getElementById("ip_ep1_mac").value    = prefs.ep1_mac    || "";
     document.getElementById("ip_ep1_subnet").value = prefs.ep1_subnet || "";
@@ -10370,6 +10380,7 @@ function fetchData(force, autoVerify, silent) {
       if (data.portFrequency) globalPortFrequency = data.portFrequency;
       if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
       if (typeof data.snakeBridgeMacConfigured !== 'undefined') _snakeBridgeMacConfigured = data.snakeBridgeMacConfigured;
+      if (Array.isArray(data.snakeDeviceNames)) _snakeDeviceNames = data.snakeDeviceNames;
       currentData = data;
 
       // Pre-load device metadata so topology card model lines are populated before bridge runs
@@ -10595,6 +10606,7 @@ let deviceInternalVlans = {};  // devId (lowercase) → [N,...] sorted internal 
 let _detectedBridgeMac = null; // auto-detected from devstatus; null if ambiguous or not yet run
 let _snakeTrafficFlags = { hasIn: false, hasOut: false }; // set from topology data; used by checkSnakeTrafficWarning()
 let _snakeBridgeMacConfigured = true; // set from topology data; true by default to avoid false positives before first load
+let _snakeDeviceNames = []; // devices with at least one snake pair; set from topology data
 let _leftDev   = null; // device name for the left link strip (used by Copy, View, Push)
 let _rightDev  = null; // device name for the right link strip (used by Copy, View, Push)
 let _leftPort  = null; // interface name for left strip (null = device-level push, no port filter)
@@ -17382,7 +17394,8 @@ function loadFromSession() {
         if (data.links) globalLinks = data.links;
         if (data.portFrequency) globalPortFrequency = data.portFrequency;
         if (data.snakeTrafficFlags) _snakeTrafficFlags = data.snakeTrafficFlags;
-      if (typeof data.snakeBridgeMacConfigured !== 'undefined') _snakeBridgeMacConfigured = data.snakeBridgeMacConfigured;
+        if (typeof data.snakeBridgeMacConfigured !== 'undefined') _snakeBridgeMacConfigured = data.snakeBridgeMacConfigured;
+        if (Array.isArray(data.snakeDeviceNames)) _snakeDeviceNames = data.snakeDeviceNames;
         currentData = data;
         return data;
       }

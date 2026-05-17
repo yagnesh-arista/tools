@@ -1,10 +1,10 @@
-// TopoAssist v260517.1 | 2026-05-17 11:03:44
+// TopoAssist v260517.3 | 2026-05-17 11:04:32
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3116,7 +3116,8 @@ function getTopologyData(forceSync, isColorEnabled) {
       logs: topo.debugLogs,
       version: versionToUse,
       snakeTrafficFlags: { hasIn: snakeTrafficHasIn, hasOut: snakeTrafficHasOut },
-      snakeBridgeMacConfigured: !!(globalIpPrefs && globalIpPrefs.bridge_mac)
+      snakeBridgeMacConfigured: !!(globalIpPrefs && globalIpPrefs.bridge_mac),
+      snakeDeviceNames: Array.from(snakeDeviceNamesSet).sort()
     };
 
     // Always store result in GAS cache (including forceSync/verify fetches) so the
