@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.3 | 2026-05-17 11:33:14
+# tmux-studio v260517.4 | 2026-05-17 11:43:17
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -601,7 +601,9 @@ _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
 _EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s+(.+)$")
 # EOS idle prompt: 'hostname# ' — cursor waiting, nothing typed yet.
 _EOS_IDLE_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s*$")
-# Sentinel returned by _get_pane_eos_cli() when pane is at an idle EOS prompt.
+# Filter: 'ssh' is not a valid EOS command — reject scrollback lines from session init.
+_EOS_NOT_CMD_RE = re.compile(r"^ssh\s")
+# Sentinel returned by _get_pane_eos_cli() when pane is at idle EOS with no recent cmd.
 _PANE_IDLE = "\x00"
 
 
@@ -616,12 +618,32 @@ def _ssh_target_host(ssh_cmd: str) -> str:
     return ssh_cmd
 
 
+def _scrollback_last_cmd(pane_target: str) -> str:
+    """Scan last 50 scrollback lines for the most recent EOS prompt+command line.
+
+    Non-disruptive — no keystrokes sent. Used when visible screen shows an idle EOS
+    prompt: the watch command that started the current cycle is in recent scrollback.
+    Returns the command string, or _PANE_IDLE if none found.
+    """
+    cap = subprocess.run(
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-50"],
+        capture_output=True, text=True
+    )
+    for line in reversed(cap.stdout.splitlines()):
+        m = _EOS_PROMPT_RE.match(line.strip())
+        if m:
+            cmd = m.group(1).strip()
+            if not _EOS_NOT_CMD_RE.match(cmd):
+                return cmd
+    return _PANE_IDLE
+
+
 def _get_pane_eos_cli(pane_target: str) -> str:
     """Extract EOS CLI from the pane's visible screen (non-disruptive).
 
     Returns:
-      command string — an EOS command is on the prompt line (rare for passive scan)
-      _PANE_IDLE     — pane is at an idle EOS prompt; caller should skip recall
+      command string — found on visible prompt line or in recent scrollback
+      _PANE_IDLE     — idle EOS prompt with no recent command in scrollback
       ""             — screen is full of output with no visible prompt; caller uses recall
     """
     cap = subprocess.run(
@@ -641,10 +663,13 @@ def _get_pane_eos_cli(pane_target: str) -> str:
             continue
         m = _EOS_PROMPT_RE.match(stripped)
         if m:
-            return m.group(1).strip()
+            cmd = m.group(1).strip()
+            if not _EOS_NOT_CMD_RE.match(cmd):
+                return cmd
         if _EOS_IDLE_RE.match(stripped):
-            return _PANE_IDLE  # at idle EOS prompt — no recall needed
-        break  # last non-blank line is not an EOS prompt → screen has command output
+            # Idle EOS prompt — check scrollback for the last command (e.g. a watch cycle)
+            return _scrollback_last_cmd(pane_target)
+        break  # last non-blank line is command output → caller uses recall
     return ""
 
 

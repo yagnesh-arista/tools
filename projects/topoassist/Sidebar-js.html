@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.10 | 2026-05-17 11:38:43 -->
+<!-- TopoAssist v260517.11 | 2026-05-17 11:43:33 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.10";  // keep in sync with Code.gs
+const APP_VERSION = "260517.11";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -4918,9 +4918,9 @@ function checkSnakeTrafficWarning() {
 
   const msgs = [];
   // Soft NH warning — only shown if traffic gen may not be directly connected
-  const ep1NhEl = document.getElementById("ip_ep1_nh");
-  const ep2NhEl = document.getElementById("ip_ep2_nh");
-  if ((!ep1NhEl || !ep1NhEl.value.trim()) || (!ep2NhEl || !ep2NhEl.value.trim())) {
+  const ep1Nhs = [...document.querySelectorAll('#snakeDeviceAccordion .snake-dev-ep1-nh')];
+  const ep2Nhs = [...document.querySelectorAll('#snakeDeviceAccordion .snake-dev-ep2-nh')];
+  if (ep1Nhs.length > 0 && (ep1Nhs.some(el => !el.value.trim()) || ep2Nhs.some(el => !el.value.trim()))) {
     msgs.push("fill in EP1/EP2 NH IP if traffic gen is not directly connected");
   }
   if (!_snakeTrafficFlags.hasIn) msgs.push("set EP1 port description to 'TRAFFIC_SNAKE_EP1_L3'");
@@ -5197,40 +5197,35 @@ function openIpConfigModal(btn) {
     document.getElementById('snakeTestSection').style.display = _hasSnake ? '' : 'none';
     document.getElementById('snakeNoPorts').style.display     = _hasSnake ? 'none' : '';
     if (_hasSnake) {
-      const _snakeMacsMap = prefs.snake_macs || {};
-      // Auto-detect fallback: only pre-fill when exactly one snake device (otherwise ambiguous)
-      const _macFallback = _snakeDevs.length === 1 && !_snakeMacsMap[_snakeDevs[0]] && _detectedBridgeMac
-        ? _detectedBridgeMac : '';
+      const _snakeCfgsMap = prefs.snake_configs || {};
+      const _macFallback = _snakeDevs.length === 1 && !(_snakeCfgsMap[_snakeDevs[0]] || {}).bridge_mac && _detectedBridgeMac ? _detectedBridgeMac : '';
       document.getElementById('snakeDeviceAccordion').innerHTML = _snakeDevs.map(dev => {
-        const mac = (_snakeMacsMap[dev] || (dev === _snakeDevs[0] ? _macFallback : '') || '').trim();
+        const cfg = _snakeCfgsMap[dev] || {};
+        const mac = (cfg.bridge_mac || (dev === _snakeDevs[0] ? _macFallback : '') || '').trim();
+        const v = k => (cfg[k] || '').trim();
         return `<details class="snake-dev-details" open style="margin-bottom:4px;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
           <summary style="padding:5px 10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b;list-style:none;display:flex;align-items:center;gap:6px;background:#f8fafc;user-select:none;-webkit-user-select:none;">${dev}</summary>
           <div style="padding:6px 10px 8px;">
-            <div class="ip-row" style="--label-w:120px;margin-top:4px;">
-              <span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Bridge MAC</span>
-              <div class="ip-inputs"><div class="input-wrapper">
-                <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">DUT system MAC</label>
-                <input type="text" class="snake-dev-mac" data-dev="${dev}" value="${mac}" placeholder="001c.7300.0000" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;">
-              </div></div>
-            </div>
+            <div class="ip-row" style="--label-w:110px;margin-top:4px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Bridge MAC</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">DUT system MAC</label><input type="text" class="snake-dev-mac" data-dev="${dev}" value="${mac}" placeholder="001c.7300.0000" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div style="margin:6px 0 2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#64748b;letter-spacing:0.04em;">EP1 — ingress traffic port</div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Port IP</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">IXIA port IP if not direct</label><input type="text" class="snake-dev-ep1-nh" data-dev="${dev}" value="${v('ep1_nh')}" placeholder="200.x.y.2" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Port MAC</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">IXIA port MAC if not direct</label><input type="text" class="snake-dev-ep1-mac" data-dev="${dev}" value="${v('ep1_mac')}" placeholder="0000.0000.0000" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Subnets</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">comma-separated CIDRs</label><input type="text" class="snake-dev-ep1-subnet" data-dev="${dev}" value="${v('ep1_subnet')}" placeholder="10.1.1.0/24" style="width:220px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div style="margin:6px 0 2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#64748b;letter-spacing:0.04em;">EP2 — egress traffic port</div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Port IP</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">IXIA port IP if not direct</label><input type="text" class="snake-dev-ep2-nh" data-dev="${dev}" value="${v('ep2_nh')}" placeholder="200.x.y.2" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Port MAC</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">IXIA port MAC if not direct</label><input type="text" class="snake-dev-ep2-mac" data-dev="${dev}" value="${v('ep2_mac')}" placeholder="0000.0000.0000" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
+            <div class="ip-row" style="--label-w:110px;margin-top:2px;"><span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Subnets</span><div class="ip-inputs"><div class="input-wrapper"><label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">comma-separated CIDRs</label><input type="text" class="snake-dev-ep2-subnet" data-dev="${dev}" value="${v('ep2_subnet')}" placeholder="10.1.1.0/24" style="width:220px;font-family:'JetBrains Mono',monospace;font-size:12px;"></div></div></div>
           </div>
         </details>`;
       }).join('');
     }
-    document.getElementById("ip_ep1_nh").value     = prefs.ep1_nh     || "";
-    document.getElementById("ip_ep1_mac").value    = prefs.ep1_mac    || "";
-    document.getElementById("ip_ep1_subnet").value = prefs.ep1_subnet || "";
-    document.getElementById("ip_ep2_nh").value     = prefs.ep2_nh     || "";
-    document.getElementById("ip_ep2_mac").value    = prefs.ep2_mac    || "";
-    document.getElementById("ip_ep2_subnet").value = prefs.ep2_subnet || "";
 
     // 2. Bind Listeners to ALL inputs (per-device override table excluded — _buildGwDeviceOverrideTable sets those)
     const inputs = document.querySelectorAll("#autoConfigModal input[type='text']");
     inputs.forEach(el => { if (!el.closest('#gwDeviceOverrideTable')) el.oninput = checkIpDirty; });
-    // EP NH fields also trigger snake warning re-check
-    ['ip_ep1_nh', 'ip_ep2_nh'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.oninput = () => { checkIpDirty(); checkSnakeTrafficWarning(); };
+    // Accordion EP NH inputs also trigger snake warning re-check
+    document.querySelectorAll('#snakeDeviceAccordion .snake-dev-ep1-nh, #snakeDeviceAccordion .snake-dev-ep2-nh').forEach(el => {
+      el.oninput = () => { checkIpDirty(); checkSnakeTrafficWarning(); };
     });
     // Mask validation + GW example updater (override generic handler set above)
     [['ip_p2p_v4_mask','err_p2p_v4_mask',24,32],['ip_p2p_v6_mask','err_p2p_v6_mask',64,128]].forEach(([id,errId,min,max]) => {

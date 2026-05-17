@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.10 | 2026-05-17 11:38:43 -->
+<!-- TopoAssist v260517.11 | 2026-05-17 11:39:25 -->
 <!DOCTYPE html>
 <html>
 
@@ -951,44 +951,12 @@
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
       <div class="info-box info-box--dim" style="margin:6px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
-        <strong>Bridge MAC</strong> — the system MAC of the DUT running the snake loopback cable. Enter one per device.<br>
-        Find it: <code>show version | grep MAC</code> or let Device Bridge auto-detect.<br>
-        <strong>EP1/EP2</strong> — global; only needed if the traffic generator is not directly connected.
+        Each device has its own Bridge MAC and IXIA ports (EP1/EP2). Expand a device section below to fill in.<br>
+        <strong>Bridge MAC</strong>: <code>show version | grep MAC</code> or auto-detected via Device Bridge.<br>
+        <strong>EP1/EP2</strong>: only needed if the traffic generator is not directly connected to that device.
       </div>
-      <!-- Per-device Bridge MAC accordion — built dynamically in openIpConfigModal() -->
+      <!-- Per-device accordion (Bridge MAC + EP1/EP2) — built dynamically in openIpConfigModal() -->
       <div id="snakeDeviceAccordion" style="margin-bottom:6px;"></div>
-      <div class="snake-inputs" style="margin-top:6px;--ip-label-w:100px">
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port IP</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>EP1 traffic port IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>
-            </div>
-          </div>
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port MAC</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>EP1 port MAC</label><input type="text" id="ip_ep1_mac" placeholder="0000.0000.0000" style="width:130px"></div>
-            </div>
-          </div>
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Subnets</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>comma-separated CIDRs</label><input type="text" id="ip_ep1_subnet" placeholder="10.1.1.0/24, 10.2.2.2/32" style="width:240px"></div>
-            </div>
-          </div>
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port IP</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>EP2 traffic port IP</label><input type="text" id="ip_ep2_nh" placeholder="200.x.y.2" style="width:110px"></div>
-            </div>
-          </div>
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Port MAC</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>EP2 port MAC</label><input type="text" id="ip_ep2_mac" placeholder="0000.0000.0000" style="width:130px"></div>
-            </div>
-          </div>
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP2 Subnets</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>comma-separated CIDRs</label><input type="text" id="ip_ep2_subnet" placeholder="10.1.1.0/24, 10.2.2.2/32" style="width:240px"></div>
-            </div>
-          </div>
-      </div>
       </div><!-- /snakeTestSection -->
 
     </div>
