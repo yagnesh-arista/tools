@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.12 | 2026-05-17 13:15:38
+# tmux-studio v260517.13 | 2026-05-17 13:19:49
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -659,7 +659,7 @@ def _scrollback_last_cmd(pane_target: str, depth: int = 100) -> str:
     no command, or "" if no EOS content was found at all.
     """
     cap = subprocess.run(
-        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", f"-{depth}"],
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-J", "-S", f"-{depth}"],
         capture_output=True, text=True
     )
     lines = cap.stdout.splitlines()
@@ -691,11 +691,11 @@ def _get_pane_eos_cli(pane_target: str) -> str:
       ""             — screen is full of output with no visible prompt; caller uses recall
     """
     cap = subprocess.run(
-        ["tmux", "capture-pane", "-t", pane_target, "-p"],
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-J"],
         capture_output=True, text=True
     )
     lines = cap.stdout.splitlines()
-    # Linux watch header — collect wrapped continuation lines for the full command
+    # Linux watch header — -J already joins soft-wrapped terminal lines
     for i, line in enumerate(lines):
         if _WATCH_HDR_RE.match(line.strip()):
             return _extract_watch_cmd(lines, i)
@@ -728,25 +728,17 @@ def _get_pane_cli_via_recall(pane_target: str) -> str:
     subprocess.run(["tmux", "send-keys", "-t", pane_target, "Up"], capture_output=True)
     time.sleep(0.6)  # allow SSH round-trip: Up → EOS readline → terminal render
     cap = subprocess.run(
-        ["tmux", "capture-pane", "-t", pane_target, "-p"],
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-J"],
         capture_output=True, text=True
     )
-    lines = cap.stdout.splitlines()
+    # -J rejoins soft-wrapped terminal lines so a long recalled command appears as one line.
     recalled = ""
-    for i in range(len(lines) - 1, -1, -1):
-        m = _EOS_PROMPT_RE.match(lines[i].strip())
+    for line in reversed(cap.stdout.splitlines()):
+        m = _EOS_PROMPT_RE.match(line.strip())
         if m:
             cmd = m.group(1).strip()
             if cmd:
-                # The recalled command may wrap across multiple terminal lines.
-                # After Up (before Enter) it sits at the bottom of the screen with
-                # continuation rows (pure terminal wrap, no marker) immediately below.
-                parts = [cmd]
-                for cont in lines[i + 1:]:
-                    if not cont.strip():
-                        break
-                    parts.append(cont)
-                recalled = "".join(parts).strip()
+                recalled = cmd
                 break
     if recalled:
         subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)

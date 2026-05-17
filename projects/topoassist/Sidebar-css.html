@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.26 | 2026-05-17 13:17:30 -->
+<!-- TopoAssist v260517.27 | 2026-05-17 13:19:20 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6187,11 +6187,12 @@
   .bridge-row-l1:hover { background: #fde68a; }
   .bridge-row-l1 .bridge-row-detail { color: #92400e; }
   .bridge-row-icon { grid-row: 1; display: flex; align-items: center; padding-top: 1px; }
-  .bridge-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bridge-row-cable { grid-row: 1; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; -webkit-user-select: text; }
   .bridge-row-detail {
     grid-column: 2; grid-row: 2;
     font-size: 10px; color: var(--text-muted); margin-top: 1px;
     white-space: pre-wrap; word-break: break-word;
+    user-select: text; -webkit-user-select: text;
   }
   .bridge-row-fail .bridge-row-detail { color: #b91c1c; }
 
@@ -6392,6 +6393,7 @@
     background: #f8fafc; border: 1px solid var(--border); border-radius: 4px;
     padding: 6px 8px; white-space: pre; overflow-x: auto;
     max-height: 150px; display: block; line-height: 1.5;
+    user-select: text; -webkit-user-select: text;
   }
   .diff-add { color: #16a34a; }
   .diff-del { color: #dc2626; }
