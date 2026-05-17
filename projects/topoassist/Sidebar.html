@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.25 | 2026-05-17 13:11:23 -->
+<!-- TopoAssist v260517.26 | 2026-05-17 13:17:58 -->
 <!DOCTYPE html>
 <html>
 
@@ -643,7 +643,7 @@
         Result: DevA ↔ DevC share RT 65000:1 (exchange VLAN 1-1000 routes). DevB ↔ DevC share RT 65000:2 (exchange VLAN 2000-2999 routes).<br><br>
         <b style="font-style:normal;">Empty list</b> = single <code class="inline-code">EVPN_VLAN_AWARE_BUNDLE</code> with all device VLANs, RT <code class="inline-code">ASN_BASE:1</code> (legacy / uniform VLAN sets).
       </div>
-      <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace; user-select:none; -webkit-user-select:none;">
+      <div style="font-size:11px; color:#94a3b8; font-style:italic; margin-top:10px; margin-bottom:18px; font-family:'JetBrains Mono',monospace;">
         Greyed options require a different P2P mode — click any to switch automatically.
       </div>
 
@@ -947,7 +947,7 @@
         No snake connections detected — fill <code>snake_int_</code> columns in the sheet to enable this section.
       </div>
       <div id="snakeTestSection" style="display:none">
-      <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
+      <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;">
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
       <div class="info-box info-box--dim" style="margin:6px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
@@ -1193,10 +1193,10 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
         AI Validate
       </div>
-      <div class="export-desc" style="user-select:none;-webkit-user-select:none;">Questions + cabling table copied to clipboard; opens NotebookLM — paste in chat.</div>
+      <div class="export-desc">Questions + cabling table copied to clipboard; opens NotebookLM — paste in chat.</div>
       <textarea id="notebookLMQuestions" rows="5" onblur="saveNotebookLMQuestions()" style="width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;" placeholder="Loading…"></textarea>
       <button class="btn-primary-mono btn-block" id="btnAskNotebookLM" onclick="askNotebookLM()" style="margin-top:6px;">Ask NotebookLM</button>
-      <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;user-select:none;-webkit-user-select:none;"></div>
+      <div id="notebookLMStatus" style="display:none;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#15803d;"></div>
     </div><!-- /cablingControlsPanel -->
 
     <!-- Text view panel (shown when Topology List / Device List tab active) -->
