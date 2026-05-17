@@ -462,22 +462,17 @@ grep -A10 "toggleDevVisMinimize" \
 grep -A5 "function toggleModalMinimize" \
   ~/claude/projects/topoassist/Sidebar-js.html | head -10
 
-# Check overlay management in toggleModalMinimize
-grep -A20 "function toggleModalMinimize" \
-  ~/claude/projects/topoassist/Sidebar-js.html | grep -E "editOverlay|hadOverlay|data-had"
-```
-
 ✗ FAIL if a `.modal-std` body div has `overflow-y: auto` but is missing `flex: 1` — content clips silently in flex column context instead of scrolling
 ✗ FAIL if a `.modal-std` body div has `overflow-y: auto` but is missing `min-height: 0` — flex item refuses to shrink below content height, overflows modal instead of scrolling
 ✗ FAIL if a `.modal-std` body div lacks `overflow-y: auto` AND content can exceed 85vh
 ✗ FAIL if a CSS class used as a modal body (e.g. `.modal-body-scroll`, `.ip-modal-body`) is missing any of the three scroll trio properties
 ✗ FAIL if a floating panel minimize function sets child `display:none` but does NOT also set `panel.style.height = header.offsetHeight + 'px'`
 ✗ FAIL if `panel.style.overflow = 'hidden'` is missing from the minimize path
-✗ FAIL if `toggleModalMinimize` does not hide `editOverlay` on minimize (leaves dim backdrop blocking background)
-✗ FAIL if `toggleModalMinimize` does not use `data-had-overlay` to restore overlay on un-minimize
-✗ FAIL if a modal-specific minimize function bypasses `toggleModalMinimize` (loses overlay management)
+✗ FAIL if a modal-specific minimize function bypasses `toggleModalMinimize` (loses dock management)
 
-**Known compliant modals (scroll trio verified 2026-05-13):** networkStackModal, autoConfigModal (ip-modal-body class), deviceBridgeModal, guiEditModal (modal-body-scroll class), auditSettingsModal, auditModal (audit-body class), pushConfirmModal, helpModal, vlanSummaryModal.
+Note: `editOverlay` is always `display:none` — the dim backdrop pattern was removed (CLAUDE.md). `toggleModalMinimize` does NOT manage `editOverlay` (correct). Do not flag its absence.
+
+**Known compliant modals (scroll trio verified 2026-05-17):** networkStackModal, autoConfigModal (ip-modal-body class), deviceBridgeModal, guiEditModal (modal-body-scroll class), auditSettingsModal, auditModal (audit-body: min-height:0 fixed 2026-05-17), pushConfirmModal, helpModal, vlanSummaryModal.
 
 ---
 
