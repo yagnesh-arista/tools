@@ -283,7 +283,7 @@ function _onModalClose(el) {
 }
 ```
 
-**Overlay rule**: `toggleModalMinimize()` must hide `editOverlay` on minimize and restore it on un-minimize using `data-had-overlay` to remember whether the overlay was visible before. Never write a modal-specific minimize that bypasses this. Modals opened with overlay (configModal, generateAllModal, editModal, pushConfirmModal) would otherwise leave the dim backdrop blocking all background interaction.
+**`editOverlay` is always `display:none`** — the dim backdrop pattern was removed. `toggleModalMinimize()` does not manage `editOverlay`. Do not re-introduce backdrop logic.
 
 **`.modal-floating` exception**: floating panels (deviceBridgeModal, DevView) stay visible as a collapsed header when minimized — they do NOT use `display:none`. `toggleModalMinimize` checks `modal.classList.contains('modal-floating')` and skips the hide logic for floating panels. Floating panels also do NOT appear in `#modalDock`.
 
