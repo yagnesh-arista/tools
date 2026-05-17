@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-17 (Check 32 extended: dynamic Cancel label "Close"/"Abort *" via _updateCancelBtn; Check 42 extended: _updateCancelBtn added to SSoT helpers list) -->
+<!-- rules-synced: 2026-05-17 (Check 21: removed stale editOverlay overlay-management FAILs — editOverlay is always display:none; updated known-compliant modal list with audit-body fix; Check 32 extended: dynamic Cancel label; Check 42: _updateCancelBtn added) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
