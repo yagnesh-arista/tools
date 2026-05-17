@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.15 | 2026-05-17 13:21:46
+# tmux-studio v260517.16 | 2026-05-17 13:31:49
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -731,14 +731,24 @@ def _get_pane_cli_via_recall(pane_target: str) -> str:
         ["tmux", "capture-pane", "-t", pane_target, "-p", "-J"],
         capture_output=True, text=True
     )
-    # -J rejoins soft-wrapped terminal lines so a long recalled command appears as one line.
+    # -J rejoins soft-wrapped terminal lines. Hard newlines (literal \n in the command)
+    # are NOT joined — collect continuation lines manually until blank/prompt/watch-header.
+    lines = cap.stdout.splitlines()
     recalled = ""
-    for line in reversed(cap.stdout.splitlines()):
-        m = _EOS_PROMPT_RE.match(line.strip())
+    for i in range(len(lines) - 1, -1, -1):
+        m = _EOS_PROMPT_RE.match(lines[i].strip())
         if m:
             cmd = m.group(1).strip()
             if cmd:
-                recalled = cmd
+                parts = [cmd]
+                for cont in lines[i + 1:]:
+                    cs = cont.strip()
+                    if not cs:
+                        break
+                    if _EOS_PROMPT_RE.match(cs) or _EOS_IDLE_RE.match(cs) or _WATCH_HDR_RE.match(cs):
+                        break
+                    parts.append(cs)
+                recalled = " ".join(parts)
                 break
     if recalled:
         subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)

@@ -1,10 +1,10 @@
-// TopoAssist v260517.27 | 2026-05-17 13:18:34
+// TopoAssist v260517.29 | 2026-05-17 13:31:40
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.27";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.29";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1680,10 +1680,6 @@ const FORMAT_CONFIG = {
       { text: 'l3-po-int', bg: '#bae6fd', color: '#0c4a6e', type: 'exact' },
       { text: 'l3-et-sub-int', bg: '#faf5ff', color: '#7e22ce', type: 'exact' },
       { text: 'l3-po-sub-int', bg: '#e9d5ff', color: '#581c87', type: 'exact' }
-    ],
-    'ip_type': [
-      { text: 'p2p', bg: '#f3f4f6' },
-      { text: 'gw', bg: '#fff1f2' }
     ]
   }
 };
@@ -2083,18 +2079,20 @@ function buildConditionalRules(sheet, headers, lastRow) {
 
     // ── 3. INACTIVE GRAY: int_ empty → all device columns grey (including int_ itself)
     const suffix = '_' + dev;
-    const allDevRanges = headers.reduce((acc, h, i) => {
+    // SSoT: shared range list for all SCHEMA_KEYS columns of this device.
+    // Reused by INACTIVE GRAY, SNAKE-ROW, P2P-ROW, GW-ROW.
+    const allSchemaColRanges = headers.reduce((acc, h, i) => {
       const key = h.slice(0, -(suffix.length));
       if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
         acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
       }
       return acc;
     }, []);
-    if (allDevRanges.length > 0) {
+    if (allSchemaColRanges.length > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=$${iC}3=""`)
         .setBackground("#c8d5e3").setFontColor("#94a3b8")
-        .setRanges(allDevRanges).build());
+        .setRanges(allSchemaColRanges).build());
     }
 
     // ── 4. N/A GRAY: field not applicable for current mode (cell may be empty) ─
