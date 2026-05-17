@@ -61,16 +61,35 @@ Note: Unicode in comments or non-rendered strings is fine.
 
 ## Check 3 — user-select: none (CLAUDE.md Rule 6)
 
-Non-editable UI elements must have `user-select: none; -webkit-user-select: none`.
+Core principle: **all visible text must be selectable by the user — no exceptions.**
 
 Rules:
+- Apply `user-select: none` to UI chrome only: buttons, modal headers, badges, tabs, nav, tooltips
 - NEVER apply to `body` — breaks `execCommand("copy")` in WebKit/Chrome
 - NEVER apply to `<input>`, `<textarea>`, `<select>`
-- Read-only content the user might want to copy (diff output, config text) should remain selectable
-- All clipboard copy must use `navigator.clipboard.writeText()` with `execCommand` fallback
+- NEVER apply to visible readable text: info-box content, descriptions, hints, warning banners, status messages, error details, diff output, port/device names in results panels
+- Explicitly set `user-select: text` on copy-critical content: diffs, configs, EOS commands, IP addresses, generated output
+
+Run these two grep scans:
+
+```bash
+# 1. UI chrome missing user-select:none (headers, badges, buttons in new code)
+grep -n "modal-header\|col-tag\|btn-std\|badge" ~/claude/projects/topoassist/Sidebar.html \
+  | grep -v "user-select:none\|btn-modal-close\|btn-modal-minimize" | head -10
+
+# 2. Readable content with user-select:none (violations — the critical direction)
+grep -n "user-select:none\|user-select: none" \
+  ~/claude/projects/topoassist/Sidebar.html \
+  ~/claude/projects/topoassist/Sidebar-js.html \
+  | grep -v "btn\|modal-header\|modal-header-title\|badge\|tab\|chip\|icon\|tooltip\|label for=\|<button\|editOverlay\|col-tag\|dock\|toolbar\|nav-item\|sort-toggle\|icon-btn\|icon-toggle\|active-modal" \
+  | head -20
+```
+
+For each hit in scan 2: determine if it is UI chrome (ignore) or readable text content (✗ FAIL).
 
 ✗ FAIL if `user-select: none` is on `body`
 ✗ FAIL if `user-select: none` is on an input/textarea/select
+✗ FAIL if `user-select: none` is on a warning banner, error message, status text, diff output, or any other readable content
 ✗ FAIL if a non-editable label/badge/header/card has no `user-select: none`
 ✗ FAIL if clipboard copy uses `execCommand` without the `navigator.clipboard` primary path
 
