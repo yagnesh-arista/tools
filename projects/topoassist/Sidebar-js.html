@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.11 | 2026-05-17 11:43:33 -->
+<!-- TopoAssist v260517.12 | 2026-05-17 11:44:32 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.11";  // keep in sync with Code.gs
+const APP_VERSION = "260517.12";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5328,13 +5328,16 @@ function saveIpConfig() {
     mlag_peer_base: document.getElementById("ip_mlag_base").value || '1',
     vni_base: document.getElementById("ip_vni_base").value || '10000',
     bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000',
-    snake_macs: (() => { const m = {}; document.querySelectorAll('#snakeDeviceAccordion .snake-dev-mac').forEach(inp => { if (inp.dataset.dev && inp.value.trim()) m[inp.dataset.dev] = inp.value.trim(); }); return m; })(),
-    ep1_nh:      (document.getElementById("ip_ep1_nh").value      || '').trim(),
-    ep1_mac:     (document.getElementById("ip_ep1_mac").value     || '').trim(),
-    ep1_subnet:  (document.getElementById("ip_ep1_subnet").value  || '').trim(),
-    ep2_nh:      (document.getElementById("ip_ep2_nh").value      || '').trim(),
-    ep2_mac:     (document.getElementById("ip_ep2_mac").value     || '').trim(),
-    ep2_subnet:  (document.getElementById("ip_ep2_subnet").value  || '').trim(),
+    snake_configs: (() => {
+      const m = {};
+      document.querySelectorAll('#snakeDeviceAccordion .snake-dev-mac').forEach(inp => {
+        const d = inp.dataset.dev; if (!d) return;
+        const q = cls => ((document.querySelector('#snakeDeviceAccordion .' + cls + '[data-dev="' + d + '"]') || {}).value || '').trim();
+        const cfg = { bridge_mac: inp.value.trim(), ep1_nh: q('snake-dev-ep1-nh'), ep1_mac: q('snake-dev-ep1-mac'), ep1_subnet: q('snake-dev-ep1-subnet'), ep2_nh: q('snake-dev-ep2-nh'), ep2_mac: q('snake-dev-ep2-mac'), ep2_subnet: q('snake-dev-ep2-subnet') };
+        if (Object.values(cfg).some(v => v)) m[d] = cfg;
+      });
+      return m;
+    })(),
     gw_device_overrides: gwDeviceOverrides
   };
 
@@ -17205,13 +17208,7 @@ function resetIpConfig() {
   document.getElementById("ip_mlag_base").value = "1";
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
-  document.querySelectorAll('#snakeDeviceAccordion .snake-dev-mac').forEach(inp => { inp.value = ''; });
-  document.getElementById("ip_ep1_nh").value      = "";
-  document.getElementById("ip_ep1_mac").value     = "";
-  document.getElementById("ip_ep1_subnet").value  = "";
-  document.getElementById("ip_ep2_nh").value      = "";
-  document.getElementById("ip_ep2_mac").value     = "";
-  document.getElementById("ip_ep2_subnet").value  = "";
+  document.querySelectorAll('#snakeDeviceAccordion input[data-dev]').forEach(inp => { inp.value = ''; });
   checkSnakeTrafficWarning();
 }
 
