@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260516.16 | 2026-05-16 16:18:51
+# tmux-studio v260517.2 | 2026-05-17 11:26:25
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -23,9 +23,9 @@ import subprocess
 import sys
 import time
 import re
-import readline # Enables proper input handling (History/Arrows)
+import readline  # noqa: F401 — side-effect: enables history/arrow keys in input()  # pyright: ignore[reportUnusedImport]
 from datetime import datetime
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 # =============================================================================
 # CONFIGURATION
@@ -342,7 +342,9 @@ def compare_flat_swp(saved: Dict, current: Dict, mode: str, overwrite: bool) -> 
         if saved_entry and curr_entry and saved_entry["window"] != curr_entry["window"]:
             display_w_name = f"{saved_entry['window']} -> {curr_entry['window']}"
         else:
-            display_w_name = saved_entry["window"] if saved_entry else curr_entry["window"]
+            entry = saved_entry or curr_entry
+            assert entry is not None  # key came from saved_items | curr_items union
+            display_w_name = entry["window"]
 
         if prev_session is not None and s != prev_session:
             print(f"\n{Colors.BLUE}{'='*40}{Colors.RESET}\n")
@@ -354,6 +356,7 @@ def compare_flat_swp(saved: Dict, current: Dict, mode: str, overwrite: bool) -> 
         lookup_id = f"{s}|{win_idx}|{p}"
 
         if key in saved_items and key in curr_items:
+            assert saved_entry is not None and curr_entry is not None
             # Explicit direction-aware strings for Rename and Layout Changes
             if saved_entry["window"] != curr_entry["window"]:
                 status = SAVE_RENAMED if mode == "save" else RESTORE_RENAMED
@@ -558,7 +561,7 @@ def sync_panes_structurally(saved_layout: Dict, overwrite: bool, new_sessions: S
             if actual_pane_ids:
                 subprocess.run(["tmux", "select-pane", "-t", actual_pane_ids[-1]], stderr=subprocess.DEVNULL)
 
-def cleanup_extras(saved_layout: Dict, protected_sessions: Set[str] = None):
+def cleanup_extras(saved_layout: Dict, protected_sessions: Optional[Set[str]] = None):
     if protected_sessions is None:
         protected_sessions = set()
         

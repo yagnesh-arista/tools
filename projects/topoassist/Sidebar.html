@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.4 | 2026-05-17 11:17:05 -->
+<!-- TopoAssist v260517.5 | 2026-05-17 11:26:00 -->
 <!DOCTYPE html>
 <html>
 
@@ -947,22 +947,17 @@
         No snake connections detected — fill <code>snake_int_</code> columns in the sheet to enable this section.
       </div>
       <div id="snakeTestSection" style="display:none">
-      <div id="snakeDeviceList" style="margin:4px 0 6px;padding:5px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#166534;"></div>
       <div id="snakeTrafficWarning" style="display:none;margin:4px 0 6px;padding:6px 10px;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#713f12;user-select:none;-webkit-user-select:none;">
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
       <div class="info-box info-box--dim" style="margin:6px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
-        <strong>Bridge MAC</strong> — the system MAC of the switch running the snake loopback cable.<br>
-        Find it: <code>show version | grep MAC</code> or let Device Bridge auto-detect (pre-fills after a check).<br>
-        Used in static ARP so egress-vrf traffic exits through the loopback cable into the next VRF.<br>
-        <strong>EP1/EP2</strong> — only needed if the traffic generator is not directly connected to this switch.
+        <strong>Bridge MAC</strong> — the system MAC of the DUT running the snake loopback cable. Enter one per device.<br>
+        Find it: <code>show version | grep MAC</code> or let Device Bridge auto-detect.<br>
+        <strong>EP1/EP2</strong> — global; only needed if the traffic generator is not directly connected.
       </div>
+      <!-- Per-device Bridge MAC accordion — built dynamically in openIpConfigModal() -->
+      <div id="snakeDeviceAccordion" style="margin-bottom:6px;"></div>
       <div class="snake-inputs" style="margin-top:6px;--ip-label-w:100px">
-          <div class="ip-row" style="--label-w:140px"><span class="ip-label">Bridge MAC</span>
-            <div class="ip-inputs">
-              <div class="input-wrapper"><label>DUT system MAC</label><input type="text" id="ip_bridge_mac" placeholder="001c.7300.0000" style="width:130px"></div>
-            </div>
-          </div>
           <div class="ip-row" style="--label-w:140px"><span class="ip-label">EP1 Port IP</span>
             <div class="ip-inputs">
               <div class="input-wrapper"><label>EP1 traffic port IP</label><input type="text" id="ip_ep1_nh" placeholder="200.x.y.2" style="width:110px"></div>

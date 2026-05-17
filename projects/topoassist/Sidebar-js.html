@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.4 | 2026-05-17 11:17:05 -->
+<!-- TopoAssist v260517.5 | 2026-05-17 11:26:04 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.4";  // keep in sync with Code.gs
+const APP_VERSION = "260517.5";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5348,6 +5348,7 @@ function saveIpConfig() {
     checkIpDirty(); // This turns the button Green again
 
     configCache = {};
+    _markConfigsFetching();
     if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
       setStatus('IP prefs saved \u2014 ' + selectedDeviceId + ' config refresh\u2026', 'status-info');
       fetchFullConfig(selectedDeviceId);
@@ -10158,18 +10159,66 @@ function stopBackgroundPrefetch() {
   prefetchTotal = 0;
 }
 
-// Flip the currently selected device card to Fetching state immediately when a sheet
-// version change is detected — before topology rebuild completes.
+// Marks ALL currently visible split buttons as 'fetching' (orange).
+// Called on any full configCache clear — DATA_VERSION change, saves, manual refresh.
+// processDeviceConfig restores 'ready' as each device config comes back.
+// splitLeft/splitRight stay orange until the link is re-selected when not auto-refreshed.
 function _markConfigsFetching() {
-  if (!selectedDeviceId) return;
-  const wrapper = document.getElementById('splitDevice');
-  if (!wrapper || wrapper.dataset.splitState !== 'ready') return;
-  const devData = allDevicesData[selectedDeviceId];
-  if (!devData) return;
-  const devId = devData.sheetIndex || '-';
   const time = new Date().toLocaleTimeString('en-US',
     { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  _setSplitBtnLabel('splitDevice', devId, selectedDeviceId, null, 'fetching', time);
+
+  if (selectedDeviceId) {
+    const w = document.getElementById('splitDevice');
+    if (w && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[selectedDeviceId];
+      _setSplitBtnLabel('splitDevice', d?.sheetIndex || '-', selectedDeviceId, null, 'fetching', time);
+    }
+  }
+  if (_leftDev) {
+    const w = document.getElementById('splitLeft');
+    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[_leftDev];
+      _setSplitBtnLabel('splitLeft', d?.sheetIndex || '-', _leftDev, _leftPort, 'fetching', time);
+    }
+  }
+  if (_rightDev) {
+    const w = document.getElementById('splitRight');
+    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[_rightDev];
+      _setSplitBtnLabel('splitRight', d?.sheetIndex || '-', _rightDev, _rightPort, 'fetching', time);
+    }
+  }
+}
+
+// Marks split buttons showing a specific device as 'fetching'.
+// Called on per-device cache eviction (_selectiveConfigInvalidate, _generateSingleDevice).
+function _markDeviceConfigFetching(devName) {
+  if (!devName) return;
+  const time = new Date().toLocaleTimeString('en-US',
+    { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const dn = devName.toLowerCase();
+
+  if (selectedDeviceId && selectedDeviceId.toLowerCase() === dn) {
+    const w = document.getElementById('splitDevice');
+    if (w && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[selectedDeviceId];
+      _setSplitBtnLabel('splitDevice', d?.sheetIndex || '-', selectedDeviceId, null, 'fetching', time);
+    }
+  }
+  if (_leftDev && _leftDev.toLowerCase() === dn) {
+    const w = document.getElementById('splitLeft');
+    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[_leftDev];
+      _setSplitBtnLabel('splitLeft', d?.sheetIndex || '-', _leftDev, _leftPort, 'fetching', time);
+    }
+  }
+  if (_rightDev && _rightDev.toLowerCase() === dn) {
+    const w = document.getElementById('splitRight');
+    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
+      const d = allDevicesData[_rightDev];
+      _setSplitBtnLabel('splitRight', d?.sheetIndex || '-', _rightDev, _rightPort, 'fetching', time);
+    }
+  }
 }
 
 // Selective config cache invalidation — called after every fetchData() render.
