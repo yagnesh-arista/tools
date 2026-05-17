@@ -1,10 +1,10 @@
-// TopoAssist v260517.7 | 2026-05-17 11:31:02
+// TopoAssist v260517.9 | 2026-05-17 11:38:21
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.7";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.9";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -3116,7 +3116,7 @@ function getTopologyData(forceSync, isColorEnabled) {
       logs: topo.debugLogs,
       version: versionToUse,
       snakeTrafficFlags: { hasIn: snakeTrafficHasIn, hasOut: snakeTrafficHasOut },
-      snakeBridgeMacConfigured: !!(globalIpPrefs && globalIpPrefs.bridge_mac) || Object.keys(getSnakeDeviceMacs()).length > 0,
+      snakeBridgeMacConfigured: !!(globalIpPrefs && globalIpPrefs.bridge_mac) || Object.values(getSnakeDeviceConfigs()).some(c => c && c.bridge_mac),
       snakeDeviceNames: Array.from(topo.snakeDeviceNamesSet || []).sort()
     };
 
@@ -3242,7 +3242,7 @@ function getIpPreferences() {
 function getIpPreferencesForModal() {
   const prefs = getIpPreferences();
   prefs.gw_device_overrides = getGwDeviceOverrides();
-  prefs.snake_macs = getSnakeDeviceMacs();
+  prefs.snake_configs = getSnakeDeviceConfigs();
   // Full device list including id, rack, hostname — used to build per-device GW override table
   prefs.arista_devices = getExistingDevices()
     .filter(d => d.type !== 'non-arista')
@@ -3255,19 +3255,40 @@ function getGwDeviceOverrides() {
   return raw ? JSON.parse(raw) : {};
 }
 
-// Per-device snake Bridge MACs: { devName: macString }.
-// Stored in UserProperties (per-sheet, not cross-sheet) — same tier as bridge_mac.
-function getSnakeDeviceMacs() {
-  const raw = PropertiesService.getUserProperties().getProperty('SNAKE_DEVICE_MACS');
-  return raw ? JSON.parse(raw) : {};
+// Per-device snake config: { devName: { bridge_mac, ep1_nh, ep1_mac, ep1_subnet, ep2_nh, ep2_mac, ep2_subnet } }.
+// Migrates legacy SNAKE_DEVICE_MACS (string values) on first read.
+function getSnakeDeviceConfigs() {
+  const up = PropertiesService.getUserProperties();
+  const raw = up.getProperty('SNAKE_DEVICE_CONFIGS');
+  if (raw) return JSON.parse(raw);
+  // Migrate legacy key: { devName: macString } → { devName: { bridge_mac: macString } }
+  const legacyRaw = up.getProperty('SNAKE_DEVICE_MACS');
+  if (!legacyRaw) return {};
+  const migrated = {};
+  Object.entries(JSON.parse(legacyRaw)).forEach(([dev, mac]) => {
+    migrated[dev] = { bridge_mac: mac, ep1_nh: '', ep1_mac: '', ep1_subnet: '', ep2_nh: '', ep2_mac: '', ep2_subnet: '' };
+  });
+  return migrated;
 }
 
-function saveSnakeDeviceMacs(macs) {
+function saveSnakeDeviceConfigs(configs) {
   const clean = {};
-  Object.entries(macs || {}).forEach(([dev, mac]) => { if (mac && mac.trim()) clean[dev] = mac.trim(); });
+  Object.entries(configs || {}).forEach(([dev, cfg]) => {
+    if (!cfg || typeof cfg !== 'object') return;
+    const c = {
+      bridge_mac: (cfg.bridge_mac || '').trim(),
+      ep1_nh:     (cfg.ep1_nh     || '').trim(),
+      ep1_mac:    (cfg.ep1_mac    || '').trim(),
+      ep1_subnet: (cfg.ep1_subnet || '').trim(),
+      ep2_nh:     (cfg.ep2_nh     || '').trim(),
+      ep2_mac:    (cfg.ep2_mac    || '').trim(),
+      ep2_subnet: (cfg.ep2_subnet || '').trim(),
+    };
+    if (Object.values(c).some(v => v)) clean[dev] = c;
+  });
   const json = JSON.stringify(clean);
-  PropertiesService.getUserProperties().setProperty('SNAKE_DEVICE_MACS', json);
-  _writePropsSheet('SNAKE_DEVICE_MACS', json, 'user');
+  PropertiesService.getUserProperties().setProperty('SNAKE_DEVICE_CONFIGS', json);
+  _writePropsSheet('SNAKE_DEVICE_CONFIGS', json, 'user');
   return { success: true };
 }
 
@@ -3288,13 +3309,13 @@ function saveGwDeviceOverrides(overrides) {
 function saveIpPreferences(prefs) {
   const userProps = PropertiesService.getUserProperties();
   const gwOverrides = prefs.gw_device_overrides;
-  const snakeMacs   = prefs.snake_macs;
+  const snakeConfigs = prefs.snake_configs;
   const prefsForUser = Object.assign({}, prefs);
   delete prefsForUser.gw_device_overrides;
   delete prefsForUser.arista_devices;
-  delete prefsForUser.snake_macs; // stored separately via saveSnakeDeviceMacs
-  if (gwOverrides !== undefined) saveGwDeviceOverrides(gwOverrides);
-  if (snakeMacs   !== undefined) saveSnakeDeviceMacs(snakeMacs);
+  delete prefsForUser.snake_configs; // stored separately via saveSnakeDeviceConfigs
+  if (gwOverrides    !== undefined) saveGwDeviceOverrides(gwOverrides);
+  if (snakeConfigs   !== undefined) saveSnakeDeviceConfigs(snakeConfigs);
   userProps.setProperties(prefsForUser);
   _writePropsSheetBatch(prefsForUser, 'user');
   return { success: true };
@@ -3774,7 +3795,7 @@ function _seedPropsSheet() {
     { key: 'ep1_mac',          store: 'user', svc: up }, { key: 'ep1_subnet',   store: 'user', svc: up },
     { key: 'ep2_nh',           store: 'user', svc: up }, { key: 'ep2_mac',      store: 'user', svc: up },
     { key: 'ep2_subnet',       store: 'user', svc: up },
-    { key: 'SNAKE_DEVICE_MACS', store: 'user', svc: up },
+    { key: 'SNAKE_DEVICE_CONFIGS', store: 'user', svc: up },
     { key: 'CUSTOM_VIEW_PREFS', store: 'user', svc: up },
     // ScriptProperties
     { key: 'DEVICE_LABELS',          store: 'script', svc: sp },
