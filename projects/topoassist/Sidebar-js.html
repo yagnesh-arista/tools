@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.5 | 2026-05-17 11:26:04 -->
+<!-- TopoAssist v260517.6 | 2026-05-17 11:30:39 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.5";  // keep in sync with Code.gs
+const APP_VERSION = "260517.6";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5186,12 +5186,6 @@ function openIpConfigModal(btn) {
     document.getElementById("ip_mlag_base").value = prefs.mlag_peer_base || "1";
     document.getElementById("ip_vni_base").value = prefs.vni_base || "10000";
     document.getElementById("ip_bgp_asn_base").value = prefs.bgp_asn_base || "65000";
-    document.getElementById("ip_bridge_mac").value = prefs.bridge_mac || "";
-    // Auto-fill from device bridge if field is still empty and a unique MAC was detected
-    if (!prefs.bridge_mac && _detectedBridgeMac) {
-      document.getElementById("ip_bridge_mac").value = _detectedBridgeMac;
-    }
-
     // Show snake fields only when snake ports exist; placeholder shown otherwise.
     // Prefer _snakeDeviceNames (from topology load); fall back to scanning allNodesData.
     const _snakeDevs = _snakeDeviceNames.length > 0
@@ -5203,8 +5197,25 @@ function openIpConfigModal(btn) {
     document.getElementById('snakeTestSection').style.display = _hasSnake ? '' : 'none';
     document.getElementById('snakeNoPorts').style.display     = _hasSnake ? 'none' : '';
     if (_hasSnake) {
-      document.getElementById('snakeDeviceList').textContent =
-        'Snake detected on: ' + _snakeDevs.join(', ') + ' — enter the DUT system MAC below.';
+      const _snakeMacsMap = prefs.snake_macs || {};
+      // Auto-detect fallback: only pre-fill when exactly one snake device (otherwise ambiguous)
+      const _macFallback = _snakeDevs.length === 1 && !_snakeMacsMap[_snakeDevs[0]] && _detectedBridgeMac
+        ? _detectedBridgeMac : '';
+      document.getElementById('snakeDeviceAccordion').innerHTML = _snakeDevs.map(dev => {
+        const mac = (_snakeMacsMap[dev] || (dev === _snakeDevs[0] ? _macFallback : '') || '').trim();
+        return `<details class="snake-dev-details" open style="margin-bottom:4px;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden;">
+          <summary style="padding:5px 10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b;list-style:none;display:flex;align-items:center;gap:6px;background:#f8fafc;user-select:none;-webkit-user-select:none;">${dev}</summary>
+          <div style="padding:6px 10px 8px;">
+            <div class="ip-row" style="--label-w:120px;margin-top:4px;">
+              <span class="ip-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;">Bridge MAC</span>
+              <div class="ip-inputs"><div class="input-wrapper">
+                <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#94a3b8;">DUT system MAC</label>
+                <input type="text" class="snake-dev-mac" data-dev="${dev}" value="${mac}" placeholder="001c.7300.0000" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+              </div></div>
+            </div>
+          </div>
+        </details>`;
+      }).join('');
     }
     document.getElementById("ip_ep1_nh").value     = prefs.ep1_nh     || "";
     document.getElementById("ip_ep1_mac").value    = prefs.ep1_mac    || "";
@@ -5322,7 +5333,7 @@ function saveIpConfig() {
     mlag_peer_base: document.getElementById("ip_mlag_base").value || '1',
     vni_base: document.getElementById("ip_vni_base").value || '10000',
     bgp_asn_base: document.getElementById("ip_bgp_asn_base").value || '65000',
-    bridge_mac:  (document.getElementById("ip_bridge_mac").value  || '').trim(),
+    snake_macs: (() => { const m = {}; document.querySelectorAll('#snakeDeviceAccordion .snake-dev-mac').forEach(inp => { if (inp.dataset.dev && inp.value.trim()) m[inp.dataset.dev] = inp.value.trim(); }); return m; })(),
     ep1_nh:      (document.getElementById("ip_ep1_nh").value      || '').trim(),
     ep1_mac:     (document.getElementById("ip_ep1_mac").value     || '').trim(),
     ep1_subnet:  (document.getElementById("ip_ep1_subnet").value  || '').trim(),
@@ -6118,6 +6129,7 @@ function saveGlobalCfgFromSidebar() {
     .withSuccessHandler(function() {
       // 1. Wipe config cache — global config is baked into every device config
       if (typeof configCache !== 'undefined') configCache = {};
+      _markConfigsFetching();
 
       initialGlobalCfgState = textarea.value;
       updateDirtyButton('#btnSaveGlobalCfg', false);
@@ -6202,6 +6214,7 @@ function saveTechSettings() {
 
       // 1. Wipe the Cache
       if (typeof configCache !== 'undefined') configCache = {};
+      _markConfigsFetching();
 
       // 2. Refresh Active Device
       if (typeof selectedDeviceId !== 'undefined' && selectedDeviceId) {
@@ -10161,33 +10174,11 @@ function stopBackgroundPrefetch() {
 
 // Marks ALL currently visible split buttons as 'fetching' (orange).
 // Called on any full configCache clear — DATA_VERSION change, saves, manual refresh.
-// processDeviceConfig restores 'ready' as each device config comes back.
-// splitLeft/splitRight stay orange until the link is re-selected when not auto-refreshed.
+// Delegates to _markDeviceConfigFetching for each active device slot (SSoT).
 function _markConfigsFetching() {
-  const time = new Date().toLocaleTimeString('en-US',
-    { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-
-  if (selectedDeviceId) {
-    const w = document.getElementById('splitDevice');
-    if (w && w.dataset.splitState === 'ready') {
-      const d = allDevicesData[selectedDeviceId];
-      _setSplitBtnLabel('splitDevice', d?.sheetIndex || '-', selectedDeviceId, null, 'fetching', time);
-    }
-  }
-  if (_leftDev) {
-    const w = document.getElementById('splitLeft');
-    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
-      const d = allDevicesData[_leftDev];
-      _setSplitBtnLabel('splitLeft', d?.sheetIndex || '-', _leftDev, _leftPort, 'fetching', time);
-    }
-  }
-  if (_rightDev) {
-    const w = document.getElementById('splitRight');
-    if (w && w.style.display !== 'none' && w.dataset.splitState === 'ready') {
-      const d = allDevicesData[_rightDev];
-      _setSplitBtnLabel('splitRight', d?.sheetIndex || '-', _rightDev, _rightPort, 'fetching', time);
-    }
-  }
+  if (selectedDeviceId) _markDeviceConfigFetching(selectedDeviceId);
+  if (_leftDev) _markDeviceConfigFetching(_leftDev);
+  if (_rightDev) _markDeviceConfigFetching(_rightDev);
 }
 
 // Marks split buttons showing a specific device as 'fetching'.
@@ -10261,7 +10252,7 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
       if (newPeer && newDevs[newPeer]) invalidate.add(newPeer);
     });
 
-    invalidate.forEach(name => { delete configCache[name]; });
+    invalidate.forEach(name => { delete configCache[name]; _markDeviceConfigFetching(name); });
     if (invalidate.size > 0) {
       dbg(`Config cache: invalidated ${invalidate.size} device(s):`, [...invalidate]);
     } else {
@@ -10272,6 +10263,7 @@ function _selectiveConfigInvalidate(oldDevs, newDevs) {
     // Safety net — full clear on any unexpected error
     console.warn('_selectiveConfigInvalidate failed, falling back to full clear:', e);
     configCache = {};
+    _markConfigsFetching();
     return -1; // unknown — treat as invalidated
   }
 }
@@ -10345,6 +10337,7 @@ function fetchData(force, autoVerify, silent) {
     // Exception: force=true (manual refresh) clears configCache entirely so fresh configs are fetched.
     if (force) {
       configCache = {};
+      _markConfigsFetching();
       dbg('Manual refresh: config cache cleared');
     }
     if (!silent) {
@@ -17217,7 +17210,7 @@ function resetIpConfig() {
   document.getElementById("ip_mlag_base").value = "1";
   document.getElementById("ip_vni_base").value = "10000";
   document.getElementById("ip_bgp_asn_base").value = "65000";
-  document.getElementById("ip_bridge_mac").value  = "";
+  document.querySelectorAll('#snakeDeviceAccordion .snake-dev-mac').forEach(inp => { inp.value = ''; });
   document.getElementById("ip_ep1_nh").value      = "";
   document.getElementById("ip_ep1_mac").value     = "";
   document.getElementById("ip_ep1_subnet").value  = "";
