@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.17 | 2026-05-17 12:38:11 -->
+<!-- TopoAssist v260517.18 | 2026-05-17 12:39:51 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.17";  // keep in sync with Code.gs
+const APP_VERSION = "260517.18";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -5738,6 +5738,7 @@ function checkTechDirty() {
   if (saveBtn) saveBtn.disabled = errors.length > 0;
 
   updateDirtyButton("#networkStackModal .btn-success-mono", isDirty && errors.length === 0);
+  _updateCancelBtn('btnCancelTech', isDirty);
 }
 
 /* --- TECH COMPAT: protocol checkboxes valid per P2P interface mode --- */
@@ -7417,6 +7418,7 @@ No peer connected.<br>Use 'Connect' to add a link.
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
   initialEditModalState = _captureFormState('guiEditModal');
+  _updateCancelBtn('btnCancelEdit', false);
 }
 
 function openConnectModal(domId, portObj) {
@@ -7468,6 +7470,7 @@ function openConnectModal(domId, portObj) {
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
   initialEditModalState = _captureFormState('guiEditModal');
+  _updateCancelBtn('btnCancelEdit', false);
 }
 
 function openAddLinkModal() {
@@ -7519,6 +7522,7 @@ function openAddLinkModal() {
   setActiveModalChip('guiEditModal');
   modal.style.display = "flex";
   initialEditModalState = _captureFormState('guiEditModal');
+  _updateCancelBtn('btnCancelEdit', false);
 }
 
 function openAddModal(deviceId) {
@@ -7529,6 +7533,7 @@ function openAddModal(deviceId) {
 
 function closeEditModal() {
   const isDirty = initialEditModalState !== '' && _captureFormState('guiEditModal') !== initialEditModalState;
+  _updateCancelBtn('btnCancelEdit', isDirty);
   if (!_confirmDirtyClose(isDirty, "Edit Interface")) return;
   initialEditModalState = '';
   setActiveModalChip(null);
