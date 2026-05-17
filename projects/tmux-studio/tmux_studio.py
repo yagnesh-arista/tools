@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.16 | 2026-05-17 13:31:49
+# tmux-studio v260517.17 | 2026-05-17 13:43:34
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -1202,14 +1202,34 @@ def main():
             print(f"\n  Source: {Colors.GREEN}{src['session']}:{src['win_index']} [{src['win_name']}]{Colors.RESET} — {src_panes}")
             for tgt in targets:
                 tgt_panes = f"{tgt['pane_count']} pane{'s' if tgt['pane_count'] != 1 else ''}"
-                print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes} → layout from [{src['win_name']}]")
+                print(f"  Target: {Colors.ORANGE}{tgt['session']}:{tgt['win_index']} [{tgt['win_name']}]{Colors.RESET} — {tgt_panes}")
 
-            if not ask_confirmation(f"Clone layout from [{src['win_name']}] to {len(targets)} target(s)?"):
+            print(f"\n{Colors.BLUE}Reading source pane commands...{Colors.RESET}")
+            src_cmds = get_pane_commands(src["session"], src["win_index"])
+
+            _SKIP = {"-bash", "bash", "-zsh", "zsh", "-sh", "sh"}
+            sendable = [
+                (p["index"], p["command"]) for p in src_cmds
+                if p["command"]
+                and not p["command"].endswith(" (idle)")
+                and p["command"].lstrip("-") not in _SKIP
+            ]
+
+            print(f"\n  Commands to send ({len(sendable)} pane(s)):")
+            for idx, cmd in sendable:
+                print(f"    pane {idx}: {cmd}")
+
+            if not ask_confirmation(f"\nClone [{src['win_name']}] → {len(targets)} target(s): layout + commands?"):
                 print(f"{Colors.RED}Cancelled.{Colors.RESET}"); sys.exit(0)
 
             for tgt in targets:
                 copy_window_layout(src, tgt)
-                print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}]")
+                for idx, cmd in sendable:
+                    pane_target = f"{tgt['session']}:{tgt['win_index']}.{idx}"
+                    subprocess.run(["tmux", "send-keys", "-t", pane_target, "-l", cmd], capture_output=True)
+                    subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)
+                    time.sleep(0.1)
+                print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}] ({len(sendable)} commands sent)")
             print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
 
         elif args.cmd == "pane-info":
