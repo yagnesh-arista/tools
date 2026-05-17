@@ -250,6 +250,45 @@ function closeMyModal() {
 Close anyway? (Changes will be lost)
 ```
 
+### Dynamic Cancel label — "Close" / "Abort *"
+
+The Cancel button label must reflect the modal's dirty state so the user knows before clicking whether changes will be lost.
+
+| State | Label | Click behavior |
+|---|---|---|
+| Clean (no changes) | **Close** | Closes immediately — no confirm dialog |
+| Dirty (unsaved changes) | **Abort \*** | Triggers `_confirmDirtyClose` confirm dialog |
+
+The `*` suffix follows the same convention as the dirty Save button (amber + `*`). No background color change on Cancel — color is reserved for the Save button.
+
+**Implementation:** use `_updateCancelBtn(id, isDirty)` — never inline `btn.textContent`:
+```javascript
+function _updateCancelBtn(id, isDirty) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.textContent = isDirty ? 'Abort *' : 'Close';
+}
+```
+
+**Every Cancel button must have a stable `id`** (e.g. `id="btnCancelTech"`) so `_updateCancelBtn` can target it.
+
+**Tier 1 — live update** (modals with a live dirty-check function that already calls `updateDirtyButton`):
+- Add `_updateCancelBtn(id, isDirty)` in the same dirty-check function, immediately after `updateDirtyButton`.
+- The open function calls this dirty-check → Cancel starts as "Close" automatically.
+
+**Tier 2 — open reset + close compute** (modals where dirty state is only known at close time):
+- Call `_updateCancelBtn(id, false)` at the END of the open function (after `initialState` is captured).
+- Call `_updateCancelBtn(id, isDirty)` in the close function BEFORE `_confirmDirtyClose` — so if the user dismisses the confirm dialog, the button persists as "Abort *" for the remainder of the session.
+
+**No onclick change needed** — the close function already calls `_confirmDirtyClose`, which silently passes when not dirty. The label is purely informational.
+
+**Checklist for every new edit/confirm modal:**
+- [ ] Cancel button has a stable `id` attribute
+- [ ] `_updateCancelBtn(id, false)` called on modal open (directly or via dirty-check fn)
+- [ ] Tier 1: `_updateCancelBtn(id, isDirty)` added to the dirty-check function
+- [ ] Tier 2: `_updateCancelBtn(id, isDirty)` added to the close function BEFORE `_confirmDirtyClose`
+- [ ] Label is "Close" immediately after open (no stale "Abort *" from a previous session)
+
 ### Esc key — every new modal must be in the LIFO close list
 
 Every modal added to the project must be registered in two places in the global `keydown` handler:
