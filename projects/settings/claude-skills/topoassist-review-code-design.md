@@ -1223,6 +1223,7 @@ Callers needing **string + state** call `_setXLabel`.
 - `_buildSplitLabel(sheetId, dev, port, state, ageOrTime)` → string for all 3 split-btn states
 - `_setSplitBtnLabel(splitId, sheetId, dev, port, state, ageOrTime)` → calls `_buildSplitLabel` + `setSplitBtnState`
 - `updateDirtyButton(selector, isDirty)` → amber/green + " *" label; use for ALL dirty-state save buttons
+- `_updateCancelBtn(id, isDirty)` → "Close"/"Abort *" label; use for ALL edit/confirm modal Cancel buttons
 
 ```bash
 # Confirm _buildSplitLabel is the only place that formats split-btn labels
