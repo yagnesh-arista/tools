@@ -1,10 +1,10 @@
-// TopoAssist v260517.31 | 2026-05-17 13:32:44
+// TopoAssist v260517.32 | 2026-05-17 13:46:45
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.31";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.32";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1680,6 +1680,10 @@ const FORMAT_CONFIG = {
       { text: 'l3-po-int', bg: '#bae6fd', color: '#0c4a6e', type: 'exact' },
       { text: 'l3-et-sub-int', bg: '#faf5ff', color: '#7e22ce', type: 'exact' },
       { text: 'l3-po-sub-int', bg: '#e9d5ff', color: '#581c87', type: 'exact' }
+    ],
+    'ip_type': [
+      { text: 'p2p', bg: '#f3f4f6' },
+      { text: 'gw', bg: '#fff1f2' }
     ]
   }
 };
@@ -1832,7 +1836,13 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     return `${letter}${r}`;
   };
 
-  const mlagRanges = []; // Store cells that need borders
+  const mlagRanges     = []; // MLAG PO cells        — black SOLID_MEDIUM border
+  const p2pBorderCells = []; // P2P physical rows    — violet SOLID_MEDIUM border
+  const gwBorderCells  = []; // GW physical rows     — amber SOLID_MEDIUM border
+
+  const SCHEMA_KEYS_BORDER = ['int','po','sp_mode','vlan','svi_vlan','ip_type','vrf',
+                               'et_speed','xcvr_speed','encoding','xcvr_type','snake_int',
+                               'desc','sd','dp-pp-mp'];
 
   headers.forEach((h, i) => {
     if (h.startsWith("int_")) {
@@ -1843,7 +1853,22 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
       const dev = h.substring(3);
       if (!deviceMap[dev]) deviceMap[dev] = {};
       deviceMap[dev].poIdx = i;
+    } else if (h.startsWith("ip_type_")) {
+      const dev = h.substring(8);
+      if (!deviceMap[dev]) deviceMap[dev] = {};
+      deviceMap[dev].ipTypeIdx = i;
     }
+  });
+
+  // Per-device list of all schema column indices — used for P2P/GW border ranges.
+  const deviceSchemaColsMap = {};
+  Object.keys(deviceMap).forEach(dev => {
+    const sfx = '_' + dev;
+    deviceSchemaColsMap[dev] = headers.reduce((acc, h, i) => {
+      const key = h.slice(0, -(sfx.length));
+      if (h.endsWith(sfx) && SCHEMA_KEYS_BORDER.includes(key)) acc.push(i);
+      return acc;
+    }, []);
   });
 
   const matrix = data.map(() => new Array(totalCols).fill("#ffffff"));
@@ -2079,20 +2104,18 @@ function buildConditionalRules(sheet, headers, lastRow) {
 
     // ── 3. INACTIVE GRAY: int_ empty → all device columns grey (including int_ itself)
     const suffix = '_' + dev;
-    // SSoT: shared range list for all SCHEMA_KEYS columns of this device.
-    // Reused by INACTIVE GRAY, SNAKE-ROW, P2P-ROW, GW-ROW.
-    const allSchemaColRanges = headers.reduce((acc, h, i) => {
+    const allDevRanges = headers.reduce((acc, h, i) => {
       const key = h.slice(0, -(suffix.length));
       if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
         acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
       }
       return acc;
     }, []);
-    if (allSchemaColRanges.length > 0) {
+    if (allDevRanges.length > 0) {
       rules.push(SpreadsheetApp.newConditionalFormatRule()
         .whenFormulaSatisfied(`=$${iC}3=""`)
         .setBackground("#c8d5e3").setFontColor("#94a3b8")
-        .setRanges(allSchemaColRanges).build());
+        .setRanges(allDevRanges).build());
     }
 
     // ── 4. N/A GRAY: field not applicable for current mode (cell may be empty) ─
@@ -2175,11 +2198,18 @@ function buildConditionalRules(sheet, headers, lastRow) {
       // SNAKE-ROW: orange tint on all device schema columns when snake_int_ is filled.
       // Orange matches the canvas self-loop arc color (#f97316) — visually consistent.
       // A-SNAKE RED and N/A-SNAKE GRAY rules are higher priority and override per-column.
-      if (allSchemaColRanges.length > 0) {
+      const snakeAllDevRanges = headers.reduce((acc, h, i) => {
+        const key = h.slice(0, -(suffix.length));
+        if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
+          acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
+        }
+        return acc;
+      }, []);
+      if (snakeAllDevRanges.length > 0) {
         rules.push(SpreadsheetApp.newConditionalFormatRule()
           .whenFormulaSatisfied(snakeFormula)
           .setBackground("#ffedd5").setFontColor("#c2410c")
-          .setRanges(allSchemaColRanges).build());
+          .setRanges(snakeAllDevRanges).build());
       }
     }
 
@@ -2219,22 +2249,6 @@ function buildConditionalRules(sheet, headers, lastRow) {
         )
         .setFontColor(FORMAT_CONFIG.colors.textMuted).setItalic(true)
         .setRanges([sheet.getRange(3, intIdx, lastRow - 2, 1)]).build());
-    }
-
-    // ── 7. ROW TINTS: P2P (violet) and GW (amber) — match canvas category colors ─
-    // Colors align with canvas device-card badges: P2P=#8b5cf6, GW=#f59e0b.
-    // Priority below INACTIVE GRAY, SNAKE-ROW, W2, MEMBER PORT — above Section B.
-    // SNAKE rows have ip_type_=p2p internally but stay orange (SNAKE-ROW wins above).
-    if (ipIdx > 0 && allSchemaColRanges.length > 0) {
-      const ipC = getColLet(ipIdx);
-      rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND($${iC}3<>"",REGEXMATCH(LOWER($${ipC}3),"p2p"))`)
-        .setBackground("#ede9fe").setFontColor("#6d28d9")
-        .setRanges(allSchemaColRanges).build());
-      rules.push(SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied(`=AND($${iC}3<>"",REGEXMATCH(LOWER($${ipC}3),"gw"))`)
-        .setBackground("#fef3c7").setFontColor("#b45309")
-        .setRanges(allSchemaColRanges).build());
     }
 
   });
