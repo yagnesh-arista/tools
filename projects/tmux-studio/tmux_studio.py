@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.8 | 2026-05-17 12:35:23
+# tmux-studio v260517.9 | 2026-05-17 12:46:28
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -620,19 +620,22 @@ def _ssh_target_host(ssh_cmd: str) -> str:
     return ssh_cmd
 
 
-def _scrollback_last_cmd(pane_target: str) -> str:
-    """Scan last 100 scrollback lines for the most recent EOS command.
+def _scrollback_last_cmd(pane_target: str, depth: int = 100) -> str:
+    """Scan recent scrollback for the most recent EOS command.
 
-    Non-disruptive — no keystrokes sent. Used when visible screen shows an idle EOS
-    prompt (pane is between watch cycles). Checks both:
+    Non-disruptive — no keystrokes sent. Checks both:
       1. Linux watch header 'Every N.0s: cmd ...' — most recent cycle header
       2. EOS prompt line 'hostname# cmd' — the command as typed at the EOS shell
-    Returns the command string, or _PANE_IDLE if none found.
+    depth=100 for idle-prompt callers (watch cycle just ran, command is recent).
+    depth=2000 for screen-full-of-output callers (command may be far back in history).
+    Returns the command string, or _PANE_IDLE if an EOS idle prompt was found but
+    no command, or "" if no EOS content was found at all.
     """
     cap = subprocess.run(
-        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-100"],
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", f"-{depth}"],
         capture_output=True, text=True
     )
+    found_eos = False
     for line in reversed(cap.stdout.splitlines()):
         stripped = line.strip()
         m = _EOS_WATCH_RE.match(stripped)
@@ -643,7 +646,10 @@ def _scrollback_last_cmd(pane_target: str) -> str:
             cmd = m.group(1).strip()
             if cmd and not _EOS_NOT_CMD_RE.match(cmd):
                 return cmd
-    return _PANE_IDLE
+            found_eos = True  # idle prompt hit — keep scanning for a command line
+        elif found_eos and _EOS_IDLE_RE.match(stripped):
+            found_eos = True
+    return _PANE_IDLE if found_eos else ""
 
 
 def _get_pane_eos_cli(pane_target: str) -> str:
@@ -753,8 +759,10 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
                 recalled = _get_pane_cli_via_recall(pane_target)
                 display_cmd = recalled if recalled else f"{_ssh_target_host(local_cmd)} (idle)"
             else:
-                # Shell pane with screen full of output — cannot safely C-c
-                display_cmd = local_cmd
+                # Shell pane, screen full of output — deep history scan (no C-c)
+                # The EOS prompt+command may be thousands of lines back in scrollback
+                found = _scrollback_last_cmd(pane_target, depth=2000)
+                display_cmd = found if (found and found != _PANE_IDLE) else local_cmd
         else:
             display_cmd = local_cmd
         panes.append({"index": idx, "pid": pid, "command": display_cmd, "is_active": active == "1"})
