@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.19 | 2026-05-17 12:40:06 -->
+<!-- TopoAssist v260517.20 | 2026-05-17 12:43:46 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.19";  // keep in sync with Code.gs
+const APP_VERSION = "260517.20";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -6867,6 +6867,9 @@ function _deselectAll() {
 function selectDevice(deviceId) {
   if (isEditMode) return;
 
+  // Restore previously selected link's canvas highlight before clearing state
+  if (selectedLineId && linkMap[selectedLineId]) restoreLinkStyle(linkMap[selectedLineId]);
+
   // 1. Update Global State
   selectedDeviceId = deviceId;
   selectedLineId = null;
@@ -6939,6 +6942,8 @@ function selectDevice(deviceId) {
 
   const copyGroup = document.getElementById("copyGroup");
   if (copyGroup) copyGroup.style.display = "flex";
+
+  requestAnimationFrame(redrawLinks);
 }
 
 /**
