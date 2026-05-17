@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.9 | 2026-05-17 12:46:28
+# tmux-studio v260517.10 | 2026-05-17 12:52:26
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -731,12 +731,12 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
             continue
         idx, pid, cmd, active = parts
         # Get the local foreground process (child of shell if one is running).
-        child = subprocess.run(["ps", "--ppid", pid, "-o", "args="], capture_output=True, text=True)
+        child = subprocess.run(["ps", "ww", "--ppid", pid, "-o", "args="], capture_output=True, text=True)
         child_cmds = [l.strip() for l in child.stdout.strip().splitlines() if l.strip()]
         if child_cmds:
             local_cmd = child_cmds[0]
         else:
-            ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
+            ps = subprocess.run(["ps", "ww", "-p", pid, "-o", "args="], capture_output=True, text=True)
             local_cmd = ps.stdout.strip() or cmd
         # Detect whether this pane is an SSH connection or a bare shell.
         # Bare shells (-bash, bash) may also be EOS sessions (virtual device direct
