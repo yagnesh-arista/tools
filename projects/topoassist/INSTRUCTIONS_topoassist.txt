@@ -1,7 +1,8 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-17 (fix: audit-body CSS — min-height:150px → min-height:0 so flex scroll trio is complete; review: removed stale editOverlay rule from ui.md/CLAUDE.md/review-code-design Check 21. FILES: Sidebar-css.html)
+  Last updated: 2026-05-17 (ux: SNAKE-ROW CF color blue→orange (#ffedd5/#c2410c) — matches canvas self-loop arc color #f97316; snake rows now visually distinct from regular cable rows. Requires Save & Sync. FILES: Code.gs)
+  Previous: 2026-05-17 (fix: audit-body CSS — min-height:150px → min-height:0 so flex scroll trio is complete; review: removed stale editOverlay rule from ui.md/CLAUDE.md/review-code-design Check 21. FILES: Sidebar-css.html)
   Previous: 2026-05-17 (fix: snake primary port peer regression — Code.gs getTopologyData(): (1) snake_int_ column is now the SSoT for detecting snake primaries — replaced globalLinkMap.get(isSelfLoop) check with direct (details.snake_int_||'').trim() check; peerDev/peerPort set inline during the scan (same device, snake_int_ port) so no post-hoc fix-up needed; (2) derived `cableNodes = nodesOnRow.filter(n => !n.details.isSnakePrimary)` before PEER LINKING — snake primaries excluded from stride-2 peer pairing, PO registration, and processRowLinks; full nodesOnRow still used for allCollectedNodes (snake primary goes to canvas); eliminates spurious cable link (e.g. Leaf1:Et10 ↔ Leaf4:Et9) that triggered VLAN Mismatch + Incomplete L3 audit errors. FILES: Code.gs)
   Previous: 2026-05-17 (fix: selectDevice() link highlight not cleared on device click — added restoreLinkStyle(linkMap[selectedLineId]) before clearing selectedLineId and requestAnimationFrame(redrawLinks) at end of function; matches pattern already in _deselectAll() and selectLine(). FILES: Sidebar-js.html)
   Previous: 2026-05-17 (ui: dynamic Cancel→Close/Abort* label — all edit modals: Cancel button now shows "Close" when clean, "Abort *" when dirty. Tier 1 (live): networkStackModal, autoConfigModal, deviceManagerContainer, sheetColumnManagerContainer — _updateCancelBtn wired alongside updateDirtyButton in checkTechDirty/checkIpDirty/DeviceManagerSaveButton/SheetColumnManagerSaveButton. Tier 2 (open+close): guiEditModal, groupRectModal — reset on open, label computed in close function before _confirmDirtyClose. New helper _updateCancelBtn(id,isDirty) added near updateDirtyButton. Button IDs added: btnCancelTech/Ip/Edit/GroupRect/DeviceManager/SheetColumnManager. FILES: Sidebar.html, Sidebar-js.html)
@@ -2028,9 +2029,10 @@ CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = h
     W2: xcvr_speed_ pale-orange (#fed7aa) when empty + xcvr_type_ set + et_speed_
         implies a different speed tier (hint to fill xcvr_speed_ for breakout)
   Priority 6 — MEMBER PORT: italic + muted text on int_ when int_ starts ^Et AND po_ set
-  SNAKE-ROW (blue #dbeafe/#1e40af): when snake_int_<dev> is filled, all SCHEMA_KEYS columns
-    for that device turn blue (multi-range rule, same allDevRanges pattern as INACTIVE GRAY).
-    A-SNAKE RED (priority 1) and N/A-SNAKE GRAY (priority 4) override blue per-column.
+  SNAKE-ROW (orange #ffedd5/#c2410c): when snake_int_<dev> is filled, all SCHEMA_KEYS columns
+    for that device turn orange (matches canvas self-loop arc #f97316 — visually consistent).
+    Multi-range rule, same allDevRanges pattern as INACTIVE GRAY.
+    A-SNAKE RED (priority 1) and N/A-SNAKE GRAY (priority 4) override orange per-column.
   A-SNAKE RED (#fca5a5/#991b1b): when snake_int_ filled AND ip_type_/vrf_/svi_vlan_ not empty
     → RED on that column (fields are auto-managed for snake ports — user should not fill them).
   N/A-SNAKE GRAY (#c8d5e3/#94a3b8): when snake_int_ filled → ip_type_, vrf_, svi_vlan_ gray
