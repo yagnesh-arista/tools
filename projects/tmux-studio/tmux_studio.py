@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.4 | 2026-05-17 11:43:17
+# tmux-studio v260517.5 | 2026-05-17 11:53:48
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -619,18 +619,24 @@ def _ssh_target_host(ssh_cmd: str) -> str:
 
 
 def _scrollback_last_cmd(pane_target: str) -> str:
-    """Scan last 50 scrollback lines for the most recent EOS prompt+command line.
+    """Scan last 100 scrollback lines for the most recent EOS command.
 
     Non-disruptive — no keystrokes sent. Used when visible screen shows an idle EOS
-    prompt: the watch command that started the current cycle is in recent scrollback.
+    prompt (pane is between watch cycles). Checks both:
+      1. Linux watch header 'Every N.0s: cmd ...' — most recent cycle header
+      2. EOS prompt line 'hostname# cmd' — the command as typed at the EOS shell
     Returns the command string, or _PANE_IDLE if none found.
     """
     cap = subprocess.run(
-        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-50"],
+        ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", "-100"],
         capture_output=True, text=True
     )
     for line in reversed(cap.stdout.splitlines()):
-        m = _EOS_PROMPT_RE.match(line.strip())
+        stripped = line.strip()
+        m = _EOS_WATCH_RE.match(stripped)
+        if m:
+            return m.group(1).strip()
+        m = _EOS_PROMPT_RE.match(stripped)
         if m:
             cmd = m.group(1).strip()
             if not _EOS_NOT_CMD_RE.match(cmd):
