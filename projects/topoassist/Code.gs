@@ -1,10 +1,10 @@
-// TopoAssist v260517.9 | 2026-05-17 11:38:21
+// TopoAssist v260517.10 | 2026-05-17 11:38:43
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.9";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.10";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -5185,15 +5185,24 @@ function getDeviceConfig(deviceName) {
     // [SECTION 080] SNAKE VRF CHAIN (static ARP + egress-vrf routes)
     // snakePairsForStatic already sorted and computed above
     if (snakePairsForStatic.length > 0) {
-      // Per-device MAC takes priority over global bridge_mac fallback
-      const _snakeMacs = getSnakeDeviceMacs();
-      const _effectiveMac = (_snakeMacs[deviceName] || ipPrefs.bridge_mac || '').trim();
-      const _snakeIpPrefs = Object.assign({}, ipPrefs, { bridge_mac: _effectiveMac });
+      // Per-device config takes priority over global ip prefs fallbacks
+      const _devSnakeCfgs = getSnakeDeviceConfigs();
+      const _devCfg = _devSnakeCfgs[deviceName] || {};
+      const _effectiveMac = (_devCfg.bridge_mac || ipPrefs.bridge_mac || '').trim();
+      const _snakeIpPrefs = Object.assign({}, ipPrefs, {
+        bridge_mac: _effectiveMac,
+        ep1_nh:     (_devCfg.ep1_nh     || ipPrefs.ep1_nh     || '').trim(),
+        ep1_mac:    (_devCfg.ep1_mac    || ipPrefs.ep1_mac    || '').trim(),
+        ep1_subnet: (_devCfg.ep1_subnet || ipPrefs.ep1_subnet || '').trim(),
+        ep2_nh:     (_devCfg.ep2_nh     || ipPrefs.ep2_nh     || '').trim(),
+        ep2_mac:    (_devCfg.ep2_mac    || ipPrefs.ep2_mac    || '').trim(),
+        ep2_subnet: (_devCfg.ep2_subnet || ipPrefs.ep2_subnet || '').trim(),
+      });
       const missing = [];
       if (!_effectiveMac) missing.push('Bridge MAC');
       if (!foundEP1) missing.push('TRAFFIC_SNAKE_EP1_L3 desc');
       if (!foundEP2) missing.push('TRAFFIC_SNAKE_EP2_L3 desc');
-      const nhWarn = (!ipPrefs.ep1_nh || !ipPrefs.ep2_nh)
+      const nhWarn = (!_snakeIpPrefs.ep1_nh || !_snakeIpPrefs.ep2_nh)
         ? ' [EP1/EP2 NH not set — direct-connect assumed; fill in if not directly connected]' : '';
       configMap["080_SNAKE"] = {
         full: generateSnakeStaticConfig(snakePairsForStatic, _snakeIpPrefs),
