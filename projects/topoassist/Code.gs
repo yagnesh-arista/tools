@@ -1,10 +1,10 @@
-// TopoAssist v260517.32 | 2026-05-17 13:46:45
+// TopoAssist v260517.33 | 2026-05-17 13:49:41
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.32";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.33";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1800,6 +1800,18 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
       }
     }
 
+    // 3a. Apply P2P Borders (violet — matches canvas category badge #8b5cf6)
+    if (result.p2pBorderCells.length > 0) {
+      sheet.getRangeList(result.p2pBorderCells)
+        .setBorder(true, true, true, true, null, null, "#7c3aed", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    }
+
+    // 3b. Apply GW Borders (amber — matches canvas category badge #f59e0b)
+    if (result.gwBorderCells.length > 0) {
+      sheet.getRangeList(result.gwBorderCells)
+        .setBorder(true, true, true, true, null, null, "#d97706", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    }
+
     // 4. Apply Conditional Rules (Text Colors/Dimming)
     // CF rules are ONLY rebuilt on fullRebuild (Force Sync / schema changes).
     // Auto-refresh skips setConditionalFormatRules entirely — existing rules remain in
@@ -1940,6 +1952,21 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
           const rawKey = (item1.colorKey < item2.colorKey) ? `${item1.colorKey}<=>${item2.colorKey}` : `${item2.colorKey}<=>${item1.colorKey}`;
           key = `Phys:${rawKey}`;
           type = 'physical';
+          // Collect P2P/GW border cells for both paired devices (all schema columns each)
+          const dev1 = item1.colorKey.split(':')[0];
+          const dev2 = item2.colorKey.split(':')[0];
+          const ip1 = deviceMap[dev1] && deviceMap[dev1].ipTypeIdx !== undefined
+                        ? String(row[deviceMap[dev1].ipTypeIdx] || '').toLowerCase() : '';
+          const ip2 = deviceMap[dev2] && deviceMap[dev2].ipTypeIdx !== undefined
+                        ? String(row[deviceMap[dev2].ipTypeIdx] || '').toLowerCase() : '';
+          const ipType = ip1 || ip2;
+          if (ipType.includes('p2p')) {
+            (deviceSchemaColsMap[dev1] || []).forEach(ci => p2pBorderCells.push(getA1(absRow, ci + 1)));
+            (deviceSchemaColsMap[dev2] || []).forEach(ci => p2pBorderCells.push(getA1(absRow, ci + 1)));
+          } else if (ipType.includes('gw')) {
+            (deviceSchemaColsMap[dev1] || []).forEach(ci => gwBorderCells.push(getA1(absRow, ci + 1)));
+            (deviceSchemaColsMap[dev2] || []).forEach(ci => gwBorderCells.push(getA1(absRow, ci + 1)));
+          }
         }
 
         const color = generateLightPastelColor(key, type);
@@ -1957,7 +1984,7 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     colorPairs('poIdx');
   }
 
-  return { matrix: matrix, mlagRanges: mlagRanges };
+  return { matrix, mlagRanges, p2pBorderCells, gwBorderCells };
 }
 
 function buildConditionalRules(sheet, headers, lastRow) {

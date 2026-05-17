@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-17 (feat: gSheet CF row tints — P2P and GW rows now highlighted to match canvas category colors. buildConditionalRules() changes: (1) removed stale FORMAT_CONFIG ip_type per-column tints (#f3f4f6/#fff1f2 — too faint, per-column only); (2) renamed allDevRanges→allSchemaColRanges (SSoT extraction — shared by INACTIVE GRAY, SNAKE-ROW, new P2P-ROW, new GW-ROW); (3) SNAKE-ROW now uses allSchemaColRanges instead of duplicated reduce; (4) new P2P-ROW rule: bg #ede9fe/text #6d28d9 (violet) on all SCHEMA_KEYS columns when ip_type_ contains 'p2p' — matches canvas badge #8b5cf6; (5) new GW-ROW rule: bg #fef3c7/text #b45309 (amber) on all SCHEMA_KEYS columns when ip_type_ contains 'gw' — matches canvas badge #f59e0b. Priority: INACTIVE GRAY > SNAKE-ROW > W2 > MEMBER PORT > P2P-ROW > GW-ROW > Section B. Snake ports internally have ip_type_=p2p but stay orange (SNAKE-ROW higher priority). FILES: Code.gs)
+  Last updated: 2026-05-17 (feat: gSheet P2P/GW SOLID_MEDIUM borders — calculateConnectionBackgrounds() now returns {matrix, mlagRanges, p2pBorderCells, gwBorderCells}; physical pair else-branch reads ip_type_ of both paired devices via deviceMap[dev].ipTypeIdx, collects all SCHEMA_KEYS_BORDER columns for both devices into p2pBorderCells (violet #7c3aed) or gwBorderCells (amber #d97706); applyVisualFormatting() applies borders after MLAG step using sheet.getRangeList().setBorder(SOLID_MEDIUM). Colors match canvas category badges (#8b5cf6 P2P / #f59e0b GW). Existing per-column CF attribute colors (sp_mode, xcvr_type, et_speed) are unaffected — borders sit in the setBackgrounds/setBorder layer, not CF rules. SCHEMA_KEYS_BORDER constant defined inside calculateConnectionBackgrounds(). deviceSchemaColsMap built once per call (device→[colIdx list]). FILES: Code.gs)
   Previous: 2026-05-17 (fix: user-select violations — removed user-select:none from readable text content (warning banners, hint divs, status messages, export desc, snake warning, orphan cleaned note); added user-select:text to .cfg-push-diff, .bridge-row-cable, .bridge-row-detail; updated Check 3 in topoassist-review-code-full.md to scan both directions. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-17 (fix: audit-body CSS — min-height:150px → min-height:0 so flex scroll trio is complete; review: removed stale editOverlay rule from ui.md/CLAUDE.md/review-code-design Check 21. FILES: Sidebar-css.html)
   Previous: 2026-05-17 (fix: snake primary port peer regression — Code.gs getTopologyData(): (1) snake_int_ column is now the SSoT for detecting snake primaries — replaced globalLinkMap.get(isSelfLoop) check with direct (details.snake_int_||'').trim() check; peerDev/peerPort set inline during the scan (same device, snake_int_ port) so no post-hoc fix-up needed; (2) derived `cableNodes = nodesOnRow.filter(n => !n.details.isSnakePrimary)` before PEER LINKING — snake primaries excluded from stride-2 peer pairing, PO registration, and processRowLinks; full nodesOnRow still used for allCollectedNodes (snake primary goes to canvas); eliminates spurious cable link (e.g. Leaf1:Et10 ↔ Leaf4:Et9) that triggered VLAN Mismatch + Incomplete L3 audit errors. FILES: Code.gs)
@@ -1980,9 +1980,12 @@ SECTION 10: VISUAL FORMATTING ENGINE
 applyVisualFormatting():
   1. Reads data and headers from sheet
   2. Calls calculateGlobalTopology() for MLAG/peer-link detection
-  3. Calls calculateConnectionBackgrounds() → returns color matrix + MLAG ranges
+  3. Calls calculateConnectionBackgrounds() → returns {matrix, mlagRanges, p2pBorderCells, gwBorderCells}
   4. Applies background color matrix to data range
-  5. Applies black SOLID_MEDIUM borders to MLAG cells
+  5. Clears previous borders on data range
+  5a. Applies black SOLID_MEDIUM borders to MLAG cells (mlagRanges)
+  5b. Applies violet #7c3aed SOLID_MEDIUM borders to P2P cells (p2pBorderCells)
+  5c. Applies amber #d97706 SOLID_MEDIUM borders to GW cells (gwBorderCells)
   6. Calls buildConditionalRules() → applies all conditional format rules
   7. Sets Consolas font, size 10, middle/center alignment
 
@@ -1990,9 +1993,13 @@ CONNECTION COLORS (calculateConnectionBackgrounds):
   - Pairs up columns in order: every 2 filled int_ cells = one cable pair
   - Physical links: pastel color derived from port name hash
   - Port-Channel (regular): distinct pastel color from Po number
-  - MLAG Port-Channel: different pastel + black border
+  - MLAG Port-Channel: different pastel + black SOLID_MEDIUM border on po_ cells
   - Peer-Link: separate color
   - Orphan (unpaired): white (#ffffff)
+  - P2P physical pairs: violet #7c3aed SOLID_MEDIUM border on all SCHEMA_KEYS columns for both devices
+  - GW physical pairs: amber #d97706 SOLID_MEDIUM border on all SCHEMA_KEYS columns for both devices
+  - Border detection: reads ip_type_ of both paired devices; first non-empty value wins
+  - deviceSchemaColsMap built once per call: device → [colIdx] for all SCHEMA_KEYS_BORDER columns
 
 CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = highest):
   Priority 1 — AUDIT RED (#fca5a5/#991b1b): value in a field that is N/A for current mode/interface
