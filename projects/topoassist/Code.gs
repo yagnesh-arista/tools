@@ -1,10 +1,10 @@
-// TopoAssist v260517.29 | 2026-05-17 13:31:40
+// TopoAssist v260517.30 | 2026-05-17 13:32:09
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.29";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.30";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2175,18 +2175,11 @@ function buildConditionalRules(sheet, headers, lastRow) {
       // SNAKE-ROW: orange tint on all device schema columns when snake_int_ is filled.
       // Orange matches the canvas self-loop arc color (#f97316) — visually consistent.
       // A-SNAKE RED and N/A-SNAKE GRAY rules are higher priority and override per-column.
-      const snakeAllDevRanges = headers.reduce((acc, h, i) => {
-        const key = h.slice(0, -(suffix.length));
-        if (h.endsWith(suffix) && SCHEMA_KEYS.includes(key)) {
-          acc.push(sheet.getRange(3, i + 1, lastRow - 2, 1));
-        }
-        return acc;
-      }, []);
-      if (snakeAllDevRanges.length > 0) {
+      if (allSchemaColRanges.length > 0) {
         rules.push(SpreadsheetApp.newConditionalFormatRule()
           .whenFormulaSatisfied(snakeFormula)
           .setBackground("#ffedd5").setFontColor("#c2410c")
-          .setRanges(snakeAllDevRanges).build());
+          .setRanges(allSchemaColRanges).build());
       }
     }
 
