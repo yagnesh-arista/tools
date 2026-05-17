@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.13 | 2026-05-17 12:09:12 -->
+<!-- TopoAssist v260517.14 | 2026-05-17 12:09:54 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.13";  // keep in sync with Code.gs
+const APP_VERSION = "260517.14";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -16211,6 +16211,14 @@ function _toggleBrSec(key) {
   const nowCollapsed = body.classList.toggle('collapsed');
   chev.classList.toggle('collapsed', nowCollapsed);
   try { localStorage.setItem('bridgeSec_' + key, nowCollapsed ? '0' : '1'); } catch(e) {}
+}
+
+function _toggleSnakeSec(dev) {
+  const body = document.getElementById('snakeSecBody_' + dev);
+  const chev = document.getElementById('snakeSecChev_' + dev);
+  if (!body) return;
+  const nowCollapsed = body.classList.toggle('collapsed');
+  if (chev) chev.classList.toggle('collapsed', nowCollapsed);
 }
 
 function addSelectedDiscovered() {

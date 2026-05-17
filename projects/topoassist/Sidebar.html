@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.13 | 2026-05-17 12:07:07 -->
+<!-- TopoAssist v260517.14 | 2026-05-17 12:10:29 -->
 <!DOCTYPE html>
 <html>
 
@@ -951,9 +951,10 @@
         Snake pairs detected — fill in EP1/EP2 port IP and MAC if traffic gen ports are not directly connected to this switch.
       </div>
       <div class="info-box info-box--dim" style="margin:6px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
-        Each device has its own Bridge MAC and IXIA ports (EP1/EP2). Expand a device section below to fill in.<br>
+        Each device has its own Bridge MAC and IXIA endpoints (EP1/EP2).<br>
+        Refer to the device section below and fill in the required details.<br><br>
         <strong>Bridge MAC</strong>: <code>show version | grep MAC</code> or auto-detected via Device Bridge.<br>
-        <strong>EP1/EP2</strong>: only needed if the traffic generator is not directly connected to that device.
+        <strong>EP1/EP2</strong>: Needed when the source &amp; destination IXIA subnet are not directly connected.
       </div>
       <!-- Per-device accordion (Bridge MAC + EP1/EP2) — built dynamically in openIpConfigModal() -->
       <div id="snakeDeviceAccordion" style="margin-bottom:6px;"></div>

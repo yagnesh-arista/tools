@@ -1,10 +1,10 @@
-// TopoAssist v260517.13 | 2026-05-17 12:07:07
+// TopoAssist v260517.14 | 2026-05-17 12:10:46
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.13";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.14";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -6044,7 +6044,7 @@ function generateSnakeStaticConfig(snakePairs, ipPrefs) {
     const sVrf = _snakeVrf(secondaryPort);
 
     // Static ARP — bridge-mac trick, used by both forward and reverse chains
-    lines.push(`arp vrf ${pVrf}   ${remoteIp} ${bridgeMac} arpa`);
+    lines.push(`arp vrf ${pVrf} ${remoteIp} ${bridgeMac} arpa`);
     lines.push(`arp vrf ${sVrf} ${remoteIp} ${bridgeMac} arpa`);
 
     // ── PRIMARY port routes ──────────────────────────────────────────────────
