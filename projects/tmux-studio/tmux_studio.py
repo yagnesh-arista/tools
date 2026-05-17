@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.11 | 2026-05-17 13:03:33
+# tmux-studio v260517.12 | 2026-05-17 13:15:38
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -628,7 +628,12 @@ def _extract_watch_cmd(lines: list[str], start: int) -> str:
     joined = "".join(parts)
     joined = re.sub(r"^Every \d+(?:\.\d+)?s:\s+", "", joined)
     joined = _WATCH_SUFFIX_RE.sub("", joined)
-    return joined.strip()
+    result = joined.strip()
+    # watch(1) itself truncates the header with '...' when the command is too long for the
+    # terminal width. Return "" so callers fall through to the recall path for full text.
+    if result.endswith("..."):
+        return ""
+    return result
 
 
 def _ssh_target_host(ssh_cmd: str) -> str:
@@ -662,7 +667,10 @@ def _scrollback_last_cmd(pane_target: str, depth: int = 100) -> str:
     for i in range(len(lines) - 1, -1, -1):
         stripped = lines[i].strip()
         if _WATCH_HDR_RE.match(stripped):
-            return _extract_watch_cmd(lines, i)
+            cmd = _extract_watch_cmd(lines, i)
+            if cmd:
+                return cmd
+            continue  # watch header truncated by watch(1) itself — keep scanning
         m = _EOS_PROMPT_RE.match(stripped)
         if m:
             cmd = m.group(1).strip()
@@ -723,13 +731,22 @@ def _get_pane_cli_via_recall(pane_target: str) -> str:
         ["tmux", "capture-pane", "-t", pane_target, "-p"],
         capture_output=True, text=True
     )
+    lines = cap.stdout.splitlines()
     recalled = ""
-    for line in reversed(cap.stdout.splitlines()):
-        m = _EOS_PROMPT_RE.match(line.strip())
+    for i in range(len(lines) - 1, -1, -1):
+        m = _EOS_PROMPT_RE.match(lines[i].strip())
         if m:
             cmd = m.group(1).strip()
             if cmd:
-                recalled = cmd
+                # The recalled command may wrap across multiple terminal lines.
+                # After Up (before Enter) it sits at the bottom of the screen with
+                # continuation rows (pure terminal wrap, no marker) immediately below.
+                parts = [cmd]
+                for cont in lines[i + 1:]:
+                    if not cont.strip():
+                        break
+                    parts.append(cont)
+                recalled = "".join(parts).strip()
                 break
     if recalled:
         subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)
