@@ -1,10 +1,10 @@
-// TopoAssist v260517.3 | 2026-05-17 11:04:32
+// TopoAssist v260517.4 | 2026-05-17 11:17:23
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.4";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2724,7 +2724,7 @@ function calculateGlobalTopology(data, headers) {
   // The caller (getDeviceConfig / applyVisualFormatting) applies the override after
   // calling this function. poMap is kept — the override uses it to identify shared
   // PO bundles between declared peer devices.
-  return { mlagConfigPorts: new Set(), peerLinkPorts: new Set(), debugLogs, mlagPeerMap: {}, globalLinkMap, poMap };
+  return { mlagConfigPorts: new Set(), peerLinkPorts: new Set(), debugLogs, mlagPeerMap: {}, globalLinkMap, poMap, snakeDeviceNamesSet };
 }
 
 /**
@@ -3117,7 +3117,7 @@ function getTopologyData(forceSync, isColorEnabled) {
       version: versionToUse,
       snakeTrafficFlags: { hasIn: snakeTrafficHasIn, hasOut: snakeTrafficHasOut },
       snakeBridgeMacConfigured: !!(globalIpPrefs && globalIpPrefs.bridge_mac),
-      snakeDeviceNames: Array.from(snakeDeviceNamesSet).sort()
+      snakeDeviceNames: Array.from(topo.snakeDeviceNamesSet || []).sort()
     };
 
     // Always store result in GAS cache (including forceSync/verify fetches) so the
