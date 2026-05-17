@@ -865,33 +865,37 @@ identical strings.
 
 ---
 
-## Check 32 — Cancel Button + Dirty-State Warning
+## Check 32 — Cancel Button + Dirty-State Warning + Dynamic Label
 
-Every **edit/confirm** modal with a Save button must have a Cancel button and dirty-state protection.
+Every **edit/confirm** modal with a Save button must have a Cancel button and dirty-state protection. The Cancel button label must be dynamic: "Close" (clean) or "Abort *" (dirty).
 
 ```bash
-# Verify Cancel buttons exist in edit/confirm modal footers
-grep -A3 "modal-actions right-align" ~/claude/projects/topoassist/Sidebar.html \
-  | grep -B1 "btn-success-mono" | grep "btn-mono.*Cancel\|Cancel.*btn-mono"
+# Verify Cancel buttons exist in edit/confirm modal footers and have stable ids
+grep -n "btnCancelTech\|btnCancelIp\|btnCancelEdit\|btnCancelGroupRect\|btnCancelDeviceManager\|btnCancelSheetColumnManager" \
+  ~/claude/projects/topoassist/Sidebar.html
 
 # Verify close functions call _confirmDirtyClose
 grep -n "_confirmDirtyClose" ~/claude/projects/topoassist/Sidebar-js.html
 
+# Verify _updateCancelBtn helper exists
+grep -n "function _updateCancelBtn" ~/claude/projects/topoassist/Sidebar-js.html
+
+# Verify _updateCancelBtn is called in dirty-check functions (Tier 1) and close functions (Tier 2)
+grep -n "_updateCancelBtn" ~/claude/projects/topoassist/Sidebar-js.html
+
 # Verify _confirmDirtyClose, _captureFormState, _captureGroupRectState helpers exist
 grep -n "function _confirmDirtyClose\|function _captureFormState\|function _captureGroupRectState" \
   ~/claude/projects/topoassist/Sidebar-js.html
-
-# Verify initialState vars exist
-grep -n "initialGlobalCfgState\|initialEditModalState\|initialGroupRectState" \
-  ~/claude/projects/topoassist/Sidebar-js.html | head -5
 ```
 
-For each edit/confirm modal (`networkStackModal`, `autoConfigModal`, `guiEditModal`, `groupRectModal`, `configCenterModal`):
-- [ ] `networkStackModal`: footer has `.btn-mono` Cancel; `closeTechModal()` calls `_confirmDirtyClose`
-- [ ] `autoConfigModal`: footer has `.btn-mono` Cancel; `closeIpModal()` calls `_confirmDirtyClose`
-- [ ] `guiEditModal`: `closeEditModal()` calls `_confirmDirtyClose`; all 3 open paths capture `initialEditModalState`
-- [ ] `groupRectModal`: `closeGroupRectModal()` calls `_confirmDirtyClose`; `openGroupRectModal()` captures `initialGroupRectState`
-- [ ] `configCenterModal`: `closeGenerateAllModal()` calls `_confirmDirtyClose` for global cfg dirty state
+For each edit/confirm modal (`networkStackModal`, `autoConfigModal`, `guiEditModal`, `groupRectModal`, `configCenterModal`, `deviceManagerContainer`, `sheetColumnManagerContainer`):
+- [ ] `networkStackModal`: `id="btnCancelTech"` present; `checkTechDirty()` calls `_updateCancelBtn('btnCancelTech', isDirty)`; `closeTechModal()` calls `_confirmDirtyClose`
+- [ ] `autoConfigModal`: `id="btnCancelIp"` present; `checkIpDirty()` calls `_updateCancelBtn('btnCancelIp', isDirty)`; `closeIpModal()` calls `_confirmDirtyClose`
+- [ ] `guiEditModal`: `id="btnCancelEdit"` present; all 3 open paths reset `_updateCancelBtn('btnCancelEdit', false)` and capture `initialEditModalState`; `closeEditModal()` calls `_updateCancelBtn('btnCancelEdit', isDirty)` BEFORE `_confirmDirtyClose`
+- [ ] `groupRectModal`: `id="btnCancelGroupRect"` present; `openGroupRectModal()` calls `_updateCancelBtn('btnCancelGroupRect', false)` after state capture; `closeGroupRectModal()` calls `_updateCancelBtn('btnCancelGroupRect', isDirty)` BEFORE `_confirmDirtyClose`
+- [ ] `deviceManagerContainer`: `id="btnCancelDeviceManager"` present; `DeviceManagerSaveButton()` calls `_updateCancelBtn('btnCancelDeviceManager', isDeviceManagerDirty)`
+- [ ] `sheetColumnManagerContainer`: `id="btnCancelSheetColumnManager"` present; `SheetColumnManagerSaveButton()` calls `_updateCancelBtn('btnCancelSheetColumnManager', isSheetColumnManagerDirty)`
+- [ ] `configCenterModal`: `closeGenerateAllModal()` calls `_confirmDirtyClose` for global cfg dirty state (no Cancel button — X-only dismiss; exempt from dynamic label)
 
 Reset rules:
 - [ ] Save success handlers reset `initialState = ''` before calling close
@@ -899,8 +903,11 @@ Reset rules:
 - [ ] `confirmGroupRect()` resets `initialGroupRectState = ''` at top (user clicked Save)
 
 ✗ FAIL if any edit/confirm modal has a Save button but no Cancel button in the footer (exception: Config Center with embedded Save)
+✗ FAIL if any Cancel button in scope is missing its `id` attribute
 ✗ FAIL if any canonical close function for a dirty-tracked modal does not call `_confirmDirtyClose`
-✗ FAIL if `_confirmDirtyClose`, `_captureFormState`, or `_captureGroupRectState` helper is missing
+✗ FAIL if `_confirmDirtyClose`, `_captureFormState`, `_captureGroupRectState`, or `_updateCancelBtn` helper is missing
+✗ FAIL if `_updateCancelBtn` is called AFTER `_confirmDirtyClose` in a close function (must be before, so label persists on dismiss)
+✗ FAIL if Cancel label is set inline (`btn.textContent = ...`) instead of via `_updateCancelBtn`
 
 ---
 
