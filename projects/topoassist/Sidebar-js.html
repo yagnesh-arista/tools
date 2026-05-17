@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.6 | 2026-05-17 11:30:39 -->
+<!-- TopoAssist v260517.7 | 2026-05-17 11:31:02 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.6";  // keep in sync with Code.gs
+const APP_VERSION = "260517.7";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -19026,6 +19026,7 @@ function _refreshGenerateRow(devName) {
 
 function _generateSingleDevice(name) {
   delete configCache[name];
+  _markDeviceConfigFetching(name);
   if (window._generateAllConfigs) {
     const idx = window._generateAllConfigs.findIndex(c => c.name === name);
     if (idx !== -1) window._generateAllConfigs.splice(idx, 1);
