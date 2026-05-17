@@ -1,10 +1,10 @@
-// TopoAssist v260517.30 | 2026-05-17 13:32:09
+// TopoAssist v260517.31 | 2026-05-17 13:32:44
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.30";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.31";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2219,6 +2219,22 @@ function buildConditionalRules(sheet, headers, lastRow) {
         )
         .setFontColor(FORMAT_CONFIG.colors.textMuted).setItalic(true)
         .setRanges([sheet.getRange(3, intIdx, lastRow - 2, 1)]).build());
+    }
+
+    // ── 7. ROW TINTS: P2P (violet) and GW (amber) — match canvas category colors ─
+    // Colors align with canvas device-card badges: P2P=#8b5cf6, GW=#f59e0b.
+    // Priority below INACTIVE GRAY, SNAKE-ROW, W2, MEMBER PORT — above Section B.
+    // SNAKE rows have ip_type_=p2p internally but stay orange (SNAKE-ROW wins above).
+    if (ipIdx > 0 && allSchemaColRanges.length > 0) {
+      const ipC = getColLet(ipIdx);
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",REGEXMATCH(LOWER($${ipC}3),"p2p"))`)
+        .setBackground("#ede9fe").setFontColor("#6d28d9")
+        .setRanges(allSchemaColRanges).build());
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=AND($${iC}3<>"",REGEXMATCH(LOWER($${ipC}3),"gw"))`)
+        .setBackground("#fef3c7").setFontColor("#b45309")
+        .setRanges(allSchemaColRanges).build());
     }
 
   });
