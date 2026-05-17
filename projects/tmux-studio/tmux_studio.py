@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.6 | 2026-05-17 12:08:57
+# tmux-studio v260517.7 | 2026-05-17 12:22:33
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -597,9 +597,10 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Optional[Set[str]] = 
 # PANE INFO
 # =============================================================================
 _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
-# EOS prompt with a command typed: 'hostname# cmd' — requires at least one char after '#'.
-# Hostname may include colons (e.g. DUT-C-Leaf3-VG-mrvp454.23:36:19# cmd).
-_EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s+(.+)$")
+# EOS prompt with a command typed. No guaranteed space after '#' — EOS echoes command
+# immediately: 'hostname#cmd' or 'hostname# cmd'. Hostname may include colons for
+# timestamps (e.g. DUT-C-Leaf3-VG-mrvp454.23:36:19#bash python3 /mnt/flash/x.py).
+_EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s*(.+)$")
 # EOS idle prompt: 'hostname# ' — cursor waiting, nothing typed yet.
 _EOS_IDLE_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s*$")
 # Filter: 'ssh' is not a valid EOS command — reject scrollback lines from session init.
@@ -640,7 +641,7 @@ def _scrollback_last_cmd(pane_target: str) -> str:
         m = _EOS_PROMPT_RE.match(stripped)
         if m:
             cmd = m.group(1).strip()
-            if not _EOS_NOT_CMD_RE.match(cmd):
+            if cmd and not _EOS_NOT_CMD_RE.match(cmd):
                 return cmd
     return _PANE_IDLE
 
@@ -671,7 +672,7 @@ def _get_pane_eos_cli(pane_target: str) -> str:
         m = _EOS_PROMPT_RE.match(stripped)
         if m:
             cmd = m.group(1).strip()
-            if not _EOS_NOT_CMD_RE.match(cmd):
+            if cmd and not _EOS_NOT_CMD_RE.match(cmd):
                 return cmd
         if _EOS_IDLE_RE.match(stripped):
             # Idle EOS prompt — check scrollback for the last command (e.g. a watch cycle)
@@ -699,8 +700,10 @@ def _get_pane_cli_via_recall(pane_target: str) -> str:
     for line in reversed(cap.stdout.splitlines()):
         m = _EOS_PROMPT_RE.match(line.strip())
         if m:
-            recalled = m.group(1).strip()
-            break
+            cmd = m.group(1).strip()
+            if cmd:
+                recalled = cmd
+                break
     if recalled:
         subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)
     else:
