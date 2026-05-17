@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.17 | 2026-05-17 13:43:34
+# tmux-studio v260517.18 | 2026-05-17 13:53:03
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -864,6 +864,7 @@ def main():
 
     p_save = sub.add_parser("save")
     p_save.add_argument("-o", "--override", action="store_true")
+    p_save.add_argument("-c", "--with-cmds", action="store_true", help="Capture live CLI commands in each pane")
     p_save.add_argument("-f", "--file", default=get_default_filepath())
 
     p_rest = sub.add_parser("restore")
@@ -876,7 +877,7 @@ def main():
 
     sub.add_parser("copy-layout")
     sub.add_parser("clone-window")
-    sub.add_parser("pane-info")
+    sub.add_parser("pane-cmds")
 
     args = parser.parse_args()
     abs_path = os.path.abspath(args.file) if hasattr(args, "file") else None
@@ -890,6 +891,18 @@ def main():
 
             print(f"{Colors.BLUE}Reading tmux state...{Colors.RESET}")
             current = get_tmux_layout()
+
+            if args.with_cmds:
+                print(f"{Colors.BLUE}Capturing pane CLI commands...{Colors.RESET}")
+                for sess in current.get("sessions", []):
+                    for win in sess.get("windows", []):
+                        cmds_by_idx = {
+                            p["index"]: p["command"]
+                            for p in get_pane_commands(sess["session_name"], win["window_index"])
+                        }
+                        for pane in win.get("panes", []):
+                            pane["pane_cli"] = cmds_by_idx.get(pane["pane_index"], "")
+
             saved = load_saved_layout(args.file)
             stats = compare_flat_swp(saved, current, mode="save", overwrite=args.override)
 
@@ -1232,7 +1245,7 @@ def main():
                 print(f"  {Colors.GREEN}✓{Colors.RESET} [{src['win_name']}] → [{tgt['win_name']}] ({len(sendable)} commands sent)")
             print(f"\n{Colors.GREEN}Done.{Colors.RESET}")
 
-        elif args.cmd == "pane-info":
+        elif args.cmd == "pane-cmds":
             if not tmux_running():
                 print(f"{Colors.RED}No Tmux running{Colors.RESET}"); sys.exit(1)
 
