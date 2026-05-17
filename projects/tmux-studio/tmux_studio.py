@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.10 | 2026-05-17 12:52:26
+# tmux-studio v260517.11 | 2026-05-17 13:03:33
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -596,7 +596,10 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Optional[Set[str]] = 
 # =============================================================================
 # PANE INFO
 # =============================================================================
-_EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
+# watch(1) header detection — just the prefix; full extraction done by _extract_watch_cmd.
+_WATCH_HDR_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+")
+# watch(1) appends '  hostname: Mon May 17 12:34:56 2026' right-aligned in its header line.
+_WATCH_SUFFIX_RE = re.compile(r"\s{2,}\S+:\s+\w{3} \w{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}\s*$")
 # EOS prompt with a command typed. No guaranteed space after '#' — EOS echoes command
 # immediately: 'hostname#cmd' or 'hostname# cmd'. Hostname may include colons for
 # timestamps (e.g. DUT-C-Leaf3-VG-mrvp454.23:36:19#bash python3 /mnt/flash/x.py).
@@ -607,6 +610,25 @@ _EOS_IDLE_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s*$")
 _EOS_NOT_CMD_RE = re.compile(r"^ssh\s")
 # Sentinel returned by _get_pane_eos_cli() when pane is at idle EOS with no recent cmd.
 _PANE_IDLE = "\x00"
+
+
+def _extract_watch_cmd(lines: list[str], start: int) -> str:
+    """Join wrapped watch-header lines and return the bare command.
+
+    watch(1) prints 'Every Ns: <cmd>  hostname: date' as the header line, then a
+    blank line, then the command output. When <cmd> is long the terminal wraps it
+    across multiple screen lines. Collect all header lines, join them, strip the
+    'Every Ns: ' prefix and the trailing '  hostname: date' suffix.
+    """
+    parts = []
+    for line in lines[start:]:
+        if not line.strip():
+            break
+        parts.append(line)
+    joined = "".join(parts)
+    joined = re.sub(r"^Every \d+(?:\.\d+)?s:\s+", "", joined)
+    joined = _WATCH_SUFFIX_RE.sub("", joined)
+    return joined.strip()
 
 
 def _ssh_target_host(ssh_cmd: str) -> str:
@@ -635,12 +657,12 @@ def _scrollback_last_cmd(pane_target: str, depth: int = 100) -> str:
         ["tmux", "capture-pane", "-t", pane_target, "-p", "-S", f"-{depth}"],
         capture_output=True, text=True
     )
+    lines = cap.stdout.splitlines()
     found_eos = False
-    for line in reversed(cap.stdout.splitlines()):
-        stripped = line.strip()
-        m = _EOS_WATCH_RE.match(stripped)
-        if m:
-            return m.group(1).strip()
+    for i in range(len(lines) - 1, -1, -1):
+        stripped = lines[i].strip()
+        if _WATCH_HDR_RE.match(stripped):
+            return _extract_watch_cmd(lines, i)
         m = _EOS_PROMPT_RE.match(stripped)
         if m:
             cmd = m.group(1).strip()
@@ -665,11 +687,10 @@ def _get_pane_eos_cli(pane_target: str) -> str:
         capture_output=True, text=True
     )
     lines = cap.stdout.splitlines()
-    # Linux watch header (EOS internal watch doesn't emit this, but guard anyway)
-    for line in lines:
-        m = _EOS_WATCH_RE.match(line.strip())
-        if m:
-            return m.group(1).strip()
+    # Linux watch header — collect wrapped continuation lines for the full command
+    for i, line in enumerate(lines):
+        if _WATCH_HDR_RE.match(line.strip()):
+            return _extract_watch_cmd(lines, i)
     # Find the last non-blank line and test whether it's an EOS prompt
     for line in reversed(lines):
         stripped = line.strip()
