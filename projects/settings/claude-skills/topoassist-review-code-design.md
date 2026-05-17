@@ -1,4 +1,4 @@
-<!-- rules-synced: 2026-05-11 (Check 42 added: SSoT label/string builders — _buildSplitLabel, _setSplitBtnLabel, updateDirtyButton must not be duplicated inline) -->
+<!-- rules-synced: 2026-05-17 (Check 32 extended: dynamic Cancel label "Close"/"Abort *" via _updateCancelBtn; Check 42 extended: _updateCancelBtn added to SSoT helpers list) -->
 Run a TopoAssist-specific compliance review across Sidebar-js.html, Sidebar-css.html,
 Code.gs, and any other UI-bearing or logic files edited this session.
 Report each check with ✓ / ✗ / ⚠. Any ✗ is a blocker. Cite file and line for every finding.
