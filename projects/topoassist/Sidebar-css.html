@@ -1,4 +1,4 @@
-<!-- TopoAssist v260517.12 | 2026-05-17 11:44:02 -->
+<!-- TopoAssist v260517.13 | 2026-05-17 12:07:07 -->
 <style>
   /* ================= 0. NO-SELECT — all interactive non-input elements ================ */
   .icon-btn,
@@ -6232,6 +6232,23 @@
   .br-sec-badge-gray  { background: var(--bg-secondary); color: var(--text-muted); }
   .br-sec-body { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 0 8px; }
   .br-sec-body.collapsed { display: none; }
+  /* Snake device accordion — mirrors .br-sec pattern */
+  .snake-sec { border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+  .snake-sec-hdr {
+    display: flex; align-items: center; gap: 5px; padding: 5px 10px; cursor: pointer;
+    background: var(--bg-secondary); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; color: var(--text-main);
+    user-select: none; -webkit-user-select: none;
+  }
+  .snake-sec-hdr:hover { background: var(--bg-card); }
+  .snake-sec-body { padding: 6px 10px 8px; border-top: 1px solid var(--border-light); }
+  .snake-sec-body.collapsed { display: none; }
+  .snake-sec-body input { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .snake-sec-sublabel {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    color: var(--text-muted); letter-spacing: 0.04em; margin: 6px 0 2px;
+    user-select: none; -webkit-user-select: none;
+  }
   .br-sub { margin-bottom: 6px; }
   .br-sub-hdr {
     display: flex; align-items: center; gap: 6px;

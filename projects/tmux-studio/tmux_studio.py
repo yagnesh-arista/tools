@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.5 | 2026-05-17 11:53:48
+# tmux-studio v260517.6 | 2026-05-17 12:08:57
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -598,9 +598,10 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Optional[Set[str]] = 
 # =============================================================================
 _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
 # EOS prompt with a command typed: 'hostname# cmd' — requires at least one char after '#'.
-_EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s+(.+)$")
+# Hostname may include colons (e.g. DUT-C-Leaf3-VG-mrvp454.23:36:19# cmd).
+_EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s+(.+)$")
 # EOS idle prompt: 'hostname# ' — cursor waiting, nothing typed yet.
-_EOS_IDLE_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s*$")
+_EOS_IDLE_RE = re.compile(r"^[\w][\w.\-:]+(?:\([\w\-/.]+\))?#\s*$")
 # Filter: 'ssh' is not a valid EOS command — reject scrollback lines from session init.
 _EOS_NOT_CMD_RE = re.compile(r"^ssh\s")
 # Sentinel returned by _get_pane_eos_cli() when pane is at idle EOS with no recent cmd.
