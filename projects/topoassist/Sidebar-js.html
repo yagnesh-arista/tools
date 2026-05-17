@@ -1,7 +1,7 @@
-<!-- TopoAssist v260516.31 | 2026-05-16 16:17:48 -->
+<!-- TopoAssist v260517.1 | 2026-05-17 11:03:14 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260516.31";  // keep in sync with Code.gs
+const APP_VERSION = "260517.1";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -17588,14 +17588,25 @@ function showConfigModal(deviceName, configText, opts) {
 function openConfigFromButton(target) {
   const statusEl = document.getElementById("status");
 
+  const _now = () => new Date().toLocaleTimeString('en-US',
+    { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const _age = (dev) => {
+    const ep = allDevicesData[dev]?.fetchEpoch;
+    return ep ? formatAgeLabel(ep) : 'Cached';
+  };
+
   // CASE 1: Full Device Config
   if (target === 'device' && selectedDeviceId) {
     _configViewContext = { deviceName: selectedDeviceId, portFilter: null };
     _setPushBtnVisibility('device');
+    const _sheetIdD = allDevicesData[selectedDeviceId]?.sheetIndex || '-';
+    _setSplitBtnLabel('splitDevice', _sheetIdD, selectedDeviceId, null, 'fetching', _now());
     if (currentDeviceConfig && currentDeviceConfig !== "") {
       showConfigModal(selectedDeviceId, currentDeviceConfig);
+      _setSplitBtnLabel('splitDevice', _sheetIdD, selectedDeviceId, null, 'ready', _age(selectedDeviceId));
     } else {
       setStatus("Fetching full config for " + selectedDeviceId + "...");
+      // processDeviceConfig restores 'ready' on success; _updateStripFetchError handles errors
       fetchFullConfig(selectedDeviceId, () => showConfigModal(selectedDeviceId, currentDeviceConfig));
     }
     return;
@@ -17610,6 +17621,8 @@ function openConfigFromButton(target) {
     const portL    = _leftPort || null;
     _configViewContext = { deviceName: devNameL, portFilter: portL };
     _setPushBtnVisibility('interface');
+    const _sheetIdL = allDevicesData[devNameL]?.sheetIndex || '-';
+    _setSplitBtnLabel('splitLeft', _sheetIdL, devNameL, portL, 'fetching', _now());
     const _showLeft = () => {
       const _fullCfgL = configCache[devNameL] ? formatConfigText(configCache[devNameL].data) : null;
       const cfg = currentLeftConfig
@@ -17620,8 +17633,10 @@ function openConfigFromButton(target) {
     };
     if (currentLeftConfig || configCache[devNameL]) {
       _showLeft();
+      _setSplitBtnLabel('splitLeft', _sheetIdL, devNameL, portL, 'ready', _age(devNameL));
     } else {
       setStatus("⏳ Fetching " + devNameL + " config...");
+      // processDeviceConfig restores 'ready' on success
       fetchFullConfig(devNameL, _showLeft);
     }
     return;
@@ -17632,6 +17647,8 @@ function openConfigFromButton(target) {
     const portR    = _rightPort || null;
     _configViewContext = { deviceName: devNameR, portFilter: portR };
     _setPushBtnVisibility('interface');
+    const _sheetIdR = allDevicesData[devNameR]?.sheetIndex || '-';
+    _setSplitBtnLabel('splitRight', _sheetIdR, devNameR, portR, 'fetching', _now());
     const _showRight = () => {
       const _fullCfgR = configCache[devNameR] ? formatConfigText(configCache[devNameR].data) : null;
       const cfg = currentRightConfig
@@ -17642,8 +17659,10 @@ function openConfigFromButton(target) {
     };
     if (currentRightConfig || configCache[devNameR]) {
       _showRight();
+      _setSplitBtnLabel('splitRight', _sheetIdR, devNameR, portR, 'ready', _age(devNameR));
     } else {
       setStatus("⏳ Fetching " + devNameR + " config...");
+      // processDeviceConfig restores 'ready' on success
       fetchFullConfig(devNameR, _showRight);
     }
     return;

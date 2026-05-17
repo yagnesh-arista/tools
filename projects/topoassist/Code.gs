@@ -1,10 +1,10 @@
-// TopoAssist v260516.31 | 2026-05-16 16:17:17
+// TopoAssist v260517.1 | 2026-05-17 11:03:44
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260516.31";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2645,6 +2645,7 @@ function calculateGlobalTopology(data, headers) {
 
   const poMap = {};
   const globalLinkMap = new Map();
+  const snakeDeviceNamesSet = new Set(); // devices with at least one snake pair
 
   // --- 2. SCAN DATA (OPTIMIZED) ---
   // Pre-calculate valid ports per row to avoid O(N^2) cleaning overhead
@@ -2889,7 +2890,10 @@ function getTopologyData(forceSync, isColorEnabled) {
 
             // 3. Snake primary flag — set if this port is the primary end of a self-loop
             const selfLoopEntry = topo.globalLinkMap ? topo.globalLinkMap.get(device.name + ":" + pName) : null;
-            if (selfLoopEntry && selfLoopEntry.isSelfLoop) details.isSnakePrimary = true;
+            if (selfLoopEntry && selfLoopEntry.isSelfLoop) {
+              details.isSnakePrimary = true;
+              details.category = 'P2P'; // override: determineCategory() ran before this flag was set
+            }
 
             // 3. MLAG / PeerLink Flags
             // We calculate these for topology accuracy, but we don't force-change the IP type
@@ -2982,6 +2986,7 @@ function getTopologyData(forceSync, isColorEnabled) {
           details.sheetIndex = device.sheetIndex;
           details.category = determineCategory(details, legends);
           details.isSnakeSecondary = true;
+          details.category = 'P2P'; // override: determineCategory() ran before this flag was set
           // Set peerDev/peerPort so showTooltip strict-sync and config descriptions show the peer
           const snakeSelfLoop = topo.globalLinkMap ? topo.globalLinkMap.get(devName + ":" + snakePort) : null;
           if (snakeSelfLoop && snakeSelfLoop.isSelfLoop) {
@@ -5034,7 +5039,9 @@ function getDeviceConfig(deviceName) {
         const secondaryRaw = row[snakeIntColIdx];
         if (!isValidPort(primaryRaw) || !isValidPort(secondaryRaw)) return;
         const det = extractDetails(row, indices);
-        if (!(det.ip_type_ || "").toLowerCase().includes("p2p")) return;
+        // Snake ports intentionally have blank ip_type_ — do NOT filter on ip_type_ here.
+        // The loop is already inside snakeIntColIdx !== -1 (snake column exists) and both
+        // ports are valid — that is sufficient to identify a snake pair.
         const vlans = Array.from(expandVlanString(String(det.vlan_ || "")));
         const vlan = vlans.length > 0 ? parseInt(vlans[0]) : 0;
         if (!vlan) return;
