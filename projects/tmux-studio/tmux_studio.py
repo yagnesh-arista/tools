@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.2 | 2026-05-17 11:26:25
+# tmux-studio v260517.3 | 2026-05-17 11:33:14
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -597,47 +597,68 @@ def cleanup_extras(saved_layout: Dict, protected_sessions: Optional[Set[str]] = 
 # PANE INFO
 # =============================================================================
 _EOS_WATCH_RE = re.compile(r"^Every \d+(?:\.\d+)?s:\s+(.+?)(?:\s{2,}.*)?$")
-# EOS prompt: hostname (may include dots, dashes, timestamps) optionally followed
-# by a config sub-mode in parens, then '#' and at least one space before the command.
-# Rejects bare 'ssh ...' lines that appear in scrollback from initial session setup.
+# EOS prompt with a command typed: 'hostname# cmd' — requires at least one char after '#'.
 _EOS_PROMPT_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s+(.+)$")
+# EOS idle prompt: 'hostname# ' — cursor waiting, nothing typed yet.
+_EOS_IDLE_RE = re.compile(r"^[\w][\w.\-]+(?:\([\w\-/.]+\))?#\s*$")
+# Sentinel returned by _get_pane_eos_cli() when pane is at an idle EOS prompt.
+_PANE_IDLE = "\x00"
+
+
+def _ssh_target_host(ssh_cmd: str) -> str:
+    """Extract device hostname from 'ssh [opts] user@host' or 'ssh [opts] host'."""
+    for part in ssh_cmd.split():
+        if "@" in part:
+            return part.split("@", 1)[1]
+    for part in reversed(ssh_cmd.split()[1:]):
+        if not part.startswith("-"):
+            return part
+    return ssh_cmd
+
 
 def _get_pane_eos_cli(pane_target: str) -> str:
-    """Extract the EOS CLI command from the pane's current visible screen only.
+    """Extract EOS CLI from the pane's visible screen (non-disruptive).
 
-    Visible-screen-only (no -S scrollback) to avoid stale commands from prior
-    sessions that match _EOS_PROMPT_RE but are no longer running.
-
-    Strategy (in order — non-disruptive):
-    1. EOS watch header: 'Every Ns: <command>  <timestamp>' at top of screen.
-    2. EOS prompt line: hostname-gated pattern in the visible screen (backward).
-    Returns '' when neither matches (caller falls through to recall method).
+    Returns:
+      command string — an EOS command is on the prompt line (rare for passive scan)
+      _PANE_IDLE     — pane is at an idle EOS prompt; caller should skip recall
+      ""             — screen is full of output with no visible prompt; caller uses recall
     """
     cap = subprocess.run(
         ["tmux", "capture-pane", "-t", pane_target, "-p"],
         capture_output=True, text=True
     )
     lines = cap.stdout.splitlines()
+    # Linux watch header (EOS internal watch doesn't emit this, but guard anyway)
     for line in lines:
         m = _EOS_WATCH_RE.match(line.strip())
         if m:
             return m.group(1).strip()
+    # Find the last non-blank line and test whether it's an EOS prompt
     for line in reversed(lines):
-        m = _EOS_PROMPT_RE.match(line.strip())
+        stripped = line.strip()
+        if not stripped:
+            continue
+        m = _EOS_PROMPT_RE.match(stripped)
         if m:
             return m.group(1).strip()
+        if _EOS_IDLE_RE.match(stripped):
+            return _PANE_IDLE  # at idle EOS prompt — no recall needed
+        break  # last non-blank line is not an EOS prompt → screen has command output
     return ""
 
+
 def _get_pane_cli_via_recall(pane_target: str) -> str:
-    """Get the running EOS CLI by interrupting, recalling last command, then re-running.
-    Used when passive scan fails (watch output fills visible screen with no prompt).
-    Sends: C-c → wait → Up → capture → Enter (only if a command was recalled).
-    Sends Escape instead if Up produced no command (idle pane — avoids re-running).
+    """Interrupt the active command, recall it via Up arrow, re-run it, return cmd string.
+
+    Used only when passive scan returns "" (screen full of output — likely a watch command).
+    C-c → wait for EOS prompt → Up → wait for SSH round-trip render → capture → Enter.
+    Sends Escape (not Enter) when Up produced nothing (empty history).
     """
     subprocess.run(["tmux", "send-keys", "-t", pane_target, "C-c"], capture_output=True)
-    time.sleep(0.5)  # wait for EOS prompt to appear over SSH
+    time.sleep(0.7)  # wait for watch to stop and EOS prompt to appear over SSH
     subprocess.run(["tmux", "send-keys", "-t", pane_target, "Up"], capture_output=True)
-    time.sleep(0.2)
+    time.sleep(0.6)  # allow SSH round-trip: Up → EOS readline → terminal render
     cap = subprocess.run(
         ["tmux", "capture-pane", "-t", pane_target, "-p"],
         capture_output=True, text=True
@@ -653,6 +674,7 @@ def _get_pane_cli_via_recall(pane_target: str) -> str:
     else:
         subprocess.run(["tmux", "send-keys", "-t", pane_target, "Escape"], capture_output=True)
     return recalled
+
 
 def get_pane_commands(session: str, win_index: str) -> List[Dict]:
     target = f"{session}:{win_index}"
@@ -675,15 +697,20 @@ def get_pane_commands(session: str, win_index: str) -> List[Dict]:
         else:
             ps = subprocess.run(["ps", "-p", pid, "-o", "args="], capture_output=True, text=True)
             local_cmd = ps.stdout.strip() or cmd
-        # For SSH panes, scan the pane screen for the EOS CLI command being run
-        # on the remote device (ps only sees the local 'ssh' process, not what's
-        # running inside the session).
+        # For SSH panes: ps only sees the local 'ssh admin@device' process — not the EOS
+        # command running inside. Use screen scan + recall to find the actual CLI.
         if local_cmd.split()[0] == "ssh":
             pane_target = f"{target}.{idx}"
+            device = _ssh_target_host(local_cmd)
             eos_cli = _get_pane_eos_cli(pane_target)
-            if not eos_cli:
+            if eos_cli == _PANE_IDLE:
+                display_cmd = f"{device} (idle)"
+            elif eos_cli:
+                display_cmd = eos_cli
+            else:
+                # Screen full of output (e.g. watch command) — interrupt and recall
                 eos_cli = _get_pane_cli_via_recall(pane_target)
-            display_cmd = eos_cli if eos_cli else local_cmd
+                display_cmd = eos_cli if eos_cli else f"{device} (idle)"
         else:
             display_cmd = local_cmd
         panes.append({"index": idx, "pid": pid, "command": display_cmd, "is_active": active == "1"})
