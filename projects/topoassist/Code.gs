@@ -2678,6 +2678,7 @@ function calculateGlobalTopology(data, headers) {
       if (intColIdx === undefined) continue;
       if (!isValidPort(row[intColIdx])) continue; // primary must also be present
       rowNodes.push({ dev: devName, port: canonicalizeInterface(snakeRaw), po: null, isSnakeSecondary: true });
+      snakeDeviceNamesSet.add(devName);
     }
 
     // Step B: Connect the gathered nodes (Strict Pairs)
