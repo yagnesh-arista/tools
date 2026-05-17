@@ -1,7 +1,7 @@
-<!-- TopoAssist v260517.20 | 2026-05-17 12:43:46 -->
+<!-- TopoAssist v260517.21 | 2026-05-17 13:05:11 -->
 <script>
 // DUPLICATED in Code.gs — last synced: 2026-04-26
-const APP_VERSION = "260517.20";  // keep in sync with Code.gs
+const APP_VERSION = "260517.21";  // keep in sync with Code.gs
 
 // --- GLOBALS ---
   let globalPortFrequency = {};
@@ -7074,8 +7074,9 @@ function selectPortOrLink(portId) {
     }
   } else {
     // Disconnected / Single Port Logic
-    if (selectedLineId && linkMap[selectedLineId]) { let old = linkMap[selectedLineId]; restoreLinkStyle(old); }
+    if (selectedLineId && linkMap[selectedLineId]) restoreLinkStyle(linkMap[selectedLineId]);
     selectedLineId = null; savedSelectionId = null; selectedDeviceId = null; _selectedPortId = portId;
+    requestAnimationFrame(redrawLinks);
 
     document.querySelectorAll(".node.selected").forEach(n => n.classList.remove("selected"));
     document.getElementById("selectionStatus").innerText = "Selected Link: " + portId + " (Disconnected)";

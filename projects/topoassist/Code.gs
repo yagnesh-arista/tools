@@ -1,10 +1,10 @@
-// TopoAssist v260517.20 | 2026-05-17 12:43:31
+// TopoAssist v260517.21 | 2026-05-17 13:04:24
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.20";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260517.21";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -2889,11 +2889,13 @@ function getTopologyData(forceSync, isColorEnabled) {
             // 2. Category Logic
             details.category = determineCategory(details, legends);
 
-            // 3. Snake primary flag — set if this port is the primary end of a self-loop
-            const selfLoopEntry = topo.globalLinkMap ? topo.globalLinkMap.get(device.name + ":" + pName) : null;
-            if (selfLoopEntry && selfLoopEntry.isSelfLoop) {
+            // 3. Snake primary flag — snake_int_ column is the SSoT; peer is same device
+            const snakeInt = canonicalizeInterface((details.snake_int_ || '').trim());
+            if (snakeInt) {
               details.isSnakePrimary = true;
-              details.category = 'P2P'; // override: determineCategory() ran before this flag was set
+              details.category = 'P2P';
+              details.peerDev = device.name;
+              details.peerPort = snakeInt;
             }
 
             // 3. MLAG / PeerLink Flags
@@ -2917,10 +2919,14 @@ function getTopologyData(forceSync, isColorEnabled) {
         }
       });
 
+      // Snake primaries already have peerDev/peerPort set from snake_int_ above.
+      // Exclude them from stride-2 cable pairing and processRowLinks.
+      const cableNodes = nodesOnRow.filter(n => !n.details.isSnakePrimary);
+
       // PEER LINKING (Visual Pairs)
-      for (let i = 0; i < nodesOnRow.length - 1; i += 2) {
-        let nodeA = nodesOnRow[i];
-        let nodeB = nodesOnRow[i + 1];
+      for (let i = 0; i < cableNodes.length - 1; i += 2) {
+        let nodeA = cableNodes[i];
+        let nodeB = cableNodes[i + 1];
         nodeA.details.peerDev = nodeB.devObj.name;
         nodeA.details.peerPort = nodeB.pName;
         nodeB.details.peerDev = nodeA.devObj.name;
@@ -2928,20 +2934,20 @@ function getTopologyData(forceSync, isColorEnabled) {
       }
 
       // PO REGISTRATION (Updated Logic: Handles Orphans correctly)
-      nodesOnRow.forEach((node, i) => {
+      cableNodes.forEach((node, i) => {
         const poVal = normalizePo(node.details.po_);
         if (poVal) {
           const peerName = node.details.peerDev || null;
           let remotePo = null;
           // Peek sibling for Remote PO logic (Neighbors on same row)
-          if (i % 2 === 0 && i + 1 < nodesOnRow.length) remotePo = normalizePo(nodesOnRow[i + 1].details.po_);
-          else if (i % 2 !== 0) remotePo = normalizePo(nodesOnRow[i - 1].details.po_);
+          if (i % 2 === 0 && i + 1 < cableNodes.length) remotePo = normalizePo(cableNodes[i + 1].details.po_);
+          else if (i % 2 !== 0) remotePo = normalizePo(cableNodes[i - 1].details.po_);
 
           registerPoMember(node.deviceName, poVal, peerName, remotePo);
         }
       });
 
-      if (nodesOnRow.length > 0) processRowLinks(nodesOnRow, rowIndex, links, devicePorts);
+      if (cableNodes.length > 0) processRowLinks(cableNodes, rowIndex, links, devicePorts);
       nodesOnRow.forEach(n => allCollectedNodes.push(n));
     });
 
