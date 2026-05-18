@@ -1,10 +1,10 @@
-// TopoAssist v260518.3 | 2026-05-18 12:59:49
+// TopoAssist v260518.4 | 2026-05-18 13:18:59
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260518.3";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260518.4";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1886,9 +1886,7 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     }, []);
   });
 
-  const rowCableInfo = {}; // absRow → { type, min, max } — for divider detection
-
-  // Outer border range helper — one box spanning both paired devices' schema columns.
+  // Cable border range helper — vertical edges (left+right) spanning both paired devices' schema columns.
   // Classifies by ip_type_: p2p → violet, gw → amber, else → blue (L2).
   function _collectCableBorder(d1, d2, absR) {
     const c1 = deviceSchemaColsMap[d1] || [];
@@ -1906,9 +1904,6 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     const ipT = t1 || t2;
     const cType = ipT.includes('p2p') ? 'p2p' : ipT.includes('gw') ? 'gw' : 'l2';
     cableBorderRanges[cType].push(rng);
-    // Track per-row for divider detection (merge widest span across Et+Po pairs)
-    if (!rowCableInfo[absR]) rowCableInfo[absR] = { type: cType, min: mn, max: mx };
-    else { rowCableInfo[absR].min = Math.min(rowCableInfo[absR].min, mn); rowCableInfo[absR].max = Math.max(rowCableInfo[absR].max, mx); }
   }
 
   const matrix = data.map(() => new Array(totalCols).fill("#ffffff"));
