@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-17 (feat: gSheet P2P/GW SOLID_MEDIUM borders — calculateConnectionBackgrounds() now returns {matrix, mlagRanges, p2pBorderCells, gwBorderCells}; physical pair else-branch reads ip_type_ of both paired devices via deviceMap[dev].ipTypeIdx, collects all SCHEMA_KEYS_BORDER columns for both devices into p2pBorderCells (violet #7c3aed) or gwBorderCells (amber #d97706); applyVisualFormatting() applies borders after MLAG step using sheet.getRangeList().setBorder(SOLID_MEDIUM). Colors match canvas category badges (#8b5cf6 P2P / #f59e0b GW). Existing per-column CF attribute colors (sp_mode, xcvr_type, et_speed) are unaffected — borders sit in the setBackgrounds/setBorder layer, not CF rules. SCHEMA_KEYS_BORDER constant defined inside calculateConnectionBackgrounds(). deviceSchemaColsMap built once per call (device→[colIdx list]). FILES: Code.gs)
+  Last updated: 2026-05-18 (feat: gSheet cable outer borders — calculateConnectionBackgrounds() returns {matrix, mlagRanges, cableBorderRanges} where cableBorderRanges={p2p:[],gw:[],l2:[]} holds contiguous range strings (A1:Z1 format) spanning both paired devices' schema columns. _collectCableBorder(d1,d2,absRow) helper: combines deviceSchemaColsMap[d1]+[d2], finds min/max col, builds one range string, classifies by ip_type_ → p2p/gw/l2. Called for ALL cable pairs (Et physical + Po regular + MLAG) — not just P2P/GW. applyVisualFormatting() applies cable outer borders BEFORE MLAG so MLAG black per-cell borders overwrite cable color on PO cells. Colors: L2 #3b82f6 blue, P2P #7c3aed violet, GW #d97706 amber — matches canvas. Outer border = one box per cable pair (setBorder top/left/bottom/right=true, vertical/horizontal=null). FILES: Code.gs)
   Previous: 2026-05-17 (fix: user-select violations — removed user-select:none from readable text content (warning banners, hint divs, status messages, export desc, snake warning, orphan cleaned note); added user-select:text to .cfg-push-diff, .bridge-row-cable, .bridge-row-detail; updated Check 3 in topoassist-review-code-full.md to scan both directions. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-17 (fix: audit-body CSS — min-height:150px → min-height:0 so flex scroll trio is complete; review: removed stale editOverlay rule from ui.md/CLAUDE.md/review-code-design Check 21. FILES: Sidebar-css.html)
   Previous: 2026-05-17 (fix: snake primary port peer regression — Code.gs getTopologyData(): (1) snake_int_ column is now the SSoT for detecting snake primaries — replaced globalLinkMap.get(isSelfLoop) check with direct (details.snake_int_||'').trim() check; peerDev/peerPort set inline during the scan (same device, snake_int_ port) so no post-hoc fix-up needed; (2) derived `cableNodes = nodesOnRow.filter(n => !n.details.isSnakePrimary)` before PEER LINKING — snake primaries excluded from stride-2 peer pairing, PO registration, and processRowLinks; full nodesOnRow still used for allCollectedNodes (snake primary goes to canvas); eliminates spurious cable link (e.g. Leaf1:Et10 ↔ Leaf4:Et9) that triggered VLAN Mismatch + Incomplete L3 audit errors. FILES: Code.gs)
@@ -1980,12 +1980,13 @@ SECTION 10: VISUAL FORMATTING ENGINE
 applyVisualFormatting():
   1. Reads data and headers from sheet
   2. Calls calculateGlobalTopology() for MLAG/peer-link detection
-  3. Calls calculateConnectionBackgrounds() → returns {matrix, mlagRanges, p2pBorderCells, gwBorderCells}
+  3. Calls calculateConnectionBackgrounds() → returns {matrix, mlagRanges, cableBorderRanges}
   4. Applies background color matrix to data range
   5. Clears previous borders on data range
-  5a. Applies black SOLID_MEDIUM borders to MLAG cells (mlagRanges)
-  5b. Applies violet #7c3aed SOLID_MEDIUM borders to P2P cells (p2pBorderCells)
-  5c. Applies amber #d97706 SOLID_MEDIUM borders to GW cells (gwBorderCells)
+  5a. Cable outer borders — one box per cable pair spanning both devices' schema columns:
+      L2 #3b82f6 blue, P2P #7c3aed violet, GW #d97706 amber (SOLID_MEDIUM)
+      Applied BEFORE MLAG so MLAG black per-cell borders overwrite cable color on PO cells
+  5b. MLAG per-cell borders — black SOLID_MEDIUM on PO cells (mlagRanges)
   6. Calls buildConditionalRules() → applies all conditional format rules
   7. Sets Consolas font, size 10, middle/center alignment
 
@@ -1996,9 +1997,11 @@ CONNECTION COLORS (calculateConnectionBackgrounds):
   - MLAG Port-Channel: different pastel + black SOLID_MEDIUM border on po_ cells
   - Peer-Link: separate color
   - Orphan (unpaired): white (#ffffff)
-  - P2P physical pairs: violet #7c3aed SOLID_MEDIUM border on all SCHEMA_KEYS columns for both devices
-  - GW physical pairs: amber #d97706 SOLID_MEDIUM border on all SCHEMA_KEYS columns for both devices
-  - Border detection: reads ip_type_ of both paired devices; first non-empty value wins
+  - Cable outer borders: every cable pair (Et + Po) gets a colored outer box spanning both
+    devices' schema columns (like a canvas cable). _collectCableBorder(d1,d2,absRow) helper
+    combines deviceSchemaColsMap for both devices → min/max col → one A1:Z1 range string.
+    Classification by ip_type_: P2P → violet #7c3aed, GW → amber #d97706, else → L2 blue #3b82f6.
+    Called for ALL pair types (physical, regular_po, mlag_po, peer_link).
   - deviceSchemaColsMap built once per call: device → [colIdx] for all SCHEMA_KEYS_BORDER columns
 
 CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = highest):

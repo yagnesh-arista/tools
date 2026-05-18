@@ -1,10 +1,10 @@
-// TopoAssist v260517.33 | 2026-05-17 13:49:41
+// TopoAssist v260518.1 | 2026-05-18 10:04:50
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260517.33";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260518.1";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1791,25 +1791,23 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
     // 2. Clear Previous Borders (Reset)
     dataRange.setBorder(null, null, null, null, null, null);
 
-    // 3. Apply Black Borders to MLAG Cells
+    // 3. Cable outer borders — one box per cable pair spanning both devices' schema columns
+    // Applied BEFORE MLAG so MLAG black per-cell borders overwrite cable color on PO cells
+    const CABLE_BORDER_COLORS = { l2: '#3b82f6', p2p: '#7c3aed', gw: '#d97706' };
+    ['l2', 'p2p', 'gw'].forEach(ct => {
+      const ranges = result.cableBorderRanges[ct];
+      if (ranges.length > 0) {
+        sheet.getRangeList(ranges)
+          .setBorder(true, true, true, true, null, null, CABLE_BORDER_COLORS[ct], SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+      }
+    });
+
+    // 3b. MLAG per-cell borders (black — overwrites cable color on PO cells)
     if (result.mlagRanges.length > 0) {
       const mlagList = sheet.getRangeList(result.mlagRanges);
       if (mlagList) {
-        // top, left, bottom, right, vertical, horizontal, color, style
         mlagList.setBorder(true, true, true, true, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
       }
-    }
-
-    // 3a. Apply P2P Borders (violet — matches canvas category badge #8b5cf6)
-    if (result.p2pBorderCells.length > 0) {
-      sheet.getRangeList(result.p2pBorderCells)
-        .setBorder(true, true, true, true, null, null, "#7c3aed", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
-    }
-
-    // 3b. Apply GW Borders (amber — matches canvas category badge #f59e0b)
-    if (result.gwBorderCells.length > 0) {
-      sheet.getRangeList(result.gwBorderCells)
-        .setBorder(true, true, true, true, null, null, "#d97706", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
@@ -1848,9 +1846,8 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     return `${letter}${r}`;
   };
 
-  const mlagRanges     = []; // MLAG PO cells        — black SOLID_MEDIUM border
-  const p2pBorderCells = []; // P2P physical rows    — violet SOLID_MEDIUM border
-  const gwBorderCells  = []; // GW physical rows     — amber SOLID_MEDIUM border
+  const mlagRanges = []; // MLAG PO cells — black SOLID_MEDIUM border (per-cell)
+  const cableBorderRanges = { p2p: [], gw: [], l2: [] }; // outer box per cable pair
 
   const SCHEMA_KEYS_BORDER = ['int','po','sp_mode','vlan','svi_vlan','ip_type','vrf',
                                'et_speed','xcvr_speed','encoding','xcvr_type','snake_int',
@@ -1872,7 +1869,7 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     }
   });
 
-  // Per-device list of all schema column indices — used for P2P/GW border ranges.
+  // Per-device list of all schema column indices — used for cable border outer box.
   const deviceSchemaColsMap = {};
   Object.keys(deviceMap).forEach(dev => {
     const sfx = '_' + dev;
@@ -1882,6 +1879,27 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
       return acc;
     }, []);
   });
+
+  // Outer border range helper — one box spanning both paired devices' schema columns.
+  // Classifies by ip_type_: p2p → violet, gw → amber, else → blue (L2).
+  function _collectCableBorder(d1, d2, absR) {
+    const c1 = deviceSchemaColsMap[d1] || [];
+    const c2 = deviceSchemaColsMap[d2] || [];
+    const all = c1.concat(c2);
+    if (all.length === 0) return;
+    const mn = Math.min.apply(null, all);
+    const mx = Math.max.apply(null, all);
+    const rng = getA1(absR, mn + 1) + ':' + getA1(absR, mx + 1);
+    const ri = absR - 3;
+    const t1 = deviceMap[d1] && deviceMap[d1].ipTypeIdx !== undefined
+                 ? String(data[ri][deviceMap[d1].ipTypeIdx] || '').toLowerCase() : '';
+    const t2 = deviceMap[d2] && deviceMap[d2].ipTypeIdx !== undefined
+                 ? String(data[ri][deviceMap[d2].ipTypeIdx] || '').toLowerCase() : '';
+    const ipT = t1 || t2;
+    if (ipT.includes('p2p')) cableBorderRanges.p2p.push(rng);
+    else if (ipT.includes('gw')) cableBorderRanges.gw.push(rng);
+    else cableBorderRanges.l2.push(rng);
+  }
 
   const matrix = data.map(() => new Array(totalCols).fill("#ffffff"));
 
@@ -1952,22 +1970,10 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
           const rawKey = (item1.colorKey < item2.colorKey) ? `${item1.colorKey}<=>${item2.colorKey}` : `${item2.colorKey}<=>${item1.colorKey}`;
           key = `Phys:${rawKey}`;
           type = 'physical';
-          // Collect P2P/GW border cells for both paired devices (all schema columns each)
-          const dev1 = item1.colorKey.split(':')[0];
-          const dev2 = item2.colorKey.split(':')[0];
-          const ip1 = deviceMap[dev1] && deviceMap[dev1].ipTypeIdx !== undefined
-                        ? String(row[deviceMap[dev1].ipTypeIdx] || '').toLowerCase() : '';
-          const ip2 = deviceMap[dev2] && deviceMap[dev2].ipTypeIdx !== undefined
-                        ? String(row[deviceMap[dev2].ipTypeIdx] || '').toLowerCase() : '';
-          const ipType = ip1 || ip2;
-          if (ipType.includes('p2p')) {
-            (deviceSchemaColsMap[dev1] || []).forEach(ci => p2pBorderCells.push(getA1(absRow, ci + 1)));
-            (deviceSchemaColsMap[dev2] || []).forEach(ci => p2pBorderCells.push(getA1(absRow, ci + 1)));
-          } else if (ipType.includes('gw')) {
-            (deviceSchemaColsMap[dev1] || []).forEach(ci => gwBorderCells.push(getA1(absRow, ci + 1)));
-            (deviceSchemaColsMap[dev2] || []).forEach(ci => gwBorderCells.push(getA1(absRow, ci + 1)));
-          }
         }
+
+        // Outer cable border — one box spanning both devices' schema columns (like canvas cable)
+        _collectCableBorder(item1.colorKey.split(':')[0], item2.colorKey.split(':')[0], absRow);
 
         const color = generateLightPastelColor(key, type);
         matrix[r][item1.colIdx] = color;
@@ -1984,7 +1990,7 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     colorPairs('poIdx');
   }
 
-  return { matrix, mlagRanges, p2pBorderCells, gwBorderCells };
+  return { matrix, mlagRanges, cableBorderRanges };
 }
 
 function buildConditionalRules(sheet, headers, lastRow) {
