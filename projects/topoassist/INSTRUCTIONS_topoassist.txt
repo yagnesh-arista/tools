@@ -1,7 +1,7 @@
 ================================================================================
   TOPOASSIST — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Arista EOS Lab Workbench (Google Apps Script)
-  Last updated: 2026-05-18 (feat: black divider on shared cable border edges + cable outer borders. calculateConnectionBackgrounds() now returns {matrix, mlagRanges, cableBorderRanges, dividerRanges}. rowCableInfo map tracks per-row cable type and column span; _collectCableBorder merges widest span across Et+Po pairs per row. After main loop, consecutive rows with different cable types produce dividerRanges (intersection of column spans). applyVisualFormatting() order: (1) cable outer borders L2/P2P/GW, (2) MLAG per-cell black, (3) dividerRanges — setBorder(false,false,true,false) = bottom-only black SOLID_MEDIUM on upper row, overwrites the shared physical line. GAS limitation: one color per shared edge — black divider prevents one cable type from overpowering the other. FILES: Code.gs)
+  Last updated: 2026-05-18 (feat: cable vertical edges — left+right borders only, no top/bottom. Avoids GAS shared-edge conflict where adjacent rows with different cable types overwrite each other's horizontal border. setBorder(false,true,false,true) = left+right only. Removed dividerRanges/rowCableInfo (no longer needed). Row separation comes from existing pastel background colors. MLAG per-cell borders remain all-4-sides black. FILES: Code.gs)
   Previous: 2026-05-17 (fix: user-select violations — removed user-select:none from readable text content (warning banners, hint divs, status messages, export desc, snake warning, orphan cleaned note); added user-select:text to .cfg-push-diff, .bridge-row-cable, .bridge-row-detail; updated Check 3 in topoassist-review-code-full.md to scan both directions. FILES: Sidebar.html, Sidebar-js.html, Sidebar-css.html)
   Previous: 2026-05-17 (fix: audit-body CSS — min-height:150px → min-height:0 so flex scroll trio is complete; review: removed stale editOverlay rule from ui.md/CLAUDE.md/review-code-design Check 21. FILES: Sidebar-css.html)
   Previous: 2026-05-17 (fix: snake primary port peer regression — Code.gs getTopologyData(): (1) snake_int_ column is now the SSoT for detecting snake primaries — replaced globalLinkMap.get(isSelfLoop) check with direct (details.snake_int_||'').trim() check; peerDev/peerPort set inline during the scan (same device, snake_int_ port) so no post-hoc fix-up needed; (2) derived `cableNodes = nodesOnRow.filter(n => !n.details.isSnakePrimary)` before PEER LINKING — snake primaries excluded from stride-2 peer pairing, PO registration, and processRowLinks; full nodesOnRow still used for allCollectedNodes (snake primary goes to canvas); eliminates spurious cable link (e.g. Leaf1:Et10 ↔ Leaf4:Et9) that triggered VLAN Mismatch + Incomplete L3 audit errors. FILES: Code.gs)
@@ -1983,8 +1983,8 @@ applyVisualFormatting():
   3. Calls calculateConnectionBackgrounds() → returns {matrix, mlagRanges, cableBorderRanges}
   4. Applies background color matrix to data range
   5. Clears previous borders on data range
-  5a. Cable outer borders — one box per cable pair spanning both devices' schema columns:
-      L2 #3b82f6 blue, P2P #7c3aed violet, GW #d97706 amber (SOLID_MEDIUM)
+  5a. Cable vertical edges — left+right borders per cable pair spanning both devices' schema columns:
+      L2 #3b82f6 blue, P2P #7c3aed violet, GW #d97706 amber (SOLID_MEDIUM, no top/bottom)
       Applied BEFORE MLAG so MLAG black per-cell borders overwrite cable color on PO cells
   5b. MLAG per-cell borders — black SOLID_MEDIUM on PO cells (mlagRanges)
   6. Calls buildConditionalRules() → applies all conditional format rules
@@ -1997,14 +1997,13 @@ CONNECTION COLORS (calculateConnectionBackgrounds):
   - MLAG Port-Channel: different pastel + black SOLID_MEDIUM border on po_ cells
   - Peer-Link: separate color
   - Orphan (unpaired): white (#ffffff)
-  - Cable outer borders: every cable pair (Et + Po) gets a colored outer box spanning both
-    devices' schema columns (like a canvas cable). _collectCableBorder(d1,d2,absRow) helper
-    combines deviceSchemaColsMap for both devices → min/max col → one A1:Z1 range string.
+  - Cable vertical edges: every cable pair (Et + Po) gets colored left+right borders spanning
+    both devices' schema columns (like a canvas cable). No top/bottom borders — avoids GAS
+    shared-edge conflict where adjacent rows with different types overwrite each other.
+    _collectCableBorder(d1,d2,absRow) helper combines deviceSchemaColsMap for both devices →
+    min/max col → one A1:Z1 range string. setBorder(false,true,false,true) = left+right only.
     Classification by ip_type_: P2P → violet #7c3aed, GW → amber #d97706, else → L2 blue #3b82f6.
     Called for ALL pair types (physical, regular_po, mlag_po, peer_link).
-  - Black divider: when adjacent rows have different cable types (e.g. GW above P2P), the
-    shared horizontal border is overwritten with black SOLID_MEDIUM (bottom-only setBorder on
-    upper row). rowCableInfo tracks per-row type+span; dividerRanges uses column intersection.
   - deviceSchemaColsMap built once per call: device → [colIdx] for all SCHEMA_KEYS_BORDER columns
 
 CONDITIONAL FORMAT RULES (buildConditionalRules) — 6 priority tiers (first = highest):

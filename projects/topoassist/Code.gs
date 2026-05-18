@@ -1,10 +1,10 @@
-// TopoAssist v260518.4 | 2026-05-18 13:18:59
+// TopoAssist v260518.5 | 2026-05-18 13:20:51
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260518.4";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260518.5";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1791,29 +1791,22 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
     // 2. Clear Previous Borders (Reset)
     dataRange.setBorder(null, null, null, null, null, null);
 
-    // 3. Cable outer borders — one box per cable pair spanning both devices' schema columns
-    // Applied BEFORE MLAG so MLAG black per-cell borders overwrite cable color on PO cells
+    // 3. Cable vertical edges — left+right borders only (no top/bottom avoids shared-edge conflicts)
     const CABLE_BORDER_COLORS = { l2: '#3b82f6', p2p: '#7c3aed', gw: '#d97706' };
     ['l2', 'p2p', 'gw'].forEach(ct => {
       const ranges = result.cableBorderRanges[ct];
       if (ranges.length > 0) {
         sheet.getRangeList(ranges)
-          .setBorder(true, true, true, true, null, null, CABLE_BORDER_COLORS[ct], SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+          .setBorder(false, true, false, true, null, null, CABLE_BORDER_COLORS[ct], SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
       }
     });
 
-    // 3b. MLAG per-cell borders (black — overwrites cable color on PO cells)
+    // 3b. MLAG per-cell borders (black — all 4 sides on PO cells)
     if (result.mlagRanges.length > 0) {
       const mlagList = sheet.getRangeList(result.mlagRanges);
       if (mlagList) {
         mlagList.setBorder(true, true, true, true, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
       }
-    }
-
-    // 3c. Black divider at shared edges between different cable types
-    if (result.dividerRanges.length > 0) {
-      sheet.getRangeList(result.dividerRanges)
-        .setBorder(false, false, true, false, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
@@ -1995,22 +1988,7 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     colorPairs('poIdx');
   }
 
-  // Build divider ranges — black line at shared edges between different cable types
-  const dividerRanges = [];
-  const sortedRows = Object.keys(rowCableInfo).map(Number).sort((a, b) => a - b);
-  for (let i = 0; i < sortedRows.length - 1; i++) {
-    const r1 = sortedRows[i], r2 = sortedRows[i + 1];
-    if (r2 === r1 + 1 && rowCableInfo[r1].type !== rowCableInfo[r2].type) {
-      const s1 = rowCableInfo[r1], s2 = rowCableInfo[r2];
-      const oMin = Math.max(s1.min, s2.min);
-      const oMax = Math.min(s1.max, s2.max);
-      if (oMin <= oMax) {
-        dividerRanges.push(getA1(r1, oMin + 1) + ':' + getA1(r1, oMax + 1));
-      }
-    }
-  }
-
-  return { matrix, mlagRanges, cableBorderRanges, dividerRanges };
+  return { matrix, mlagRanges, cableBorderRanges };
 }
 
 function buildConditionalRules(sheet, headers, lastRow) {
