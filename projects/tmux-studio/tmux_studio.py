@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260518.5 | 2026-05-18 13:03:24
+# tmux-studio v260518.6 | 2026-05-18 13:24:09
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -900,6 +900,7 @@ def main():
             current = get_tmux_layout()
 
             if args.with_cmds:
+                _CLI_PREFIXES = ("watch ", "bash tail ", "bash watch ", "bash python", "bash top")
                 print(f"{Colors.BLUE}Capturing pane CLI commands...{Colors.RESET}")
                 for sess in current.get("sessions", []):
                     s_name = sess["session_name"]
@@ -911,11 +912,12 @@ def main():
                         }
                         for pane in win.get("panes", []):
                             cli = cmds_by_idx.get(pane["pane_index"], "")
-                            pane["pane_cli"] = cli
-                            if cli and not cli.endswith(" (idle)"):
-                                print(f"  {Colors.CYAN}{s_name}:{w_idx}.{pane['pane_index']}{Colors.RESET} [{win['window_name']}] → {cli}")
+                            tag = f"  {Colors.CYAN}{s_name}:{w_idx}.{pane['pane_index']}{Colors.RESET} [{win['window_name']}]"
+                            if cli and cli.startswith(_CLI_PREFIXES):
+                                pane["pane_cli"] = cli
+                                print(f"{tag} → {cli}")
                             else:
-                                print(f"  {Colors.CYAN}{s_name}:{w_idx}.{pane['pane_index']}{Colors.RESET} [{win['window_name']}] → {Colors.YELLOW}(idle){Colors.RESET}")
+                                print(f"{tag} → {Colors.YELLOW}(skip){Colors.RESET}")
 
             saved = load_saved_layout(args.file)
             do_override = args.override
