@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260518.1 | 2026-05-18 09:59:01
+# tmux-studio v260518.2 | 2026-05-18 10:12:05
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -858,27 +858,33 @@ def _parse_window_nums(raw: str) -> List[int]:
 # COMMANDS
 # =============================================================================
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Save, restore, and manage tmux session layouts.")
     sub = parser.add_subparsers(dest="cmd")
     sub.required = True
 
-    p_save = sub.add_parser("save")
-    p_save.add_argument("-o", "--override", action="store_true")
+    p_save = sub.add_parser("save", help="Snapshot current tmux state to JSON")
+    p_save.add_argument("-o", "--override", action="store_true", help="Overwrite JSON; delete items missing from tmux")
     p_save.add_argument("-c", "--with-cmds", action="store_true", help="Capture live CLI commands in each pane")
-    p_save.add_argument("-f", "--file", default=get_default_filepath())
+    p_save.add_argument("-f", "--file", default=get_default_filepath(), help="JSON file path (default: ~/.tmux-studio/)")
 
-    p_rest = sub.add_parser("restore")
-    p_rest.add_argument("-o", "--override", action="store_true")
-    p_rest.add_argument("--ssh", action="store_true", help="Auto-SSH into restored panes without prompting")
+    p_rest = sub.add_parser("restore", help="Rebuild tmux sessions from saved JSON")
+    p_rest.add_argument("-o", "--override", action="store_true", help="Destroy and recreate mismatched windows")
+    p_rest.add_argument("-s", "--ssh", action="store_true", help="Auto-SSH into restored panes without prompting")
     p_rest.add_argument("-c", "--with-cmds", action="store_true", help="Replay saved CLI commands into panes after restore")
-    p_rest.add_argument("-f", "--file", default=get_default_filepath())
+    p_rest.add_argument("-f", "--file", default=get_default_filepath(), help="JSON file path (default: ~/.tmux-studio/)")
 
-    p_manage = sub.add_parser("manage")
-    p_manage.add_argument("-f", "--file", default=get_default_filepath())
+    p_manage = sub.add_parser("manage", help="Delete or reorder sessions in saved JSON")
+    p_manage.add_argument("-f", "--file", default=get_default_filepath(), help="JSON file path (default: ~/.tmux-studio/)")
 
-    sub.add_parser("copy-layout")
-    sub.add_parser("clone-window")
-    sub.add_parser("pane-cmds")
+    p_copy = sub.add_parser("copy-window-layout", help="Copy pane layout from one window to others")
+    p_copy.add_argument("-s", "--src", type=int, help="Source window number (from window list)")
+    p_copy.add_argument("-d", "--dst", help="Target window number(s), e.g. 2 or 3,4,6-8")
+
+    p_clone = sub.add_parser("clone-window", help="Clone layout and CLI commands to other windows")
+    p_clone.add_argument("-s", "--src", type=int, help="Source window number (from window list)")
+    p_clone.add_argument("-d", "--dst", help="Target window number(s), e.g. 2 or 3,4,6-8")
+
+    sub.add_parser("pane-cmds", help="Show detected CLI command running in each pane")
 
     args = parser.parse_args()
     abs_path = os.path.abspath(args.file) if hasattr(args, "file") else None
@@ -1146,7 +1152,7 @@ def main():
                         print(f"{Colors.RED}Format error. Use: r 2,1,3{Colors.RESET}")
         # ----------------------------------------
 
-        elif args.cmd == "copy-layout":
+        elif args.cmd == "copy-window-layout":
             if not tmux_running():
                 print(f"{Colors.RED}No Tmux running{Colors.RESET}"); sys.exit(1)
 
@@ -1161,30 +1167,41 @@ def main():
                 panes = f"{w['pane_count']} pane{'s' if w['pane_count'] != 1 else ''}"
                 print(f"  {Colors.CYAN}{i}.{Colors.RESET} {w['session']}:{w['win_index']} [{w['win_name']}] — {panes}")
 
-            while True:
-                try:
-                    src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
-                    if 1 <= src_num <= len(windows): break
-                    print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
-                except ValueError:
-                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+            if args.src:
+                src_num = args.src
+                if not (1 <= src_num <= len(windows)):
+                    print(f"{Colors.RED}Source {src_num} out of range (1-{len(windows)}).{Colors.RESET}"); sys.exit(1)
+            else:
+                while True:
+                    try:
+                        src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
+                        if 1 <= src_num <= len(windows): break
+                        print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                    except ValueError:
+                        print(f"{Colors.RED}Enter a number.{Colors.RESET}")
 
             src = windows[src_num - 1]
             src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
             print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
 
-            while True:
-                try:
-                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
-                    nums = _parse_window_nums(raw)
-                    valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
-                    if nums and valid: break
-                    if any(n == src_num for n in nums):
-                        print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
-                    else:
-                        print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
-                except ValueError:
-                    print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
+            if args.dst:
+                nums = _parse_window_nums(args.dst)
+                valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                if not nums or not valid:
+                    print(f"{Colors.RED}Invalid target(s). Use numbers 1-{len(windows)}, excluding {src_num}.{Colors.RESET}"); sys.exit(1)
+            else:
+                while True:
+                    try:
+                        raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
+                        nums = _parse_window_nums(raw)
+                        valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                        if nums and valid: break
+                        if any(n == src_num for n in nums):
+                            print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
+                        else:
+                            print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
+                    except ValueError:
+                        print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
 
             targets = [windows[n - 1] for n in nums]
 
