@@ -1,10 +1,10 @@
-// TopoAssist v260518.1 | 2026-05-18 10:04:50
+// TopoAssist v260518.2 | 2026-05-18 12:59:07
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260518.1";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260518.2";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1880,6 +1880,8 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     }, []);
   });
 
+  const rowCableInfo = {}; // absRow → { type, min, max } — for divider detection
+
   // Outer border range helper — one box spanning both paired devices' schema columns.
   // Classifies by ip_type_: p2p → violet, gw → amber, else → blue (L2).
   function _collectCableBorder(d1, d2, absR) {
@@ -1896,9 +1898,11 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     const t2 = deviceMap[d2] && deviceMap[d2].ipTypeIdx !== undefined
                  ? String(data[ri][deviceMap[d2].ipTypeIdx] || '').toLowerCase() : '';
     const ipT = t1 || t2;
-    if (ipT.includes('p2p')) cableBorderRanges.p2p.push(rng);
-    else if (ipT.includes('gw')) cableBorderRanges.gw.push(rng);
-    else cableBorderRanges.l2.push(rng);
+    const cType = ipT.includes('p2p') ? 'p2p' : ipT.includes('gw') ? 'gw' : 'l2';
+    cableBorderRanges[cType].push(rng);
+    // Track per-row for divider detection (merge widest span across Et+Po pairs)
+    if (!rowCableInfo[absR]) rowCableInfo[absR] = { type: cType, min: mn, max: mx };
+    else { rowCableInfo[absR].min = Math.min(rowCableInfo[absR].min, mn); rowCableInfo[absR].max = Math.max(rowCableInfo[absR].max, mx); }
   }
 
   const matrix = data.map(() => new Array(totalCols).fill("#ffffff"));
@@ -1990,7 +1994,22 @@ function calculateConnectionBackgrounds(data, headers, totalCols, topo) {
     colorPairs('poIdx');
   }
 
-  return { matrix, mlagRanges, cableBorderRanges };
+  // Build divider ranges — black line at shared edges between different cable types
+  const dividerRanges = [];
+  const sortedRows = Object.keys(rowCableInfo).map(Number).sort((a, b) => a - b);
+  for (let i = 0; i < sortedRows.length - 1; i++) {
+    const r1 = sortedRows[i], r2 = sortedRows[i + 1];
+    if (r2 === r1 + 1 && rowCableInfo[r1].type !== rowCableInfo[r2].type) {
+      const s1 = rowCableInfo[r1], s2 = rowCableInfo[r2];
+      const oMin = Math.max(s1.min, s2.min);
+      const oMax = Math.min(s1.max, s2.max);
+      if (oMin <= oMax) {
+        dividerRanges.push(getA1(r1, oMin + 1) + ':' + getA1(r1, oMax + 1));
+      }
+    }
+  }
+
+  return { matrix, mlagRanges, cableBorderRanges, dividerRanges };
 }
 
 function buildConditionalRules(sheet, headers, lastRow) {
