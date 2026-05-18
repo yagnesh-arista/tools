@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260518.2 | 2026-05-18 10:12:05
+# tmux-studio v260518.3 | 2026-05-18 10:12:51
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -911,7 +911,8 @@ def main():
                             pane["pane_cli"] = cmds_by_idx.get(pane["pane_index"], "")
 
             saved = load_saved_layout(args.file)
-            stats = compare_flat_swp(saved, current, mode="save", overwrite=args.override)
+            do_override = args.override
+            stats = compare_flat_swp(saved, current, mode="save", overwrite=do_override)
 
             allow_add = False
             allow_delete = False
@@ -927,11 +928,11 @@ def main():
                 if ask_confirmation(f'Proceed with deleting the session/window/pane with "{SAVE_MISSING_DELETE}" comment?'):
                     allow_delete = True
                 else:
-                    args.override = False
+                    do_override = False
 
             # Prompt 3: Changes (Yellow)
             if stats['changed'] > 0 or stats['renamed'] > 0:
-                if stats['missing'] > 0 and not args.override:
+                if stats['missing'] > 0 and not do_override:
                     print(f"{Colors.YELLOW}Warning: Detected changes AND items missing in Tmux.{Colors.RESET}")
                     print(f"Standard 'save' will update layouts but {Colors.ORANGE}KEEP{Colors.RESET} missing items in JSON.")
                     print(f"To delete them, run: {Colors.CYAN}tmux-studio save -o{Colors.RESET}")
@@ -944,12 +945,12 @@ def main():
                         allow_update = True
 
             if allow_add or allow_delete or allow_update:
-                final_data = current if args.override else merge_current_into_saved(saved, current)
+                final_data = current if do_override else merge_current_into_saved(saved, current)
                 rotate_backups(args.file)
                 write_json_to_disk(final_data, args.file)
                 print(f"{Colors.CYAN}Saved to: {abs_path}{Colors.RESET}")
 
-                if not args.override:
+                if not do_override:
                      print(f"{Colors.BLUE}[Mode] MERGE: Updated file while preserving offline items.{Colors.RESET}")
                 else:
                      print(f"{Colors.BLUE}[Mode] OVERRIDE: Synced exact state (Deleted offline items).{Colors.RESET}")
@@ -1233,30 +1234,41 @@ def main():
                 panes = f"{w['pane_count']} pane{'s' if w['pane_count'] != 1 else ''}"
                 print(f"  {Colors.CYAN}{i}.{Colors.RESET} {w['session']}:{w['win_index']} [{w['win_name']}] — {panes}")
 
-            while True:
-                try:
-                    src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
-                    if 1 <= src_num <= len(windows): break
-                    print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
-                except ValueError:
-                    print(f"{Colors.RED}Enter a number.{Colors.RESET}")
+            if args.src:
+                src_num = args.src
+                if not (1 <= src_num <= len(windows)):
+                    print(f"{Colors.RED}Source {src_num} out of range (1-{len(windows)}).{Colors.RESET}"); sys.exit(1)
+            else:
+                while True:
+                    try:
+                        src_num = int(input(f"\nSelect {Colors.GREEN}source{Colors.RESET} window (number): ").strip())
+                        if 1 <= src_num <= len(windows): break
+                        print(f"{Colors.RED}Enter a number between 1 and {len(windows)}.{Colors.RESET}")
+                    except ValueError:
+                        print(f"{Colors.RED}Enter a number.{Colors.RESET}")
 
             src = windows[src_num - 1]
             src_panes = f"{src['pane_count']} pane{'s' if src['pane_count'] != 1 else ''}"
             print(f"\n{Colors.GREEN}Source:{Colors.RESET} {src['session']}:{src['win_index']} [{src['win_name']}] — {src_panes}")
 
-            while True:
-                try:
-                    raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
-                    nums = _parse_window_nums(raw)
-                    valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
-                    if nums and valid: break
-                    if any(n == src_num for n in nums):
-                        print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
-                    else:
-                        print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
-                except ValueError:
-                    print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
+            if args.dst:
+                nums = _parse_window_nums(args.dst)
+                valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                if not nums or not valid:
+                    print(f"{Colors.RED}Invalid target(s). Use numbers 1-{len(windows)}, excluding {src_num}.{Colors.RESET}"); sys.exit(1)
+            else:
+                while True:
+                    try:
+                        raw = input(f"Select {Colors.ORANGE}target{Colors.RESET} window(s) (e.g. 9 or 3,4,6-8): ").strip()
+                        nums = _parse_window_nums(raw)
+                        valid = all(1 <= n <= len(windows) and n != src_num for n in nums)
+                        if nums and valid: break
+                        if any(n == src_num for n in nums):
+                            print(f"{Colors.RED}Source cannot be a target.{Colors.RESET}")
+                        else:
+                            print(f"{Colors.RED}Enter valid numbers between 1 and {len(windows)}, excluding {src_num}.{Colors.RESET}")
+                    except ValueError:
+                        print(f"{Colors.RED}Use numbers, ranges (3-6), or comma-separated (e.g. 1,3,5 or 3-6).{Colors.RESET}")
 
             targets = [windows[n - 1] for n in nums]
 

@@ -1,7 +1,8 @@
 ================================================================================
   TMUX STUDIO — AI REBUILD PROMPT / PROJECT INSTRUCTIONS
   Tmux Session/Window/Pane Persistence & Restore Tool (Python CLI)
-  Last updated: 2026-05-18 (feat: restore -c/--with-cmds flag — after restore completes, reads pane_cli from saved JSON, previews sendable commands, waits 3s for SSH settle, then sends each via send-keys -l + Enter; skips idle/shell panes; requires save -c first. FILES: tmux_studio.py)
+  Last updated: 2026-05-18 (polish: CLI help text, naming, -s/-d flags — main parser description added; all subparsers get help=; all args get help=; copy-layout renamed to copy-window-layout; -s/--src + -d/--dst flags added to copy-window-layout and clone-window for non-interactive use; -s added as short flag for restore --ssh; save handler args.override mutation fixed to use local do_override; stale pane-info and copy-layout refs updated in INSTRUCTIONS. FILES: tmux_studio.py, INSTRUCTIONS_tmux-studio.txt)
+  Previous: 2026-05-18 (feat: restore -c/--with-cmds flag — after restore completes, reads pane_cli from saved JSON, previews sendable commands, waits 3s for SSH settle, then sends each via send-keys -l + Enter; skips idle/shell panes; requires save -c first. FILES: tmux_studio.py)
   Previous: 2026-05-17 (feat: rename pane-info → pane-cmds; add save -c/--with-cmds flag — after get_tmux_layout() calls get_pane_commands() per window and enriches each pane dict with pane_cli field (the live detected CLI command); stored in JSON alongside pane_current_command. FILES: tmux_studio.py)
   Previous: 2026-05-17 (fix: hard-newline continuation join in _get_pane_cli_via_recall — -J handles soft-wraps but not literal newlines in multi-line commands; after finding the EOS prompt match, collect subsequent lines until blank/prompt/watch-header and join with space. FILES: tmux_studio.py)
   Previous: 2026-05-17 (fix: capture-pane -J — add -J (join soft-wrapped lines) to all three capture-pane calls (_get_pane_eos_cli, _scrollback_last_cmd, _get_pane_cli_via_recall); tmux automatically rejoins terminal-wrapped lines so long commands appear as one line; removes need for manual continuation joining in _get_pane_cli_via_recall (reverted to simple reversed-scan). FILES: tmux_studio.py)
@@ -115,11 +116,9 @@ SECTION 3: CLI USAGE
   tmux-studio manage                # Interactive JSON session manager
   tmux-studio manage -f /path/to/file.json
 
-  tmux-studio clone-window          # Copy pane layout from source to target(s) — layout only
-    Same picker flow and behavior as copy-layout. Alias with a more intuitive name.
-
-  tmux-studio copy-layout           # Copy pane layout from one window to one or more targets
-    Interactive flow:
+  tmux-studio copy-window-layout    # Copy pane layout from one window to one or more targets
+  tmux-studio copy-window-layout -s 1 -d 2,3,6-8   # Non-interactive mode
+    Interactive (no flags) or non-interactive (-s/-d):
       1. Numbered list of all windows across all sessions — pick source number
       2. Enter target window number(s): single (2), comma list (1,3,5),
          range (3-6), or mixed (3,4,6-8)
@@ -127,7 +126,12 @@ SECTION 3: CLI USAGE
          missing panes added with split-window -d), then select-layout applies
          the source window_layout string. Per-target ✓ confirmation printed.
 
-  tmux-studio pane-info             # Show full running command for each pane in a window
+  tmux-studio clone-window          # Clone layout + CLI commands from source to target(s)
+  tmux-studio clone-window -s 1 -d 2,3,6-8   # Non-interactive mode
+    Same picker flow as copy-window-layout, plus reads source pane commands
+    via get_pane_commands() and sends each to matching pane index in targets.
+
+  tmux-studio pane-cmds             # Show full running command for each pane in a window
     Interactive flow:
       1. Numbered list of all windows — pick one
       2. Prints table: pane index, active marker (*), PID, full command
@@ -416,10 +420,10 @@ cleanup_extras(saved_layout, protected_sessions=None)
 _list_windows_flat(layout) -> List[Tuple[int, str, str, str]]
   Flattens get_tmux_layout() output into a numbered list of windows.
   Each tuple: (display_num, session_name, window_index, window_name).
-  Used by copy-layout and pane-info pickers.
+  Used by copy-window-layout, clone-window, and pane-cmds pickers.
 
 _parse_window_nums(raw) -> List[int]
-  Module-level helper (used by copy-layout, clone-window).
+  Module-level helper (used by copy-window-layout, clone-window).
   Parses a comma/range combo string such as "3,4,6-8" into a deduplicated
   list of ints in input order.
   Algorithm: split by ',' -> for each token, if '-' present expand via range()
@@ -494,19 +498,23 @@ send_ssh(target, window_name)
 --- MAIN / ARGPARSE ---
 
 main()
-  Subcommands: save, restore, manage, copy-layout, clone-window, pane-info.
-  save/restore: -o/--override (store_true), -f/--file (default path).
+  Subcommands: save, restore, manage, copy-window-layout, clone-window, pane-cmds.
+  save: -o/--override, -c/--with-cmds, -f/--file.
+  restore: -o/--override, -s/--ssh, -c/--with-cmds, -f/--file.
   manage: -f/--file only.
-  copy-layout, clone-window, pane-info: no file args; operate on live tmux state only.
+  copy-window-layout: -s/--src, -d/--dst (optional; interactive if omitted).
+  clone-window: -s/--src, -d/--dst (optional; interactive if omitted).
+  pane-cmds: no args; interactive window picker.
   abs_path = os.path.abspath(args.file).
   Outer try/except KeyboardInterrupt -> print cancelled, sys.exit(1).
 
   SAVE FLOW:
     Check tmux running. Get current layout. Load saved layout.
-    compare_flat_swp(saved, current, mode="save", overwrite=args.override).
+    do_override = args.override (local; never mutate args.override).
+    compare_flat_swp(saved, current, mode="save", overwrite=do_override).
     Prompt 1 (adds): if stats['added'] > 0 -> ask -> allow_add.
     Prompt 2 (deletes, -o only): if stats['deleted'] > 0 -> ask -> allow_delete.
-      If declined: args.override = False (prevents override-mode write).
+      If declined: do_override = False (prevents override-mode write).
     Prompt 3 (changes):
       If stats['changed'] or stats['renamed']:
         If missing items AND no override: warn about merge, ask for changes-only confirm.
@@ -555,7 +563,7 @@ main()
     For each target: copy_window_layout(src, tgt) — layout only, no CLI replay.
     Per-target ✓ printed.
 
-  COPY-LAYOUT FLOW:
+  COPY-WINDOW-LAYOUT FLOW:
     Check tmux running. Get current layout via get_tmux_layout().
     _list_windows_flat() -> numbered list. Print it.
     User picks source number -> resolve to (session, window_index).
@@ -564,7 +572,7 @@ main()
     For each target num: resolve (session, window_index), call copy_window_layout().
     Print ✓ per target.
 
-  PANE-INFO FLOW:
+  PANE-CMDS FLOW:
     Check tmux running. Get current layout via get_tmux_layout().
     _list_windows_flat() -> numbered list. Print it.
     User picks window number -> resolve to (session, window_index).
