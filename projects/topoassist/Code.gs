@@ -1,10 +1,10 @@
-// TopoAssist v260518.2 | 2026-05-18 12:59:07
+// TopoAssist v260518.3 | 2026-05-18 12:59:49
 /**
  * -------------------
  * CONFIGURATION CONSTANTS
  * -------------------
  */
-const APP_VERSION = "260518.2";  // bump on every release; keep in sync with Sidebar-js.html
+const APP_VERSION = "260518.3";  // bump on every release; keep in sync with Sidebar-js.html
 
 // 1. Try to get saved name. 2. Default to "PortMapping"
 var SHEET_DATA = (() => {
@@ -1808,6 +1808,12 @@ function applyVisualFormatting(optionalSheet, fullRebuild) {
       if (mlagList) {
         mlagList.setBorder(true, true, true, true, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
       }
+    }
+
+    // 3c. Black divider at shared edges between different cable types
+    if (result.dividerRanges.length > 0) {
+      sheet.getRangeList(result.dividerRanges)
+        .setBorder(false, false, true, false, null, null, "black", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     }
 
     // 4. Apply Conditional Rules (Text Colors/Dimming)
