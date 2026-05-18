@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260517.18 | 2026-05-17 13:53:03
+# tmux-studio v260518.1 | 2026-05-18 09:59:01
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -870,6 +870,7 @@ def main():
     p_rest = sub.add_parser("restore")
     p_rest.add_argument("-o", "--override", action="store_true")
     p_rest.add_argument("--ssh", action="store_true", help="Auto-SSH into restored panes without prompting")
+    p_rest.add_argument("-c", "--with-cmds", action="store_true", help="Replay saved CLI commands into panes after restore")
     p_rest.add_argument("-f", "--file", default=get_default_filepath())
 
     p_manage = sub.add_parser("manage")
@@ -1047,6 +1048,36 @@ def main():
             if do_override:
                 # Pass original_saved_sessions so we don't delete skipped JSON sessions
                 cleanup_extras(saved, original_saved_sessions)
+
+            if args.with_cmds:
+                _SKIP = {"-bash", "bash", "-zsh", "zsh", "-sh", "sh"}
+                cli_tasks = []
+                for sess in saved.get("sessions", []):
+                    s_name = sess["session_name"]
+                    for win in sess.get("windows", []):
+                        w_idx = win["window_index"]
+                        for pane in win.get("panes", []):
+                            cli = pane.get("pane_cli", "")
+                            if not cli or cli.endswith(" (idle)") or cli.lstrip("-") in _SKIP:
+                                continue
+                            cli_tasks.append((s_name, w_idx, pane["pane_index"], win["window_name"], cli))
+
+                if cli_tasks:
+                    print(f"\n{Colors.BLUE}Saved CLI commands to replay:{Colors.RESET}")
+                    for s, wi, pi, wn, cmd in cli_tasks:
+                        print(f"  {Colors.CYAN}{s}:{wi}.{pi}{Colors.RESET} [{wn}] → {cmd}")
+
+                    if ask_confirmation("Send these commands to the restored panes?"):
+                        print(f"{Colors.BLUE}Waiting 3s for SSH connections to settle...{Colors.RESET}")
+                        time.sleep(3)
+                        for s, wi, pi, wn, cmd in cli_tasks:
+                            pane_target = f"{s}:{wi}.{pi}"
+                            subprocess.run(["tmux", "send-keys", "-t", pane_target, "-l", cmd], capture_output=True)
+                            subprocess.run(["tmux", "send-keys", "-t", pane_target, "Enter"], capture_output=True)
+                            time.sleep(0.1)
+                        print(f"{Colors.GREEN}✓ {len(cli_tasks)} commands sent.{Colors.RESET}")
+                else:
+                    print(f"\n{Colors.YELLOW}No saved CLI commands found in JSON (save with -c first).{Colors.RESET}")
 
             print(f"\n{Colors.GREEN}Restore Complete.{Colors.RESET}")
             print(f"{Colors.CYAN}Restored from: {abs_path}{Colors.RESET}")
