@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tmux-studio v260518.4 | 2026-05-18 12:52:31
+# tmux-studio v260518.5 | 2026-05-18 13:03:24
 """Tmux Studio - Final Production Build
 --------------------------------------------
 Features:
@@ -902,13 +902,20 @@ def main():
             if args.with_cmds:
                 print(f"{Colors.BLUE}Capturing pane CLI commands...{Colors.RESET}")
                 for sess in current.get("sessions", []):
+                    s_name = sess["session_name"]
                     for win in sess.get("windows", []):
+                        w_idx = win["window_index"]
                         cmds_by_idx = {
                             p["index"]: p["command"]
-                            for p in get_pane_commands(sess["session_name"], win["window_index"])
+                            for p in get_pane_commands(s_name, w_idx)
                         }
                         for pane in win.get("panes", []):
-                            pane["pane_cli"] = cmds_by_idx.get(pane["pane_index"], "")
+                            cli = cmds_by_idx.get(pane["pane_index"], "")
+                            pane["pane_cli"] = cli
+                            if cli and not cli.endswith(" (idle)"):
+                                print(f"  {Colors.CYAN}{s_name}:{w_idx}.{pane['pane_index']}{Colors.RESET} [{win['window_name']}] → {cli}")
+                            else:
+                                print(f"  {Colors.CYAN}{s_name}:{w_idx}.{pane['pane_index']}{Colors.RESET} [{win['window_name']}] → {Colors.YELLOW}(idle){Colors.RESET}")
 
             saved = load_saved_layout(args.file)
             do_override = args.override
